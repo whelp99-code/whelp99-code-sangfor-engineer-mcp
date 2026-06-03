@@ -134,9 +134,15 @@ export interface ConsoleActionResult {
 }
 
 export function normalizeProduct(input?: string): ProductCode {
-  const value = (input ?? '').toLowerCase();
+  const raw = (input ?? '').trim();
+  const value = raw.toLowerCase().replace(/[\s-]+/g, '_');
+  const exact = PRODUCTS.find(p => p.code.toLowerCase() === value || p.code === raw);
+  if (exact) return exact.code;
   for (const product of PRODUCTS) {
-    if (product.aliases.some(alias => value.includes(alias.toLowerCase()))) return product.code;
+    if (product.aliases.some(alias => {
+      const a = alias.toLowerCase();
+      return value === a.replace(/[\s-]+/g, '_') || new RegExp(`\\b${a.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(raw);
+    })) return product.code;
   }
   return 'HCI';
 }

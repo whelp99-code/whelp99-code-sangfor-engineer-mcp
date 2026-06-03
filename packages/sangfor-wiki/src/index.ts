@@ -39,6 +39,51 @@ const WIKI_CHUNKS: KnowledgeChunk[] = [
     section: 'NTP and Timezone',
     text: 'Internal lesson: event correlation quality depends on NTP and timezone consistency across all sources. Add NTP validation to Cyber Command onboarding precheck.',
     trustLevel: 'internal'
+  },
+  {
+    id: 'wiki_hci_license_001',
+    sourceType: 'wiki',
+    product: 'HCI',
+    title: 'HCI License Activation Pitfall',
+    section: 'Cluster UUID',
+    text: 'Internal lesson: activate licenses only after all nodes join cluster; re-activation may be required if a node is replaced with different hardware UUID.',
+    trustLevel: 'internal'
+  },
+  {
+    id: 'wiki_hci_vmware_001',
+    sourceType: 'wiki',
+    product: 'HCI',
+    title: 'VMware to HCI Migration',
+    section: 'Cutover Window',
+    text: 'Internal lesson: keep source VMware powered off validation step in runbook; document LUN mapping and boot order before cutover weekend.',
+    trustLevel: 'internal'
+  },
+  {
+    id: 'wiki_iag_ssl_001',
+    sourceType: 'wiki',
+    product: 'IAG',
+    title: 'IAG SSL Inspection Exceptions',
+    section: 'Certificate Pinning Apps',
+    text: 'Internal lesson: maintain exception list for banking and health apps that break on SSL inspection; review quarterly.',
+    trustLevel: 'internal'
+  },
+  {
+    id: 'wiki_es_perf_001',
+    sourceType: 'wiki',
+    product: 'ENDPOINT_SECURE',
+    title: 'Endpoint Secure Performance',
+    section: 'Full Scan Schedule',
+    text: 'Internal lesson: schedule full scans outside business hours; disable concurrent full scan on VDI gold images.',
+    trustLevel: 'internal'
+  },
+  {
+    id: 'wiki_cc_playbook_001',
+    sourceType: 'wiki',
+    product: 'CYBER_COMMAND',
+    title: 'SOC Playbook Links',
+    section: 'Runbook Integration',
+    text: 'Internal lesson: link each high-severity alert rule to Confluence/Jira runbook URL in rule description for faster L1 response.',
+    trustLevel: 'internal'
   }
 ];
 
@@ -114,6 +159,10 @@ export class GitHubWikiGitAdapter implements WikiAdapter {
 }
 
 const proposals = new Map<string, WikiUpdateProposal>();
+
+export function listSeedWiki(): KnowledgeChunk[] {
+  return [...WIKI_CHUNKS];
+}
 
 export function searchWiki(input: { product?: string; version?: string; query?: string; limit?: number }): KnowledgeChunk[] {
   const product = normalizeProduct(input.product);
