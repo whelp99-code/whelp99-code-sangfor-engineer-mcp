@@ -1,0 +1,9 @@
+node_modules
+pnpm-lock.yaml
+dist
+.data
+.evidence
+.env
+.DS_Store
+playwright-report
+test-results

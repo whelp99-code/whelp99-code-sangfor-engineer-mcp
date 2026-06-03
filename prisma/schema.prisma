@@ -1,0 +1,118 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model SangforProduct {
+  id        String   @id @default(uuid())
+  code      String   @unique
+  name      String
+  priority  Int
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+model SangforManual {
+  id         String   @id @default(uuid())
+  product   String
+  version   String?
+  title      String
+  sourceType String
+  sourceUrl  String?
+  filePath   String?
+  trustLevel String   @default("needs_review")
+  createdAt  DateTime @default(now())
+}
+
+model SangforProject {
+  id          String   @id @default(uuid())
+  customerName String
+  product     String
+  version     String?
+  projectType String
+  status      String   @default("draft")
+  createdAt   DateTime @default(now())
+}
+
+model SangforConfigPlan {
+  id          String   @id @default(uuid())
+  projectId   String?
+  product     String
+  planTitle   String
+  planJson    Json
+  riskLevel   String
+  status      String   @default("draft")
+  createdAt   DateTime @default(now())
+}
+
+model SangforFeedbackEvent {
+  id           String   @id @default(uuid())
+  product      String
+  feedbackType String
+  severity     String
+  feedbackText String
+  sourceRole   String
+  status       String   @default("new")
+  createdAt    DateTime @default(now())
+}
+
+model SangforWikiUpdateProposal {
+  id         String   @id @default(uuid())
+  targetPage String
+  title      String
+  beforeText String
+  afterText  String
+  status     String   @default("pending")
+  createdAt  DateTime @default(now())
+}
+
+model SangforRagDocument {
+  id          String   @id @default(uuid())
+  productCode String
+  version     String?
+  title       String
+  sourceType  String
+  filePath    String
+  contentHash String   @unique
+  createdAt   DateTime @default(now())
+  chunks      SangforRagChunk[]
+}
+
+model SangforRagChunk {
+  id          String   @id @default(uuid())
+  documentId  String
+  productCode String
+  version     String?
+  title       String
+  section     String?
+  chunkText   String
+  vector      Json?
+  contentHash String   @unique
+  createdAt   DateTime @default(now())
+  document    SangforRagDocument @relation(fields: [documentId], references: [id])
+}
+
+model SangforFineTuneDataset {
+  id          String   @id @default(uuid())
+  productCode String
+  taskType    String
+  path        String
+  status      String   @default("draft")
+  exampleCount Int     @default(0)
+  createdAt   DateTime @default(now())
+}
+
+model SangforFineTuneJob {
+  id          String   @id @default(uuid())
+  provider    String
+  baseModel   String
+  datasetPath String
+  productCode String
+  taskType    String
+  status      String   @default("ready_for_review")
+  createdAt   DateTime @default(now())
+}

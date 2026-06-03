@@ -1,0 +1,1 @@
+{ "name": "@sangfor/rag", "type": "module", "main": "src/index.ts" }

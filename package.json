@@ -1,0 +1,35 @@
+{
+  "name": "sangfor-engineer-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Sangfor product-specific senior engineer MCP server with planner, approval, mock operator, feedback learning, and wiki integration.",
+  "packageManager": "pnpm@10.28.1",
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:mcp": "tsx apps/mcp-server/src/index.ts",
+    "dev:mock-console": "tsx apps/mock-sangfor-console/src/server.ts",
+    "dev:operator-console": "tsx apps/operator-console/src/server.ts",
+    "test": "vitest run",
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "build": "tsc -p tsconfig.json",
+    "seed:docs": "tsx scripts/seed-demo-knowledge.ts",
+    "ingest:docs": "tsx scripts/ingest-documents.ts",
+    "export:finetune": "tsx scripts/export-finetune-dataset.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.17.5",
+    "pdf-parse": "^1.1.1",
+    "playwright": "^1.56.1",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.8"
+  }
+}

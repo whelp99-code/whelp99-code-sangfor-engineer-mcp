@@ -1,0 +1,1 @@
+{ "name": "@sangfor/finetune", "type": "module", "main": "src/index.ts" }

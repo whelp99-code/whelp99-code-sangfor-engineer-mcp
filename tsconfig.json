@@ -1,0 +1,59 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "outDir": "dist",
+    "rootDir": ".",
+    "paths": {
+      "@sangfor/shared": [
+        "packages/shared/src/index.ts"
+      ],
+      "@sangfor/knowledge": [
+        "packages/sangfor-knowledge/src/index.ts"
+      ],
+      "@sangfor/wiki": [
+        "packages/sangfor-wiki/src/index.ts"
+      ],
+      "@sangfor/planner": [
+        "packages/sangfor-planner/src/index.ts"
+      ],
+      "@sangfor/approval": [
+        "packages/sangfor-approval/src/index.ts"
+      ],
+      "@sangfor/operator": [
+        "packages/sangfor-operator/src/index.ts"
+      ],
+      "@sangfor/verifier": [
+        "packages/sangfor-verifier/src/index.ts"
+      ],
+      "@sangfor/evidence": [
+        "packages/sangfor-evidence/src/index.ts"
+      ],
+      "@sangfor/feedback": [
+        "packages/sangfor-feedback/src/index.ts"
+      ],
+      "@sangfor/evals": [
+        "packages/sangfor-evals/src/index.ts"
+      ],
+      "@sangfor/rag": [
+        "packages/sangfor-rag/src/index.ts"
+      ],
+      "@sangfor/finetune": [
+        "packages/sangfor-finetune/src/index.ts"
+      ]
+    },
+    "baseUrl": "."
+  },
+  "include": [
+    "apps/**/*.ts",
+    "packages/**/*.ts",
+    "tests/**/*.ts",
+    "scripts/**/*.ts"
+  ]
+}

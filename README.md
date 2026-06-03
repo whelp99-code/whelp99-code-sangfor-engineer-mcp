@@ -1,1 +1,64 @@
-# whelp99-code-sangfor-engineer-mcp
+# sangfor-engineer-mcp
+
+Sangfor product-specific senior engineer MCP server.
+
+Priority products:
+
+1. HCI
+2. IAG
+3. Endpoint Secure
+4. Cyber Command
+
+## Included scope
+
+This project includes:
+
+- MCP-style JSON-RPC stdio server
+- Sangfor project analyzer and configuration planner
+- Approval/risk engine
+- Mock and live Playwright operator paths
+- Customer/production execution path with mandatory gates
+- PDF/HTML/Markdown/TXT ingestion
+- Local RAG vector index
+- GitHub Wiki and Obsidian write adapters
+- Feedback → lesson → wiki proposal → eval pipeline
+- Fine-tuning dataset and job manifest pipeline
+
+## Run
+
+```bash
+npm install
+npm test
+npm run lint
+npm run build
+npm run dev:mcp
+```
+
+## Real execution gates
+
+Non-dry-run live action requires:
+
+```bash
+export SANGFOR_ALLOW_REAL_EXECUTION=true
+export SANGFOR_OPERATOR_APPROVAL_TOKEN='set-a-one-time-approval-token'
+```
+
+Production mode additionally requires:
+
+```bash
+export SANGFOR_ALLOW_PRODUCTION_EXECUTION=true
+```
+
+Every live write call must include approval payload with `approvedBy`, `approvalToken`, `changeTicketId`, and `rollbackPlanId`.
+
+## RAG ingestion
+
+```bash
+npm run ingest:docs -- ./manuals/hci-guide.pdf HCI 6.11
+```
+
+## Fine-tuning dataset
+
+```bash
+npm run export:finetune -- HCI
+```
