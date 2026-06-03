@@ -2,6 +2,10 @@
   "name": "sangfor-engineer-mcp",
   "version": "0.1.0",
   "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "description": "Sangfor product-specific senior engineer MCP server with planner, approval, mock operator, feedback learning, and wiki integration.",
   "packageManager": "pnpm@10.28.1",
   "type": "module",
