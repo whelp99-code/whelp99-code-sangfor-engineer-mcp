@@ -18,6 +18,7 @@
     "build": "tsc -p tsconfig.json",
     "seed:docs": "tsx scripts/seed-demo-knowledge.ts",
     "seed:demo": "tsx scripts/seed-demo-knowledge.ts",
+    "learn:sources": "tsx scripts/learn-sangfor-sources.ts",
     "ingest:docs": "tsx scripts/ingest-documents.ts",
     "export:finetune": "tsx scripts/export-finetune-dataset.ts"
   },

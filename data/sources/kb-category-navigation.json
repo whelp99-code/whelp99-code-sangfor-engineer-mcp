@@ -1,0 +1,254 @@
+{
+  "featuredResources": [
+    {
+      "id": "company-profile",
+      "title": "Sangfor Company Profile",
+      "description": "Comprehensive company information and resources",
+      "color": "from-blue-100 to-blue-50",
+      "borderColor": "border-blue-200",
+      "link": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%22f73883a5d89e414abcd0477166d5b504%22,%22keyword%22%3A%22%22%7D"
+    }
+  ],
+  "cloudModule": {
+    "title": "Sangfor Cloud",
+    "subtitle": "Cloud Products and Solutions",
+    "introButton": {
+      "text": "Cloud Introduction",
+      "showModal": true
+    },
+    "cloudProducts": {
+      "title": "Cloud Products",
+      "summary": "HCI, VDI, MCS, aStor Hybrid Flash, aStor All Flash, SKE, DMP, CoStrict",
+      "gridCols": 2,
+      "items": [
+        { "id": "cloud-hci", "name": "HCI", "disabled": false, "link": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%2227948443021b4833bc7d6426cf56e997%22,%22keyword%22%3A%22%22%7D" },
+        { "id": "cloud-vdi", "name": "VDI", "disabled": false, "link": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%2278e8e39e5fe741e18e45b00b56d79fd1%22,%22keyword%22%3A%22%22%7D" },
+        { "id": "cloud-mcs", "name": "MCS", "disabled": false, "link": "/indexPage?module=1909" },
+        { "id": "cloud-astor", "name": "aStor Hybrid Flash", "disabled": false, "link": "/indexPage?module=1913" },
+        { "id": "cloud-astor-all-flash", "name": "aStor All Flash", "disabled": false, "link": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%2267da971ae0954b9cbfc7995bfc399ac7%22,%22keyword%22%3A%22%22%7D" },
+        { "id": "cloud-ske", "name": "SKE", "disabled": false, "link": "/indexPage?module=1917" },
+        { "id": "cloud-dmp", "name": "DMP", "disabled": false, "link": "/indexPage?module=1919" },
+        { "id": "cloud-costrict", "name": "CoStrict", "disabled": false, "link": "/indexPage?module=3351" }
+      ]
+    },
+    "cloudSolutions": {
+      "title": "Cloud Solutions",
+      "summary": "Hybrid Cloud, VMware Replacement, Subscription Cloud",
+      "gridCols": 1,
+      "items": [
+        { "id": "solution-hybrid", "name": "Hybrid Cloud", "disabled": false, "link": "/indexPage?module=2339" },
+        { "id": "solution-vmware", "name": "VMware Replacement", "disabled": false, "link": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%22e49653788adf48f891fc1c571890de29%22,%22keyword%22%3A%22%22%7D" },
+        { "id": "solution-subscription", "name": "Subscription Cloud", "disabled": false, "link": "/indexPage?module=2343" }
+      ]
+    }
+  },
+  "athenaModule": {
+    "title": "Sangfor Athena",
+    "subtitle": "Cyber Security Products and Solutions",
+    "introButton": {
+      "text": "Athena Introduction",
+      "showModal": false,
+      "link": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%221d6eafd1394d4502bed0c78b297cec0f%22,%22keyword%22%3A%22%22%7D"
+    },
+    "athenaProducts": {
+      "title": "Athena Products",
+      "summary": "MDR, XDR, SASE, CSPM, NGFW, EPP, NDR, SWG, aTrust",
+      "groups": [
+        {
+          "title": "Security Operations",
+          "gridCols": 2,
+          "items": [
+            { "id": "athena-mdr", "name": "Athena MDR", "disabled": false, "link": "/indexPage?module=1931" },
+            { "id": "athena-xdr", "name": "Athena XDR", "disabled": false, "link": "/indexPage?module=1933" }
+          ]
+        },
+        {
+          "title": "Cloud Security",
+          "gridCols": 2,
+          "items": [
+            { "id": "athena-sase", "name": "Athena SASE", "disabled": false, "link": "/indexPage?module=1935" },
+            { "id": "athena-cspm", "name": "Athena CSPM", "disabled": false, "link": "/indexPage?module=3301" }
+          ]
+        },
+        {
+          "title": "Security Foundation",
+          "gridCols": 3,
+          "items": [
+            { "id": "athena-ngfw", "name": "Athena NGFW", "disabled": false, "link": "/indexPage?module=1923" },
+            { "id": "athena-epp", "name": "Athena EPP", "disabled": false, "link": "/indexPage?module=1927" },
+            { "id": "athena-ndr", "name": "Athena NDR", "disabled": false, "link": "/indexPage?module=1929" },
+            { "id": "athena-swg", "name": "Athena SWG", "disabled": false, "link": "/indexPage?module=1925" },
+            { "id": "athena-atrust", "name": "aTrust", "disabled": false, "link": "/indexPage?module=1937" }
+          ]
+        }
+      ]
+    },
+    "athenaSolutions": {
+      "title": "Athena Solutions",
+      "summary": "Simplified Security, SD-WAN, Anti-Ransomware, Hybrid Work, Compliance",
+      "gridCols": 1,
+      "items": [
+        { "id": "solution-simplified-security", "name": "Simplified Security Operations", "disabled": false, "link": "/indexPage?module=2331" },
+        { "id": "solution-secure-sdwan", "name": "Secure SD-WAN", "disabled": false, "link": "/indexPage?module=2335" },
+        { "id": "solution-anti-ransomware", "name": "Anti-Ransomware", "disabled": false, "link": "/indexPage?module=2333" },
+        { "id": "solution-secure-hybrid", "name": "Secure Hybrid Work", "disabled": false, "link": "/indexPage?module=2337" },
+        { "id": "solution-compliance", "name": "Compliance", "disabled": false, "link": "/indexPage?module=2345" }
+      ]
+    },
+    "additionalSections": [
+      { "id": "cybersecurity-evaluator", "name": "Cybersecurity Evaluator", "disabled": false, "link": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%22766c2c540519424a8221a396e753f7af%22,%22keyword%22%3A%22%22%7D" },
+      { "id": "ai-security", "name": "AI in Security", "disabled": false, "link": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%22f85c6ad664b84ed4863f20f448dcdcd3%22,%22keyword%22%3A%22%22%7D" },
+      { "id": "partner-introduction", "name": "Partner/Customer Introduction", "disabled": false, "link": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%224e7057fe071d447db58cc6400ebd5ed6%22,%22keyword%22%3A%22%22%7D" },
+      { "id": "cyberinsurance", "name": "Cyberinsurance (N/A)", "disabled": true }
+    ]
+  },
+  "bottomButtons": [
+    { "id": "internal-training", "text": "Internal Training", "link": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%2252341cb1648549f09a80cee0c34d4f31%22,%22keyword%22%3A%22%22%7D" },
+    { "id": "summit-materials", "text": "Summit & Roadshow Materials", "link": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%22756c866b20a74ebfab936b9a08efee67%22,%22keyword%22%3A%22%22%7D" }
+  ],
+  "productMenuOptions": ["Main slide", "Battle card", "Sizing guide", "Tender spec"],
+  "solutionMenuOptions": ["Main slide", "Battle card", "Case study"],
+  "productMenuLinks": {
+    "cloud-hci": {
+      "Main slide": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%222e1cdfd8e50a4fff8ab70397126356a9%22,%22keyword%22%3A%22%22%7D",
+      "Battle card": "/indexPage?module=1958",
+      "Sizing guide": "/indexPage?module=1959",
+      "Tender spec": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%2249cac7ebf4e247cca4e926350f1d3e3f%22,%22keyword%22%3A%22%22%7D"
+    },
+    "cloud-vdi": {
+      "Main slide": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%22a2959657fc5f439c9a5bb670f9e7ec22%22,%22keyword%22%3A%22%22%7D",
+      "Battle card": "/indexPage?module=1974",
+      "Sizing guide": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%22f8443a26d56c4327ae64c74fa22c4e5b%22,%22keyword%22%3A%22%22%7D",
+      "Tender spec": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%226b82feeb58cc4e639d5a89351e28e4c8%22,%22keyword%22%3A%22%22%7D"
+    },
+    "cloud-mcs": {
+      "Main slide": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%2258a7ee9484f6451db11b5644b0c42915%22,%22keyword%22%3A%22%22%7D",
+      "Battle card": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%22540a0bc6e04149898624369f8b1d5178%22,%22keyword%22%3A%22%22%7D",
+      "Sizing guide": "/indexPage?module=1967",
+      "Tender spec": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%22be151574fe63475e90987f683d67d9e8%22,%22keyword%22%3A%22%22%7D"
+    },
+    "cloud-astor": {
+      "Main slide": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%228ae6bad26296425c9a23695d425df94d%22,%22keyword%22%3A%22%22%7D",
+      "Battle card": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%22bc59306054444d158bb4d8314498ad32%22,%22keyword%22%3A%22%22%7D",
+      "Sizing guide": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%2295ee425cfd1b4a5282861a93a4a548aa%22,%22keyword%22%3A%22%22%7D",
+      "Tender spec": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%223c829ee8f76846bfa970494cfb63245a%22,%22keyword%22%3A%22%22%7D"
+    },
+    "cloud-astor-all-flash": {
+      "Main slide": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%2267da971ae0954b9cbfc7995bfc399ac7%22,%22keyword%22%3A%22%22%7D",
+      "Battle card": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%22a06f3d3596e54c88a87d614a523bfd27%22,%22keyword%22%3A%22%22%7D",
+      "Sizing guide": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%22292d6939374a45a0b3254fc4704f8f79%22,%22keyword%22%3A%22%22%7D",
+      "Tender spec": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%226edec3fcd2d3479a80f1f683e57c91f7%22,%22keyword%22%3A%22%22%7D"
+    },
+    "cloud-ske": {
+      "Main slide": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%22aa16c459f77d46f8b8d4af8655629ecb%22,%22keyword%22%3A%22%22%7D",
+      "Battle card": "/indexPage?module=1998",
+      "Sizing guide": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%2232bc3ac26cd54902b9b3473a3347cd6b%22,%22keyword%22%3A%22%22%7D",
+      "Tender spec": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%220d7c53e6f591485280dd17f506067094%22,%22keyword%22%3A%22%22%7D"
+    },
+    "cloud-dmp": {
+      "Main slide": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%220a1a976c5ad8479cb28518dc2118c989%22,%22keyword%22%3A%22%22%7D",
+      "Battle card": "/indexPage?module=2006",
+      "Sizing guide": "/indexPage?module=2007",
+      "Tender spec": "/indexPage?module=2190"
+    },
+    "athena-mdr": {
+      "Main slide": "/indexPage?module=2263",
+      "Battle card": "/indexPage?module=2046",
+      "Sizing guide": "/indexPage?module=2047",
+      "Tender spec": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%22dd9ef282df9143dbaf5014d58fc898e5%22,%22keyword%22%3A%22%22%7D"
+    },
+    "athena-xdr": {
+      "Main slide": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%22558e6c9b65ea404b8803b94f4747d839%22,%22keyword%22%3A%22%22%7D",
+      "Battle card": "/indexPage?module=2054",
+      "Sizing guide": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%222443dc6cfe3f4db2b40162f9879fac2e%22,%22keyword%22%3A%22%22%7D",
+      "Tender spec": "/indexPage?module=2292"
+    },
+    "athena-sase": {
+      "Main slide": "/indexPage?module=2297",
+      "Battle card": "/indexPage?module=2062",
+      "Sizing guide": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%22eeca1bf377c74870b70e99fae3cf3ed1%22,%22keyword%22%3A%22%22%7D",
+      "Tender spec": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%22fdd1aa85cc6149a1af304205c41cdcd7%22,%22keyword%22%3A%22%22%7D"
+    },
+    "athena-cspm": {
+      "Main slide": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%22cd6ed370b0e145bca694cf2801fb018b%22,%22keyword%22%3A%22%22%7D",
+      "Battle card": "",
+      "Sizing guide": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%220e5f5e5f821f442abc5ae6d18419beca%22,%22keyword%22%3A%22%22%7D",
+      "Tender spec": ""
+    },
+    "athena-ngfw": {
+      "Main slide": "/indexPage?module=2195",
+      "Battle card": "/indexPage?module=2014",
+      "Sizing guide": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%225831f28c935246a989b31a261578f532%22,%22keyword%22%3A%22%22%7D",
+      "Tender spec": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%224f2d8fae91994c3683110d42dcd200b0%22,%22keyword%22%3A%22%22%7D"
+    },
+    "athena-epp": {
+      "Main slide": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%22e44bb0d2ffa545a4b253ce7e1aab94b2%22,%22keyword%22%3A%22%22%7D",
+      "Battle card": "/indexPage?module=2030",
+      "Sizing guide": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%2270e49b1fb08c4729a8a1bdedc6a7a011%22,%22keyword%22%3A%22%22%7D",
+      "Tender spec": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%22589c59a4586d407194a0ee57d3ed9ac3%22,%22keyword%22%3A%22%22%7D"
+    },
+    "athena-ndr": {
+      "Main slide": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%22e7f6eeca4a8143f193901e98b6bc7cd8%22,%22keyword%22%3A%22%22%7D",
+      "Battle card": "/indexPage?module=2039",
+      "Sizing guide": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%220681d79275814a6cb00b3728046828c1%22,%22keyword%22%3A%22%22%7D",
+      "Tender spec": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%220e255e2be72e4b51a74611de332ecb6e%22,%22keyword%22%3A%22%22%7D"
+    },
+    "athena-swg": {
+      "Main slide": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%2221162673938341348f8bf12ebdd3ca99%22,%22keyword%22%3A%22%22%7D",
+      "Battle card": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%22956760d0828c4896a6cabfff8aadcdc7%22,%22keyword%22%3A%22%22%7D",
+      "Sizing guide": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%22e1e91bb87cc048aa9f3997f1bd70ef88%22,%22keyword%22%3A%22%22%7D",
+      "Tender spec": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%226e9c8994914a43e5900fc481b8cc7e40%22,%22keyword%22%3A%22%22%7D"
+    },
+    "athena-atrust": {
+      "Main slide": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%22f12eacbed1654ed6a91a274514d07033%22,%22keyword%22%3A%22%22%7D",
+      "Battle card": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%22c3fcc43224e14f9b997f5bfc9ce0b349%22,%22keyword%22%3A%22%22%7D",
+      "Sizing guide": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%228b48f35abe9248a189c25b78416892a1%22,%22keyword%22%3A%22%22%7D",
+      "Tender spec": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%222d8a50fa37d841149bafe471f471fe5b%22,%22keyword%22%3A%22%22%7D"
+    }
+  },
+  "solutionMenuLinks": {
+    "solution-hybrid": {
+      "Main slide": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%22d89068f2eab24630aa023d006cd2ef9a%22,%22keyword%22%3A%22%22%7D",
+      "Battle card": "/indexPage?module=2585",
+      "Case study": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%221916d5ad455b4f06b01fbd106f8440fd%22,%22keyword%22%3A%22%22%7D"
+    },
+    "solution-vmware": {
+      "Main slide": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%22586f62bc5dfd44528a978dd8006a2e60%22,%22keyword%22%3A%22%22%7D",
+      "Battle card": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%225d8807b7ae984f0f9273ce73d685d391%22,%22keyword%22%3A%22%22%7D",
+      "Case study": "/indexPage?module=2633"
+    },
+    "solution-subscription": {
+      "Main slide": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%2224ec80f246c844a8a58f6b8e0f34d925%22,%22keyword%22%3A%22%22%7D",
+      "Battle card": "/indexPage?module=2645",
+      "Case study": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%22c58273f2213f465a9f4a874d5261c879%22,%22keyword%22%3A%22%22%7D"
+    },
+    "solution-simplified-security": {
+      "Main slide": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%22e94eee27bec54f8f891d00c13dd94e7a%22,%22keyword%22%3A%22%22%7D",
+      "Battle card": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%220fa7628ad5904eb28411081045c7c2e7%22,%22keyword%22%3A%22%22%7D",
+      "Case study": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%22336f1302081d444db1f14dcc9159f3f9%22,%22keyword%22%3A%22%22%7D"
+    },
+    "solution-secure-sdwan": {
+      "Main slide": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%2237a5e81808ec45df84fff88947757541%22,%22keyword%22%3A%22%22%7D",
+      "Battle card": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%2297b4faaf4cbb42e4b83de63945dc811b%22,%22keyword%22%3A%22%22%7D",
+      "Case study": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%22125928aba0184c8db6cc966f06fd5171%22,%22keyword%22%3A%22%22%7D"
+    },
+    "solution-anti-ransomware": {
+      "Main slide": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%22ae9e58efcf3d41bab6a471a3270369a8%22,%22keyword%22%3A%22%22%7D",
+      "Battle card": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%22171e1ef5bde94c1299f52ff00255687e%22,%22keyword%22%3A%22%22%7D",
+      "Case study": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%2288bf4d132a8d490b8d66d396aaa0764c%22,%22keyword%22%3A%22%22%7D"
+    },
+    "solution-secure-hybrid": {
+      "Main slide": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%22df6b44cf45a94781b8f962e6db95a8d3%22,%22keyword%22%3A%22%22%7D",
+      "Battle card": "/indexPage?module=2457",
+      "Case study": "/detailPage?articleData=%7B%22articleType%22%3A1,%22articleId%22%3A%22ab1f21f4b8794fd883ff55cece68ee48%22,%22keyword%22%3A%22%22%7D"
+    },
+    "solution-compliance": {
+      "Main slide": "/indexPage?module=2345",
+      "Battle card": "/indexPage?module=2345",
+      "Case study": "/indexPage?module=2345"
+    }
+  },
+  "cloudIntroModal": {
+    "imageAlt": "Sangfor Mission & Vision in AI Cloud Era"
+  }
+}

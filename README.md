@@ -62,3 +62,12 @@ npm run ingest:docs -- ./manuals/hci-guide.pdf HCI 6.11
 ```bash
 npm run export:finetune -- HCI
 ```
+
+## Learn from Sangfor Knowledge + Community
+
+```bash
+# Optional: SANGFOR_KB_TOKEN from knowledgebase.sangfor.com (library_token) for full article bodies
+pnpm run learn:sources
+```
+
+Details: `docs/SANGFOR_SOURCE_LEARNING.md`

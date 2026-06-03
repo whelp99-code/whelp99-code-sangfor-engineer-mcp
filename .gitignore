@@ -3,6 +3,9 @@ pnpm-lock.yaml
 dist
 .data
 data/rag/
+data/sources/raw/
+data/sources/manifest.json
+data/finetune/
 .evidence
 .env
 .DS_Store
