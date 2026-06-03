@@ -5,15 +5,12 @@
   "description": "Sangfor product-specific senior engineer MCP server with planner, approval, mock operator, feedback learning, and wiki integration.",
   "packageManager": "pnpm@10.28.1",
   "type": "module",
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
   "scripts": {
+    "clean": "rm -rf dist",
     "dev:mcp": "tsx apps/mcp-server/src/index.ts",
     "dev:mock-console": "tsx apps/mock-sangfor-console/src/server.ts",
     "dev:operator-console": "tsx apps/operator-console/src/server.ts",
-    "test": "vitest run",
+    "test": "vitest run --config vitest.config.ts",
     "lint": "tsc -p tsconfig.json --noEmit",
     "build": "tsc -p tsconfig.json",
     "seed:docs": "tsx scripts/seed-demo-knowledge.ts",

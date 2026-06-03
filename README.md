@@ -27,12 +27,15 @@ This project includes:
 ## Run
 
 ```bash
-npm install
-npm test
-npm run lint
-npm run build
-npm run dev:mcp
+corepack enable
+pnpm install
+pnpm test
+pnpm run lint
+pnpm run build
+pnpm run dev:mcp
 ```
+
+`npm install` works with `package-lock.json`, but **pnpm is recommended** (`packageManager` in `package.json`). See `AGENTS.md` for agent/CI notes.
 
 ## Real execution gates
 
@@ -54,11 +57,11 @@ Every live write call must include approval payload with `approvedBy`, `approval
 ## RAG ingestion
 
 ```bash
-npm run ingest:docs -- ./manuals/hci-guide.pdf HCI 6.11
+pnpm run ingest:docs -- ./manuals/hci-guide.pdf HCI 6.11
 ```
 
 ## Fine-tuning dataset
 
 ```bash
-npm run export:finetune -- HCI
+pnpm run export:finetune -- HCI
 ```
