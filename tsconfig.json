@@ -8,6 +8,9 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
+    "types": [
+      "node"
+    ],
     "outDir": "dist",
     "rootDir": ".",
     "paths": {
@@ -55,5 +58,9 @@
     "packages/**/*.ts",
     "tests/**/*.ts",
     "scripts/**/*.ts"
+  ],
+  "exclude": [
+    "dist",
+    "node_modules"
   ]
 }

@@ -29,12 +29,15 @@ This project includes:
 Use **pnpm** on your machine (recommended). See **[docs/LOCAL_SETUP.md](docs/LOCAL_SETUP.md)** for clone, `.env`, login, and full learning on a local PC.
 
 ```bash
+corepack enable
 pnpm install
 pnpm test
 pnpm run lint
 pnpm run build
 pnpm run dev:mcp
 ```
+
+`npm install` works with `package-lock.json`, but **pnpm is recommended** (`packageManager` in `package.json`, workspaces in `pnpm-workspace.yaml`). See `AGENTS.md` for agent/CI notes.
 
 ## Real execution gates
 
@@ -56,13 +59,13 @@ Every live write call must include approval payload with `approvedBy`, `approval
 ## RAG ingestion
 
 ```bash
-npm run ingest:docs -- ./manuals/hci-guide.pdf HCI 6.11
+pnpm run ingest:docs -- ./manuals/hci-guide.pdf HCI 6.11
 ```
 
 ## Fine-tuning dataset
 
 ```bash
-npm run export:finetune -- HCI
+pnpm run export:finetune -- HCI
 ```
 
 ## Learn from Sangfor Knowledge + Community
