@@ -18,7 +18,9 @@ export interface CollectedDocument {
 }
 
 export interface CollectOptions {
+  /** Omit or undefined = no per-forum cap (all threads on first page). */
   communityMaxThreadsPerForum?: number;
+  /** Omit or undefined = entire catalog from navigation JSON. */
   knowledgeMaxArticles?: number;
   kbToken?: string;
   kbBaseUrl?: string;
@@ -190,7 +192,7 @@ export function catalogStubMarkdown(article: KbNavArticle, baseUrl: string): str
 export async function collectCommunityThreads(options: CollectOptions = {}): Promise<CollectedDocument[]> {
   const base = options.communityBaseUrl ?? 'https://community.sangfor.com';
   const forumIds = options.forumIds ?? DEFAULT_FORUM_IDS;
-  const maxPerForum = options.communityMaxThreadsPerForum ?? 8;
+  const maxPerForum = options.communityMaxThreadsPerForum;
   const docs: CollectedDocument[] = [];
 
   for (const fid of forumIds) {
@@ -201,7 +203,8 @@ export async function collectCommunityThreads(options: CollectOptions = {}): Pro
     } catch {
       continue;
     }
-    const tids = parseCommunityThreadIds(listHtml).slice(0, maxPerForum);
+    const allTids = parseCommunityThreadIds(listHtml);
+    const tids = maxPerForum === undefined ? allTids : allTids.slice(0, maxPerForum);
     for (const tid of tids) {
       const threadUrl = `${base}/forum.php?mod=viewthread&tid=${tid}`;
       try {
@@ -230,9 +233,9 @@ export async function collectKnowledgeCatalog(options: CollectOptions = {}): Pro
   }
 
   const articles = parseKbCategoryNavigation(navJson, kbBase);
-  const max = options.knowledgeMaxArticles ?? 40;
+  const max = options.knowledgeMaxArticles;
   const token = options.kbToken?.trim();
-  const selected = articles.slice(0, max);
+  const selected = max === undefined ? articles : articles.slice(0, max);
   const docs: CollectedDocument[] = [];
 
   for (const article of selected) {
@@ -325,3 +328,6 @@ export {
   resolveKbTokenFromOne,
   exchangeOneOAuthCode
 } from './one-session.js';
+
+export { loadEnvFile, parseCollectionLimit } from './load-env.js';
+export { listDemoDocTargets, DEMO_DOCS_DIR, DEMO_DOC_PRODUCTS } from './demo-docs.js';

@@ -11,6 +11,8 @@ import { createEvalCaseFromFeedback, runPlannerEval } from '../../../packages/sa
 import { PRODUCTS } from '../../../packages/shared/src/index.js';
 import { ingestDocument, ragSearch, exportRagIndexSummary } from '../../../packages/sangfor-rag/src/index.js';
 import { createFineTuneDataset, createFineTuneJobSpec, validateFineTuneDataset } from '../../../packages/sangfor-finetune/src/index.js';
+import { loadEnvFile } from '../../../packages/sangfor-collector/src/load-env.js';
+import { runLearnSourcesPipeline } from '../../../packages/sangfor-collector/src/learn-pipeline.js';
 
 type JsonRpcRequest = { jsonrpc: '2.0'; id?: string | number; method: string; params?: any };
 
@@ -53,6 +55,33 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
     description: 'Return summary of the real local RAG index.',
     inputSchema: { type: 'object', properties: { indexPath: { type: 'string' } } },
     handler: ({ indexPath }) => exportRagIndexSummary(indexPath)
+  },
+  'sangfor.learn_sources': {
+    description: 'Collect Sangfor KB catalog, Community threads, ingest demo docs, update local RAG index and fine-tune JSONL. Uses .env / SANGFOR_ONE_ACCESS_TOKEN when present.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        communityMaxThreadsPerForum: { type: 'number', description: 'Per forum; omit for all threads on listing page' },
+        knowledgeMaxArticles: { type: 'number', description: 'KB catalog cap; omit for full catalog' },
+        includeDemoDocs: { type: 'boolean' },
+        ragIndexPath: { type: 'string' },
+        rawDir: { type: 'string' }
+      }
+    },
+    handler: async (args) => {
+      loadEnvFile('.env');
+      return runLearnSourcesPipeline({
+        communityMaxThreadsPerForum: args.communityMaxThreadsPerForum,
+        knowledgeMaxArticles: args.knowledgeMaxArticles,
+        includeDemoDocs: args.includeDemoDocs,
+        ragIndexPath: args.ragIndexPath,
+        rawDir: args.rawDir,
+        ingestDocumentFn: ingestDocument,
+        exportRagSummaryFn: exportRagIndexSummary,
+        createFineTuneDatasetFn: createFineTuneDataset,
+        validateFineTuneDatasetFn: validateFineTuneDataset
+      });
+    }
   },
   'sangfor.analyze_project': {
     description: 'Analyze customer project input and return product, project type, risk, missing inputs and knowledge queries.',

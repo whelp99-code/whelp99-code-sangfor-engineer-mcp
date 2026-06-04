@@ -67,7 +67,7 @@ npm run export:finetune -- HCI
 
 ```bash
 # Optional: SANGFOR_KB_TOKEN from knowledgebase.sangfor.com (library_token) for full article bodies
-pnpm run learn:sources
+pnpm run learn:sources   # loads .env; ingests KB, Community, demo-docs → RAG
 ```
 
 Details: `docs/SANGFOR_SOURCE_LEARNING.md`

@@ -1,4 +1,7 @@
+import { loadEnvFile } from '../packages/sangfor-collector/src/load-env.js';
 import { loadOneSessionFromEnv, resolveAuthTokens, verifyOneSession } from '../packages/sangfor-collector/src/index.js';
+
+loadEnvFile('.env');
 
 async function main() {
   const config = loadOneSessionFromEnv();

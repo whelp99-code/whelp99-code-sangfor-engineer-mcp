@@ -43,12 +43,16 @@ pnpm run learn:sources
 
 With partner/login token for full KB articles:
 
+Copy `.env.example` to `.env` — scripts load it automatically (existing shell env wins).
+
 ```bash
 export SANGFOR_KB_TOKEN='your-library-token'
-export SANGFOR_KB_MAX_ARTICLES=50
-export SANGFOR_COMMUNITY_MAX_THREADS=8
+export SANGFOR_KB_MAX_ARTICLES=all
+export SANGFOR_COMMUNITY_MAX_THREADS=all
 pnpm run learn:sources
 ```
+
+MCP tool: `sangfor.learn_sources` (same pipeline; optional `communityMaxThreadsPerForum`, `knowledgeMaxArticles`, `includeDemoDocs`).
 
 ## Outputs
 
@@ -56,6 +60,7 @@ pnpm run learn:sources
 - `data/sources/manifest.json` — collection manifest
 - `data/rag/index.json` — RAG vector index (updated)
 - `data/finetune/sangfor-sources.jsonl` — fine-tune examples for review
+- `data/demo-docs/*.md` — ingested when `SANGFOR_INCLUDE_DEMO_DOCS` is not `0`
 
 ## Compliance
 
