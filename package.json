@@ -20,6 +20,8 @@
     "seed:demo": "tsx scripts/seed-demo-knowledge.ts",
     "learn:sources": "tsx scripts/learn-sangfor-sources.ts",
     "verify:one": "tsx scripts/verify-one-session.ts",
+    "login:one": "tsx scripts/interactive-one-login.ts",
+    "login:one:capture": "tsx scripts/extract-chrome-one-tokens.ts",
     "ingest:docs": "tsx scripts/ingest-documents.ts",
     "export:finetune": "tsx scripts/export-finetune-dataset.ts"
   },
