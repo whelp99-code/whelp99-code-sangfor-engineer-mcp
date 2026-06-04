@@ -13,3 +13,5 @@ data/finetune/
 playwright-report
 test-results
 data/sources/learn-run.log
+data/sources/local-bootstrap.log
+data/sources/learning-complete.json

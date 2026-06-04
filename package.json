@@ -5,10 +5,6 @@
   "description": "Sangfor product-specific senior engineer MCP server with planner, approval, mock operator, feedback learning, and wiki integration.",
   "packageManager": "pnpm@10.28.1",
   "type": "module",
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
   "scripts": {
     "dev:mcp": "tsx apps/mcp-server/src/index.ts",
     "dev:mock-console": "tsx apps/mock-sangfor-console/src/server.ts",
@@ -26,7 +22,9 @@
     "login:one": "tsx scripts/interactive-one-login.ts",
     "login:one:capture": "tsx scripts/extract-chrome-one-tokens.ts",
     "ingest:docs": "tsx scripts/ingest-documents.ts",
-    "export:finetune": "tsx scripts/export-finetune-dataset.ts"
+    "export:finetune": "tsx scripts/export-finetune-dataset.ts",
+    "local:bootstrap": "tsx scripts/local-bootstrap.ts",
+    "learn:all": "pnpm run learn:sources && pnpm run learn:ingest-seeds && pnpm run learn:rebuild-finetune && pnpm run learn:finalize"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.17.5",

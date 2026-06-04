@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "sangfor-engineer": {
+      "command": "pnpm",
+      "args": ["run", "dev:mcp"],
+      "cwd": "${workspaceFolder}"
+    }
+  }
+}

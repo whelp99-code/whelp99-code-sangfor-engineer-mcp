@@ -73,7 +73,10 @@ async function main() {
   }
 
   setEnvVar('SANGFOR_ONE_ACCESS_TOKEN', working);
-  if (extracted.library_token) setEnvVar('SANGFOR_KB_TOKEN', extracted.library_token);
+  if (extracted.library_token) {
+    setEnvVar('SANGFOR_KB_TOKEN', extracted.library_token);
+    setEnvVar('SANGFOR_LIBRARY_TOKEN', extracted.library_token);
+  }
 
   loadEnvFile('.env');
   const tokens = await resolveAuthTokens(loadOneSessionFromEnv());

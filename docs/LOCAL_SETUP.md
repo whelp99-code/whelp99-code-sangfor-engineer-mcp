@@ -72,35 +72,35 @@ pnpm exec tsx scripts/resolve-kb-token.ts
 
 ## 4. 전체 수집·학습 (로컬에서 한 번에)
 
+`.env`에 토큰이 있으면 한 번에:
+
+```bash
+pnpm run local:bootstrap
+```
+
+또는 단계별:
+
 ```bash
 export SANGFOR_COMMUNITY_MAX_THREADS=all
 export SANGFOR_KB_MAX_ARTICLES=all
 export SANGFOR_FINETUNE_MAX_EXAMPLES=all
-export SANGFOR_INCLUDE_DEMO_DOCS=1
 
-pnpm run learn:sources
-pnpm run learn:ingest-seeds
-pnpm run learn:rebuild-finetune
-pnpm run learn:finalize
+pnpm run learn:all
+# (= learn:sources → ingest-seeds → rebuild-finetune → finalize)
 ```
 
 완료 리포트: `data/sources/learning-complete.json`
 
 ## 5. MCP 서버 (Cursor 로컬)
 
-`~/.cursor/mcp.json` 또는 프로젝트 MCP 설정 예시:
+프로젝트 루트의 `.cursor/mcp.json.example` 을 참고해 Cursor MCP에 등록:
 
-```json
-{
-  "mcpServers": {
-    "sangfor-engineer": {
-      "command": "pnpm",
-      "args": ["run", "dev:mcp"],
-      "cwd": "/절대경로/whelp99-code-sangfor-engineer-mcp"
-    }
-  }
-}
+```bash
+mkdir -p .cursor
+cp .cursor/mcp.json.example .cursor/mcp.json
 ```
+
+`cwd`는 `${workspaceFolder}` 로 두면 로컬 clone 경로에 자동 맞춰집니다.
 
 도구 `sangfor.learn_sources` 로 `.env` 기반 수집도 가능.
 
