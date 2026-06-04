@@ -2,6 +2,8 @@
 
 Collects metadata and posts from Knowledge, Community, and optionally full KB bodies via **ONE (Partner Portal)**.
 
+**Running on your own PC:** see [LOCAL_SETUP.md](./LOCAL_SETUP.md).
+
 | Source | URL | Access |
 |--------|-----|--------|
 | **ONE (recommended hub)** | https://one.sangfor.com | Partner login → `access_token_mh` |

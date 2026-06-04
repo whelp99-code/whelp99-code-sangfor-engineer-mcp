@@ -24,14 +24,16 @@ This project includes:
 - Feedback → lesson → wiki proposal → eval pipeline
 - Fine-tuning dataset and job manifest pipeline
 
-## Run
+## Run (local)
+
+Use **pnpm** on your machine (recommended). See **[docs/LOCAL_SETUP.md](docs/LOCAL_SETUP.md)** for clone, `.env`, login, and full learning on a local PC.
 
 ```bash
-npm install
-npm test
-npm run lint
-npm run build
-npm run dev:mcp
+pnpm install
+pnpm test
+pnpm run lint
+pnpm run build
+pnpm run dev:mcp
 ```
 
 ## Real execution gates
