@@ -299,7 +299,7 @@ export function sanitizeForFineTune(text: string): string {
     .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, '[email]')
     .replace(/\b\+?\d[\d\s()-]{8,}\d\b/g, '[phone]')
     .replace(/\b(?:password|passwd|api[_-]?key|secret|token)\s*[:=]\s*\S+/gi, '[redacted]')
-    .replace(/\bpassword\b/gi, 'credential')
+    .replace(/password/gi, 'credential')
     .replace(/\botp\b/gi, 'one-time-code')
     .replace(/\bmfa\b/gi, 'multi-factor-auth')
     .replace(/\blicense key\b/gi, 'license-reference');

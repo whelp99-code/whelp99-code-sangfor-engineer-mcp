@@ -12,3 +12,4 @@ data/finetune/
 .DS_Store
 playwright-report
 test-results
+data/sources/learn-run.log

@@ -20,7 +20,8 @@ export function loadEnvFile(path = '.env', cwd = process.cwd()): boolean {
     ) {
       value = value.slice(1, -1);
     }
-    if (process.env[key] === undefined) process.env[key] = value;
+    const existing = process.env[key];
+    if (existing === undefined || existing === '') process.env[key] = value;
   }
   return true;
 }

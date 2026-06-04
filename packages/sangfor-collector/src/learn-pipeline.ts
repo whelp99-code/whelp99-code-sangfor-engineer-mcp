@@ -72,7 +72,7 @@ export async function runLearnSourcesPipeline(
   const includeDemo = options.includeDemoDocs
     ?? process.env.SANGFOR_INCLUDE_DEMO_DOCS !== '0';
   const fineTuneCap = options.fineTuneMaxExamples
-    ?? Number(process.env.SANGFOR_FINETUNE_MAX_EXAMPLES ?? 80);
+    ?? parseCollectionLimit(process.env.SANGFOR_FINETUNE_MAX_EXAMPLES, 80);
 
   let oneSession: { ok: boolean } | undefined;
   if (tokens.oneAccessToken) {
@@ -130,8 +130,9 @@ export async function runLearnSourcesPipeline(
     return acc;
   }, {});
 
+  const finetuneSource = fineTuneCap === undefined ? all : all.slice(0, fineTuneCap);
   const finetuneExamples = docsToFineTuneExamples(
-    all.slice(0, Math.max(1, fineTuneCap))
+    finetuneSource.length ? finetuneSource : all.slice(0, 80)
   );
   const dataset = options.createFineTuneDatasetFn({
     product: 'HCI',
