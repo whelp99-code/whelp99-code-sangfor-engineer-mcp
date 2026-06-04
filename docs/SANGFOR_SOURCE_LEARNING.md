@@ -1,12 +1,39 @@
 # Sangfor source learning pipeline
 
-Collects public metadata and posts from:
+Collects metadata and posts from Knowledge, Community, and optionally full KB bodies via **ONE (Partner Portal)**.
 
 | Source | URL | Access |
 |--------|-----|--------|
-| Knowledge (catalog) | https://knowledgebase.sangfor.com (`knowledge.sangfor.com` may 503; catalog JSON is on knowledgebase) | Public `category-navigation.json` |
-| Knowledge (full body) | KB markdown API | Requires `SANGFOR_KB_TOKEN` (Bearer / `library_token` after login) |
-| Community | https://community.sangfor.com | Public forum threads (rate-limited fetch) |
+| **ONE (recommended hub)** | https://one.sangfor.com | Partner login → `access_token_mh` |
+| Knowledge (catalog) | https://knowledgebase.sangfor.com | Public `category-navigation.json` |
+| Knowledge (full body) | KB markdown API | `SANGFOR_KB_TOKEN` or auto from ONE session |
+| Community | https://community.sangfor.com | Public threads; SSO also via ONE |
+
+`knowledge.sangfor.com` may return 503; use **knowledgebase.sangfor.com** (linked from ONE).
+
+## ONE session setup (recommended)
+
+1. Log in at https://one.sangfor.com
+2. Open DevTools → Application → Local Storage → `access_token_mh`
+3. Copy the value into `.env` (do **not** paste credentials in chat):
+
+```bash
+SANGFOR_ONE_ACCESS_TOKEN="<paste access_token_mh here>"
+```
+
+Verify:
+
+```bash
+pnpm run verify:one
+```
+
+Then run full learning:
+
+```bash
+pnpm run learn:sources
+```
+
+The pipeline will try to exchange the ONE token for a Knowledge Base `library_token` automatically.
 
 ## Run
 

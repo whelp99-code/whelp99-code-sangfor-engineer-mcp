@@ -3,8 +3,11 @@ import {
   collectCommunityThreads,
   collectKnowledgeCatalog,
   docsToFineTuneExamples,
+  loadOneSessionFromEnv,
+  resolveAuthTokens,
   saveCollectedDocuments,
-  saveCollectedManifest
+  saveCollectedManifest,
+  verifyOneSession
 } from '../packages/sangfor-collector/src/index.js';
 import { ingestDocument, exportRagIndexSummary } from '../packages/sangfor-rag/src/index.js';
 import { createFineTuneDataset, validateFineTuneDataset } from '../packages/sangfor-finetune/src/index.js';
@@ -15,9 +18,18 @@ const RAG_INDEX = 'data/rag/index.json';
 const FINETUNE_PATH = 'data/finetune/sangfor-sources.jsonl';
 
 async function main() {
-  const kbToken = process.env.SANGFOR_KB_TOKEN;
+  const sessionConfig = loadOneSessionFromEnv();
+  const tokens = await resolveAuthTokens(sessionConfig);
+  const kbToken = tokens.kbToken;
   const communityMax = Number(process.env.SANGFOR_COMMUNITY_MAX_THREADS ?? 6);
   const knowledgeMax = Number(process.env.SANGFOR_KB_MAX_ARTICLES ?? 30);
+
+  if (tokens.oneAccessToken) {
+    const check = await verifyOneSession(tokens.oneAccessToken, sessionConfig.oneBaseUrl);
+    console.log(`ONE session (one.sangfor.com): ${check.ok ? 'valid' : 'invalid'} [${tokens.sources.join(', ')}]`);
+  } else {
+    console.log('ONE session: not configured (public catalog + community only)');
+  }
 
   console.log('Collecting Sangfor Community (community.sangfor.com)...');
   const communityDocs = await collectCommunityThreads({
@@ -71,6 +83,7 @@ async function main() {
     collected: all.length,
     community: communityDocs.length,
     knowledge: knowledgeDocs.length,
+    auth: { sources: tokens.sources, oneAccessToken: Boolean(tokens.oneAccessToken), kbToken: Boolean(kbToken) },
     kbTokenUsed: Boolean(kbToken),
     byProduct,
     rawFiles: paths.length,

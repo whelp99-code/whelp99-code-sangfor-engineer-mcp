@@ -5,6 +5,7 @@ dist
 data/rag/
 data/sources/raw/
 data/sources/manifest.json
+data/sources/one-*.js
 data/finetune/
 .evidence
 .env
