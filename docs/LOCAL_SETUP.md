@@ -141,6 +141,9 @@ VM에서 만든 인덱스를 쓰려면 위 파일들을 **scp/rsync** 로 복사
 | `pnpm run learn:sources` | Community + KB + demo → RAG + JSONL |
 | `pnpm run learn:kb:full` | 제품별 URL 목록 + (가능 시) 브라우저 탐색 → 본문 크롤 → RAG |
 | `pnpm run check:glass-cdp` | Glass CDP(기본 9222) + KB 탭 상태 확인 |
+| `pnpm run check:embedding-providers` | Rapid-MLX / MiMo rerank 상태 확인 |
+| `pnpm run rag:reembed` | RAG 인덱스 semantic 재임베딩 |
+| `pnpm run learn:nightly` | learn:all + KB full crawl + reembed |
 | `pnpm run login:one:safari` | Safari ONE/KB 토큰 → `.env` |
 | `pnpm run login:kb:chrome` | Chrome에서 KB 열고 `library_token` 캡처 |
 | `pnpm run learn:finalize` | 검증·완료 리포트 |

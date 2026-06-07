@@ -4,6 +4,14 @@ import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from '
 import { basename, extname } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { KnowledgeChunk, ProductCode, normalizeProduct, nowId } from '@sangfor/shared';
+import { getEmbeddingProvider } from './embedding-provider.js';
+import type { EmbeddingBackend } from './embedding-provider-types.js';
+import { createMimoRerankFromEnv } from './mimo-rerank-provider.js';
+import { cosineSimilarity, hashEmbedding } from './hash-embedding.js';
+
+export { hashEmbedding, cosineSimilarity } from './hash-embedding.js';
+export { getEmbeddingProvider, resetEmbeddingProviderCache } from './embedding-provider.js';
+export type { EmbeddingBackend, EmbeddingProvider, RerankProvider } from './embedding-provider-types.js';
 
 const require = createRequire(import.meta.url);
 const DEFAULT_INDEX_PATH = 'data/rag/index.json';
@@ -22,10 +30,13 @@ export interface RagDocumentChunk extends KnowledgeChunk {
   vector: number[];
   contentHash: string;
   filePath: string;
+  embeddingBackend?: EmbeddingBackend;
+  embeddingModel?: string;
+  vectorDims?: number;
 }
 
 export interface RagIndex {
-  version: 1;
+  version: 1 | 2;
   chunks: RagDocumentChunk[];
   updatedAt: string;
 }
@@ -40,6 +51,7 @@ export interface RagSearchInput {
 
 export interface RagSearchHit extends RagDocumentChunk {
   score: number;
+  rerankScore?: number;
 }
 
 function ensureParent(path: string): void {
@@ -181,34 +193,24 @@ export function chunkText(text: string, options: { maxChars?: number; overlapCha
   return chunks.filter(Boolean);
 }
 
-export function hashEmbedding(text: string, dims = 384): number[] {
-  const vector = Array.from({ length: dims }, () => 0);
-  const tokens = text.toLowerCase().match(/[a-z0-9가-힣._/-]+/g) ?? [];
-  for (const token of tokens) {
-    const digest = createHash('sha256').update(token).digest();
-    const bucket = ((digest[0] << 8) + digest[1]) % dims;
-    vector[bucket] += digest[2] % 2 === 0 ? 1 : -1;
-  }
-  const norm = Math.sqrt(vector.reduce((sum, v) => sum + v * v, 0)) || 1;
-  return vector.map(v => v / norm);
+function vectorForSearch(chunk: RagDocumentChunk, queryVector: number[]): number {
+  if (chunk.vector.length === queryVector.length) return cosineSimilarity(queryVector, chunk.vector);
+  return cosineSimilarity(queryVector, hashEmbedding(chunk.text, queryVector.length));
 }
 
-export function cosineSimilarity(a: number[], b: number[]): number {
-  const len = Math.min(a.length, b.length);
-  let sum = 0;
-  for (let i = 0; i < len; i += 1) sum += a[i] * b[i];
-  return sum;
-}
-
-export async function ingestDocument(input: IngestDocumentInput): Promise<{ documentId: string; chunkCount: number; indexPath: string; chunks: RagDocumentChunk[] }> {
+export async function ingestDocument(input: IngestDocumentInput): Promise<{ documentId: string; chunkCount: number; indexPath: string; chunks: RagDocumentChunk[]; embeddingBackend: EmbeddingBackend }> {
   const product = normalizeProduct(input.product);
   const text = await extractTextFromFile(input.filePath);
   const title = input.title ?? basename(input.filePath);
   const sourceType = input.sourceType ?? 'manual';
   const trustLevel = input.trustLevel ?? (sourceType === 'manual' ? 'official' : 'internal');
   const documentId = nowId('doc');
-  const chunks = chunkText(text).map((chunkTextValue, index): RagDocumentChunk => {
+  const textChunks = chunkText(text);
+  const provider = await getEmbeddingProvider();
+  const vectors = await provider.embed(textChunks);
+  const chunks = textChunks.map((chunkTextValue, index): RagDocumentChunk => {
     const contentHash = createHash('sha256').update(`${input.filePath}:${index}:${chunkTextValue}`).digest('hex');
+    const vector = vectors[index] ?? hashEmbedding(chunkTextValue);
     return {
       id: `${documentId}_chunk_${index + 1}`,
       sourceType,
@@ -218,30 +220,77 @@ export async function ingestDocument(input: IngestDocumentInput): Promise<{ docu
       section: `chunk-${index + 1}`,
       text: chunkTextValue,
       trustLevel,
-      vector: hashEmbedding(chunkTextValue),
+      vector,
       contentHash,
-      filePath: input.filePath
+      filePath: input.filePath,
+      embeddingBackend: provider.name,
+      embeddingModel: process.env.SANGFOR_RAPID_MLX_EMBEDDING_MODEL,
+      vectorDims: vector.length
     };
   });
-  const index = loadRagIndex(input.indexPath);
+  const indexPath = input.indexPath ?? DEFAULT_INDEX_PATH;
+  const index = loadRagIndex(indexPath);
   const existingHashes = new Set(index.chunks.map(chunk => chunk.contentHash));
   const newChunks = chunks.filter(chunk => !existingHashes.has(chunk.contentHash));
   if (newChunks.length === 0) {
-    return { documentId, chunkCount: 0, indexPath: input.indexPath ?? DEFAULT_INDEX_PATH, chunks: [] };
+    return { documentId, chunkCount: 0, indexPath, chunks: [], embeddingBackend: provider.name };
   }
+  const hasSemantic = newChunks.some(c => c.embeddingBackend && c.embeddingBackend !== 'hash');
+  index.version = hasSemantic ? 2 : index.version;
   index.chunks.push(...newChunks);
-  saveRagIndex(index, input.indexPath);
-  return { documentId, chunkCount: newChunks.length, indexPath: input.indexPath ?? DEFAULT_INDEX_PATH, chunks: newChunks };
+  saveRagIndex(index, indexPath);
+  return { documentId, chunkCount: newChunks.length, indexPath, chunks: newChunks, embeddingBackend: provider.name };
 }
 
-export function ragSearch(input: RagSearchInput): RagSearchHit[] {
+export async function ragSearch(input: RagSearchInput): Promise<RagSearchHit[]> {
+  const index = loadRagIndex(input.indexPath);
+  const product = input.product ? normalizeProduct(input.product) : undefined;
+  const provider = await getEmbeddingProvider();
+  const [queryVector] = await provider.embed([input.query]);
+  const candidateLimit = Number(process.env.SANGFOR_MIMO_RERANK_CANDIDATES ?? 40);
+  const finalLimit = input.limit ?? 8;
+
+  const allowCustomer = process.env.SANGFOR_ALLOW_CLOUD_RAG_CUSTOMER === '1';
+  let pool = index.chunks
+    .filter(chunk => !product || chunk.product === product)
+    .filter(chunk => !input.version || !chunk.version || chunk.version === input.version)
+    .filter(chunk => allowCustomer || chunk.trustLevel !== 'customer')
+    .map(chunk => ({ ...chunk, score: vectorForSearch(chunk, queryVector) }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, candidateLimit);
+
+  const reranker = createMimoRerankFromEnv();
+  if (reranker && pool.length > 1) {
+    try {
+      const rankedIds = await reranker.rerank(
+        input.query,
+        pool.map(p => ({ id: p.id, text: p.text, title: p.title })),
+        finalLimit
+      );
+      const order = new Map(rankedIds.map((id, i) => [id, rankedIds.length - i]));
+      pool = pool
+        .filter(p => order.has(p.id))
+        .sort((a, b) => (order.get(b.id) ?? 0) - (order.get(a.id) ?? 0))
+        .slice(0, finalLimit)
+        .map((p, i) => ({ ...p, rerankScore: order.get(p.id) ?? i }));
+      return pool;
+    } catch {
+      // fall through to vector-only ranking
+    }
+  }
+
+  return pool.slice(0, finalLimit);
+}
+
+/** Hash-only sync search for tests without network. */
+export function ragSearchSync(input: RagSearchInput): RagSearchHit[] {
   const index = loadRagIndex(input.indexPath);
   const product = input.product ? normalizeProduct(input.product) : undefined;
   const queryVector = hashEmbedding(input.query);
   return index.chunks
     .filter(chunk => !product || chunk.product === product)
     .filter(chunk => !input.version || !chunk.version || chunk.version === input.version)
-    .map(chunk => ({ ...chunk, score: cosineSimilarity(queryVector, chunk.vector) }))
+    .map(chunk => ({ ...chunk, score: vectorForSearch(chunk, queryVector) }))
     .sort((a, b) => b.score - a.score)
     .slice(0, input.limit ?? 8);
 }
@@ -252,5 +301,18 @@ export function exportRagIndexSummary(indexPath = DEFAULT_INDEX_PATH): Record<st
     acc[chunk.product] = (acc[chunk.product] ?? 0) + 1;
     return acc;
   }, {} as Record<ProductCode, number>);
-  return { indexPath, chunkCount: index.chunks.length, byProduct, updatedAt: index.updatedAt };
+  const embeddingBackendCounts = index.chunks.reduce<Record<string, number>>((acc, chunk) => {
+    const key = chunk.embeddingBackend ?? 'hash';
+    acc[key] = (acc[key] ?? 0) + 1;
+    return acc;
+  }, {});
+  return {
+    indexPath,
+    indexVersion: index.version ?? 1,
+    chunkCount: index.chunks.length,
+    byProduct,
+    embeddingBackendCounts,
+    mimoRerankEnabled: process.env.SANGFOR_MIMO_RERANK_ENABLED !== '0' && process.env.SANGFOR_ALLOW_CLOUD_RAG === '1',
+    updatedAt: index.updatedAt
+  };
 }

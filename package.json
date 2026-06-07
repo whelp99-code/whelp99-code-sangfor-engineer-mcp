@@ -30,11 +30,14 @@
     "ingest:attachments": "tsx scripts/ingest-attachment-folder.ts",
     "learn:kb:full": "tsx scripts/learn-kb-full-site.ts",
     "check:glass-cdp": "tsx scripts/check-glass-cdp.ts",
+    "check:embedding-providers": "tsx scripts/check-embedding-providers.ts",
+    "rag:reembed": "tsx scripts/rag-reembed.ts",
     "login:kb:chrome": "tsx scripts/open-kb-and-capture.ts",
     "ingest:docs": "tsx scripts/ingest-documents.ts",
     "export:finetune": "tsx scripts/export-finetune-dataset.ts",
     "local:bootstrap": "tsx scripts/local-bootstrap.ts",
-    "learn:all": "pnpm run learn:sources && pnpm run learn:ingest-seeds && pnpm run learn:rebuild-finetune && pnpm run learn:finalize"
+    "learn:all": "pnpm run learn:sources && pnpm run learn:ingest-seeds && pnpm run learn:rebuild-finetune && pnpm run learn:finalize",
+    "learn:nightly": "pnpm run learn:all && pnpm run learn:kb:full && pnpm run rag:reembed"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.17.5",

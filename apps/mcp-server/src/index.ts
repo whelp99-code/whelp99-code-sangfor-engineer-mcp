@@ -1,5 +1,5 @@
 import readline from 'node:readline';
-import { analyzeProject, generateConfigPlan, validateConfigPlan } from '../../../packages/sangfor-planner/src/index.js';
+import { analyzeProject, generateConfigPlan, generateConfigPlanAsync, validateConfigPlan } from '../../../packages/sangfor-planner/src/index.js';
 import { searchManuals, getManualSection } from '../../../packages/sangfor-knowledge/src/index.js';
 import { searchWiki, proposeWikiUpdate, approveWikiUpdate, applyWikiUpdate, applyObsidianWikiUpdate, applyGitHubWikiUpdate } from '../../../packages/sangfor-wiki/src/index.js';
 import { requiresApprovalForText } from '../../../packages/sangfor-approval/src/index.js';
@@ -111,7 +111,7 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
   'sangfor.rag_search': {
     description: 'Search real ingested local RAG index by product/version/query.',
     inputSchema: { type: 'object', properties: { product: { type: 'string' }, version: { type: 'string' }, query: { type: 'string' }, limit: { type: 'number' }, indexPath: { type: 'string' } }, required: ['query'] },
-    handler: ragSearch
+    handler: (args) => ragSearch(args)
   },
   'sangfor.rag_index_summary': {
     description: 'Return summary of the real local RAG index.',
@@ -153,7 +153,11 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
   'sangfor.generate_config_plan': {
     description: 'Generate a configuration plan with precheck, steps, rollback, validation and approval gates.',
     inputSchema: { type: 'object', properties: { customerName: { type: 'string' }, product: { type: 'string' }, version: { type: 'string' }, projectType: { type: 'string' }, environment: { type: 'object' }, requirements: { type: 'array', items: { type: 'string' } } }, required: ['customerName', 'product'] },
-    handler: (args) => { const plan = generateConfigPlan(args); plans.set(plan.id, plan); return plan; }
+    handler: async (args) => {
+      const plan = await generateConfigPlanAsync(args);
+      plans.set(plan.id, plan);
+      return plan;
+    }
   },
   'sangfor.validate_config_plan': {
     description: 'Validate that a generated plan has precheck, steps, rollback, validation and references.',

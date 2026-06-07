@@ -95,7 +95,7 @@ export interface KnowledgeChunk {
   title: string;
   section?: string;
   text: string;
-  trustLevel: 'official' | 'internal' | 'draft' | 'needs_review';
+  trustLevel: 'official' | 'internal' | 'draft' | 'needs_review' | 'customer';
 }
 
 export interface ConfigStep {

@@ -1,5 +1,6 @@
 import { searchManuals } from '@sangfor/knowledge';
 import { searchWiki } from '@sangfor/wiki';
+import { loadRagIndex, ragSearch, ragSearchSync } from '@sangfor/rag';
 import { classifyTextRisk } from '@sangfor/approval';
 import {
   ConfigPlan,
@@ -62,7 +63,7 @@ export function analyzeProject(input: ProjectInput): ProjectAnalysis {
     riskLevel,
     missingInputs,
     assumptions: [
-      'MVP uses document/wiki mock search until official/internal manuals are uploaded.',
+      'Knowledge references prefer ingested RAG index when available; mock manual/wiki used as fallback.',
       'Console operation is dry-run only until lab validation is completed.',
       'Credentials, OTP, MFA, license keys and customer secrets must be entered by humans and not stored.'
     ],
@@ -95,10 +96,65 @@ function step(product: ProductCode, phase: ConfigStep['phase'], title: string, d
   };
 }
 
+const DEFAULT_RAG_INDEX = process.env.SANGFOR_RAG_INDEX_PATH ?? 'data/rag/index.json';
+
+function ragHitsToChunks(hits: KnowledgeChunk[]): KnowledgeChunk[] {
+  return hits;
+}
+
+async function collectPlanReferences(
+  product: ProductCode,
+  version: string | undefined,
+  query: string
+): Promise<{ manualReferences: KnowledgeChunk[]; wikiReferences: KnowledgeChunk[] }> {
+  const index = loadRagIndex(DEFAULT_RAG_INDEX);
+  const ragQuery = query.trim();
+  if (index.chunks.length > 0 && ragQuery) {
+    const hits = await ragSearch({ product, version, query: ragQuery, limit: 8, indexPath: DEFAULT_RAG_INDEX });
+    if (hits.length) {
+      const manualReferences = ragHitsToChunks(hits.map(h => ({
+        id: h.id,
+        sourceType: h.sourceType,
+        product: h.product,
+        version: h.version,
+        title: h.title,
+        section: h.section,
+        text: h.text,
+        trustLevel: h.trustLevel
+      })));
+      return { manualReferences, wikiReferences: [] };
+    }
+  }
+  return {
+    manualReferences: searchManuals({ product, version, query: ragQuery, limit: 5 }),
+    wikiReferences: searchWiki({ product, version, query: ragQuery, limit: 5 })
+  };
+}
+
+/** Sync plan generation — uses hash RAG when index exists, else mock knowledge. */
 export function generateConfigPlan(input: ProjectInput): ConfigPlan {
   const analysis = analyzeProject(input);
-  const manualReferences = searchManuals({ product: analysis.detectedProduct, version: input.version, query: analysis.recommendedKnowledgeQueries.join(' '), limit: 5 });
-  const wikiReferences = searchWiki({ product: analysis.detectedProduct, version: input.version, query: analysis.recommendedKnowledgeQueries.join(' '), limit: 5 });
+  const ragQuery = analysis.recommendedKnowledgeQueries.join(' ');
+  const index = loadRagIndex(DEFAULT_RAG_INDEX);
+  let manualReferences: KnowledgeChunk[];
+  let wikiReferences: KnowledgeChunk[];
+  if (index.chunks.length > 0 && ragQuery.trim()) {
+    const hits = ragSearchSync({ product: analysis.detectedProduct, version: input.version, query: ragQuery, limit: 8, indexPath: DEFAULT_RAG_INDEX });
+    manualReferences = hits.map(h => ({
+      id: h.id,
+      sourceType: h.sourceType,
+      product: h.product,
+      version: h.version,
+      title: h.title,
+      section: h.section,
+      text: h.text,
+      trustLevel: h.trustLevel
+    }));
+    wikiReferences = [];
+  } else {
+    manualReferences = searchManuals({ product: analysis.detectedProduct, version: input.version, query: ragQuery, limit: 5 });
+    wikiReferences = searchWiki({ product: analysis.detectedProduct, version: input.version, query: ragQuery, limit: 5 });
+  }
   const references = [...manualReferences, ...wikiReferences];
 
   const precheck: ConfigStep[] = [];
@@ -194,4 +250,32 @@ export function validateConfigPlan(plan: ConfigPlan): { ok: boolean; errors: str
   if (plan.validationPlan.length === 0) errors.push('validationPlan is required');
   if (plan.manualReferences.length + plan.wikiReferences.length === 0) errors.push('manual or wiki references are required');
   return { ok: errors.length === 0, errors };
+}
+
+function attachReferences(plan: ConfigPlan, refs: KnowledgeChunk[]): ConfigPlan {
+  const refIds = refs.map(r => r.id);
+  const mapSteps = (steps: ConfigStep[]) => steps.map(s => ({ ...s, references: refIds }));
+  return {
+    ...plan,
+    manualReferences: refs,
+    wikiReferences: [],
+    precheck: mapSteps(plan.precheck),
+    steps: mapSteps(plan.steps),
+    validationPlan: mapSteps(plan.validationPlan),
+    rollbackPlan: mapSteps(plan.rollbackPlan)
+  };
+}
+
+/** Async plan with semantic RAG + optional MiMo rerank for references. */
+export async function generateConfigPlanAsync(input: ProjectInput): Promise<ConfigPlan> {
+  const analysis = analyzeProject(input);
+  const { manualReferences, wikiReferences } = await collectPlanReferences(
+    analysis.detectedProduct,
+    input.version,
+    analysis.recommendedKnowledgeQueries.join(' ')
+  );
+  const base = generateConfigPlan(input);
+  const refs = [...manualReferences, ...wikiReferences];
+  if (!refs.length) return base;
+  return attachReferences(base, refs);
 }
