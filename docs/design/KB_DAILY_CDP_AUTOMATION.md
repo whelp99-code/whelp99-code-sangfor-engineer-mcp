@@ -1,6 +1,6 @@
 # Design: Daily KB learn via fixed Glass CDP
 
-**Status:** Design + automation scripts (Phase 1)  
+**Status:** Implemented (Phase 1–2)  
 **Schedule:** 1× per day  
 **Command:** `pnpm run learn:kb:full`  
 **Session:** Cursor Glass browser — logged-in `knowledgebase.sangfor.com` tab

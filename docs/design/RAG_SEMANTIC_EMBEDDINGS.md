@@ -1,6 +1,6 @@
 # Design: Semantic RAG (Rapid-MLX + Xiaomi MiMo cloud)
 
-**Status:** Design (implementation Phase 1–3)  
+**Status:** Implemented (Phase 1–3)  
 **Replaces:** `hashEmbedding()` default in `packages/sangfor-rag`  
 **Owner decision:** Local **Rapid-MLX** primary; **Xiaomi MiMo** cloud augmentation (not MiniMax)
 

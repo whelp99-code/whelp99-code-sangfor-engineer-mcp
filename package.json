@@ -37,7 +37,9 @@
     "export:finetune": "tsx scripts/export-finetune-dataset.ts",
     "local:bootstrap": "tsx scripts/local-bootstrap.ts",
     "learn:all": "pnpm run learn:sources && pnpm run learn:ingest-seeds && pnpm run learn:rebuild-finetune && pnpm run learn:finalize",
-    "learn:nightly": "pnpm run learn:all && pnpm run learn:kb:full && pnpm run rag:reembed"
+    "learn:nightly": "pnpm run learn:all && pnpm run learn:kb:full && pnpm run rag:reembed",
+    "smoke:mcp": "node scripts/smoke-mcp-tools.mjs",
+    "check:mcp-scorecard": "node scripts/check-mcp-scorecard.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.17.5",
