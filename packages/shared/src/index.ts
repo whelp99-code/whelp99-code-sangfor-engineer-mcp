@@ -1,9 +1,11 @@
-export type ProductCode = 'HCI' | 'IAG' | 'ENDPOINT_SECURE' | 'CYBER_COMMAND';
+export type ProductCode = 'HCI_SCP' | 'HCI' | 'IAG' | 'ENDPOINT_SECURE' | 'NDR' | 'CYBER_COMMAND';
 
 export const PRODUCT_PRIORITY: ProductCode[] = [
-  'HCI',
+  'HCI_SCP',
   'IAG',
   'ENDPOINT_SECURE',
+  'NDR',
+  'HCI',
   'CYBER_COMMAND'
 ];
 
@@ -17,9 +19,16 @@ export interface SangforProduct {
 
 export const PRODUCTS: SangforProduct[] = [
   {
+    code: 'HCI_SCP',
+    name: 'Sangfor HCI/SCP',
+    priority: 1,
+    aliases: ['HCI/SCP', 'SCP', 'Sangfor Cloud Platform', 'Sangfor SCP', 'aCloud', 'HCI SCP'],
+    mvpScope: ['API-first config collection', 'resource pool and VM planning', 'HA/DRS planning', 'license and alert validation']
+  },
+  {
     code: 'HCI',
     name: 'Sangfor HCI',
-    priority: 1,
+    priority: 5,
     aliases: ['HCI', 'aSV', 'Sangfor HCI', 'Hyper-Converged Infrastructure'],
     mvpScope: ['cluster deployment', 'network precheck', 'storage precheck', 'VM migration planning', 'DR PoC planning']
   },
@@ -38,10 +47,17 @@ export const PRODUCTS: SangforProduct[] = [
     mvpScope: ['agent deployment plan', 'EPP/EDR policy plan', 'exception policy', 'update and rollout validation']
   },
   {
+    code: 'NDR',
+    name: 'Sangfor NDR / Cyber Command',
+    priority: 4,
+    aliases: ['NDR', 'Athena NDR', 'Cyber Command', 'Sangfor Cyber Command', 'security operations', 'SOC'],
+    mvpScope: ['event source onboarding', 'incident and alert validation', 'SOAR/playbook planning', 'third-party API integration readiness']
+  },
+  {
     code: 'CYBER_COMMAND',
     name: 'Sangfor Cyber Command',
-    priority: 4,
-    aliases: ['Cyber Command', 'Sangfor Cyber Command', 'security operations', 'SOC'],
+    priority: 6,
+    aliases: ['Cyber Command legacy', 'Sangfor Cyber Command legacy'],
     mvpScope: ['event collection planning', 'alert policy planning', 'dashboard/report validation', 'integration readiness']
   }
 ];

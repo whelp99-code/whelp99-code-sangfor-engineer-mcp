@@ -48,6 +48,14 @@ pnpm run login:one
 pnpm run login:one:capture
 ```
 
+**방법 B2 — Safari (macOS)**
+
+Safari에서 `one.sangfor.com` / `knowledgebase.sangfor.com` 로그인 후:
+
+```bash
+pnpm run login:one:safari
+```
+
 **방법 C — 수동**
 
 - DevTools → Local Storage → `access_token_mh` → `SANGFOR_ONE_ACCESS_TOKEN`
@@ -131,6 +139,9 @@ VM에서 만든 인덱스를 쓰려면 위 파일들을 **scp/rsync** 로 복사
 |------|------|
 | `pnpm run verify:one` | ONE 세션 확인 |
 | `pnpm run learn:sources` | Community + KB + demo → RAG + JSONL |
+| `pnpm run learn:kb:full` | 제품별 URL 목록 + (가능 시) 브라우저 탐색 → 본문 크롤 → RAG |
+| `pnpm run login:one:safari` | Safari ONE/KB 토큰 → `.env` |
+| `pnpm run login:kb:chrome` | Chrome에서 KB 열고 `library_token` 캡처 |
 | `pnpm run learn:finalize` | 검증·완료 리포트 |
 | `pnpm run dev:mcp` | MCP stdio 서버 |
 
@@ -139,6 +150,7 @@ VM에서 만든 인덱스를 쓰려면 위 파일들을 **scp/rsync** 로 복사
 - **`pnpm install` 실패** → `npm` 대신 `pnpm` 사용 (`.npmrc` 확인)
 - **토큰 무효** → `pnpm run login:one` 다시 실행
 - **KB 본문 없음** → `kbTokenUsed: false` 정상(카탈로그만). ONE에서 KB 진입 후 capture
+- **전체 KB 사이트맵/본문** → `data/sources/sangfor_product_tables.md` 시드(Claude 표) + `pnpm run learn:kb:full`. Playwright가 Login이면 Glass/CDP(`SANGFOR_CDP_URL`) 또는 `SANGFOR_USE_CHROME_PROFILE=1` + `SANGFOR_KB_TOKEN_BY_CODE` 필요
 - **fine-tune 검증 실패** → `pnpm run learn:rebuild-finetune`
 
 자세한 수집 정책: [SANGFOR_SOURCE_LEARNING.md](./SANGFOR_SOURCE_LEARNING.md)

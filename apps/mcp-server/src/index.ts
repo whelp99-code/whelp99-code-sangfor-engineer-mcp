@@ -13,6 +13,18 @@ import { ingestDocument, ragSearch, exportRagIndexSummary } from '../../../packa
 import { createFineTuneDataset, createFineTuneJobSpec, validateFineTuneDataset } from '../../../packages/sangfor-finetune/src/index.js';
 import { loadEnvFile } from '../../../packages/sangfor-collector/src/load-env.js';
 import { runLearnSourcesPipeline } from '../../../packages/sangfor-collector/src/learn-pipeline.js';
+import {
+  analyzeCustomerRequirements,
+  applyApprovedProductChange,
+  collectProductConfig,
+  discoverProductConsole,
+  dryRunProductChange,
+  generateExcelBasedChangePlan,
+  generateProductChangePlan,
+  importExcelRequirementList,
+  mapRequirementsToProducts,
+  verifyProductChange
+} from '../../../packages/sangfor-product-adapters/src/index.js';
 
 type JsonRpcRequest = { jsonrpc: '2.0'; id?: string | number; method: string; params?: any };
 
@@ -24,6 +36,56 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
     description: 'List supported Sangfor products in current priority order.',
     inputSchema: { type: 'object', properties: {} },
     handler: () => ({ products: PRODUCTS })
+  },
+  'sangfor.discover_product_console': {
+    description: 'Discover product console strategy, login/API likelihood, menu routes and product capabilities for HCI/SCP, IAG, Endpoint Secure or NDR.',
+    inputSchema: { type: 'object', properties: { product: { type: 'string' }, targetUrl: { type: 'string' }, version: { type: 'string' }, environment: { type: 'string' }, preferApi: { type: 'boolean' } } },
+    handler: discoverProductConsole
+  },
+  'sangfor.collect_product_config': {
+    description: 'Collect or plan read-only collection of current product configuration. Uses API-first for HCI/SCP, WebUI-first for IAG/Endpoint Secure, hybrid for NDR.',
+    inputSchema: { type: 'object', properties: { product: { type: 'string' }, targetUrl: { type: 'string' }, version: { type: 'string' }, environment: { type: 'string' }, preferApi: { type: 'boolean' } } },
+    handler: collectProductConfig
+  },
+  'sangfor.analyze_customer_requirements': {
+    description: 'Break customer requirement strings into product-specific configuration tasks with menu paths, API candidates, risk and approval gates.',
+    inputSchema: { type: 'object', properties: { product: { type: 'string' }, targetUrl: { type: 'string' }, version: { type: 'string' }, environment: { type: 'string' }, requirements: { type: 'array', items: { type: 'string' } }, currentConfig: { type: 'object' } }, required: ['requirements'] },
+    handler: analyzeCustomerRequirements
+  },
+  'sangfor.generate_product_change_plan': {
+    description: 'Generate product change plan with menu path, API endpoint candidates, current/target planning context, impact/risk, rollback and validation.',
+    inputSchema: { type: 'object', properties: { product: { type: 'string' }, targetUrl: { type: 'string' }, version: { type: 'string' }, environment: { type: 'string' }, requirements: { type: 'array', items: { type: 'string' } }, currentConfig: { type: 'object' } }, required: ['requirements'] },
+    handler: generateProductChangePlan
+  },
+  'sangfor.import_excel_requirement_list': {
+    description: 'Import an ITAC-style Excel checklist and normalize rows into configuration requirements, evidence needs, target controls, gaps and priority.',
+    inputSchema: { type: 'object', properties: { filePath: { type: 'string' }, sheetName: { type: 'string' }, prioritizeOnly: { type: 'boolean' } }, required: ['filePath'] },
+    handler: importExcelRequirementList
+  },
+  'sangfor.map_requirements_to_products': {
+    description: 'Map normalized Excel checklist rows to HCI/SCP, IAG, Endpoint Secure, NDR, or external/manual handling.',
+    inputSchema: { type: 'object', properties: { rows: { type: 'array', items: { type: 'object' } } }, required: ['rows'] },
+    handler: mapRequirementsToProducts
+  },
+  'sangfor.generate_excel_based_change_plan': {
+    description: 'Generate a multi-product dry-run change plan from an ITAC-style Excel checklist. Actual mutation remains blocked.',
+    inputSchema: { type: 'object', properties: { filePath: { type: 'string' }, rows: { type: 'array', items: { type: 'object' } }, sheetName: { type: 'string' }, prioritizeOnly: { type: 'boolean' } } },
+    handler: generateExcelBasedChangePlan
+  },
+  'sangfor.dry_run_product_change': {
+    description: 'Dry-run a product change plan. WebUI route preview stops before Save/Apply/Delete; API changes produce request previews only.',
+    inputSchema: { type: 'object', properties: { plan: { type: 'object' }, targetUrl: { type: 'string' }, sessionId: { type: 'string' } }, required: ['plan'] },
+    handler: dryRunProductChange
+  },
+  'sangfor.apply_approved_product_change': {
+    description: 'Apply only an approved product change. Requires approval payload and SANGFOR_ALLOW_REAL_EXECUTION; production also requires SANGFOR_ALLOW_PRODUCTION_EXECUTION.',
+    inputSchema: { type: 'object', properties: { plan: { type: 'object' }, approval: { type: 'object' }, environment: { type: 'string' }, sessionId: { type: 'string' } }, required: ['plan'] },
+    handler: applyApprovedProductChange
+  },
+  'sangfor.verify_product_change': {
+    description: 'Verify a product change with read-only API/WebUI re-collection checklist and evidence expectations.',
+    inputSchema: { type: 'object', properties: { plan: { type: 'object' }, observed: { type: 'object' } }, required: ['plan'] },
+    handler: verifyProductChange
   },
   'sangfor.search_manuals': {
     description: 'Search Sangfor manual/guide chunks by product, version and query.',
@@ -105,7 +167,7 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
   },
   'sangfor.start_operator_session': {
     description: 'Start a mock/lab/poc/customer operator session. MVP defaults to mock.',
-    inputSchema: { type: 'object', properties: { product: { type: 'string' }, mode: { type: 'string' }, targetUrl: { type: 'string' } }, required: ['product'] },
+    inputSchema: { type: 'object', properties: { product: { type: 'string' }, mode: { type: 'string' }, targetUrl: { type: 'string' }, browser: { type: 'object', properties: { cdpEndpoint: { type: 'string' }, useLocalBrowser: { type: 'boolean' } } } }, required: ['product'] },
     handler: startOperatorSession
   },
   'sangfor.read_console_state': {

@@ -49,6 +49,9 @@
       ],
       "@sangfor/finetune": [
         "packages/sangfor-finetune/src/index.ts"
+      ],
+      "@sangfor/product-adapters": [
+        "packages/sangfor-product-adapters/src/index.ts"
       ]
     },
     "baseUrl": "."

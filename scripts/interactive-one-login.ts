@@ -29,12 +29,17 @@ async function readSessionFromPage(page: import('playwright').Page): Promise<{
   const url = page.url();
   const codeMatch = url.match(/[?&]code=([^&#]+)/);
   const oauthCode = codeMatch ? decodeURIComponent(codeMatch[1]) : undefined;
-  const accessToken = await page.evaluate(() => {
-    const ls = globalThis.localStorage;
-    return ls.getItem('access_token_mh')
-      ?? ls.getItem('access_token')
-      ?? undefined;
-  });
+  let accessToken: string | undefined;
+  try {
+    accessToken = await page.evaluate(() => {
+      const ls = globalThis.localStorage;
+      return ls.getItem('access_token_mh')
+        ?? ls.getItem('access_token')
+        ?? undefined;
+    });
+  } catch {
+    // Page navigated during login — poll again.
+  }
   return { accessToken: accessToken ?? undefined, oauthCode, url };
 }
 
@@ -55,8 +60,12 @@ async function main() {
   let captured: Awaited<ReturnType<typeof readSessionFromPage>> | undefined;
 
   while (Date.now() < deadline) {
-    captured = await readSessionFromPage(page);
-    if (captured.accessToken || captured.oauthCode) break;
+    try {
+      captured = await readSessionFromPage(page);
+      if (captured.accessToken || captured.oauthCode) break;
+    } catch {
+      // Transient navigation / frame detach while SSO redirects.
+    }
     await page.waitForTimeout(2000);
   }
 

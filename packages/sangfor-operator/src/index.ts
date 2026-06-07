@@ -10,9 +10,15 @@ export interface OperatorSession {
   product: string;
   mode: OperatorMode;
   targetUrl?: string;
+  browser?: OperatorBrowserOptions;
   status: 'pending' | 'running' | 'waiting_approval' | 'completed' | 'failed' | 'cancelled';
   approvedChangeTicketId?: string;
   rollbackPlanId?: string;
+}
+
+export interface OperatorBrowserOptions {
+  cdpEndpoint?: string;
+  useLocalBrowser?: boolean;
 }
 
 export interface LiveExecutionApproval {
@@ -30,13 +36,15 @@ export interface LiveConsoleActionInput {
 }
 
 const sessions = new Map<string, OperatorSession>();
+const liveConnections = new Map<string, { browser: any; page: any; connectedOverCdp: boolean }>();
 
-export function startOperatorSession(input: { product: string; mode?: OperatorMode; targetUrl?: string; approvedChangeTicketId?: string; rollbackPlanId?: string }): OperatorSession {
+export function startOperatorSession(input: { product: string; mode?: OperatorMode; targetUrl?: string; approvedChangeTicketId?: string; rollbackPlanId?: string; browser?: OperatorBrowserOptions }): OperatorSession {
   const session: OperatorSession = {
     id: nowId('session'),
     product: input.product,
     mode: input.mode ?? 'mock',
     targetUrl: input.targetUrl ?? 'http://localhost:3400/hci',
+    browser: input.browser,
     status: 'running',
     approvedChangeTicketId: input.approvedChangeTicketId,
     rollbackPlanId: input.rollbackPlanId
@@ -121,13 +129,49 @@ async function captureScreenshot(page: any, path: string): Promise<void> {
   await page.screenshot({ path, fullPage: true });
 }
 
+function resolveCdpEndpoint(session: OperatorSession): string | undefined {
+  return session.browser?.cdpEndpoint
+    ?? process.env.SANGFOR_OPERATOR_CDP_ENDPOINT
+    ?? process.env.PLAYWRIGHT_CDP_ENDPOINT;
+}
+
+async function getLivePage(session: OperatorSession): Promise<{ browser: any; page: any; connectedOverCdp: boolean }> {
+  const cached = liveConnections.get(session.id);
+  if (cached?.browser?.isConnected?.()) return cached;
+
+  const { chromium } = await import('playwright');
+  const cdpEndpoint = resolveCdpEndpoint(session);
+  if (session.browser?.useLocalBrowser || cdpEndpoint) {
+    if (!cdpEndpoint) {
+      throw new Error('Local browser connection requires SANGFOR_OPERATOR_CDP_ENDPOINT, PLAYWRIGHT_CDP_ENDPOINT, or browser.cdpEndpoint.');
+    }
+    const browser = await chromium.connectOverCDP(cdpEndpoint);
+    const context = browser.contexts()[0] ?? await browser.newContext({ ignoreHTTPSErrors: true });
+    const existingPage = context.pages().find(page => session.targetUrl && page.url().startsWith(session.targetUrl!))
+      ?? context.pages()[0];
+    const page = existingPage ?? await context.newPage();
+    const connection = { browser, page, connectedOverCdp: true };
+    liveConnections.set(session.id, connection);
+    return connection;
+  }
+
+  const browser = await chromium.launch({ headless: process.env.SANGFOR_OPERATOR_HEADLESS !== 'false' });
+  const page = await browser.newPage({ ignoreHTTPSErrors: true });
+  return { browser, page, connectedOverCdp: false };
+}
+
+async function releaseLivePage(sessionId: string, connection: { browser: any; connectedOverCdp: boolean }): Promise<void> {
+  if (connection.connectedOverCdp) return;
+  liveConnections.delete(sessionId);
+  await connection.browser.close();
+}
+
 export async function readLiveConsoleState(input: { sessionId: string }): Promise<Record<string, unknown>> {
   const session = getOperatorSession(input.sessionId);
   if (session.mode === 'mock') return readConsoleState(input.sessionId);
   if (!session.targetUrl) throw new Error('Live console state requires targetUrl.');
-  const { chromium } = await import('playwright');
-  const browser = await chromium.launch({ headless: process.env.SANGFOR_OPERATOR_HEADLESS !== 'false' });
-  const page = await browser.newPage({ ignoreHTTPSErrors: true });
+  const connection = await getLivePage(session);
+  const { page } = connection;
   try {
     await page.goto(session.targetUrl, { waitUntil: 'domcontentloaded', timeout: 30_000 });
     const title = await page.title();
@@ -135,9 +179,17 @@ export async function readLiveConsoleState(input: { sessionId: string }): Promis
     const snapshot = await page.locator('body').ariaSnapshot().catch(async () => page.locator('body').innerText({ timeout: 5_000 }));
     const screenshotPath = `data/evidence/${input.sessionId}/live-state-${Date.now()}.png`;
     await captureScreenshot(page, screenshotPath);
-    return { sessionId: input.sessionId, mode: session.mode, title, url, snapshot, screenshotPath };
+    return {
+      sessionId: input.sessionId,
+      mode: session.mode,
+      title,
+      url,
+      snapshot,
+      screenshotPath,
+      browser: connection.connectedOverCdp ? 'local-cdp' : 'launched-chromium'
+    };
   } finally {
-    await browser.close();
+    await releaseLivePage(input.sessionId, connection);
   }
 }
 
@@ -153,19 +205,25 @@ export async function executeLiveConsoleAction(input: LiveConsoleActionInput): P
     return { ok: false, dryRun: false, approvalRequired: true, message: `Blocked: ${approval.reason}` };
   }
 
-  if (action.dryRun !== false) {
-    return executeConsoleAction(input.sessionId, action);
-  }
-
   if (!session.targetUrl) throw new Error('Live execution requires targetUrl.');
-  const { chromium } = await import('playwright');
-  const browser = await chromium.launch({ headless: process.env.SANGFOR_OPERATOR_HEADLESS !== 'false' });
-  const page = await browser.newPage({ ignoreHTTPSErrors: true });
+  const connection = await getLivePage(session);
+  const { page } = connection;
   const beforeScreenshotPath = `data/evidence/${input.sessionId}/before-live-${Date.now()}.png`;
   const afterScreenshotPath = `data/evidence/${input.sessionId}/after-live-${Date.now()}.png`;
   try {
     await page.goto(session.targetUrl, { waitUntil: 'domcontentloaded', timeout: 30_000 });
     await captureScreenshot(page, beforeScreenshotPath);
+    if (action.dryRun !== false && ['click', 'type', 'select'].includes(action.type)) {
+      await captureScreenshot(page, afterScreenshotPath);
+      return {
+        ok: true,
+        dryRun: true,
+        approvalRequired: approval.required,
+        message: `Live dry-run stopped before ${action.type} on ${action.target ?? '<no target>'}. Browser=${connection.connectedOverCdp ? 'local-cdp' : 'launched-chromium'}.`,
+        beforeScreenshotPath,
+        afterScreenshotPath
+      };
+    }
     if (action.type === 'navigate') {
       if (!action.value && !action.target) throw new Error('navigate action requires value or target URL');
       await page.goto(action.value ?? action.target!, { waitUntil: 'domcontentloaded', timeout: 30_000 });
@@ -185,12 +243,14 @@ export async function executeLiveConsoleAction(input: LiveConsoleActionInput): P
     } else if (action.type === 'screenshot') {
       // screenshots are already captured before/after
     }
-    await captureScreenshot(page, afterScreenshotPath);
+      await captureScreenshot(page, afterScreenshotPath);
     return {
       ok: true,
-      dryRun: false,
+      dryRun: action.dryRun !== false,
       approvalRequired: approval.required,
-      message: `Live action executed in ${session.mode} mode by ${input.approval?.approvedBy ?? 'unknown'} under change ticket ${input.approval?.changeTicketId ?? 'n/a'}.`,
+      message: action.dryRun !== false
+        ? `Live dry-run executed in ${session.mode} mode. Browser=${connection.connectedOverCdp ? 'local-cdp' : 'launched-chromium'}.`
+        : `Live action executed in ${session.mode} mode by ${input.approval?.approvedBy ?? 'unknown'} under change ticket ${input.approval?.changeTicketId ?? 'n/a'}. Browser=${connection.connectedOverCdp ? 'local-cdp' : 'launched-chromium'}.`,
       beforeScreenshotPath,
       afterScreenshotPath
     };
@@ -205,12 +265,13 @@ export async function executeLiveConsoleAction(input: LiveConsoleActionInput): P
       afterScreenshotPath
     };
   } finally {
-    await browser.close();
+    await releaseLivePage(input.sessionId, connection);
   }
 }
 
 export function killSession(sessionId: string): OperatorSession {
   const session = getOperatorSession(sessionId);
   session.status = 'cancelled';
+  liveConnections.delete(sessionId);
   return session;
 }

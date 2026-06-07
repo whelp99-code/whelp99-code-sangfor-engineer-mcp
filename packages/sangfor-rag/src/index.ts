@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { basename, extname, join } from 'node:path';
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { basename, extname } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { KnowledgeChunk, ProductCode, normalizeProduct, nowId } from '@sangfor/shared';
 
@@ -54,14 +54,95 @@ export function loadRagIndex(indexPath = DEFAULT_INDEX_PATH): RagIndex {
 
 export function saveRagIndex(index: RagIndex, indexPath = DEFAULT_INDEX_PATH): void {
   ensureParent(indexPath);
-  writeFileSync(indexPath, JSON.stringify({ ...index, updatedAt: new Date().toISOString() }, null, 2));
+  const tmpPath = `${indexPath}.tmp`;
+  writeFileSync(tmpPath, JSON.stringify({ ...index, updatedAt: new Date().toISOString() }, null, 2));
+  renameSync(tmpPath, indexPath);
 }
 
 export async function extractTextFromFile(filePath: string): Promise<string> {
   const ext = extname(filePath).toLowerCase();
   if (ext === '.pdf') return extractTextFromPdf(filePath);
   if (['.md', '.markdown', '.txt', '.html', '.htm'].includes(ext)) return readFileSync(filePath, 'utf8');
+  if (ext === '.docx') return extractTextFromDocx(filePath);
+  if (ext === '.pptx') return extractTextFromPptx(filePath);
+  if (['.xlsx', '.xlsm'].includes(ext)) return extractTextFromXlsx(filePath);
   throw new Error(`Unsupported document type for ingestion: ${ext}`);
+}
+
+function unzipList(filePath: string): string[] {
+  return execFileSync('unzip', ['-Z1', filePath], { encoding: 'utf8' })
+    .split(/\r?\n/)
+    .map(entry => entry.trim())
+    .filter(Boolean);
+}
+
+function unzipText(filePath: string, entry: string): string {
+  return execFileSync('unzip', ['-p', filePath, entry], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+}
+
+function decodeXmlEntities(value: string): string {
+  return value
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&#(\d+);/g, (_, code) => String.fromCodePoint(Number(code)))
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, code) => String.fromCodePoint(parseInt(code, 16)));
+}
+
+function xmlToText(xml: string): string {
+  return decodeXmlEntities(
+    xml
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<\/(?:w:p|a:p|p|row|si|table:table-row)>/gi, '\n')
+      .replace(/<\/(?:w:tc|a:t|t|c)>/gi, ' ')
+      .replace(/<[^>]+>/g, ' ')
+  )
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n[ \t]+/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+function sortedOfficeEntries(entries: string[], pattern: RegExp): string[] {
+  return entries
+    .filter(entry => pattern.test(entry))
+    .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+}
+
+export async function extractTextFromDocx(filePath: string): Promise<string> {
+  const entries = sortedOfficeEntries(
+    unzipList(filePath),
+    /^word\/(?:document|footnotes|endnotes|header\d+|footer\d+)\.xml$/i
+  );
+  const text = entries.map(entry => xmlToText(unzipText(filePath, entry))).filter(Boolean).join('\n\n');
+  if (!text) throw new Error(`DOCX text extraction produced no text: ${filePath}`);
+  return text;
+}
+
+export async function extractTextFromPptx(filePath: string): Promise<string> {
+  const entries = sortedOfficeEntries(unzipList(filePath), /^ppt\/slides\/slide\d+\.xml$/i);
+  const text = entries
+    .map((entry, index) => {
+      const slideText = xmlToText(unzipText(filePath, entry));
+      return slideText ? `Slide ${index + 1}\n${slideText}` : '';
+    })
+    .filter(Boolean)
+    .join('\n\n');
+  if (!text) throw new Error(`PPTX text extraction produced no text: ${filePath}`);
+  return text;
+}
+
+export async function extractTextFromXlsx(filePath: string): Promise<string> {
+  const entries = unzipList(filePath);
+  const workbookEntries = sortedOfficeEntries(
+    entries,
+    /^xl\/(?:sharedStrings|workbook|worksheets\/sheet\d+)\.xml$/i
+  );
+  const text = workbookEntries.map(entry => xmlToText(unzipText(filePath, entry))).filter(Boolean).join('\n\n');
+  if (!text) throw new Error(`XLSX text extraction produced no text: ${filePath}`);
+  return text;
 }
 
 export async function extractTextFromPdf(filePath: string): Promise<string> {
@@ -145,6 +226,9 @@ export async function ingestDocument(input: IngestDocumentInput): Promise<{ docu
   const index = loadRagIndex(input.indexPath);
   const existingHashes = new Set(index.chunks.map(chunk => chunk.contentHash));
   const newChunks = chunks.filter(chunk => !existingHashes.has(chunk.contentHash));
+  if (newChunks.length === 0) {
+    return { documentId, chunkCount: 0, indexPath: input.indexPath ?? DEFAULT_INDEX_PATH, chunks: [] };
+  }
   index.chunks.push(...newChunks);
   saveRagIndex(index, input.indexPath);
   return { documentId, chunkCount: newChunks.length, indexPath: input.indexPath ?? DEFAULT_INDEX_PATH, chunks: newChunks };

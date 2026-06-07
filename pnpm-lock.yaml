@@ -42,6 +42,8 @@ importers:
 
   packages/sangfor-approval: {}
 
+  packages/sangfor-collector: {}
+
   packages/sangfor-evals: {}
 
   packages/sangfor-evidence: {}

@@ -1,4 +1,5 @@
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { execSync } from 'node:child_process';
 import { loadEnvFile } from '../packages/sangfor-collector/src/load-env.js';
 import {
@@ -7,8 +8,31 @@ import {
   verifyOneSession
 } from '../packages/sangfor-collector/src/index.js';
 
-const LEVELDB_LOG = process.env.CHROME_LEVELDB_LOG
-  ?? `${process.env.HOME}/.config/google-chrome/Default/Local Storage/leveldb/000003.log`;
+function defaultChromeLevelDbDir(): string {
+  const home = process.env.HOME ?? '';
+  if (process.platform === 'darwin') {
+    return join(home, 'Library/Application Support/Google/Chrome/Default/Local Storage/leveldb');
+  }
+  return join(home, '.config/google-chrome/Default/Local Storage/leveldb');
+}
+
+/** Scan .log/.ldb files (newest first) when CHROME_LEVELDB_LOG is unset or points at a directory. */
+function resolveLevelDbScanPaths(): string[] {
+  const explicit = process.env.CHROME_LEVELDB_LOG?.trim();
+  if (explicit) {
+    if (!existsSync(explicit)) return [];
+    if (explicit.endsWith('.log') || explicit.endsWith('.ldb')) return [explicit];
+    return readdirSync(explicit)
+      .filter(f => f.endsWith('.log') || f.endsWith('.ldb'))
+      .map(f => join(explicit, f));
+  }
+  const dir = defaultChromeLevelDbDir();
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir)
+    .filter(f => f.endsWith('.log') || f.endsWith('.ldb'))
+    .map(f => join(dir, f))
+    .sort((a, b) => statSync(b).mtimeMs - statSync(a).mtimeMs);
+}
 
 function extractTokensFromLog(path: string): Record<string, string> {
   const raw = execSync(`strings ${JSON.stringify(path)}`, { encoding: 'utf8', maxBuffer: 10_000_000 });
@@ -50,12 +74,20 @@ async function pickWorkingToken(candidates: string[]): Promise<string | undefine
 }
 
 async function main() {
-  if (!existsSync(LEVELDB_LOG)) {
-    console.error(`Chrome storage log not found: ${LEVELDB_LOG}`);
+  const scanPaths = resolveLevelDbScanPaths();
+  if (!scanPaths.length) {
+    console.error(`Chrome leveldb not found (set CHROME_LEVELDB_LOG or log in via Chrome): ${defaultChromeLevelDbDir()}`);
     process.exit(1);
   }
 
-  const extracted = extractTokensFromLog(LEVELDB_LOG);
+  const extracted: Record<string, string> = {};
+  for (const path of scanPaths) {
+    const part = extractTokensFromLog(path);
+    for (const [k, v] of Object.entries(part)) {
+      if (!extracted[k] || v.length > (extracted[k]?.length ?? 0)) extracted[k] = v;
+    }
+    if (extracted.access_token_mh && extracted.library_token) break;
+  }
   const candidates = [
     extracted.access_token_mh,
     extracted.idt_token,

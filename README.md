@@ -60,6 +60,7 @@ Every live write call must include approval payload with `approvedBy`, `approval
 
 ```bash
 pnpm run ingest:docs -- ./manuals/hci-guide.pdf HCI 6.11
+pnpm run ingest:attachments -- /Users/jmpark/Documents/SANGFOR/Attachment
 ```
 
 ## Fine-tuning dataset

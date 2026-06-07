@@ -5,14 +5,23 @@ import { existsSync } from 'node:fs';
 import { execSync, spawnSync } from 'node:child_process';
 import { chromium } from 'playwright';
 
-const PROFILE = process.env.CHROME_USER_DATA ?? `${process.env.HOME}/.config/google-chrome`;
+const PROFILE = process.env.CHROME_USER_DATA ?? (
+  process.platform === 'darwin'
+    ? `${process.env.HOME}/Library/Application Support/Google/Chrome`
+    : `${process.env.HOME}/.config/google-chrome`
+);
 const WAIT_MS = Number(process.env.SANGFOR_KB_WAIT_MS ?? 120_000);
 
 async function hasLibraryToken(): Promise<boolean> {
-  const log = `${PROFILE}/Default/Local Storage/leveldb/000003.log`;
-  if (!existsSync(log)) return false;
-  const raw = execSync(`strings ${JSON.stringify(log)}`, { encoding: 'utf8', maxBuffer: 10_000_000 });
-  return /library_token%/.test(raw) || /library_token/.test(raw);
+  const dir = `${PROFILE}/Default/Local Storage/leveldb`;
+  if (!existsSync(dir)) return false;
+  const { readdirSync } = await import('node:fs');
+  const files = readdirSync(dir).filter(f => f.endsWith('.log') || f.endsWith('.ldb'));
+  for (const f of files) {
+    const raw = execSync(`strings ${JSON.stringify(`${dir}/${f}`)}`, { encoding: 'utf8', maxBuffer: 10_000_000 });
+    if (/library_token%/.test(raw) || /library_token/.test(raw)) return true;
+  }
+  return false;
 }
 
 async function main() {

@@ -30,7 +30,7 @@ export function analyzeProject(input: ProjectInput): ProjectAnalysis {
   const environment = input.environment ?? {};
   const missingInputs: string[] = [];
 
-  if (product === 'HCI') {
+  if (product === 'HCI' || product === 'HCI_SCP') {
     for (const key of ['nodeCount', 'managementNetwork', 'storageNetwork', 'licenseStatus']) {
       if (!(key in environment)) missingInputs.push(key);
     }
@@ -45,7 +45,7 @@ export function analyzeProject(input: ProjectInput): ProjectAnalysis {
       if (!(key in environment)) missingInputs.push(key);
     }
   }
-  if (product === 'CYBER_COMMAND') {
+  if (product === 'CYBER_COMMAND' || product === 'NDR') {
     for (const key of ['eventSources', 'collectorNetwork', 'ntpStatus', 'reportRecipients']) {
       if (!(key in environment)) missingInputs.push(key);
     }
@@ -72,9 +72,11 @@ export function analyzeProject(input: ProjectInput): ProjectAnalysis {
 
 function buildKnowledgeQueries(product: ProductCode, projectType: ProjectType): string[] {
   const base: Record<ProductCode, string[]> = {
+    HCI_SCP: ['SCP OpenAPI resource inventory', 'HA DRS validation', 'VM resource planning', 'license mismatch validation'],
     HCI: ['cluster initialization precheck', 'storage network MTU', 'VM migration rollback', 'DR failover validation'],
     IAG: ['access policy design', 'authentication integration', 'internet access control logging', 'policy rollback'],
     ENDPOINT_SECURE: ['agent deployment pilot group', 'EDR policy baseline', 'exception policy', 'rollback uninstall package'],
+    NDR: ['event source onboarding', 'SOAR playbook validation', 'alert incident validation', 'third party API integration'],
     CYBER_COMMAND: ['event source onboarding', 'NTP validation', 'alert rule mapping', 'dashboard report validation']
   };
   return base[product].map(query => `${query} ${projectType}`);
@@ -104,23 +106,24 @@ export function generateConfigPlan(input: ProjectInput): ConfigPlan {
   const validationPlan: ConfigStep[] = [];
   const rollbackPlan: ConfigStep[] = [];
 
-  if (analysis.detectedProduct === 'HCI') {
+  if (analysis.detectedProduct === 'HCI' || analysis.detectedProduct === 'HCI_SCP') {
+    const product = analysis.detectedProduct;
     precheck.push(
-      step('HCI', 'precheck', 'Confirm node and license readiness', 'Verify node count, serial/license status, management IPs, DNS/NTP, and hardware health.', false, references),
-      step('HCI', 'precheck', 'Validate management and storage networks', 'Verify management reachability, storage network isolation, NIC mapping, link speed, VLAN and MTU consistency.', false, references),
-      step('HCI', 'precheck', 'Confirm source VM migration readiness', 'For VMware/Hyper-V/Nutanix source environments, confirm VM inventory, backup state, network mapping, and rollback window.', false, references)
+      step(product, 'precheck', 'Confirm node and license readiness', 'Verify node count, serial/license status, management IPs, DNS/NTP, and hardware health.', false, references),
+      step(product, 'precheck', 'Validate management and storage networks', 'Verify management reachability, storage network isolation, NIC mapping, link speed, VLAN and MTU consistency.', false, references),
+      step(product, 'precheck', 'Confirm source VM migration readiness', 'For VMware/Hyper-V/Nutanix source environments, confirm VM inventory, backup state, network mapping, and rollback window.', false, references)
     );
     steps.push(
-      step('HCI', 'configure', 'Prepare cluster configuration draft', 'Prepare cluster name, node IP mapping, storage pool design, and VM network mapping in dry-run mode.', false, references),
-      step('HCI', 'configure', 'Apply cluster/network configuration', 'Apply HCI cluster and network settings only after human approval.', true, references),
-      step('HCI', 'configure', 'Start migration or DR workflow', 'Start VM migration, replication, failover rehearsal, or production cutover only after explicit approval.', true, references)
+      step(product, 'configure', 'Prepare cluster configuration draft', 'Prepare cluster name, node IP mapping, storage pool design, and VM network mapping in dry-run mode.', false, references),
+      step(product, 'configure', 'Apply cluster/network configuration', 'Apply HCI/SCP cluster and network settings only after human approval.', true, references),
+      step(product, 'configure', 'Start migration or DR workflow', 'Start VM migration, replication, failover rehearsal, or production cutover only after explicit approval.', true, references)
     );
     validationPlan.push(
-      step('HCI', 'validate', 'Validate cluster health', 'Check cluster status, node status, storage pool status, alarms, and NTP synchronization.', false, references),
-      step('HCI', 'validate', 'Validate VM network and migration result', 'Confirm VM connectivity, IP mapping, application check, and rollback readiness.', false, references)
+      step(product, 'validate', 'Validate cluster health', 'Check cluster status, node status, storage pool status, alarms, and NTP synchronization.', false, references),
+      step(product, 'validate', 'Validate VM network and migration result', 'Confirm VM connectivity, IP mapping, application check, and rollback readiness.', false, references)
     );
     rollbackPlan.push(
-      step('HCI', 'rollback', 'Return to previous source platform state', 'Keep source VM unchanged until final cutover and restore DNS/routing if validation fails.', true, references)
+      step(product, 'rollback', 'Return to previous source platform state', 'Keep source VM unchanged until final cutover and restore DNS/routing if validation fails.', true, references)
     );
   }
 
@@ -150,17 +153,18 @@ export function generateConfigPlan(input: ProjectInput): ConfigPlan {
     rollbackPlan.push(step('ENDPOINT_SECURE', 'rollback', 'Uninstall or policy rollback', 'Use prepared uninstall or relaxed policy package if business impact is observed.', true, references));
   }
 
-  if (analysis.detectedProduct === 'CYBER_COMMAND') {
+  if (analysis.detectedProduct === 'CYBER_COMMAND' || analysis.detectedProduct === 'NDR') {
+    const product = analysis.detectedProduct;
     precheck.push(
-      step('CYBER_COMMAND', 'precheck', 'Confirm event sources and time sync', 'Verify event source list, collector network, NTP/timezone consistency, log volume and retention requirement.', false, references),
-      step('CYBER_COMMAND', 'precheck', 'Confirm monitoring use case', 'Define alert rules, dashboard scope, report recipients and incident response workflow.', false, references)
+      step(product, 'precheck', 'Confirm event sources and time sync', 'Verify event source list, collector network, NTP/timezone consistency, log volume and retention requirement.', false, references),
+      step(product, 'precheck', 'Confirm monitoring use case', 'Define alert rules, dashboard scope, report recipients and incident response workflow.', false, references)
     );
     steps.push(
-      step('CYBER_COMMAND', 'configure', 'Prepare event collection mapping', 'Draft event source onboarding, parser mapping and dashboard/report plan.', false, references),
-      step('CYBER_COMMAND', 'configure', 'Enable alerting/report workflow', 'Enable alerting and reporting only after approval because it may trigger operational notifications.', true, references)
+      step(product, 'configure', 'Prepare event collection mapping', 'Draft event source onboarding, parser mapping and dashboard/report plan.', false, references),
+      step(product, 'configure', 'Enable alerting/report workflow', 'Enable alerting and reporting only after approval because it may trigger operational notifications.', true, references)
     );
-    validationPlan.push(step('CYBER_COMMAND', 'validate', 'Validate event collection and dashboard', 'Confirm event ingestion, correlation, dashboard widgets, alert firing and report delivery.', false, references));
-    rollbackPlan.push(step('CYBER_COMMAND', 'rollback', 'Disable new alert/report rules', 'Disable newly created rules and reports if noise or wrong notifications occur.', true, references));
+    validationPlan.push(step(product, 'validate', 'Validate event collection and dashboard', 'Confirm event ingestion, correlation, dashboard widgets, alert firing and report delivery.', false, references));
+    rollbackPlan.push(step(product, 'rollback', 'Disable new alert/report rules', 'Disable newly created rules and reports if noise or wrong notifications occur.', true, references));
   }
 
   return {
