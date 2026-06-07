@@ -36,6 +36,6 @@ Non-dry-run console actions require `SANGFOR_ALLOW_REAL_EXECUTION` and approval 
 
 - `apps/mcp-server` — MCP stdio JSON-RPC server
 - `apps/mock-sangfor-console` — mock HCI console (port 3400)
-- `apps/operator-console` — operator UI stub (port 3500)
+- `apps/operator-console` — 웹 UI + REST API (port 3500, `pnpm run dev:web`)
 - `packages/*` — domain logic
 - `tests/` — Vitest suites (source only; `dist/` excluded)

@@ -112,15 +112,27 @@ cp .cursor/mcp.json.example .cursor/mcp.json
 
 도구 `sangfor.learn_sources` 로 `.env` 기반 수집도 가능.
 
-## 6. UI 데모 (선택, 다른 브랜치)
+## 6. 웹 UI (Operator Console)
 
-Operator Console 등 UI는 `cursor/ui-demo-data-expand-2b33` 브랜치:
+브라우저에서 Sangfor Engineer 기능을 사용합니다. MCP stdio 서버(`dev:mcp`)는 Cursor 등 다른 클라이언트용으로 그대로 둡니다.
 
 ```bash
-pnpm run dev:operator-console   # :3500
-pnpm run dev:mock-console       # :3400
+pnpm run dev:web          # http://localhost:3500 (alias: dev:operator-console)
+pnpm run dev:mock-console # http://localhost:3400 (선택, mock HCI)
 pnpm run seed:demo
 ```
+
+### 화면
+
+| 탭 | API | 설명 |
+|----|-----|------|
+| 대시보드 | `GET /api/summary`, `/api/health/*` | RAG·Store·임베딩 상태, 문서 링크 |
+| 프로젝트 분석 | `POST /api/analyze-project` | 리스크·누락 입력 분석 |
+| 설정 플랜 | `POST /api/generate-config-plan` | RAG 기반 설정 플랜 |
+| RAG 검색 | `POST /api/rag-search` | 로컬 인덱스 검색 |
+| 제품 어댑터 | `POST /api/discover-console`, `/api/analyze-requirements`, `/api/import-excel` | 콘솔 탐색·요구사항·Excel |
+| 피드백 | `POST /api/feedback` | 피드백 제출 |
+| 지식 브라우저 | `GET /api/knowledge` | 시드 매뉴얼/Wiki |
 
 ## 7. git에 없는 데이터 (로컬에서 새로 생성)
 
@@ -171,6 +183,7 @@ pnpm run rag:reembed
 | `pnpm run login:one:safari` | Safari ONE/KB 토큰 → `.env` |
 | `pnpm run login:kb:chrome` | Chrome에서 KB 열고 `library_token` 캡처 |
 | `pnpm run learn:finalize` | 검증·완료 리포트 |
+| `pnpm run dev:web` | 웹 UI (Operator Console, :3500) |
 | `pnpm run dev:mcp` | MCP stdio 서버 |
 
 ## 9. 문제 해결

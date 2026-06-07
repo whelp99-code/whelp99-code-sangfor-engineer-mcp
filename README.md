@@ -34,7 +34,8 @@ pnpm install
 pnpm test
 pnpm run lint
 pnpm run build
-pnpm run dev:mcp
+pnpm run dev:mcp      # MCP stdio — Cursor 등 외부 클라이언트
+pnpm run dev:web      # 웹 UI http://localhost:3500
 ```
 
 `npm install` works with `package-lock.json`, but **pnpm is recommended** (`packageManager` in `package.json`, workspaces in `pnpm-workspace.yaml`). See `AGENTS.md` for agent/CI notes.
