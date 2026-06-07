@@ -28,7 +28,7 @@ Subagent: `.cursor/agents/sangfor-oss-gap-analyst.md`
 | RAG | `data/rag/index.json`, hash embedding 384-dim (`hashEmbedding`) |
 | KB learn | `learn:sources`, `learn:kb:full`, Safari tokens, Playwright DOM crawl, 80 URL seed table |
 | Operator | Mock default; live Playwright + env gates |
-| Product adapters | HCI_SCP `ready`; IAG / Endpoint Secure / NDR `discovery_required` |
+| Product adapters | HCI_SCP / IAG / Endpoint Secure / NDR `ready` (WEBUI + NDR REST catalogs) |
 | Tests | 5 Vitest files — no live Playwright, no semantic RAG eval |
 
 ## OSS landscape (relevant)
@@ -79,9 +79,9 @@ Subagent: `.cursor/agents/sangfor-oss-gap-analyst.md`
 1. Semantic RAG — Rapid-MLX + Xiaomi MiMo (design: `docs/design/RAG_SEMANTIC_EMBEDDINGS.md`)
 2. KB daily CDP automation (design: `docs/design/KB_DAILY_CDP_AUTOMATION.md`)
 3. `mcp-scorecard` in CI after `pnpm test`
-4. Planner uses `rag_search` only (drop mock manual path)
-5. Product adapter discovery for IAG/EPP/NDR
-6. Persistent stores (Prisma)
+4. Planner uses `rag_search` only (drop mock manual path) — **done** (`generateConfigPlanAsync`)
+5. Product adapter discovery for IAG/EPP/NDR — **done** (route catalogs promoted to `ready`)
+6. Persistent stores (Prisma) — **done** (`@sangfor/store`, `sangfor.store_health`)
 
 ## References
 

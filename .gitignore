@@ -12,6 +12,7 @@ data/finetune/
 playwright-report
 test-results
 data/runtime/
+generated/
 outputs/customer-setting-guide/docx-work/
 data/sources/learn-run.log
 data/sources/local-bootstrap.log

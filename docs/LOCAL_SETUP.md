@@ -144,6 +144,30 @@ VM에서 만든 인덱스를 쓰려면 위 파일들을 **scp/rsync** 로 복사
 | `pnpm run check:embedding-providers` | Rapid-MLX / MiMo rerank 상태 확인 |
 | `pnpm run rag:reembed` | RAG 인덱스 semantic 재임베딩 |
 | `pnpm run learn:nightly` | learn:all + KB full crawl + reembed |
+| `pnpm run db:migrate` | Prisma migrate dev (PostgreSQL) |
+| `pnpm run db:generate` | Regenerate Prisma client |
+
+### launchd (KB daily 03:00)
+
+```bash
+cp automation/com.jmpark.sangfor.learnkb.plist ~/Library/LaunchAgents/
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.jmpark.sangfor.learnkb.plist
+launchctl print gui/$(id -u)/com.jmpark.sangfor.learnkb
+```
+
+### MiMo Token Plan
+
+- API Key format: `tp-xxxxx` (not pay-as-you-go `sk-xxxxx`)
+- Default base URL (APAC): `https://token-plan-sgp.xiaomimimo.com/v1`
+- Set `SANGFOR_MIMO_BILLING=token-plan` and `SANGFOR_MIMO_TOKEN_PLAN_CLUSTER=sgp|cn|ams`
+
+### Rapid-MLX (internal server)
+
+Set `SANGFOR_RAPID_MLX_BASE_URL` to your internal OpenAI-compatible `/v1` endpoint, then:
+
+```bash
+pnpm run rag:reembed
+```
 | `pnpm run login:one:safari` | Safari ONE/KB 토큰 → `.env` |
 | `pnpm run login:kb:chrome` | Chrome에서 KB 열고 `library_token` 캡처 |
 | `pnpm run learn:finalize` | 검증·완료 리포트 |

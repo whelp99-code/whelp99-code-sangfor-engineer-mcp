@@ -1,4 +1,5 @@
 import type { RerankProvider } from './embedding-provider-types.js';
+import { resolveMimoBaseUrl, resolveMimoBillingMode } from './mimo-config.js';
 
 export class MimoRerankProvider implements RerankProvider {
   readonly name = 'mimo' as const;
@@ -93,9 +94,11 @@ export function createMimoRerankFromEnv(): RerankProvider | undefined {
   const apiKey = process.env.SANGFOR_MIMO_API_KEY?.trim();
   if (!apiKey) return undefined;
   return new MimoRerankProvider(
-    process.env.SANGFOR_MIMO_BASE_URL ?? 'https://api.xiaomimimo.com/v1',
+    resolveMimoBaseUrl(),
     apiKey,
     process.env.SANGFOR_MIMO_CHAT_MODEL ?? 'mimo-v2.5-pro',
     Number(process.env.SANGFOR_MIMO_TIMEOUT_MS ?? 60_000)
   );
 }
+
+export { resolveMimoBaseUrl, resolveMimoBillingMode } from './mimo-config.js';

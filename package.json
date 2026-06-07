@@ -10,6 +10,7 @@
     "dev:mcp": "tsx apps/mcp-server/src/index.ts",
     "dev:mock-console": "tsx apps/mock-sangfor-console/src/server.ts",
     "dev:operator-console": "tsx apps/operator-console/src/server.ts",
+    "dev:web": "tsx apps/operator-console/src/server.ts",
     "test": "vitest run --config vitest.config.ts",
     "lint": "tsc -p tsconfig.json --noEmit",
     "build": "tsc -p tsconfig.json",
@@ -39,16 +40,30 @@
     "learn:all": "pnpm run learn:sources && pnpm run learn:ingest-seeds && pnpm run learn:rebuild-finetune && pnpm run learn:finalize",
     "learn:nightly": "pnpm run learn:all && pnpm run learn:kb:full && pnpm run rag:reembed",
     "smoke:mcp": "node scripts/smoke-mcp-tools.mjs",
-    "check:mcp-scorecard": "node scripts/check-mcp-scorecard.mjs"
+    "check:mcp-scorecard": "node scripts/check-mcp-scorecard.mjs",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:push": "prisma db push",
+    "db:studio": "prisma studio"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.17.5",
+    "@prisma/client": "^6.19.3",
     "pdf-parse": "^1.1.1",
     "playwright": "^1.56.1",
     "zod": "^3.25.76"
   },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@prisma/client",
+      "@prisma/engines",
+      "prisma",
+      "esbuild"
+    ]
+  },
   "devDependencies": {
     "@types/node": "^22.10.2",
+    "prisma": "^6.19.3",
     "tsx": "^4.19.2",
     "typescript": "^5.9.3",
     "vitest": "^4.1.8"

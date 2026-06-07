@@ -1,6 +1,6 @@
 import { loadEnvFile } from '../packages/sangfor-collector/src/load-env.js';
 import { getEmbeddingProvider, resetEmbeddingProviderCache } from '../packages/sangfor-rag/src/embedding-provider.js';
-import { createMimoRerankFromEnv } from '../packages/sangfor-rag/src/mimo-rerank-provider.js';
+import { createMimoRerankFromEnv, resolveMimoBaseUrl, resolveMimoBillingMode } from '../packages/sangfor-rag/src/mimo-rerank-provider.js';
 import { probeEmbeddingsEndpoint } from '../packages/sangfor-rag/src/openai-embeddings-client.js';
 
 loadEnvFile('.env');
@@ -11,7 +11,8 @@ async function main() {
   const embedHealth = await embed.healthCheck();
   const mimo = createMimoRerankFromEnv();
   const mimoHealth = mimo ? await mimo.healthCheck() : { ok: false, detail: 'disabled' };
-  const mimoBase = process.env.SANGFOR_MIMO_BASE_URL ?? 'https://api.xiaomimimo.com/v1';
+  const mimoBase = resolveMimoBaseUrl();
+  const mimoBilling = resolveMimoBillingMode();
   const mimoEmbedProbe = await probeEmbeddingsEndpoint(
     mimoBase,
     process.env.SANGFOR_MIMO_API_KEY?.trim()
@@ -21,6 +22,8 @@ async function main() {
     embeddingHealth: embedHealth,
     dimensions: embed.dimensions,
     mimoRerankEnabled: Boolean(mimo),
+    mimoBillingMode: mimoBilling,
+    mimoBaseUrl: mimoBase,
     mimoRerankHealth: mimoHealth,
     mimoEmbeddingsEndpointAvailable: mimoEmbedProbe,
     allowCloudRag: process.env.SANGFOR_ALLOW_CLOUD_RAG === '1'

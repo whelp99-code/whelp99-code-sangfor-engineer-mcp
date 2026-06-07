@@ -13,6 +13,7 @@ import { ingestDocument, ragSearch, exportRagIndexSummary } from '../../../packa
 import { createFineTuneDataset, createFineTuneJobSpec, validateFineTuneDataset } from '../../../packages/sangfor-finetune/src/index.js';
 import { loadEnvFile } from '../../../packages/sangfor-collector/src/load-env.js';
 import { runLearnSourcesPipeline } from '../../../packages/sangfor-collector/src/learn-pipeline.js';
+import { persistConfigPlan, persistFeedbackEvent, storeHealthCheck } from '../../../packages/sangfor-store/src/index.js';
 import {
   analyzeCustomerRequirements,
   applyApprovedProductChange,
@@ -118,6 +119,11 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
     inputSchema: { type: 'object', properties: { indexPath: { type: 'string' } } },
     handler: ({ indexPath }) => exportRagIndexSummary(indexPath)
   },
+  'sangfor.store_health': {
+    description: 'Check PostgreSQL persistence (Prisma) when DATABASE_URL is configured.',
+    inputSchema: { type: 'object', properties: {} },
+    handler: () => storeHealthCheck()
+  },
   'sangfor.learn_sources': {
     description: 'Collect Sangfor KB catalog, Community threads, ingest demo docs, update local RAG index and fine-tune JSONL. Uses .env / SANGFOR_ONE_ACCESS_TOKEN when present.',
     inputSchema: {
@@ -156,7 +162,8 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
     handler: async (args) => {
       const plan = await generateConfigPlanAsync(args);
       plans.set(plan.id, plan);
-      return plan;
+      const dbId = await persistConfigPlan(plan).catch(() => null);
+      return dbId ? { ...plan, persistedId: dbId } : plan;
     }
   },
   'sangfor.validate_config_plan': {
@@ -213,7 +220,11 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
   'sangfor.submit_feedback': {
     description: 'Submit feedback linked to a product/plan/session.',
     inputSchema: { type: 'object', properties: { product: { type: 'string' }, feedbackType: { type: 'string' }, severity: { type: 'string' }, feedbackText: { type: 'string' }, sourceRole: { type: 'string' } }, required: ['product', 'feedbackType', 'severity', 'feedbackText', 'sourceRole'] },
-    handler: submitFeedback
+    handler: async (args) => {
+      const event = submitFeedback(args);
+      const dbId = await persistFeedbackEvent(event).catch(() => null);
+      return dbId ? { ...event, persistedId: dbId } : event;
+    }
   },
   'sangfor.extract_lesson': {
     description: 'Extract a lesson learned from feedback.',
