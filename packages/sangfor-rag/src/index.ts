@@ -4,7 +4,8 @@ import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from '
 import { basename, extname } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { KnowledgeChunk, ProductCode, normalizeProduct, nowId } from '@sangfor/shared';
-import { getEmbeddingProvider } from './embedding-provider.js';
+import { getEmbeddingProvider, resolveEmbeddingModelFromEnv } from './embedding-provider.js';
+import { isMimoViaLitellm } from './litellm-config.js';
 import type { EmbeddingBackend } from './embedding-provider-types.js';
 import { createMimoRerankFromEnv } from './mimo-rerank-provider.js';
 import { cosineSimilarity, hashEmbedding } from './hash-embedding.js';
@@ -224,7 +225,7 @@ export async function ingestDocument(input: IngestDocumentInput): Promise<{ docu
       contentHash,
       filePath: input.filePath,
       embeddingBackend: provider.name,
-      embeddingModel: process.env.SANGFOR_RAPID_MLX_EMBEDDING_MODEL,
+      embeddingModel: resolveEmbeddingModelFromEnv(),
       vectorDims: vector.length
     };
   });
@@ -312,7 +313,8 @@ export function exportRagIndexSummary(indexPath = DEFAULT_INDEX_PATH): Record<st
     chunkCount: index.chunks.length,
     byProduct,
     embeddingBackendCounts,
-    mimoRerankEnabled: process.env.SANGFOR_MIMO_RERANK_ENABLED !== '0' && process.env.SANGFOR_ALLOW_CLOUD_RAG === '1',
+    mimoRerankEnabled: process.env.SANGFOR_MIMO_RERANK_ENABLED !== '0'
+      && (process.env.SANGFOR_ALLOW_CLOUD_RAG === '1' || isMimoViaLitellm()),
     updatedAt: index.updatedAt
   };
 }

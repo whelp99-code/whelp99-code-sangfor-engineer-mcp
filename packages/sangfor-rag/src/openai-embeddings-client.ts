@@ -47,14 +47,18 @@ export async function fetchOpenAIEmbeddings(
   }
 }
 
-export async function probeEmbeddingsEndpoint(baseUrl: string, apiKey?: string): Promise<boolean> {
+export async function probeEmbeddingsEndpoint(
+  baseUrl: string,
+  apiKey?: string,
+  authHeader: OpenAIEmbeddingsOptions['authHeader'] = 'api-key'
+): Promise<boolean> {
   try {
     await fetchOpenAIEmbeddings(['probe'], {
       baseUrl,
       apiKey,
       model: 'probe',
       timeoutMs: 8_000,
-      authHeader: 'api-key'
+      authHeader
     });
     return true;
   } catch {

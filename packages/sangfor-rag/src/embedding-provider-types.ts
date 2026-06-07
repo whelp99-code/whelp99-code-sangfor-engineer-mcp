@@ -1,4 +1,4 @@
-export type EmbeddingBackend = 'rapid-mlx' | 'mimo' | 'hash';
+export type EmbeddingBackend = 'rapid-mlx' | 'litellm' | 'mimo' | 'hash';
 
 export interface EmbeddingProvider {
   readonly name: EmbeddingBackend;

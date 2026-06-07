@@ -173,9 +173,41 @@ launchctl print gui/$(id -u)/com.jmpark.sangfor.learnkb
 - Default base URL (APAC): `https://token-plan-sgp.xiaomimimo.com/v1`
 - Set `SANGFOR_MIMO_BILLING=token-plan` and `SANGFOR_MIMO_TOKEN_PLAN_CLUSTER=sgp|cn|ams`
 
-### Rapid-MLX (internal server)
+### LiteLLM (local proxy, recommended)
 
-Set `SANGFOR_RAPID_MLX_BASE_URL` to your internal OpenAI-compatible `/v1` endpoint, then:
+로컬 LiteLLM 라우터(`http://localhost:4000/v1`)에 OpenAI 호환으로 연결합니다. CrewAI와 **동일한 model / api_base / api_key**를 씁니다.
+
+| CrewAI `llm` | Sangfor `.env` |
+|--------------|----------------|
+| `api_base: http://localhost:4000/v1` | `SANGFOR_LITELLM_BASE_URL` (또는 `OPENAI_API_BASE`) |
+| `api_key: sk-local-master-key-2026` | `SANGFOR_LITELLM_API_KEY` (또는 `OPENAI_API_KEY`) |
+| `model: openai/local-rapid` | `SANGFOR_LITELLM_EMBEDDING_MODEL=local-rapid` → `/v1/embeddings` |
+| `model: openai/cloud-mimo` | `SANGFOR_LITELLM_CHAT_MODEL=cloud-mimo` + `SANGFOR_MIMO_VIA_LITELLM=1` → rerank |
+
+CrewAI YAML의 `openai/` 접두사는 코드에서 자동 제거됩니다. `/v1/models`에 보이는 id(`local-rapid`, `cloud-mimo`)를 쓰면 됩니다.
+
+```bash
+# .env (방법 1 — 명시)
+SANGFOR_EMBEDDING_PROVIDER=litellm
+SANGFOR_LITELLM_BASE_URL=http://localhost:4000/v1
+SANGFOR_LITELLM_API_KEY=sk-local-master-key-2026
+SANGFOR_LITELLM_EMBEDDING_MODEL=openai/local-rapid
+SANGFOR_MIMO_VIA_LITELLM=1
+SANGFOR_LITELLM_CHAT_MODEL=openai/cloud-mimo
+
+# 방법 2 — ~/.zshrc만 써도 base/key는 자동 fallback
+# export OPENAI_API_BASE="http://localhost:4000/v1"
+# export OPENAI_API_KEY="sk-local-master-key-2026"
+
+pnpm run check:embedding-providers
+pnpm run rag:reembed
+```
+
+`SANGFOR_MIMO_VIA_LITELLM=1`이면 MiMo rerank는 LiteLLM의 `openai/cloud-mimo`로 라우팅되며 `SANGFOR_ALLOW_CLOUD_RAG` 없이 동작합니다.
+
+### Rapid-MLX (direct)
+
+`SANGFOR_EMBEDDING_PROVIDER=rapid-mlx` + `SANGFOR_RAPID_MLX_BASE_URL` 설정 후:
 
 ```bash
 pnpm run rag:reembed

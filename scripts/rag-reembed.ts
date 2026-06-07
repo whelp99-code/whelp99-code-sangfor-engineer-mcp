@@ -11,7 +11,11 @@ import {
   saveRagIndex,
   type RagDocumentChunk
 } from '../packages/sangfor-rag/src/index.js';
-import { getEmbeddingProvider, resetEmbeddingProviderCache } from '../packages/sangfor-rag/src/embedding-provider.js';
+import {
+  getEmbeddingProvider,
+  resetEmbeddingProviderCache,
+  resolveEmbeddingModelFromEnv
+} from '../packages/sangfor-rag/src/embedding-provider.js';
 import { createHash } from 'node:crypto';
 import { normalizeProduct } from '../packages/shared/src/index.js';
 
@@ -57,12 +61,12 @@ async function main() {
         contentHash,
         filePath,
         embeddingBackend: provider.name,
-        embeddingModel: process.env.SANGFOR_RAPID_MLX_EMBEDDING_MODEL,
+        embeddingModel: resolveEmbeddingModelFromEnv(),
         vectorDims: vector.length
       };
       row.vector = vector;
       row.embeddingBackend = provider.name;
-      row.embeddingModel = process.env.SANGFOR_RAPID_MLX_EMBEDDING_MODEL;
+      row.embeddingModel = resolveEmbeddingModelFromEnv();
       row.vectorDims = vector.length;
       byHash.set(contentHash, row);
       updated += 1;

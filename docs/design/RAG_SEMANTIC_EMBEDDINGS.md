@@ -64,9 +64,12 @@ export interface RerankProvider {
 
 | Value | Behavior |
 |-------|----------|
+| `litellm` | Local [LiteLLM](https://docs.litellm.ai/) proxy `POST /v1/embeddings`; ingest fallback → hash |
 | `rapid-mlx` (default on darwin) | Rapid-MLX embed; ingest fallback → hash |
 | `hash` | Legacy SHA buckets (CI / air-gap) |
 | `mimo` | **Query-time only**: hash/rapid retrieval + MiMo rerank (no MiMo vectors for ingest in v1) |
+
+MiMo rerank can route through LiteLLM (`SANGFOR_MIMO_VIA_LITELLM=1`) using `Authorization: Bearer` + chat model in `config.yaml`.
 
 Search chain (default): `rapid-mlx` embed query → cosine **top-40** → MiMo rerank → **top-8**.
 

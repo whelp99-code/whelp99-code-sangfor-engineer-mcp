@@ -1,5 +1,13 @@
 import type { RerankProvider } from './embedding-provider-types.js';
+import {
+  isMimoViaLitellm,
+  resolveLitellmApiKey,
+  resolveLitellmBaseUrl,
+  resolveLitellmChatModel
+} from './litellm-config.js';
 import { resolveMimoBaseUrl, resolveMimoBillingMode } from './mimo-config.js';
+
+type ChatAuthHeader = 'authorization' | 'api-key';
 
 export class MimoRerankProvider implements RerankProvider {
   readonly name = 'mimo' as const;
@@ -9,8 +17,19 @@ export class MimoRerankProvider implements RerankProvider {
     private readonly apiKey: string,
     private readonly model: string,
     private readonly timeoutMs = 60_000,
-    private readonly maxSnippetChars = 400
+    private readonly maxSnippetChars = 400,
+    private readonly authHeader: ChatAuthHeader = 'api-key'
   ) {}
+
+  private chatHeaders(): Record<string, string> {
+    const headers: Record<string, string> = { 'content-type': 'application/json' };
+    if (this.authHeader === 'authorization') {
+      headers.authorization = `Bearer ${this.apiKey}`;
+    } else {
+      headers['api-key'] = this.apiKey;
+    }
+    return headers;
+  }
 
   async rerank(
     query: string,
@@ -37,10 +56,7 @@ export class MimoRerankProvider implements RerankProvider {
     try {
       const res = await fetch(url, {
         method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          'api-key': this.apiKey
-        },
+        headers: this.chatHeaders(),
         body: JSON.stringify({
           model: this.model,
           messages: [
@@ -74,7 +90,7 @@ export class MimoRerankProvider implements RerankProvider {
       const url = `${this.baseUrl.replace(/\/$/, '')}/chat/completions`;
       const res = await fetch(url, {
         method: 'POST',
-        headers: { 'content-type': 'application/json', 'api-key': this.apiKey },
+        headers: this.chatHeaders(),
         body: JSON.stringify({
           model: this.model,
           messages: [{ role: 'user', content: 'ping' }],
@@ -90,14 +106,17 @@ export class MimoRerankProvider implements RerankProvider {
 
 export function createMimoRerankFromEnv(): RerankProvider | undefined {
   if (process.env.SANGFOR_MIMO_RERANK_ENABLED === '0') return undefined;
-  if (process.env.SANGFOR_ALLOW_CLOUD_RAG !== '1') return undefined;
-  const apiKey = process.env.SANGFOR_MIMO_API_KEY?.trim();
+  const viaLitellm = isMimoViaLitellm();
+  if (!viaLitellm && process.env.SANGFOR_ALLOW_CLOUD_RAG !== '1') return undefined;
+  const apiKey = viaLitellm ? resolveLitellmApiKey() : process.env.SANGFOR_MIMO_API_KEY?.trim();
   if (!apiKey) return undefined;
   return new MimoRerankProvider(
-    resolveMimoBaseUrl(),
+    viaLitellm ? resolveLitellmBaseUrl() : resolveMimoBaseUrl(),
     apiKey,
-    process.env.SANGFOR_MIMO_CHAT_MODEL ?? 'mimo-v2.5-pro',
-    Number(process.env.SANGFOR_MIMO_TIMEOUT_MS ?? 60_000)
+    viaLitellm ? resolveLitellmChatModel() : (process.env.SANGFOR_MIMO_CHAT_MODEL ?? 'mimo-v2.5-pro'),
+    Number(process.env.SANGFOR_MIMO_TIMEOUT_MS ?? 60_000),
+    400,
+    viaLitellm ? 'authorization' : 'api-key'
   );
 }
 

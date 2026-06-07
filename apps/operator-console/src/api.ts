@@ -5,6 +5,7 @@ import { listSeedManuals, searchManuals } from '../../../packages/sangfor-knowle
 import { listSeedWiki, searchWiki } from '../../../packages/sangfor-wiki/src/index.js';
 import { ragSearch, exportRagIndexSummary, getEmbeddingProvider, resetEmbeddingProviderCache } from '../../../packages/sangfor-rag/src/index.js';
 import { createMimoRerankFromEnv, resolveMimoBaseUrl, resolveMimoBillingMode } from '../../../packages/sangfor-rag/src/mimo-rerank-provider.js';
+import { isMimoViaLitellm, resolveLitellmBaseUrl, resolveLitellmEmbeddingModel } from '../../../packages/sangfor-rag/src/litellm-config.js';
 import { probeEmbeddingsEndpoint } from '../../../packages/sangfor-rag/src/openai-embeddings-client.js';
 import { submitFeedback } from '../../../packages/sangfor-feedback/src/index.js';
 import { persistConfigPlan, persistFeedbackEvent, storeHealthCheck, isStoreEnabled } from '../../../packages/sangfor-store/src/index.js';
@@ -117,21 +118,23 @@ export async function getEmbeddingHealth() {
   const embedHealth = await embed.healthCheck();
   const mimo = createMimoRerankFromEnv();
   const mimoHealth = mimo ? await mimo.healthCheck() : { ok: false, detail: 'disabled' };
-  const mimoBase = resolveMimoBaseUrl();
-  const mimoBilling = resolveMimoBillingMode();
-  const mimoEmbedProbe = await probeEmbeddingsEndpoint(
-    mimoBase,
-    process.env.SANGFOR_MIMO_API_KEY?.trim()
-  );
+  const viaLitellm = isMimoViaLitellm();
+  const mimoBase = viaLitellm ? resolveLitellmBaseUrl() : resolveMimoBaseUrl();
+  const mimoBilling = viaLitellm ? 'litellm-proxy' : resolveMimoBillingMode();
+  const litellmKey = process.env.SANGFOR_LITELLM_API_KEY?.trim() || process.env.LITELLM_MASTER_KEY?.trim();
+  const litellmEmbedProbe = await probeEmbeddingsEndpoint(resolveLitellmBaseUrl(), litellmKey, 'authorization');
   return {
     embeddingProvider: embed.name,
     embeddingHealth: embedHealth,
     dimensions: embed.dimensions,
+    litellmBaseUrl: resolveLitellmBaseUrl(),
+    litellmEmbeddingModel: resolveLitellmEmbeddingModel(),
+    litellmEmbeddingsAvailable: litellmEmbedProbe,
     mimoRerankEnabled: Boolean(mimo),
+    mimoViaLitellm: viaLitellm,
     mimoBillingMode: mimoBilling,
     mimoBaseUrl: mimoBase,
     mimoRerankHealth: mimoHealth,
-    mimoEmbeddingsEndpointAvailable: mimoEmbedProbe,
     allowCloudRag: process.env.SANGFOR_ALLOW_CLOUD_RAG === '1'
   };
 }
