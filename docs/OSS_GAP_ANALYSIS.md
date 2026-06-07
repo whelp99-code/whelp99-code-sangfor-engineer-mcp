@@ -16,7 +16,7 @@ Subagent: `.cursor/agents/sangfor-oss-gap-analyst.md`
 | Topic | Decision |
 |-------|----------|
 | KB daily automation | **Yes** — 1×/day via fixed Glass CDP + `learn:kb:full` |
-| RAG embeddings | **Rapid-MLX (local Apple Silicon)** primary; **MiniMax cloud** fallback — not 100% Ollama-only |
+| RAG embeddings | **Rapid-MLX (local Apple Silicon)** primary; **Xiaomi MiMo cloud** rerank/augment — not 100% Ollama-only |
 | This document | **Committed** to `docs/OSS_GAP_ANALYSIS.md` |
 | Next design | See `docs/design/RAG_SEMANTIC_EMBEDDINGS.md`, `docs/design/KB_DAILY_CDP_AUTOMATION.md` |
 
@@ -68,7 +68,7 @@ Subagent: `.cursor/agents/sangfor-oss-gap-analyst.md`
 | Pattern | Source | Action |
 |---------|--------|--------|
 | OpenAI-compatible embeddings | Rapid-MLX | **Adopt** (primary local) |
-| Cloud embedding fallback | MiniMax API | **Adopt** (fallback) |
+| Cloud RAG augmentation | [Xiaomi MiMo API](https://platform.xiaomimimo.com/) | **Adopt** (rerank; embed TBD) |
 | CDP + storageState | playwright-mcp | **Adopt** for KB |
 | Autonomous browser agents | Skyvern / Browser Use | **Avoid** (conflicts with approval gates) |
 | MCP scorecard in CI | mcp-scorecard | **Adopt** |
@@ -76,7 +76,7 @@ Subagent: `.cursor/agents/sangfor-oss-gap-analyst.md`
 
 ## Roadmap (ordered)
 
-1. Semantic RAG — Rapid-MLX + MiniMax (design: `docs/design/RAG_SEMANTIC_EMBEDDINGS.md`)
+1. Semantic RAG — Rapid-MLX + Xiaomi MiMo (design: `docs/design/RAG_SEMANTIC_EMBEDDINGS.md`)
 2. KB daily CDP automation (design: `docs/design/KB_DAILY_CDP_AUTOMATION.md`)
 3. `mcp-scorecard` in CI after `pnpm test`
 4. Planner uses `rag_search` only (drop mock manual path)

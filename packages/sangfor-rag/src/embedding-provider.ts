@@ -1,16 +1,26 @@
 /**
  * Embedding provider chain — design: docs/design/RAG_SEMANTIC_EMBEDDINGS.md
- * Phase 1: hash only. Rapid-MLX + MiniMax wired in Phase 2.
+ * Phase 1: hash only. Phase 2: Rapid-MLX embed + Xiaomi MiMo rerank at query time.
  */
 import { hashEmbedding } from './index.js';
 
-export type EmbeddingBackend = 'rapid-mlx' | 'minimax' | 'hash';
+export type EmbeddingBackend = 'rapid-mlx' | 'mimo' | 'hash';
 
 export interface EmbeddingProvider {
   readonly name: EmbeddingBackend;
   readonly dimensions: number;
   embed(texts: string[]): Promise<number[][]>;
   healthCheck(): Promise<{ ok: boolean; detail?: string }>;
+}
+
+/** Query-time rerank via MiMo chat API (Xiaomi — not MiniMax). */
+export interface RerankProvider {
+  readonly name: 'mimo';
+  rerank(
+    query: string,
+    candidates: Array<{ id: string; text: string }>,
+    topK: number
+  ): Promise<string[]>;
 }
 
 export class HashEmbeddingProvider implements EmbeddingProvider {
@@ -28,16 +38,16 @@ export class HashEmbeddingProvider implements EmbeddingProvider {
 
 export function resolveEmbeddingBackendFromEnv(): EmbeddingBackend {
   const raw = (process.env.SANGFOR_EMBEDDING_PROVIDER ?? 'rapid-mlx').trim().toLowerCase();
-  if (raw === 'minimax' || raw === 'hash') return raw;
+  if (raw === 'mimo' || raw === 'hash') return raw;
   return 'rapid-mlx';
 }
 
-/** Factory — Phase 2 adds RapidMLXProvider + MiniMaxProvider with fallback chain. */
+/** Factory — Phase 2 adds RapidMLXProvider; MiMo used for rerank, not ingest vectors in v1. */
 export function createEmbeddingProviderFromEnv(): EmbeddingProvider {
   const requested = resolveEmbeddingBackendFromEnv();
   if (requested !== 'hash' && process.env.SANGFOR_EMBEDDING_FORCE_HASH === '1') {
     return new HashEmbeddingProvider();
   }
-  // Phase 2: try rapid-mlx → minimax → hash
+  // Phase 2: rapid-mlx → hash (ingest). Query: + optional MiMo rerank.
   return new HashEmbeddingProvider();
 }
