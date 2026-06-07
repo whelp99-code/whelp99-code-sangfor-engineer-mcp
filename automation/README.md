@@ -2,8 +2,9 @@
 
 요구사항:
 - (1) 매일 02:00에 `learn:all` 자동 실행
-- (2) 토큰/인증 만료로 실패하면 **알림(Notification)** 으로 알려주기
-- (3) 사용자가 재로그인(사람이 수행)하면, **검증+재실행** 은 스크립트 1번으로 자동 처리
+- (2) 매일 03:00에 `learn:kb:full` 자동 실행 (Glass CDP **9222** 고정)
+- (3) 토큰/인증 만료로 실패하면 **알림(Notification)** 으로 알려주기
+- (4) 사용자가 재로그인(사람이 수행)하면, **검증+재실행** 은 스크립트 1번으로 자동 처리
 
 ## 0) 전제
 - 레포 경로: `/Users/jmpark/Documents/Playground/whelp99-code-sangfor-engineer-mcp`
@@ -16,13 +17,16 @@
 ## 1) 파일 배치
 이 폴더의 파일들을 레포에 그대로 두면 됩니다.
 - `automation/scripts/run-learnall.sh`
+- `automation/scripts/run-learn-kb-full.sh`
 - `automation/scripts/relogin-and-rerun.sh`
 - `automation/com.jmpark.sangfor.learnall.plist`
+- `automation/com.jmpark.sangfor.learnkb.plist`
 
 ## 2) 실행 권한 부여
 ```bash
 cd "/Users/jmpark/Documents/Playground/whelp99-code-sangfor-engineer-mcp"
 chmod +x automation/scripts/run-learnall.sh
+chmod +x automation/scripts/run-learn-kb-full.sh
 chmod +x automation/scripts/relogin-and-rerun.sh
 ```
 
@@ -34,6 +38,31 @@ cp "/Users/jmpark/Documents/Playground/whelp99-code-sangfor-engineer-mcp/automat
 launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/com.jmpark.sangfor.learnall.plist"
 launchctl enable "gui/$(id -u)/com.jmpark.sangfor.learnall"
 ```
+
+## 3b) launchd 등록 (매일 03:00 KB full learn — Glass CDP 9222)
+
+Glass 브라우저에서 `knowledgebase.sangfor.com` 파트너 로그인 상태를 유지한 채 CDP 포트가 열려 있어야 합니다.
+
+`.env` 예시:
+```bash
+SANGFOR_CDP_URL=http://127.0.0.1:9222
+SANGFOR_GLASS_CDP_REQUIRED=1
+```
+
+```bash
+cp automation/com.jmpark.sangfor.learnkb.plist \
+  "$HOME/Library/LaunchAgents/com.jmpark.sangfor.learnkb.plist"
+
+launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/com.jmpark.sangfor.learnkb.plist"
+launchctl enable "gui/$(id -u)/com.jmpark.sangfor.learnkb"
+```
+
+CDP 확인:
+```bash
+pnpm run check:glass-cdp
+```
+
+설계: `docs/design/KB_DAILY_CDP_AUTOMATION.md`
 
 ### 즉시 1회 실행(테스트)
 ```bash

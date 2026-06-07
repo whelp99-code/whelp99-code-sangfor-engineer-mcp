@@ -180,8 +180,13 @@ const CHROME_PROFILE = process.env.CHROME_USER_DATA ?? (
     : `${process.env.HOME}/.config/google-chrome`
 );
 
+const DEFAULT_CDP_URL = 'http://127.0.0.1:9222';
+
 export async function launchKbBrowser(tokens: KbBrowserTokens): Promise<KbBrowserHandle> {
-  const cdpUrl = process.env.SANGFOR_CDP_URL?.trim();
+  const cdpUrl = (
+    process.env.SANGFOR_CDP_URL?.trim()
+    || (process.env.SANGFOR_GLASS_CDP_REQUIRED === '1' ? DEFAULT_CDP_URL : '')
+  );
   const headed = process.env.SANGFOR_KB_HEADED === '1';
   const useChromeProfile = process.env.SANGFOR_USE_CHROME_PROFILE === '1';
 

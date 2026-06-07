@@ -140,6 +140,7 @@ VM에서 만든 인덱스를 쓰려면 위 파일들을 **scp/rsync** 로 복사
 | `pnpm run verify:one` | ONE 세션 확인 |
 | `pnpm run learn:sources` | Community + KB + demo → RAG + JSONL |
 | `pnpm run learn:kb:full` | 제품별 URL 목록 + (가능 시) 브라우저 탐색 → 본문 크롤 → RAG |
+| `pnpm run check:glass-cdp` | Glass CDP(기본 9222) + KB 탭 상태 확인 |
 | `pnpm run login:one:safari` | Safari ONE/KB 토큰 → `.env` |
 | `pnpm run login:kb:chrome` | Chrome에서 KB 열고 `library_token` 캡처 |
 | `pnpm run learn:finalize` | 검증·완료 리포트 |
@@ -150,7 +151,8 @@ VM에서 만든 인덱스를 쓰려면 위 파일들을 **scp/rsync** 로 복사
 - **`pnpm install` 실패** → `npm` 대신 `pnpm` 사용 (`.npmrc` 확인)
 - **토큰 무효** → `pnpm run login:one` 다시 실행
 - **KB 본문 없음** → `kbTokenUsed: false` 정상(카탈로그만). ONE에서 KB 진입 후 capture
-- **전체 KB 사이트맵/본문** → `data/sources/sangfor_product_tables.md` 시드(Claude 표) + `pnpm run learn:kb:full`. Playwright가 Login이면 Glass/CDP(`SANGFOR_CDP_URL`) 또는 `SANGFOR_USE_CHROME_PROFILE=1` + `SANGFOR_KB_TOKEN_BY_CODE` 필요
+- **전체 KB 사이트맵/본문** → `data/sources/sangfor_product_tables.md` 시드 + `pnpm run learn:kb:full`. 매일 자동화: `automation/scripts/run-learn-kb-full.sh` (CDP `http://127.0.0.1:9222` 고정). 설계: `docs/design/KB_DAILY_CDP_AUTOMATION.md`
+- **RAG 검색 품질** → hash 임베딩 → Rapid-MLX + MiniMax 전환 설계: `docs/design/RAG_SEMANTIC_EMBEDDINGS.md`, OSS 갭: `docs/OSS_GAP_ANALYSIS.md`
 - **fine-tune 검증 실패** → `pnpm run learn:rebuild-finetune`
 
 자세한 수집 정책: [SANGFOR_SOURCE_LEARNING.md](./SANGFOR_SOURCE_LEARNING.md)
