@@ -215,7 +215,27 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
   'sangfor.generate_evidence_report': {
     description: 'Generate Markdown evidence report for a plan.',
     inputSchema: { type: 'object', properties: { planId: { type: 'string' }, plan: { type: 'object' }, verification: { type: 'object' }, format: { type: 'string' } } },
-    handler: ({ planId, plan, verification, format }) => generateEvidenceReport({ plan: plan ?? plans.get(planId), verification, format })
+    handler: ({ planId, plan, verification, format }) => {
+      const rawPlan = plan ?? plans.get(planId);
+      // Excel plans have workPlan instead of ConfigPlan fields — normalize
+      const normalizedPlan = rawPlan?.workPlan ? {
+        id: rawPlan.id ?? planId ?? 'unknown',
+        product: rawPlan.product ?? 'MULTI_PRODUCT',
+        planTitle: rawPlan.summary ?? 'Excel-based plan',
+        planSummary: rawPlan.summary ?? '',
+        customerName: '',
+        riskLevel: 'medium',
+        approvalRequiredSteps: [],
+        manualReferences: [],
+        wikiReferences: [],
+        lessonReferences: [],
+        steps: (rawPlan.workPlan ?? []).filter((w: any) => w.product !== 'external_or_manual').map((w: any) => ({ id: w.requestId, title: w.setting, description: w.description, product: w.product, phase: 'config' as const, approvalRequired: false, riskLevel: 'low' as any, references: [] })),
+        precheck: [],
+        rollbackPlan: [],
+        validationPlan: (rawPlan.workPlan ?? []).map((w: any) => ({ id: w.requestId, title: w.setting, description: w.description, product: w.product, phase: 'validation' as const, approvalRequired: false, riskLevel: 'low' as any, references: [] })),
+      } : rawPlan;
+      return generateEvidenceReport({ plan: normalizedPlan, verification, format });
+    }
   },
   'sangfor.submit_feedback': {
     description: 'Submit feedback linked to a product/plan/session.',

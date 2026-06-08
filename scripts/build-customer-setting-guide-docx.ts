@@ -4,7 +4,7 @@ import { dirname, join, resolve } from 'node:path';
 import { generateExcelBasedChangePlan } from '../packages/sangfor-product-adapters/src/index.js';
 
 const ROOT = resolve(dirname(new URL(import.meta.url).pathname), '..');
-const EXCEL_PATH = '/tmp/codex-remote-attachments/019e9161-2351-7220-8596-fdef65ad0546/F0FAA5F4-4649-4CDF-B17D-C93F070339EF/1-ITAC-Results-Updated_현대차-감사_sangfor.xlsx';
+const EXCEL_PATH = process.env.ITAC_EXCEL_PATH ?? '/Users/jmpark/Documents/개인자료/법인 - 베를로/1. Project/202601 - 일지테크 - Total infra/## ITAC Results Updated_현대차 감사_sangfor.xlsx';
 const OUT_DIR = join(ROOT, 'outputs/customer-setting-guide');
 const WORK_DIR = join(OUT_DIR, 'docx-work');
 const DOCX_PATH = join(OUT_DIR, 'sangfor-customer-setting-guide.docx');
