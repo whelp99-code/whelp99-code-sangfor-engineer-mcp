@@ -301,3 +301,229 @@ export function buildSettingGuideDocx(input: DocxBuilderInput): DocxBuilderResul
     manualItems: manualItems.length,
   };
 }
+
+// ─── Operations Guide DOCX Builder ──────────────────────────────────────────
+
+function buildOperationsGuideDocumentXml(): string {
+  const body: string[] = [];
+
+  // Title page
+  body.push(para('Sangfor 제품 운영 가이드', 'TitleText'));
+  body.push(para('일일/주간/월간 모니터링, 장애 대응, 보안 정책 관리 절차', 'SubtitleText'));
+  body.push(para('문서 기준: MCP 자동 생성', 'MetaText'));
+  body.push(para('본 문서는 Sangfor 제품(Endpoint Secure, IAG, NDR/Cyber Command, HCI/SCP)의 운영 절차를 정리하여, 일일 모니터링부터 장애 대응 및 보안 정책 관리까지의 표준 운영 프로세스를 제시한다.', 'BodyText'));
+
+  body.push(pageBreak());
+
+  // Section 1: Daily Monitoring
+  body.push(para('1. 일일 모니터링 절차', 'Heading1'));
+  body.push(para('일일 모니터링은 제품 콘솔의 대시보드를 확인하고, 로그를 검토하며, 알림 설정 상태를 점검하는 절차로 구성된다.', 'BodyText'));
+
+  body.push(para('1.1 대시보드 확인', 'Heading2'));
+  body.push(para('각 제품 콘솔에 로그인하여 메인 대시보드의 상태 요약을 확인한다.', 'BodyText'));
+  body.push(bullet('Endpoint Secure: 에이전트 온라인/오프라인 현황, 탐지/격리 이벤트 수'));
+  body.push(bullet('IAG: 인터넷 접근 현황, 인증 소스 상태, 정책 위반 건수'));
+  body.push(bullet('NDR / Cyber Command: 이벤트 소스 연결 상태, 인시던트/알림 건수, SOAR 플레이북 실행 결과'));
+  body.push(bullet('HCI / SCP: 클러스터 리소스 사용률, VM 상태, 스토리지 용량'));
+
+  body.push(para('1.2 로그 검토', 'Heading2'));
+  body.push(para('각 제품의 로그 메뉴에서 전일 로그를 검토하고, 이상 항목을 식별한다.', 'BodyText'));
+  body.push(bullet('Endpoint Secure: 탐지 로그, 보호 정책 위반 로그, 에이전트 업데이트 이력'));
+  body.push(bullet('IAG: 인터넷 접근 로그, 인증 실패 로그, URL/어플리케이션 제어 로그'));
+  body.push(bullet('NDR: 이벤트 소스 수집 로그, 인시던트 상세, 알림 규칙 발동 이력'));
+  body.push(bullet('HCI / SCP: 태스크 이력, 알림 로그, 시스템 이벤트'));
+
+  body.push(para('1.3 알림 설정 확인', 'Heading2'));
+  body.push(para('알림 채널(이메일, Syslog, Webhook)이 올바르게 구성되어 있는지 확인한다.', 'BodyText'));
+  body.push(bullet('알림 규칙이 활성화 상태인지 확인'));
+  body.push(bullet('알림 채널(이메일/Syslog/Webhook) 연결 상태 점검'));
+  body.push(bullet('알림 레벨(정보/주의/위험)별 필터링 설정 확인'));
+  body.push(bullet('알림 수신 담당자 목록 업데이트 여부 확인'));
+
+  body.push(table(
+    ['항목', '확인 방법', '이상 시 조치'],
+    [
+      ['에이전트 오프라인', 'Endpoint Secure > Assets > Agent List에서 오프라인 에이전트 확인', '에이전트 재시작 또는 네트워크 연결 확인'],
+      ['인증 실패 급증', 'IAG > Logs에서 인증 실패 로그 빈도 확인', '공격 의심 시 IP 차단 및 보안팀 통보'],
+      ['이벤트 소스 끊김', 'NDR > Events > Event Sources에서 연결 상태 확인', 'Syslog/API 소스 재연결 및 네트워크 점검'],
+      ['리소스 사용률 초과', 'HCI/SCP 대시보드에서 리소스 풀 사용률 확인', '리소스 추가 또는 VM 마이그레이션 검토'],
+    ],
+    [2200, 3600, 3560]
+  ));
+
+  body.push(pageBreak());
+
+  // Section 2: Weekly/Monthly Inspection
+  body.push(para('2. 주간/월간 정기 점검', 'Heading1'));
+  body.push(para('정기 점검은 업데이트, 백업 검증, 보안 정책 리뷰를 포함한다.', 'BodyText'));
+
+  body.push(para('2.1 업데이트 점검 (주간)', 'Heading2'));
+  body.push(bullet('Endpoint Secure: 시그니처 DB 업데이트 일자 및 버전 확인'));
+  body.push(bullet('IAG: 펌웨어/소프트웨어 업데이트 가능 버전 확인'));
+  body.push(bullet('NDR: 센서/커넥터 펌웨어 및 탐지 규칙 업데이트 확인'));
+  body.push(bullet('HCI / SCP: 펌웨어 패치 및 보안 업데이트 상태 확인'));
+
+  body.push(para('2.2 백업 검증 (주간)', 'Heading2'));
+  body.push(bullet('HCI/SCP: VM 스냅샷 및 설정 백업 존재 여부 확인'));
+  body.push(bullet('IAG: 설정 백업 파일 생성 및 유효성 확인'));
+  body.push(bullet('NDR: 플레이북 및 알림 규칙 설정 내보내기 확인'));
+  body.push(bullet('복원 테스트: 분기 1회 백업 파일 복원 테스트 수행'));
+
+  body.push(para('2.3 보안 정책 리뷰 (월간)', 'Heading2'));
+  body.push(bullet('Endpoint Secure: 보호 정책 예외 목록 리뷰 및 불필요 항목 제거'));
+  body.push(bullet('IAG: 접근 제어 정책, URL 필터링 규칙 정합성 확인'));
+  body.push(bullet('NDR: 인시던트 대응 플레이북 유효성 검증'));
+  body.push(bullet('전체 제품: 감사 로그 내 권한 변경 이력 리뷰'));
+
+  body.push(table(
+    ['주기', '점검 항목', '검증 방법', '담당'],
+    [
+      ['주간', '시그니처/펌웨어 업데이트', '각 제품 콘솔 System/Update 메뉴 확인', '보안 운영'],
+      ['주간', '백업 파일 존재 및 유효성', '백업 저장소에서 파일 목록 확인', '인프라 운영'],
+      ['월간', '보안 정책 예외 목록', '각 제품 정책 메뉴에서 예외 항목 리뷰', '보안 담당'],
+      ['월간', '감사 로그 권한 변경', '시스템 감사 로그에서 사용자 권한 변경 이력 검토', '보안 담당'],
+    ],
+    [1200, 2400, 3560, 2200]
+  ));
+
+  body.push(pageBreak());
+
+  // Section 3: Incident Response
+  body.push(para('3. 장애 대응 절차', 'Heading1'));
+  body.push(para('장애 발생 시 신속한 알림 처리, 벤더 지원, 복구 절차를 따른다.', 'BodyText'));
+
+  body.push(para('3.1 알림 처리', 'Heading2'));
+  body.push(bullet('1단계: 알림 수신 및 분류 (정보/주의/위험 레벨 확인)'));
+  body.push(bullet('2단계: 위험 레벨 알림은 즉시 담당자에게 통보'));
+  body.push(bullet('3단계: 알림 상세 정보(제품, 메뉴, 대상, 발생 시간) 기록'));
+  body.push(bullet('4단계: 자가 처리 가능한 경우 즉시 조치, 불가능 시 벤더 지원 요청'));
+
+  body.push(para('3.2 벤더 지원 요청', 'Heading2'));
+  body.push(bullet('Sangfor 기술 지원 포털(tac.sangfor.com)을 통해 지원 요청'));
+  body.push(bullet('필요 정보: 제품 버전, 시리얼 번호, 장애 현상, 재현 절차, 로그 파일'));
+  body.push(bullet('긴급 장애: Sangfor TAC 핫라인 연락'));
+  body.push(bullet('지원 티켓 상태 모니터링 및 추가 정보 제공'));
+
+  body.push(para('3.3 복구 절차', 'Heading2'));
+  body.push(bullet('1단계: 장애 원인 분석 및 영향 범위 파악'));
+  body.push(bullet('2단계: 백업/스냅샷에서 복원 또는 설정 롤백'));
+  body.push(bullet('3단계: 복구 후 정상 동작 검증'));
+  body.push(bullet('4단계: 장애 보고서 작성 및 레슨러닝 기록'));
+
+  body.push(table(
+    ['장애 유형', '초기 대응', '복구 방법', 'RTO 목표'],
+    [
+      ['에이전트 오프라인 다수', '에이전트 상태 확인 → 네트워크 점검', '에이전트 재배포 또는 네트워크 복구', '4시간'],
+      ['IAG 인증 서비스 장애', '인증 소스 상태 확인 → 로그 분석', '인증 소스 재시작 또는 설정 롤백', '2시간'],
+      ['NDR 인시던트 폭증', '알림 필터링 → 인시던트 분류', '플레이북 수정 또는 규칙 조정', '1시간'],
+      ['HCI 클러스터 장애', '노드 상태 확인 → HA 페일오버', '노드 복구 또는 리소스 재배치', '2시간'],
+    ],
+    [2200, 2600, 2600, 1960]
+  ));
+
+  body.push(pageBreak());
+
+  // Section 4: Security Policy Management
+  body.push(para('4. 보안 정책 관리', 'Heading1'));
+  body.push(para('접근 제어, 감사 로그, 정책 변경 관리 절차를 정의한다.', 'BodyText'));
+
+  body.push(para('4.1 접근 제어', 'Heading2'));
+  body.push(bullet('관리자 계정은 최소 권한 원칙 적용'));
+  body.push(bullet('제품별 관리자 역할 분리 (보안 운영, 인프라 운영, 감사)'));
+  body.push(bullet('공유 계정 사용 금지, 개인 계정 사용 필수'));
+  body.push(bullet('비밀번호 정책: 90일 변경 주기, 복잡도 요구사항 적용'));
+  body.push(bullet('VPN/원격 접속 시 다因素 인증(MFA) 적용'));
+
+  body.push(para('4.2 감사 로그', 'Heading2'));
+  body.push(bullet('각 제품의 감사 로그를 중앙 Syslog 서버로 전송'));
+  body.push(bullet('감사 로그 보존 기간: 최소 1년'));
+  body.push(bullet('월간 감사 로그 리뷰 및 이상 이력 식별'));
+  body.push(bullet('감사 로그 무결성 검증(로그 위변조 방지)'));
+
+  body.push(para('4.3 정책 변경 관리', 'Heading2'));
+  body.push(bullet('정책 변경은 반드시 변경 관리 티켓 발급 후 수행'));
+  body.push(bullet('변경 전 현재 설정 백업 필수'));
+  body.push(bullet('변경 후 영향 분석 및 검증 수행'));
+  body.push(bullet('변경 이력 문서화 및 감사 로그 기록'));
+
+  body.push(table(
+    ['관리 항목', '기준', '주기', '담당'],
+    [
+      ['관리자 계정 리뷰', '최소 권한 원칙 적용 여부', '월간', '보안 담당'],
+      ['비밀번호 정책', '90일 변경, 복잡도 요구사항', '상시 (시스템 적용)', '보안 담당'],
+      ['감사 로그 백업', '최소 1년 보존, 무결성 검증', '월간', '인프라 운영'],
+      ['정책 변경 이력', '변경 관리 티켓 연결, 백업 존재', '변경 시마다', '보안 운영'],
+      ['접근 권한 변경', '권한 추가/제거 이력 기록', '월간 리뷰', '보안 담당'],
+    ],
+    [2200, 2800, 1800, 2560]
+  ));
+
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <w:body>
+    ${body.join('\n')}
+    <w:sectPr>
+      <w:pgSz w:w="12240" w:h="15840"/>
+      <w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="708" w:footer="708" w:gutter="0"/>
+    </w:sectPr>
+  </w:body>
+</w:document>`;
+}
+
+export function buildOperationsGuideDocx(input: { outputPath?: string }): DocxBuilderResult {
+  const outDir = input.outputPath
+    ? dirname(input.outputPath)
+    : join(process.cwd(), 'outputs/customer-operations-guide');
+  const docxPath = input.outputPath ?? join(outDir, 'sangfor-operations-guide.docx');
+  const workDir = join(outDir, 'docx-ops-work');
+
+  // Clean and create work directory
+  if (existsSync(workDir)) rmSync(workDir, { recursive: true, force: true });
+  mkdirSync(join(workDir, '_rels'), { recursive: true });
+  mkdirSync(join(workDir, 'word/_rels'), { recursive: true });
+
+  // Write all XML parts
+  writeFileSync(join(workDir, '[Content_Types].xml'), contentTypesXml);
+  writeFileSync(join(workDir, '_rels/.rels'), relsXml);
+  writeFileSync(join(workDir, 'word/document.xml'), buildOperationsGuideDocumentXml());
+  writeFileSync(join(workDir, 'word/styles.xml'), stylesXml);
+  writeFileSync(join(workDir, 'word/numbering.xml'), numberingXml);
+  writeFileSync(join(workDir, 'word/_rels/document.xml.rels'), documentRelsXml);
+
+  // Create docx zip
+  if (existsSync(docxPath)) rmSync(docxPath);
+  execFileSync('zip', ['-qr', docxPath, '.'], { cwd: workDir });
+
+  // Get file size
+  const stat = statSync(docxPath);
+
+  // Cleanup work dir
+  try { rmSync(workDir, { recursive: true, force: true }); } catch { /* ignore */ }
+
+  return {
+    docxPath,
+    size: stat.size,
+    sections: [
+      '1. 일일 모니터링 절차',
+      '1.1 대시보드 확인',
+      '1.2 로그 검토',
+      '1.3 알림 설정 확인',
+      '2. 주간/월간 정기 점검',
+      '2.1 업데이트 점검',
+      '2.2 백업 검증',
+      '2.3 보안 정책 리뷰',
+      '3. 장애 대응 절차',
+      '3.1 알림 처리',
+      '3.2 벤더 지원 요청',
+      '3.3 복구 절차',
+      '4. 보안 정책 관리',
+      '4.1 접근 제어',
+      '4.2 감사 로그',
+      '4.3 정책 변경 관리',
+    ],
+    planId: 'ops-guide-static',
+    totalItems: 0,
+    consoleItems: 0,
+    manualItems: 0,
+  };
+}

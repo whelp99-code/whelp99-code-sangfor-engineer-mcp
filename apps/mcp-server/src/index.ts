@@ -28,6 +28,7 @@ import {
   mapRequirementsToProducts,
   verifyProductChange,
   buildSettingGuideDocx,
+  buildOperationsGuideDocx,
 } from '../../../packages/sangfor-product-adapters/src/index.js';
 import { buildSettingGuidePptx, buildOperationsGuidePptx } from '../../../packages/sangfor-pptx/src/index.js';
 import { captureProductScreenshots } from '../../../packages/sangfor-screenshot/src/index.js';
@@ -93,13 +94,18 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
     inputSchema: { type: 'object', properties: { outputPath: { type: 'string', description: 'Optional output path for the .pptx file' } } },
     handler: (args: { outputPath?: string }) => buildOperationsGuidePptx({ outputPath: args.outputPath })
   },
+  'sangfor.generate_operations_guide_docx': {
+    description: 'Generate a Word (.docx) operations guide for Sangfor products covering daily monitoring, weekly/monthly inspection, incident response, and security policy management.',
+    inputSchema: { type: 'object', properties: { outputPath: { type: 'string', description: 'Optional output path for the .docx file' } } },
+    handler: (args: { outputPath?: string }) => buildOperationsGuideDocx({ outputPath: args.outputPath })
+  },
   'sangfor.capture_screenshots': {
     description: 'Capture screenshots from Sangfor product consoles (EPP, IAG, CC) via Chrome CDP. Connects to the product console, logs in, navigates menus, and saves screenshots.',
     inputSchema: { type: 'object', properties: { product: { type: 'string', enum: ['EPP', 'IAG', 'CC'], description: 'Product to capture screenshots from' }, targetUrl: { type: 'string', description: 'Override target URL' }, username: { type: 'string', description: 'Login username' }, password: { type: 'string', description: 'Login password' }, outputDir: { type: 'string', description: 'Output directory for screenshots' }, headless: { type: 'boolean', description: 'Run Chrome in headless mode' }, dryRun: { type: 'boolean', description: 'Dry-run mode: skip Chrome and just list planned screenshots' } }, required: ['product'] },
     handler: (args: { product: 'EPP' | 'IAG' | 'CC'; targetUrl?: string; username?: string; password?: string; outputDir?: string; headless?: boolean; dryRun?: boolean }) => captureProductScreenshots(args)
   },
   'sangfor.generate_all_guides': {
-    description: 'Generate complete guide set: setting guide (docx + pptx), operations guide (pptx), and optionally capture screenshots. Uses the ITAC Excel as input.',
+    description: 'Generate complete guide set: setting guide (docx + pptx), operations guide (docx + pptx), and optionally capture screenshots. Uses the ITAC Excel as input.',
     inputSchema: { type: 'object', properties: { filePath: { type: 'string', description: 'Path to the ITAC Excel (.xlsx) file' }, outputDir: { type: 'string', description: 'Output directory for all guides' }, captureScreenshots: { type: 'boolean', description: 'Also capture product console screenshots' }, screenshotProducts: { type: 'array', items: { type: 'string' }, description: 'Products to capture screenshots for (EPP, IAG, CC)' } }, required: ['filePath'] },
     handler: async (args: { filePath: string; outputDir?: string; captureScreenshots?: boolean; screenshotProducts?: string[] }) => {
       const outDir = args.outputDir ?? join(process.cwd(), 'outputs');
@@ -114,6 +120,9 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
       try {
         results.operationsPptx = await buildOperationsGuidePptx({ outputPath: join(outDir, 'Sangfor_운영가이드_MCP.pptx') });
       } catch (err) { results.operationsPptxError = String(err); }
+      try {
+        results.operationsDocx = buildOperationsGuideDocx({ outputPath: join(outDir, 'Sangfor_운영가이드_MCP.docx') });
+      } catch (err) { results.operationsDocxError = String(err); }
       if (args.captureScreenshots) {
         const products = args.screenshotProducts ?? ['EPP', 'IAG', 'CC'];
         results.screenshots = {};
