@@ -24,7 +24,8 @@ import {
   generateProductChangePlan,
   importExcelRequirementList,
   mapRequirementsToProducts,
-  verifyProductChange
+  verifyProductChange,
+  buildSettingGuideDocx,
 } from '../../../packages/sangfor-product-adapters/src/index.js';
 
 type JsonRpcRequest = { jsonrpc: '2.0'; id?: string | number; method: string; params?: any };
@@ -72,6 +73,11 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
     description: 'Generate a multi-product dry-run change plan from an ITAC-style Excel checklist. Actual mutation remains blocked.',
     inputSchema: { type: 'object', properties: { filePath: { type: 'string' }, rows: { type: 'array', items: { type: 'object' } }, sheetName: { type: 'string' }, prioritizeOnly: { type: 'boolean' } } },
     handler: generateExcelBasedChangePlan
+  },
+  'sangfor.generate_setting_guide_docx': {
+    description: 'Generate a Word (.docx) customer setting guide from an ITAC-style Excel checklist. Produces a formatted document with product tables, manual evidence section, dry-run procedure, and customer action items.',
+    inputSchema: { type: 'object', properties: { filePath: { type: 'string', description: 'Path to the ITAC Excel (.xlsx) file' }, outputPath: { type: 'string', description: 'Optional output path for the .docx file' } }, required: ['filePath'] },
+    handler: (args: { filePath: string; outputPath?: string }) => buildSettingGuideDocx({ filePath: args.filePath, outputPath: args.outputPath })
   },
   'sangfor.dry_run_product_change': {
     description: 'Dry-run a product change plan. WebUI route preview stops before Save/Apply/Delete; API changes produce request previews only.',

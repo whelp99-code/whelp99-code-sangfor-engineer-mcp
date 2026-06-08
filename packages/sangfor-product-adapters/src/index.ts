@@ -3,6 +3,8 @@ import { requiresApprovalForText } from '@sangfor/approval';
 import { executeLiveConsoleAction, readLiveConsoleState } from '@sangfor/operator';
 import { ProductCode, RiskLevel, normalizeProduct, nowId } from '@sangfor/shared';
 
+export { buildSettingGuideDocx, type DocxBuilderInput, type DocxBuilderResult } from './docx-builder.js';
+
 export type AutomationProductCode = 'HCI_SCP' | 'IAG' | 'ENDPOINT_SECURE' | 'NDR';
 export type RequirementProductCode = AutomationProductCode | 'external_or_manual';
 export type AdapterStrategy = 'api-first' | 'webui-first' | 'hybrid';
