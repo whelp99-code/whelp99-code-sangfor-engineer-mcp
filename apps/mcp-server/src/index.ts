@@ -1,4 +1,6 @@
 import readline from 'node:readline';
+import { mkdirSync } from 'node:fs';
+import { join } from 'node:path';
 import { analyzeProject, generateConfigPlan, generateConfigPlanAsync, validateConfigPlan } from '../../../packages/sangfor-planner/src/index.js';
 import { searchManuals, getManualSection } from '../../../packages/sangfor-knowledge/src/index.js';
 import { searchWiki, proposeWikiUpdate, approveWikiUpdate, applyWikiUpdate, applyObsidianWikiUpdate, applyGitHubWikiUpdate } from '../../../packages/sangfor-wiki/src/index.js';
@@ -27,6 +29,8 @@ import {
   verifyProductChange,
   buildSettingGuideDocx,
 } from '../../../packages/sangfor-product-adapters/src/index.js';
+import { buildSettingGuidePptx, buildOperationsGuidePptx } from '../../../packages/sangfor-pptx/src/index.js';
+import { captureProductScreenshots } from '../../../packages/sangfor-screenshot/src/index.js';
 
 type JsonRpcRequest = { jsonrpc: '2.0'; id?: string | number; method: string; params?: any };
 
@@ -78,6 +82,55 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
     description: 'Generate a Word (.docx) customer setting guide from an ITAC-style Excel checklist. Produces a formatted document with product tables, manual evidence section, dry-run procedure, and customer action items.',
     inputSchema: { type: 'object', properties: { filePath: { type: 'string', description: 'Path to the ITAC Excel (.xlsx) file' }, outputPath: { type: 'string', description: 'Optional output path for the .docx file' } }, required: ['filePath'] },
     handler: (args: { filePath: string; outputPath?: string }) => buildSettingGuideDocx({ filePath: args.filePath, outputPath: args.outputPath })
+  },
+  'sangfor.generate_setting_guide_pptx': {
+    description: 'Generate a PowerPoint (.pptx) customer setting guide from an ITAC-style Excel checklist. Produces a formatted presentation with product-specific slides, tables, charts, and dry-run procedures.',
+    inputSchema: { type: 'object', properties: { filePath: { type: 'string', description: 'Path to the ITAC Excel (.xlsx) file' }, outputPath: { type: 'string', description: 'Optional output path for the .pptx file' }, screenshotDir: { type: 'string', description: 'Optional directory containing product screenshots' } }, required: ['filePath'] },
+    handler: (args: { filePath: string; outputPath?: string; screenshotDir?: string }) => buildSettingGuidePptx({ filePath: args.filePath, outputPath: args.outputPath, screenshotDir: args.screenshotDir })
+  },
+  'sangfor.generate_operations_guide_pptx': {
+    description: 'Generate a PowerPoint (.pptx) operations guide for Sangfor products covering daily monitoring, weekly/monthly procedures, incident response, and security policies.',
+    inputSchema: { type: 'object', properties: { outputPath: { type: 'string', description: 'Optional output path for the .pptx file' } } },
+    handler: (args: { outputPath?: string }) => buildOperationsGuidePptx({ outputPath: args.outputPath })
+  },
+  'sangfor.capture_screenshots': {
+    description: 'Capture screenshots from Sangfor product consoles (EPP, IAG, CC) via Chrome CDP. Connects to the product console, logs in, navigates menus, and saves screenshots.',
+    inputSchema: { type: 'object', properties: { product: { type: 'string', enum: ['EPP', 'IAG', 'CC'], description: 'Product to capture screenshots from' }, targetUrl: { type: 'string', description: 'Override target URL' }, username: { type: 'string', description: 'Login username' }, password: { type: 'string', description: 'Login password' }, outputDir: { type: 'string', description: 'Output directory for screenshots' }, headless: { type: 'boolean', description: 'Run Chrome in headless mode' }, dryRun: { type: 'boolean', description: 'Dry-run mode: skip Chrome and just list planned screenshots' } }, required: ['product'] },
+    handler: (args: { product: 'EPP' | 'IAG' | 'CC'; targetUrl?: string; username?: string; password?: string; outputDir?: string; headless?: boolean; dryRun?: boolean }) => captureProductScreenshots(args)
+  },
+  'sangfor.generate_all_guides': {
+    description: 'Generate complete guide set: setting guide (docx + pptx), operations guide (pptx), and optionally capture screenshots. Uses the ITAC Excel as input.',
+    inputSchema: { type: 'object', properties: { filePath: { type: 'string', description: 'Path to the ITAC Excel (.xlsx) file' }, outputDir: { type: 'string', description: 'Output directory for all guides' }, captureScreenshots: { type: 'boolean', description: 'Also capture product console screenshots' }, screenshotProducts: { type: 'array', items: { type: 'string' }, description: 'Products to capture screenshots for (EPP, IAG, CC)' } }, required: ['filePath'] },
+    handler: async (args: { filePath: string; outputDir?: string; captureScreenshots?: boolean; screenshotProducts?: string[] }) => {
+      const outDir = args.outputDir ?? join(process.cwd(), 'outputs');
+      mkdirSync(outDir, { recursive: true });
+      const results: Record<string, unknown> = {};
+      try {
+        results.settingDocx = buildSettingGuideDocx({ filePath: args.filePath, outputPath: join(outDir, 'Sangfor_설정가이드_MCP.docx') });
+      } catch (err) { results.settingDocxError = String(err); }
+      try {
+        results.settingPptx = await buildSettingGuidePptx({ filePath: args.filePath, outputPath: join(outDir, 'Sangfor_설정가이드_MCP.pptx') });
+      } catch (err) { results.settingPptxError = String(err); }
+      try {
+        results.operationsPptx = await buildOperationsGuidePptx({ outputPath: join(outDir, 'Sangfor_운영가이드_MCP.pptx') });
+      } catch (err) { results.operationsPptxError = String(err); }
+      if (args.captureScreenshots) {
+        const products = args.screenshotProducts ?? ['EPP', 'IAG', 'CC'];
+        results.screenshots = {};
+        for (const product of products) {
+          try {
+            (results.screenshots as Record<string, unknown>)[product] = await captureProductScreenshots({
+              product: product as 'EPP' | 'IAG' | 'CC',
+              outputDir: join(outDir, 'screenshots', product),
+              dryRun: true,
+            });
+          } catch (err) {
+            (results.screenshots as Record<string, unknown>)[product] = { error: String(err) };
+          }
+        }
+      }
+      return results;
+    }
   },
   'sangfor.dry_run_product_change': {
     description: 'Dry-run a product change plan. WebUI route preview stops before Save/Apply/Delete; API changes produce request previews only.',

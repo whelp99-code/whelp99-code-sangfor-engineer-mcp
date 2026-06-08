@@ -58,6 +58,15 @@
       ],
       "@sangfor/shared": [
         "packages/shared/src/index.ts"
+      ],
+      "@sangfor/pptx": [
+        "packages/sangfor-pptx/src/index.ts"
+      ],
+      "@sangfor/screenshot": [
+        "packages/sangfor-screenshot/src/index.ts"
+      ],
+      "@sangfor/chrome": [
+        "packages/sangfor-chrome/src/index.ts"
       ]
     },
     "baseUrl": "."

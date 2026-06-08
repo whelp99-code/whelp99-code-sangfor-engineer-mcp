@@ -1,0 +1,13 @@
+{
+  "name": "@sangfor/pptx",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "dependencies": {
+    "@sangfor/product-adapters": "workspace:*",
+    "@sangfor/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "pptxgenjs": "^3.12.0"
+  }
+}
