@@ -38,11 +38,23 @@ export async function getEmbeddingProvider(): Promise<import('./embedding-provid
     cachedProvider = new HashEmbeddingProvider();
     return cachedProvider;
   }
-  if (requested === 'litellm') {
-    cachedProvider = await createLitellmWithFallback();
-    return cachedProvider;
+  const hashProvider = new HashEmbeddingProvider();
+  const timeoutMs = Number(process.env.SANGFOR_EMBEDDING_INIT_TIMEOUT_MS ?? '5000');
+  
+  try {
+    if (requested === 'litellm') {
+      const init = createLitellmWithFallback();
+      const result = await Promise.race([init, new Promise<null>((_, rej) => setTimeout(() => rej(new Error('init-timeout')), timeoutMs))]);
+      if (result) { cachedProvider = result; return cachedProvider; }
+    } else {
+      const init = createRapidMlxWithFallback();
+      const result = await Promise.race([init, new Promise<null>((_, rej) => setTimeout(() => rej(new Error('init-timeout')), timeoutMs))]);
+      if (result) { cachedProvider = result; return cachedProvider; }
+    }
+  } catch {
+    // Fall through to hash
   }
-  cachedProvider = await createRapidMlxWithFallback();
+  cachedProvider = hashProvider;
   return cachedProvider;
 }
 

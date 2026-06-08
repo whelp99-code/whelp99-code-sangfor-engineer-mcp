@@ -263,11 +263,15 @@ export async function ragSearch(input: RagSearchInput): Promise<RagSearchHit[]> 
   const reranker = createMimoRerankFromEnv();
   if (reranker && pool.length > 1) {
     try {
-      const rankedIds = await reranker.rerank(
-        input.query,
-        pool.map(p => ({ id: p.id, text: p.text, title: p.title })),
-        finalLimit
-      );
+      const rerankTimeoutMs = Number(process.env.SANGFOR_MIMO_RERANK_TIMEOUT_MS ?? '5000');
+      const rankedIds = await Promise.race([
+        reranker.rerank(
+          input.query,
+          pool.map(p => ({ id: p.id, text: p.text, title: p.title })),
+          finalLimit
+        ),
+        new Promise<string[]>((_, rej) => setTimeout(() => rej(new Error('rerank-timeout')), rerankTimeoutMs))
+      ]);
       const order = new Map(rankedIds.map((id, i) => [id, rankedIds.length - i]));
       pool = pool
         .filter(p => order.has(p.id))
