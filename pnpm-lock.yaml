@@ -46,31 +46,115 @@ importers:
 
   apps/operator-console: {}
 
-  packages/sangfor-approval: {}
+  packages/sangfor-approval:
+    dependencies:
+      '@sangfor/shared':
+        specifier: workspace:*
+        version: link:../shared
 
-  packages/sangfor-collector: {}
+  packages/sangfor-chrome:
+    dependencies:
+      playwright:
+        specifier: ^1.60.0
+        version: 1.60.0
+
+  packages/sangfor-collector:
+    dependencies:
+      '@sangfor/shared':
+        specifier: workspace:*
+        version: link:../shared
 
   packages/sangfor-evals: {}
 
-  packages/sangfor-evidence: {}
+  packages/sangfor-evidence:
+    dependencies:
+      '@sangfor/shared':
+        specifier: workspace:*
+        version: link:../shared
 
-  packages/sangfor-feedback: {}
+  packages/sangfor-feedback:
+    dependencies:
+      '@sangfor/shared':
+        specifier: workspace:*
+        version: link:../shared
 
-  packages/sangfor-finetune: {}
+  packages/sangfor-finetune:
+    dependencies:
+      '@sangfor/shared':
+        specifier: workspace:*
+        version: link:../shared
 
-  packages/sangfor-knowledge: {}
+  packages/sangfor-knowledge:
+    dependencies:
+      '@sangfor/shared':
+        specifier: workspace:*
+        version: link:../shared
 
-  packages/sangfor-operator: {}
+  packages/sangfor-operator:
+    dependencies:
+      '@sangfor/approval':
+        specifier: workspace:*
+        version: link:../sangfor-approval
+      '@sangfor/chrome':
+        specifier: workspace:*
+        version: link:../sangfor-chrome
+      '@sangfor/shared':
+        specifier: workspace:*
+        version: link:../shared
+      playwright:
+        specifier: ^1.52.0
+        version: 1.60.0
 
-  packages/sangfor-planner: {}
+  packages/sangfor-planner:
+    dependencies:
+      '@sangfor/approval':
+        specifier: workspace:*
+        version: link:../sangfor-approval
+      '@sangfor/knowledge':
+        specifier: workspace:*
+        version: link:../sangfor-knowledge
+      '@sangfor/rag':
+        specifier: workspace:*
+        version: link:../sangfor-rag
+      '@sangfor/shared':
+        specifier: workspace:*
+        version: link:../shared
+      '@sangfor/wiki':
+        specifier: workspace:*
+        version: link:../sangfor-wiki
 
-  packages/sangfor-product-adapters: {}
+  packages/sangfor-product-adapters:
+    dependencies:
+      '@sangfor/shared':
+        specifier: workspace:*
+        version: link:../shared
 
-  packages/sangfor-rag: {}
+  packages/sangfor-rag:
+    dependencies:
+      '@sangfor/shared':
+        specifier: workspace:*
+        version: link:../shared
 
-  packages/sangfor-verifier: {}
+  packages/sangfor-verifier:
+    dependencies:
+      '@sangfor/approval':
+        specifier: workspace:*
+        version: link:../sangfor-approval
+      '@sangfor/chrome':
+        specifier: workspace:*
+        version: link:../sangfor-chrome
+      '@sangfor/planner':
+        specifier: workspace:*
+        version: link:../sangfor-planner
+      '@sangfor/shared':
+        specifier: workspace:*
+        version: link:../shared
 
-  packages/sangfor-wiki: {}
+  packages/sangfor-wiki:
+    dependencies:
+      '@sangfor/shared':
+        specifier: workspace:*
+        version: link:../shared
 
   packages/shared: {}
 

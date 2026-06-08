@@ -1,1 +1,12 @@
-{"name":"@sangfor/operator","type":"module","main":"src/index.ts"}
+{
+  "name": "@sangfor/operator",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "dependencies": {
+    "@sangfor/approval": "workspace:*",
+    "@sangfor/chrome": "workspace:*",
+    "@sangfor/shared": "workspace:*",
+    "playwright": "^1.52.0"
+  }
+}

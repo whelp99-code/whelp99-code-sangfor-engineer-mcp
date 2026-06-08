@@ -1,1 +1,8 @@
-{"name":"@sangfor/feedback","type":"module","main":"src/index.ts"}
+{
+  "name": "@sangfor/feedback",
+  "type": "module",
+  "main": "src/index.ts",
+  "dependencies": {
+    "@sangfor/shared": "workspace:*"
+  }
+}

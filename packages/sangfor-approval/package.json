@@ -1,1 +1,9 @@
-{"name":"@sangfor/approval","type":"module","main":"src/index.ts"}
+{
+  "name": "@sangfor/approval",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "dependencies": {
+    "@sangfor/shared": "workspace:*"
+  }
+}

@@ -1,1 +1,8 @@
-{"name":"@sangfor/product-adapters","type":"module","main":"src/index.ts"}
+{
+  "name": "@sangfor/product-adapters",
+  "type": "module",
+  "main": "src/index.ts",
+  "dependencies": {
+    "@sangfor/shared": "workspace:*"
+  }
+}

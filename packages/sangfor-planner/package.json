@@ -1,1 +1,12 @@
-{"name":"@sangfor/planner","type":"module","main":"src/index.ts"}
+{
+  "name": "@sangfor/planner",
+  "type": "module",
+  "main": "src/index.ts",
+  "dependencies": {
+    "@sangfor/shared": "workspace:*",
+    "@sangfor/knowledge": "workspace:*",
+    "@sangfor/wiki": "workspace:*",
+    "@sangfor/rag": "workspace:*",
+    "@sangfor/approval": "workspace:*"
+  }
+}

@@ -1,1 +1,12 @@
-{"name":"@sangfor/verifier","type":"module","main":"src/index.ts"}
+{
+  "name": "@sangfor/verifier",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "dependencies": {
+    "@sangfor/shared": "workspace:*",
+    "@sangfor/chrome": "workspace:*",
+    "@sangfor/planner": "workspace:*",
+    "@sangfor/approval": "workspace:*"
+  }
+}
