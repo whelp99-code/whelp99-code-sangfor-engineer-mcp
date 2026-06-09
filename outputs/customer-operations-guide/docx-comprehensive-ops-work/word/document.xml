@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
-  <w:body>
-    <w:p><w:pPr><w:pStyle w:val="TitleText"/></w:pPr><w:r><w:t xml:space="preserve">Sangfor 제품 종합 운영 메뉴얼</w:t></w:r></w:p>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">
+<w:body>
+<w:p><w:pPr><w:pStyle w:val="TitleText"/></w:pPr><w:r><w:t xml:space="preserve">Sangfor 제품 종합 운영 메뉴얼</w:t></w:r></w:p>
 <w:p><w:pPr><w:pStyle w:val="SubtitleText"/></w:pPr><w:r><w:t xml:space="preserve">일일/주간/월간 운영 절차, 장애 대응, 백업/복구, 트러블슈팅 종합 안내</w:t></w:r></w:p>
 <w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:r><w:t xml:space="preserve">1. 일일 모니터링 절차</w:t></w:r></w:p>
 <w:p><w:pPr><w:pStyle w:val="Heading2"/></w:pPr><w:r><w:t xml:space="preserve">1a. 아침 점검 (09:00)</w:t></w:r></w:p>
@@ -845,9 +845,6 @@
     <w:p><w:pPr><w:pStyle w:val="TableText"/></w:pPr><w:r><w:rPr><w:sz w:val="18"/></w:rPr><w:t xml:space="preserve">알림 채널 설정 확인, 스팸함 확인</w:t></w:r></w:p>
   </w:tc></w:tr>
   </w:tbl>
-    <w:sectPr>
-      <w:pgSz w:w="12240" w:h="15840"/>
-      <w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="708" w:footer="708" w:gutter="0"/>
-    </w:sectPr>
-  </w:body>
+<w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="708" w:footer="708" w:gutter="0"/></w:sectPr>
+</w:body>
 </w:document>

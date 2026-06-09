@@ -702,6 +702,10 @@ function buildComprehensiveDocumentXml(plan: any, screenshotDir?: string): { doc
     [2400, 4200, 2760]
   ));
 
+  // EPP 초기 설정 스크린샷
+  pushImg('epp', '01_dashboard.png', '그림 5-1. EPP 관리 콘솔 대시보드');
+  pushImg('epp', '07_agent_deploy.png', '그림 5-2. EPP 에이전트 배포 화면');
+
   // IAG 초기 설정
   body.push(para('5b. IAG 초기 설정', 'Heading2'));
   body.push(table(
@@ -718,6 +722,9 @@ function buildComprehensiveDocumentXml(plan: any, screenshotDir?: string): { doc
     [2400, 4200, 2760]
   ));
 
+  // IAG 초기 설정 스크린샷
+  pushImg('iag', '00_home.png', '그림 5-3. IAG 관리 콘솔 홈 화면');
+
   // CC 초기 설정
   body.push(para('5c. Cyber Command 초기 설정', 'Heading2'));
   body.push(table(
@@ -732,6 +739,9 @@ function buildComprehensiveDocumentXml(plan: any, screenshotDir?: string): { doc
     ],
     [2400, 4200, 2760]
   ));
+
+  // CC 초기 설정 스크린샷
+  pushImg('cc', '01_dashboard.png', '그림 5-4. CC 대시보드');
 
   // 6. 제품별 상세 설정 가이드
   body.push(pageBreak());
@@ -752,6 +762,11 @@ function buildComprehensiveDocumentXml(plan: any, screenshotDir?: string): { doc
     [1600, 2000, 3200, 2560]
   ));
 
+  // EPP 상세 설정 스크린샷
+  pushImg('epp', '02_app_control.png', '그림 6-1. EPP App Control 설정');
+  pushImg('epp', '03_scan_tasks.png', '그림 6-2. EPP Malware Scan 설정');
+  pushImg('epp', '05_device_control.png', '그림 6-3. EPP Device Control 설정');
+
   body.push(para('6b. IAG 상세 설정', 'Heading2'));
   body.push(table(
     ['설정 영역', '세부 항목', '설명', '권장값'],
@@ -767,6 +782,11 @@ function buildComprehensiveDocumentXml(plan: any, screenshotDir?: string): { doc
     [1600, 2000, 3200, 2560]
   ));
 
+  // IAG 상세 설정 스크린샷
+  pushImg('iag', '01_dlp_policies.png', '그림 6-4. IAG DLP 정책 설정');
+  pushImg('iag', '03_access_policy.png', '그림 6-5. IAG NAC 접근 정책');
+  pushImg('iag', '04_endpoint_compliance.png', '그림 6-6. IAG 엔드포인트 인증 설정');
+
   body.push(para('6c. CC 상세 설정', 'Heading2'));
   body.push(table(
     ['설정 영역', '세부 항목', '설명', '권장값'],
@@ -781,6 +801,11 @@ function buildComprehensiveDocumentXml(plan: any, screenshotDir?: string): { doc
     ],
     [1600, 2000, 3200, 2560]
   ));
+
+  // CC 상세 설정 스크린샷
+  pushImg('cc', '03_threats.png', '그림 6-7. CC 위협 탐지');
+  pushImg('cc', '04_anomalies.png', '그림 6-8. CC UEBA 이상 탐지');
+  pushImg('cc', '05_response.png', '그림 6-9. CC SOAR 자동 대응');
 
   // 7. 운영 절차 상세
   body.push(pageBreak());
@@ -906,18 +931,10 @@ function buildComprehensiveDocumentXml(plan: any, screenshotDir?: string): { doc
   body.push(bullet('Sangfor 기술 지원: support@sangfor.com'));
   body.push(bullet('긴급 지원 핫라인: 상황실 연락'));
   body.push(bullet('티켓팅: 지원 포털에서 이슈 등록'));
-  body.push(bullet('원격 지원: Sangfor 엔지니어 원격 접속 협조'));
+  body.push(para('원격 지원: Sangfor 엔지니어 원격 접속 협조'));
 
-  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
-  <w:body>
-    ${body.join('\n')}
-    <w:sectPr>
-      <w:pgSz w:w="12240" w:h="15840"/>
-      <w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="708" w:footer="708" w:gutter="0"/>
-    </w:sectPr>
-  </w:body>
-</w:document>`;
+  const documentXml = wrapDocumentXml(body.join('\n'), DOC_NAMESPACES);
+  return { documentXml, images };
 }
 
 export function buildComprehensiveSettingGuideDocx(input: DocxBuilderInput): DocxBuilderResult {
@@ -932,12 +949,15 @@ export function buildComprehensiveSettingGuideDocx(input: DocxBuilderInput): Doc
   mkdirSync(join(workDir, '_rels'), { recursive: true });
   mkdirSync(join(workDir, 'word/_rels'), { recursive: true });
 
+  const { documentXml, images } = buildComprehensiveDocumentXml(plan, input.screenshotDir);
+
   writeFileSync(join(workDir, '[Content_Types].xml'), contentTypesXml);
   writeFileSync(join(workDir, '_rels/.rels'), relsXml);
-  writeFileSync(join(workDir, 'word/document.xml'), buildComprehensiveDocumentXml(plan));
+  writeFileSync(join(workDir, 'word/document.xml'), documentXml);
   writeFileSync(join(workDir, 'word/styles.xml'), stylesXml);
   writeFileSync(join(workDir, 'word/numbering.xml'), numberingXml);
-  writeFileSync(join(workDir, 'word/_rels/document.xml.rels'), documentRelsXml);
+  writeFileSync(join(workDir, 'word/_rels/document.xml.rels'), buildDocumentRelsXml(images));
+  copyImagesToWorkDir(workDir, images);
 
   if (existsSync(docxPath)) rmSync(docxPath);
   execFileSync('zip', ['-qr', docxPath, '.'], { cwd: workDir });
@@ -963,7 +983,15 @@ export function buildComprehensiveSettingGuideDocx(input: DocxBuilderInput): Doc
 
 // ─── Comprehensive Operations Guide ───────────────────────────────────────────
 
-function buildComprehensiveOpsDocumentXml(): string {
+function buildComprehensiveOpsDocumentXml(screenshotDir?: string): { documentXml: string; images: EmbeddedImage[] } {
+  const images: EmbeddedImage[] = [];
+  let imgIdx = 0;
+  function pushImg(product: string, filename: string, caption: string, height = 3.8): void {
+    if (!screenshotDir) return;
+    const img = tryLoadImage(screenshotDir, product, filename, caption, imgIdx, 'rId' + (imgIdx + 100), height);
+    if (img) { images.push(img); imgIdx++; body.push(addImageToBody(img.relId, img.widthInches, img.heightInches, img.caption, img.imgIdx)); }
+  }
+
   const body: string[] = [];
   body.push(para('Sangfor 제품 종합 운영 메뉴얼', 'TitleText'));
   body.push(para('일일/주간/월간 운영 절차, 장애 대응, 백업/복구, 트러블슈팅 종합 안내', 'SubtitleText'));
@@ -982,6 +1010,11 @@ function buildComprehensiveOpsDocumentXml(): string {
     ],
     [1000, 1600, 4200, 2560]
   ));
+
+  // 모니터링 대시보드 스크린샷
+  pushImg('epp', '01_dashboard.png', '그림 1-1. EPP 대시보드 모니터링');
+  pushImg('iag', '00_home.png', '그림 1-2. IAG 대시보드 모니터링');
+  pushImg('cc', '01_dashboard.png', '그림 1-3. CC 대시보드 모니터링');
 
   body.push(para('1b. 오후 점검 (14:00)', 'Heading2'));
   body.push(table(
@@ -1036,6 +1069,9 @@ function buildComprehensiveOpsDocumentXml(): string {
     ],
     [1200, 1600, 4760, 1800]
   ));
+
+  // 장애 대응 콘솔 스크린샷
+  pushImg('cc', '05_response.png', '그림 4-1. CC SOAR 자동 대응 화면');
 
   // 5. 백업/복구
   body.push(pageBreak());
@@ -1106,19 +1142,11 @@ function buildComprehensiveOpsDocumentXml(): string {
     [2400, 3200, 3760]
   ));
 
-  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
-  <w:body>
-    ${body.join('\n')}
-    <w:sectPr>
-      <w:pgSz w:w="12240" w:h="15840"/>
-      <w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="708" w:footer="708" w:gutter="0"/>
-    </w:sectPr>
-  </w:body>
-</w:document>`;
+  const documentXml = wrapDocumentXml(body.join('\n'), DOC_NAMESPACES);
+  return { documentXml, images };
 }
 
-export function buildComprehensiveOperationsGuideDocx(input: { outputPath?: string }): DocxBuilderResult {
+export function buildComprehensiveOperationsGuideDocx(input: { outputPath?: string; screenshotDir?: string }): DocxBuilderResult {
   const outDir = input.outputPath
     ? dirname(input.outputPath)
     : join(process.cwd(), 'outputs/customer-operations-guide');
@@ -1129,12 +1157,15 @@ export function buildComprehensiveOperationsGuideDocx(input: { outputPath?: stri
   mkdirSync(join(workDir, '_rels'), { recursive: true });
   mkdirSync(join(workDir, 'word/_rels'), { recursive: true });
 
+  const { documentXml, images } = buildComprehensiveOpsDocumentXml(input.screenshotDir);
+
   writeFileSync(join(workDir, '[Content_Types].xml'), contentTypesXml);
   writeFileSync(join(workDir, '_rels/.rels'), relsXml);
-  writeFileSync(join(workDir, 'word/document.xml'), buildComprehensiveOpsDocumentXml());
+  writeFileSync(join(workDir, 'word/document.xml'), documentXml);
   writeFileSync(join(workDir, 'word/styles.xml'), stylesXml);
   writeFileSync(join(workDir, 'word/numbering.xml'), numberingXml);
-  writeFileSync(join(workDir, 'word/_rels/document.xml.rels'), documentRelsXml);
+  writeFileSync(join(workDir, 'word/_rels/document.xml.rels'), buildDocumentRelsXml(images));
+  copyImagesToWorkDir(workDir, images);
 
   if (existsSync(docxPath)) rmSync(docxPath);
   execFileSync('zip', ['-qr', docxPath, '.'], { cwd: workDir });

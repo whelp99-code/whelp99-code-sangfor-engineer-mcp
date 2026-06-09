@@ -103,13 +103,13 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
   },
   'sangfor.generate_comprehensive_setting_guide_docx': {
     description: 'Generate a comprehensive Word (.docx) customer setting guide with detailed setup procedures, product-specific configuration, operational steps, security policies, backup/recovery, and troubleshooting. Much more detailed than the basic setting guide.',
-    inputSchema: { type: 'object', properties: { filePath: { type: 'string', description: 'Path to the ITAC Excel (.xlsx) file' }, outputPath: { type: 'string', description: 'Optional output path for the .docx file' } }, required: ['filePath'] },
-    handler: (args: { filePath: string; outputPath?: string }) => buildComprehensiveSettingGuideDocx({ filePath: args.filePath, outputPath: args.outputPath })
+    inputSchema: { type: 'object', properties: { filePath: { type: 'string', description: 'Path to the ITAC Excel (.xlsx) file' }, outputPath: { type: 'string', description: 'Optional output path for the .docx file' }, screenshotDir: { type: 'string', description: 'Optional directory containing product screenshots (outputs/final_images)' } }, required: ['filePath'] },
+    handler: (args: { filePath: string; outputPath?: string; screenshotDir?: string }) => buildComprehensiveSettingGuideDocx({ filePath: args.filePath, outputPath: args.outputPath, screenshotDir: args.screenshotDir })
   },
   'sangfor.generate_comprehensive_operations_guide_docx': {
     description: 'Generate a comprehensive Word (.docx) operations guide covering detailed daily/weekly/monthly procedures, incident response, backup/recovery, security policy management, performance monitoring, and troubleshooting FAQ.',
-    inputSchema: { type: 'object', properties: { outputPath: { type: 'string', description: 'Optional output path for the .docx file' } } },
-    handler: (args: { outputPath?: string }) => buildComprehensiveOperationsGuideDocx({ outputPath: args.outputPath })
+    inputSchema: { type: 'object', properties: { outputPath: { type: 'string', description: 'Optional output path for the .docx file' }, screenshotDir: { type: 'string', description: 'Optional directory containing product screenshots (outputs/final_images)' } } },
+    handler: (args: { outputPath?: string; screenshotDir?: string }) => buildComprehensiveOperationsGuideDocx({ outputPath: args.outputPath, screenshotDir: args.screenshotDir })
   },
   'sangfor.capture_screenshots': {
     description: 'Capture screenshots from Sangfor product consoles (EPP, IAG, CC) via Chrome CDP. Connects to the product console, logs in, navigates menus, and saves screenshots.',
@@ -118,9 +118,10 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
   },
   'sangfor.generate_all_guides': {
     description: 'Generate complete guide set: setting guide (docx + pptx), operations guide (docx + pptx), and optionally capture screenshots. Uses the ITAC Excel as input.',
-    inputSchema: { type: 'object', properties: { filePath: { type: 'string', description: 'Path to the ITAC Excel (.xlsx) file' }, outputDir: { type: 'string', description: 'Output directory for all guides' }, captureScreenshots: { type: 'boolean', description: 'Also capture product console screenshots' }, screenshotProducts: { type: 'array', items: { type: 'string' }, description: 'Products to capture screenshots for (EPP, IAG, CC)' } }, required: ['filePath'] },
-    handler: async (args: { filePath: string; outputDir?: string; captureScreenshots?: boolean; screenshotProducts?: string[] }) => {
+    inputSchema: { type: 'object', properties: { filePath: { type: 'string', description: 'Path to the ITAC Excel (.xlsx) file' }, outputDir: { type: 'string', description: 'Output directory for all guides' }, screenshotDir: { type: 'string', description: 'Directory containing product screenshots (default: outputs/final_images)' }, captureScreenshots: { type: 'boolean', description: 'Also capture product console screenshots' }, screenshotProducts: { type: 'array', items: { type: 'string' }, description: 'Products to capture screenshots for (EPP, IAG, CC)' } }, required: ['filePath'] },
+    handler: async (args: { filePath: string; outputDir?: string; screenshotDir?: string; captureScreenshots?: boolean; screenshotProducts?: string[] }) => {
       const outDir = args.outputDir ?? join(process.cwd(), 'outputs');
+      const screenshotDir = args.screenshotDir ?? join(process.cwd(), 'outputs', 'final_images');
       mkdirSync(outDir, { recursive: true });
       const results: Record<string, unknown> = {};
       try {
@@ -136,7 +137,7 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
         results.operationsDocx = buildOperationsGuideDocx({ outputPath: join(outDir, 'Sangfor_운영가이드_MCP.docx') });
       } catch (err) { results.operationsDocxError = String(err); }
       try {
-        results.comprehensiveSettingDocx = buildComprehensiveSettingGuideDocx({ filePath: args.filePath, outputPath: join(outDir, 'Sangfor_설정가이드_v6_종합메뉴얼.docx') });
+        results.comprehensiveSettingDocx = buildComprehensiveSettingGuideDocx({ filePath: args.filePath, outputPath: join(outDir, 'Sangfor_설정가이드_v6_종합메뉴얼.docx'), screenshotDir });
       } catch (err) { results.comprehensiveSettingDocxError = String(err); }
       try {
         results.comprehensiveOpsDocx = buildComprehensiveOperationsGuideDocx({ outputPath: join(outDir, 'Sangfor_운영가이드_v6_종합메뉴얼.docx') });
