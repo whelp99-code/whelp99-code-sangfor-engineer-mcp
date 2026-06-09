@@ -3,7 +3,7 @@ import { requiresApprovalForText } from '@sangfor/approval';
 import { executeLiveConsoleAction, readLiveConsoleState } from '@sangfor/operator';
 import { ProductCode, RiskLevel, normalizeProduct, nowId } from '@sangfor/shared';
 
-export { buildSettingGuideDocx, buildOperationsGuideDocx, type DocxBuilderInput, type DocxBuilderResult } from './docx-builder.js';
+export { buildSettingGuideDocx, buildOperationsGuideDocx, buildComprehensiveSettingGuideDocx, buildComprehensiveOperationsGuideDocx, type DocxBuilderInput, type DocxBuilderResult } from './docx-builder.js';
 
 export type AutomationProductCode = 'HCI_SCP' | 'IAG' | 'ENDPOINT_SECURE' | 'NDR';
 export type RequirementProductCode = AutomationProductCode | 'external_or_manual';
@@ -204,12 +204,14 @@ const IAG_WEBUI_ROUTES = [
 ];
 
 const ENDPOINT_SECURE_WEBUI_ROUTES = [
-  'WEBUI GET Dashboard > Endpoint Status',
-  'WEBUI GET Assets > Endpoint/Agent List',
-  'WEBUI GET Policy > Malware/Ransomware Protection',
-  'WEBUI GET Policy > Exceptions',
-  'WEBUI GET System > Update Management',
-  'WEBUI GET Deployment > Agent Deployment'
+  'WEBUI GET Dashboard (Home) > Agent Status',
+  'WEBUI GET Defense > Malware Scan',
+  'WEBUI GET Policies > App Control',
+  'WEBUI GET Policies > General Policies > Endpoint Control > USB Device Control',
+  'WEBUI GET Detection and Response > Security Events',
+  'WEBUI GET Endpoints > Endpoint Inventory',
+  'WEBUI GET System > Agent Deployment',
+  'WEBUI GET System > Data Sync > Syslog Reporting'
 ];
 
 const NDR_API_ENDPOINTS = [
@@ -279,17 +281,23 @@ const ADAPTERS: Record<AutomationProductCode, ProductAdapter> = {
     apiLikely: false,
     apiCatalogStatus: 'ready',
     menuRoutes: [
-      'Dashboard > Endpoint Status',
-      'Assets > Endpoint/Agent List',
-      'Policy > Malware/Ransomware Protection',
-      'Policy > Exceptions',
-      'System > Update Management',
-      'Deployment > Agent Deployment'
+      'Dashboard (Home)',
+      'Detection and Response > Security Events',
+      'Defense > Malware Scan',
+      'Endpoints > Endpoint Inventory',
+      'Policies > App Control',
+      'Policies > General Policies > Endpoint Control > USB Device Control',
+      'System > Agent Deployment',
+      'System > Data Sync > Syslog Reporting'
     ],
     capabilities: [
-      capability('endpoint_inventory', 'Endpoint, agent and update status collection', ['license', 'endpoint_agent', 'update_status'], ['endpoint', 'agent', 'online', 'offline', 'update'], 'low', false, ['Assets', 'Endpoint/Agent List'], ENDPOINT_SECURE_WEBUI_ROUTES),
-      capability('protection_policy', 'Protection policy rollout planning', ['policy', 'malware_ransomware', 'exception_list'], ['policy', 'monitor', 'enforce', 'malware', 'ransomware', 'exception'], 'high', true, ['Policy', 'Malware/Ransomware Protection'], ENDPOINT_SECURE_WEBUI_ROUTES),
-      capability('agent_deployment', 'Agent deployment planning', ['endpoint_agent', 'policy'], ['deploy', 'deployment', 'install', 'agent', 'agent rollout'], 'high', true, ['Deployment', 'Agent Deployment'], ENDPOINT_SECURE_WEBUI_ROUTES)
+      capability('endpoint_inventory', 'Endpoint, agent and update status collection', ['license', 'endpoint_agent', 'update_status'], ['endpoint', 'agent', 'online', 'offline', 'update', '에이전트', '설치'], 'low', false, ['Dashboard (Home)'], ENDPOINT_SECURE_WEBUI_ROUTES),
+      capability('protection_policy', 'Anti-malware scan and protection policy', ['policy', 'malware_ransomware', 'exception_list'], ['policy', 'malware', 'ransomware', 'scan', 'anti-virus', 'antivirus', 'engine update', '검사', '엔진'], 'high', true, ['Defense', 'Malware Scan'], ENDPOINT_SECURE_WEBUI_ROUTES),
+      capability('app_control', 'Software/application control policy', ['policy', 'software_control'], ['software control', 'unauthorized software', 'application', 'app control', '소프트웨어', '통제'], 'high', true, ['Policies', 'App Control'], ENDPOINT_SECURE_WEBUI_ROUTES),
+      capability('device_control', 'USB and device control policy', ['policy', 'device_control'], ['device control', 'usb', 'storage media', '저장매체', 'usb device'], 'high', true, ['Policies', 'General Policies', 'Endpoint Control', 'USB Device Control'], ENDPOINT_SECURE_WEBUI_ROUTES),
+      capability('security_events', 'Security event logs and audit trail', ['logs', 'security_events', 'audit'], ['log', 'event', 'audit', 'detection', '보안 이벤트', '로그', '감사'], 'low', false, ['Detection and Response', 'Security Events'], ENDPOINT_SECURE_WEBUI_ROUTES),
+      capability('agent_deployment', 'Agent deployment planning', ['endpoint_agent', 'policy'], ['deploy', 'deployment', 'install', 'agent', 'agent rollout', '배포'], 'high', true, ['System', 'Agent Deployment'], ENDPOINT_SECURE_WEBUI_ROUTES),
+      capability('syslog_export', 'Syslog/SIEM log forwarding', ['logs', 'syslog', 'siem'], ['syslog', 'siem', 'log export', 'data sync', '로그 전송'], 'medium', false, ['System', 'Data Sync', 'Syslog Reporting'], ENDPOINT_SECURE_WEBUI_ROUTES)
     ]
   },
   NDR: {
@@ -695,8 +703,20 @@ function directCapability(adapter: ProductAdapter, value: string): ProductCapabi
   if (adapter.product === 'HCI_SCP' && hasAny(['drs', 'ha/drs', 'high availability', 'resource pool'])) {
     return adapter.capabilities.find(cap => cap.id === 'ha_drs');
   }
-  if (adapter.product === 'ENDPOINT_SECURE' && hasAny(['deploy', 'deployment', 'install', 'rollout'])) {
+  if (adapter.product === 'ENDPOINT_SECURE' && hasAny(['deploy', 'deployment', 'install', 'rollout', '배포'])) {
     return adapter.capabilities.find(cap => cap.id === 'agent_deployment');
+  }
+  if (adapter.product === 'ENDPOINT_SECURE' && hasAny(['device control', 'usb', 'storage media', '저장매체'])) {
+    return adapter.capabilities.find(cap => cap.id === 'device_control');
+  }
+  if (adapter.product === 'ENDPOINT_SECURE' && hasAny(['software control', 'unauthorized software', 'application control', 'app control', '소프트웨어'])) {
+    return adapter.capabilities.find(cap => cap.id === 'app_control');
+  }
+  if (adapter.product === 'ENDPOINT_SECURE' && hasAny(['anti-virus', 'antivirus', 'malware', 'ransomware', 'engine update', 'scan', '검사', '엔진', '바이러스'])) {
+    return adapter.capabilities.find(cap => cap.id === 'protection_policy');
+  }
+  if (adapter.product === 'ENDPOINT_SECURE' && hasAny(['log', 'event', 'audit', '보안 이벤트', '로그', '감사'])) {
+    return adapter.capabilities.find(cap => cap.id === 'security_events');
   }
   if (adapter.product === 'NDR' && hasAny(['soar', 'playbook', 'response action', 'isolate', 'quarantine'])) {
     return adapter.capabilities.find(cap => cap.id === 'soar_response');
@@ -958,7 +978,11 @@ function settingLabel(capabilityId: string): string {
     internet_policy: 'Internet/URL/application access policy check',
     log_validation: 'Log retention and audit validation',
     endpoint_inventory: 'Endpoint/agent inventory check',
-    protection_policy: 'Malware/ransomware protection policy check',
+    protection_policy: 'Anti-malware scan and protection policy check',
+    app_control: 'Software/application control policy check',
+    device_control: 'USB/device control policy check',
+    security_events: 'Security event logs and audit trail',
+    syslog_export: 'Syslog/SIEM log forwarding check',
     agent_deployment: 'Agent deployment/self-protection check',
     event_source: 'Event source/sensor integration check',
     incident_alert: 'Incident/alert/dashboard validation',

@@ -29,6 +29,8 @@ import {
   verifyProductChange,
   buildSettingGuideDocx,
   buildOperationsGuideDocx,
+  buildComprehensiveSettingGuideDocx,
+  buildComprehensiveOperationsGuideDocx,
 } from '../../../packages/sangfor-product-adapters/src/index.js';
 import { buildSettingGuidePptx, buildOperationsGuidePptx } from '../../../packages/sangfor-pptx/src/index.js';
 import { captureProductScreenshots } from '../../../packages/sangfor-screenshot/src/index.js';
@@ -99,6 +101,16 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
     inputSchema: { type: 'object', properties: { outputPath: { type: 'string', description: 'Optional output path for the .docx file' } } },
     handler: (args: { outputPath?: string }) => buildOperationsGuideDocx({ outputPath: args.outputPath })
   },
+  'sangfor.generate_comprehensive_setting_guide_docx': {
+    description: 'Generate a comprehensive Word (.docx) customer setting guide with detailed setup procedures, product-specific configuration, operational steps, security policies, backup/recovery, and troubleshooting. Much more detailed than the basic setting guide.',
+    inputSchema: { type: 'object', properties: { filePath: { type: 'string', description: 'Path to the ITAC Excel (.xlsx) file' }, outputPath: { type: 'string', description: 'Optional output path for the .docx file' } }, required: ['filePath'] },
+    handler: (args: { filePath: string; outputPath?: string }) => buildComprehensiveSettingGuideDocx({ filePath: args.filePath, outputPath: args.outputPath })
+  },
+  'sangfor.generate_comprehensive_operations_guide_docx': {
+    description: 'Generate a comprehensive Word (.docx) operations guide covering detailed daily/weekly/monthly procedures, incident response, backup/recovery, security policy management, performance monitoring, and troubleshooting FAQ.',
+    inputSchema: { type: 'object', properties: { outputPath: { type: 'string', description: 'Optional output path for the .docx file' } } },
+    handler: (args: { outputPath?: string }) => buildComprehensiveOperationsGuideDocx({ outputPath: args.outputPath })
+  },
   'sangfor.capture_screenshots': {
     description: 'Capture screenshots from Sangfor product consoles (EPP, IAG, CC) via Chrome CDP. Connects to the product console, logs in, navigates menus, and saves screenshots.',
     inputSchema: { type: 'object', properties: { product: { type: 'string', enum: ['EPP', 'IAG', 'CC'], description: 'Product to capture screenshots from' }, targetUrl: { type: 'string', description: 'Override target URL' }, username: { type: 'string', description: 'Login username' }, password: { type: 'string', description: 'Login password' }, outputDir: { type: 'string', description: 'Output directory for screenshots' }, headless: { type: 'boolean', description: 'Run Chrome in headless mode' }, dryRun: { type: 'boolean', description: 'Dry-run mode: skip Chrome and just list planned screenshots' } }, required: ['product'] },
@@ -123,6 +135,12 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
       try {
         results.operationsDocx = buildOperationsGuideDocx({ outputPath: join(outDir, 'Sangfor_운영가이드_MCP.docx') });
       } catch (err) { results.operationsDocxError = String(err); }
+      try {
+        results.comprehensiveSettingDocx = buildComprehensiveSettingGuideDocx({ filePath: args.filePath, outputPath: join(outDir, 'Sangfor_설정가이드_v6_종합메뉴얼.docx') });
+      } catch (err) { results.comprehensiveSettingDocxError = String(err); }
+      try {
+        results.comprehensiveOpsDocx = buildComprehensiveOperationsGuideDocx({ outputPath: join(outDir, 'Sangfor_운영가이드_v6_종합메뉴얼.docx') });
+      } catch (err) { results.comprehensiveOpsDocxError = String(err); }
       if (args.captureScreenshots) {
         const products = args.screenshotProducts ?? ['EPP', 'IAG', 'CC'];
         results.screenshots = {};
