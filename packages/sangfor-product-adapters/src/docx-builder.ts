@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { generateExcelBasedChangePlan, type ExcelWorkPlanItem, type ExcelBasedChangePlan } from './index.js';
 
@@ -8,6 +8,7 @@ import { generateExcelBasedChangePlan, type ExcelWorkPlanItem, type ExcelBasedCh
 export interface DocxBuilderInput {
   filePath: string;
   outputPath?: string;
+  screenshotDir?: string;
 }
 
 export interface DocxBuilderResult {
@@ -50,6 +51,81 @@ function bullet(text: string): string {
 
 function pageBreak(): string {
   return '<w:p><w:r><w:br w:type="page"/></w:r></w:p>';
+}
+
+// ─── Image Embedding Helpers ────────────────────────────────────────────────
+
+const INCH_TO_EMU = 914400;
+const IMG_WIDTH = 6.0; // inches — fits within 9360 twips content width
+
+interface EmbeddedImage {
+  relId: string;
+  mediaFile: string;
+  sourcePath: string;
+  widthInches: number;
+  heightInches: number;
+  caption: string;
+  imgIdx: number;
+}
+
+function addImageToBody(relId: string, widthInches: number, heightInches: number, caption: string, imgIdx: number): string {
+  const cx = Math.round(widthInches * INCH_TO_EMU);
+  const cy = Math.round(heightInches * INCH_TO_EMU);
+  const imgXml = '<w:p><w:pPr><w:pStyle w:val="BodyText"/><w:jc w:val="center"/></w:pPr><w:r><w:drawing>'
+    + '<wp:inline distT="0" distB="0" distL="0" distR="0">'
+    + '<wp:extent cx="' + cx + '" cy="' + cy + '"/>'
+    + '<wp:docPr id="' + imgIdx + '" name="Image ' + imgIdx + '"/>'
+    + '<a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">'
+    + '<pic:pic><pic:nvPicPr>'
+    + '<pic:cNvPr id="' + imgIdx + '" name="Image ' + imgIdx + '"/><pic:cNvPicPr/>'
+    + '</pic:nvPicPr><pic:blipFill>'
+    + '<a:blip r:embed="' + relId + '"/><a:stretch><a:fillRect/></a:stretch>'
+    + '</pic:blipFill><pic:spPr>'
+    + '<a:xfrm><a:off x="0" y="0"/><a:ext cx="' + cx + '" cy="' + cy + '"/></a:xfrm>'
+    + '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>'
+    + '</pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>';
+  const captionXml = '<w:p><w:pPr><w:pStyle w:val="MetaText"/><w:jc w:val="center"/></w:pPr>'
+    + '<w:r><w:rPr><w:i/><w:color w:val="555555"/><w:sz w:val="18"/></w:rPr>'
+    + '<w:t xml:space="preserve">' + esc(caption) + '</w:t></w:r></w:p>';
+  return imgXml + '\n' + captionXml;
+}
+
+function tryLoadImage(screenshotDir: string, product: string, filename: string, caption: string, imgIdx: number, relId: string, heightInches = 3.8): EmbeddedImage | null {
+  const sourcePath = join(screenshotDir, product, filename);
+  if (!existsSync(sourcePath)) return null;
+  return { relId, mediaFile: product + '_' + filename, sourcePath, widthInches: IMG_WIDTH, heightInches, caption, imgIdx };
+}
+
+function buildDocumentRelsXml(images: EmbeddedImage[]): string {
+  if (images.length === 0) return documentRelsXml;
+  const rels = images.map(img =>
+    '<Relationship Id="' + img.relId + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/' + img.mediaFile + '"/>'
+  ).join('\n    ');
+  return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+    + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">\n    '
+    + rels + '\n</Relationships>';
+}
+
+function copyImagesToWorkDir(workDir: string, images: EmbeddedImage[]): void {
+  if (images.length === 0) return;
+  const mediaDir = join(workDir, 'word', 'media');
+  mkdirSync(mediaDir, { recursive: true });
+  for (const img of images) {
+    cpSync(img.sourcePath, join(mediaDir, img.mediaFile));
+  }
+}
+
+const DOC_NAMESPACES = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"';
+
+function wrapDocumentXml(body: string, namespaces: string, sectPr?: string): string {
+  const sp = sectPr ?? '<w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="708" w:footer="708" w:gutter="0"/></w:sectPr>';
+  return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
+    + '<w:document ' + namespaces + '>\n'
+    + '<w:body>\n'
+    + body + '\n'
+    + sp + '\n'
+    + '</w:body>\n'
+    + '</w:document>';
 }
 
 function table(headers: string[], rows: string[][], widths: number[]): string {
@@ -242,6 +318,7 @@ const contentTypesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
   <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
   <Default Extension="xml" ContentType="application/xml"/>
+  <Default Extension="png" ContentType="image/png"/>
   <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
   <Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>
   <Override PartName="/word/numbering.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml"/>
@@ -530,7 +607,7 @@ export function buildOperationsGuideDocx(input: { outputPath?: string }): DocxBu
 
 // ─── Comprehensive Setting Guide ──────────────────────────────────────────────
 
-function buildComprehensiveDocumentXml(plan: any): string {
+function buildComprehensiveDocumentXml(plan: any, screenshotDir?: string): { documentXml: string; images: EmbeddedImage[] } {
   const consoleItems = plan.workPlan.filter((i: any) => i.product !== 'external_or_manual');
   const manualItems = plan.workPlan.filter((i: any) => i.product === 'external_or_manual');
   const byProduct: Record<string, any[]> = {};
@@ -538,6 +615,19 @@ function buildComprehensiveDocumentXml(plan: any): string {
     byProduct[item.product] = byProduct[item.product] ?? [];
     byProduct[item.product].push(item);
   });
+
+  const images: EmbeddedImage[] = [];
+  let imgIdx = 0;
+  function nextImg(product: string, filename: string, caption: string, height = 3.8): EmbeddedImage | null {
+    if (!screenshotDir) return null;
+    const img = tryLoadImage(screenshotDir, product, filename, caption, imgIdx, 'rId' + (imgIdx + 100), height);
+    if (img) { images.push(img); imgIdx++; }
+    return img;
+  }
+  function pushImg(product: string, filename: string, caption: string, height = 3.8): void {
+    const img = nextImg(product, filename, caption, height);
+    if (img) body.push(addImageToBody(img.relId, img.widthInches, img.heightInches, img.caption, img.imgIdx));
+  }
 
   const body: string[] = [];
   body.push(para('Sangfor 제품 종합 설정 · 운영 메뉴얼', 'TitleText'));
