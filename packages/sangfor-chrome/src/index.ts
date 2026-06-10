@@ -18,7 +18,25 @@ import { join } from 'node:path';
 
 export const DEFAULT_CDP_PORT = 9333;
 export const CHROME_USER_DATA_DIR = '/tmp/chrome-sangfor-debug';
-export const CHROMIUM_PATH = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+export const CHROMIUM_PATHS = [
+  // Playwright Chromium (installed via: npx playwright install chromium)
+  '/Users/jmpark/Library/Caches/ms-playwright/chromium-1208/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing',
+  // System Chrome
+  '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+  // Homebrew Chrome
+  '/Applications/Google Chrome Canary.app/Contents/MacOS/Google Chrome Canary',
+];
+
+// Auto-detect first available Chrome path
+function findChromePath(): string {
+  const { existsSync } = require('node:fs');
+  for (const p of CHROMIUM_PATHS) {
+    if (existsSync(p)) return p;
+  }
+  return CHROMIUM_PATHS[0]; // fallback
+}
+
+export const CHROMIUM_PATH = findChromePath();
 
 export interface ChromeManagerOptions {
   cdpPort?: number;
@@ -200,36 +218,186 @@ async function getPwBridge(): Promise<PwBridge> {
 
 // ─── Vision OCR ─────────────────────────────────────────────────────────────
 
+/**
+ * Read CAPTCHA image using multiple OCR backends with automatic fallback.
+ *
+ * Priority order:
+ *   1. Tesseract OCR (local, no API needed, fast)
+ *   2. LM Studio vision (localhost:1234, OpenAI-compatible)
+ *   3. OpenAI Vision API (if OPENAI_API_KEY set)
+ *   4. Hermes vision endpoint (if HERMES_VISION_ENDPOINT set)
+ *
+ * Returns 4-character alphanumeric CAPTCHA text.
+ */
 export async function ocrCaptcha(imagePathOrUrl: string): Promise<VisionOcrResult> {
   // Read local file as base64 data URL
   let dataUrl: string;
+  let imageBuffer: Buffer | null = null;
   if (imagePathOrUrl.startsWith('http')) {
     dataUrl = imagePathOrUrl;
   } else {
     const { readFileSync } = await import('node:fs');
-    const buf = readFileSync(imagePathOrUrl);
+    imageBuffer = readFileSync(imagePathOrUrl);
     const ext = imagePathOrUrl.endsWith('.png') ? 'png' : 'jpeg';
-    dataUrl = `data:image/${ext};base64,${buf.toString('base64')}`;
+    dataUrl = `data:image/${ext};base64,${imageBuffer.toString('base64')}`;
   }
 
-  const visionEndpoint = process.env.HERMES_VISION_ENDPOINT ?? 'http://localhost:8080/vision';
+  const ocrPrompt = 'This is a CAPTCHA image. Read and return ONLY the exact alphanumeric characters shown (typically 4 characters). Return only the characters, nothing else.';
+
+  // ── Backend 1: Tesseract OCR (local, fastest) ──
   try {
-    const resp = await fetch(visionEndpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        image_url: dataUrl,
-        question: 'CAPTCHA 4자리 읽어줘. 숫자와 영문만.',
-      }),
-    });
-    if (!resp.ok) throw new Error(`Vision API ${resp.status}`);
-    const data = await resp.json() as { analysis?: string; success?: boolean; text?: string };
-    const text = data.analysis ?? data.text ?? '';
-    const match = text.match(/[A-Za-z0-9]{4}/);
-    return { success: true, text: match ? match[0] : text.replace(/[^A-Za-z0-9]/g, '').slice(0, 4) };
+    const result = await ocrCaptchaTesseract(imagePathOrUrl);
+    if (result.success && result.text && result.text.length >= 3) {
+      console.log(`[OCR] Tesseract result: ${result.text}`);
+      return result;
+    }
   } catch (err) {
-    return { success: false, error: String(err) };
+    console.log(`[OCR] Tesseract unavailable: ${err}`);
   }
+
+  // ── Backend 2: LM Studio vision (localhost:1234) ──
+  try {
+    const result = await ocrCaptchaVisionApi(
+      'http://localhost:1234/v1/chat/completions',
+      dataUrl,
+      ocrPrompt,
+      process.env.LM_STUDIO_API_KEY ?? 'lm-studio',
+    );
+    if (result.success && result.text) {
+      console.log(`[OCR] LM Studio result: ${result.text}`);
+      return result;
+    }
+  } catch (err) {
+    console.log(`[OCR] LM Studio unavailable: ${err}`);
+  }
+
+  // ── Backend 3: OpenAI Vision API ──
+  if (process.env.OPENAI_API_KEY) {
+    try {
+      const result = await ocrCaptchaVisionApi(
+        'https://api.openai.com/v1/chat/completions',
+        dataUrl,
+        ocrPrompt,
+        process.env.OPENAI_API_KEY,
+        'gpt-4o-mini',
+      );
+      if (result.success && result.text) {
+        console.log(`[OCR] OpenAI result: ${result.text}`);
+        return result;
+      }
+    } catch (err) {
+      console.log(`[OCR] OpenAI unavailable: ${err}`);
+    }
+  }
+
+  // ── Backend 4: Hermes vision endpoint ──
+  const visionEndpoint = process.env.HERMES_VISION_ENDPOINT;
+  if (visionEndpoint) {
+    try {
+      const resp = await fetch(visionEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          image_url: dataUrl,
+          question: 'CAPTCHA 4자리 읽어줘. 숫자와 영문만.',
+        }),
+      });
+      if (!resp.ok) throw new Error(`Vision API ${resp.status}`);
+      const data = await resp.json() as { analysis?: string; success?: boolean; text?: string };
+      const text = data.analysis ?? data.text ?? '';
+      const match = text.match(/[A-Za-z0-9]{4}/);
+      const captchaText = match ? match[0] : text.replace(/[^A-Za-z0-9]/g, '').slice(0, 4);
+      if (captchaText) {
+        console.log(`[OCR] Hermes result: ${captchaText}`);
+        return { success: true, text: captchaText };
+      }
+    } catch (err) {
+      console.log(`[OCR] Hermes endpoint unavailable: ${err}`);
+    }
+  }
+
+  return { success: false, error: 'All OCR backends failed. Install tesseract or set OPENAI_API_KEY / LM_STUDIO_API_KEY.' };
+}
+
+/**
+ * Tesseract OCR — local, no API needed.
+ * Requires: brew install tesseract
+ */
+async function ocrCaptchaTesseract(imagePath: string): Promise<VisionOcrResult> {
+  const { execSync } = await import('node:child_process');
+  try {
+    // Check tesseract is installed
+    execSync('which tesseract', { timeout: 2000 });
+  } catch {
+    throw new Error('tesseract not installed (brew install tesseract)');
+  }
+
+  try {
+    // Run tesseract with character whitelist (alphanumeric only)
+    const output = execSync(
+      `tesseract "${imagePath}" stdout -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 --psm 7 2>/dev/null`,
+      { timeout: 10000 },
+    ).toString().trim();
+
+    // Clean up: remove spaces, newlines, take first 4 chars
+    const cleaned = output.replace(/[\s\n\r]/g, '').replace(/[^A-Za-z0-9]/g, '');
+    if (cleaned.length >= 3) {
+      return { success: true, text: cleaned.slice(0, 4) };
+    }
+    return { success: false, error: `Tesseract output too short: "${output}"` };
+  } catch (err) {
+    return { success: false, error: `Tesseract execution failed: ${err}` };
+  }
+}
+
+/**
+ * OpenAI-compatible Vision API — works with LM Studio, OpenAI, etc.
+ */
+async function ocrCaptchaVisionApi(
+  endpoint: string,
+  dataUrl: string,
+  prompt: string,
+  apiKey: string,
+  model?: string,
+): Promise<VisionOcrResult> {
+  const resp = await fetch(endpoint, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: model ?? 'local-model',
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: prompt },
+            { type: 'image_url', image_url: { url: dataUrl } },
+          ],
+        },
+      ],
+      max_tokens: 50,
+      temperature: 0,
+    }),
+    signal: AbortSignal.timeout(15000),
+  });
+
+  if (!resp.ok) {
+    throw new Error(`API ${resp.status}: ${await resp.text().catch(() => 'unknown')}`);
+  }
+
+  const data = await resp.json() as {
+    choices?: Array<{ message?: { content?: string } }>;
+  };
+  const text = data.choices?.[0]?.message?.content ?? '';
+  const match = text.match(/[A-Za-z0-9]{3,6}/);
+  const captchaText = match ? match[0] : text.replace(/[^A-Za-z0-9]/g, '').slice(0, 4);
+
+  if (captchaText && captchaText.length >= 3) {
+    return { success: true, text: captchaText };
+  }
+  return { success: false, error: `No valid CAPTCHA text in response: "${text}"` };
 }
 
 // ─── CAPTCHA Detection ──────────────────────────────────────────────────────
@@ -237,10 +405,15 @@ export async function ocrCaptcha(imagePathOrUrl: string): Promise<VisionOcrResul
 /**
  * Detect CAPTCHA challenge on page.
  * Sangfor consoles show a dedicated CAPTCHA div with class/image markers.
+ *
+ * IMPORTANT: EPP uses img[src*="randcode"], CC uses img[src*="req_captcha"].
+ * Do NOT fill username/password before reading CAPTCHA — it may trigger a refresh!
  */
-export function detectCaptcha(page: any): { hasCaptcha: boolean; imagePath?: string } {
+export function detectCaptcha(page: any): { hasCaptcha: boolean; selector?: string; imagePath?: string } {
   // Common CAPTCHA indicators in Sangfor WebUI
   const selectors = [
+    'img[src*="randcode"]',      // EPP: randcode.php
+    'img[src*="req_captcha"]',   // CC: req_captcha endpoint
     'img[src*="captcha"]',
     'img[src*="Captcha"]',
     'img[src*="verify"]',
@@ -248,6 +421,7 @@ export function detectCaptcha(page: any): { hasCaptcha: boolean; imagePath?: str
     'div.verify-code',
     '#captcha_image',
     'x-vls-captcha-img',
+    'canvas.captcha',
   ];
 
   for (const sel of selectors) {
@@ -256,7 +430,7 @@ export function detectCaptcha(page: any): { hasCaptcha: boolean; imagePath?: str
       if (el) {
         const path = `/tmp/captcha_${Date.now()}.png`;
         el.screenshot({ path });
-        return { hasCaptcha: true, imagePath: path };
+        return { hasCaptcha: true, selector: sel, imagePath: path };
       }
     } catch { /* try next */ }
   }
@@ -267,6 +441,16 @@ export function detectCaptcha(page: any): { hasCaptcha: boolean; imagePath?: str
 
 /**
  * Login to a Sangfor console, handling CAPTCHA via vision OCR.
+ *
+ * CRITICAL FLOW (must be followed exactly):
+ *   1. Navigate to login page
+ *   2. Detect + screenshot CAPTCHA (DO NOT fill any fields yet!)
+ *   3. OCR the CAPTCHA image
+ *   4. Fill ALL fields at once (username + password + captcha)
+ *   5. Submit immediately
+ *
+ * If you fill username/password before reading CAPTCHA, the CAPTCHA may refresh!
+ *
  * Returns the logged-in page or throws on failure.
  */
 export async function loginToConsole(
@@ -274,49 +458,86 @@ export async function loginToConsole(
   credentials: LoginCredentials,
   maxCaptchaRetries = 3,
 ): Promise<void> {
-  const { username, password, targetUrl } = credentials;
+  const { username, password, product, targetUrl } = credentials;
   await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: 30_000 });
   await page.waitForTimeout(3000);
 
   let retries = maxCaptchaRetries;
   while (retries-- > 0) {
-    // Check for CAPTCHA
+    // ── Step 1: Detect CAPTCHA FIRST (before filling anything) ──
     const captcha = detectCaptcha(page);
-    if (captcha.hasCaptcha) {
-      const ocr = await ocrCaptcha(captcha.imagePath!);
-      if (!ocr.success) throw new Error(`CAPTCHA OCR failed: ${ocr.error}`);
-      await page.fill('input[name="captcha"], input[name="verify_code"], input[name="code"]', ocr.text!);
-      await page.waitForTimeout(500);
+    let captchaText: string | null = null;
+
+    if (captcha.hasCaptcha && captcha.imagePath) {
+      console.log(`[ChromeManager] CAPTCHA detected (${captcha.selector}), reading OCR...`);
+      const ocr = await ocrCaptcha(captcha.imagePath);
+      if (!ocr.success || !ocr.text) {
+        throw new Error(`CAPTCHA OCR failed: ${ocr.error}`);
+      }
+      captchaText = ocr.text;
+      console.log(`[ChromeManager] CAPTCHA OCR result: ${captchaText}`);
     }
 
-    // Fill credentials
+    // ── Step 2: Fill ALL fields at once (username + password + captcha) ──
     // Try different field name patterns per product
-    const userField = await page.$('input[name="user"], input[name="username"], input[name="account"]');
-    const passField = await page.$('input[name="password"], input[type="password"]');
-    if (!userField) throw new Error('Username field not found');
-    if (!passField) throw new Error('Password field not found');
+    // CC uses input[name="name"], EPP uses input[name="user"]
+    const userInput = await page.$(
+      'input[name="user"], input[name="username"], input[name="account"], input[name="name"]',
+    );
+    const passInput = await page.$(
+      'input[name="password"], input[type="password"]',
+    );
+    if (!userInput) throw new Error('Username field not found');
+    if (!passInput) throw new Error('Password field not found');
 
-    await userField.fill(username);
-    await passField.fill(password);
+    // Fill all fields rapidly to minimize CAPTCHA refresh risk
+    await userInput.fill(username);
+    await passInput.fill(password);
 
-    await page.waitForTimeout(500);
-    await passField.press('Enter');
-    await page.waitForTimeout(4000);
+    if (captchaText) {
+      const captchaInput = await page.$(
+        'input[name="captcha"], input[name="verify_code"], input[name="code"]',
+      );
+      if (captchaInput) {
+        await captchaInput.fill(captchaText);
+      }
+    }
 
-    // Check login success — URL changed or dashboard elements present
+    // ── Step 3: Submit immediately ──
+    await page.waitForTimeout(200);
+    const loginBtn = await page.$('button:has-text("Log In"), input[id="button"], button[type="submit"], input[type="submit"]');
+    if (loginBtn) {
+      await loginBtn.click();
+    } else {
+      await passInput.press('Enter');
+    }
+    await page.waitForTimeout(5000);
+
+    // ── Step 4: Check login success ──
     const url = page.url();
     if (!url.includes('login') && !url.includes('Login')) {
+      console.log(`[ChromeManager] Login successful: ${url}`);
       return; // success
     }
 
-    // If still on login page, retry CAPTCHA if present
-    const stillHasCaptcha = detectCaptcha(page);
-    if (stillHasCaptcha.hasCaptcha) {
-      console.warn(`[ChromeManager] CAPTCHA retry ${maxCaptchaRetries - retries}/${maxCaptchaRetries}`);
-      continue;
+    // If still on login page, check for error messages
+    const errorText = await page.evaluate(() => {
+      const errEl = document.querySelector('.error, .alert, .message, [class*="error"]');
+      return errEl?.textContent?.trim() ?? '';
+    }).catch(() => '');
+
+    if (errorText) {
+      console.warn(`[ChromeManager] Login error: ${errorText}`);
     }
-    break;
+
+    // Retry if CAPTCHA was wrong
+    if (retries > 0) {
+      console.warn(`[ChromeManager] Retrying login (${maxCaptchaRetries - retries}/${maxCaptchaRetries})...`);
+      await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: 30_000 });
+      await page.waitForTimeout(3000);
+    }
   }
+  throw new Error(`Login failed after ${maxCaptchaRetries} attempts`);
 }
 
 // ─── ExtJS SPA Helpers ──────────────────────────────────────────────────────

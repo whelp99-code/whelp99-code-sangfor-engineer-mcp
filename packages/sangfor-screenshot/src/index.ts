@@ -46,7 +46,7 @@ const PRODUCT_CONFIGS: Record<string, ProductConfig> = {
   EPP: {
     defaultUrl: 'https://10.80.1.106',
     defaultUsername: 'admin',
-    defaultPassword: 'sangfor',
+    defaultPassword: process.env.SANGFOR_EPP_PASSWORD ?? 'sangfor',
     cdpPort: 9333,
     menus: [
       { menu: 'Dashboard' },
@@ -80,7 +80,7 @@ const PRODUCT_CONFIGS: Record<string, ProductConfig> = {
   CC: {
     defaultUrl: 'https://10.80.1.107',
     defaultUsername: 'admin',
-    defaultPassword: 'sangfor',
+    defaultPassword: process.env.SANGFOR_CC_PASSWORD ?? 'sangfor',
     cdpPort: 9335,
     menus: [
       { menu: 'Dashboard', submenu: 'Security Operations' },
