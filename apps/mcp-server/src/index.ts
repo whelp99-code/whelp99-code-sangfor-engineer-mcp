@@ -140,7 +140,7 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
         results.comprehensiveSettingDocx = buildComprehensiveSettingGuideDocx({ filePath: args.filePath, outputPath: join(outDir, 'Sangfor_설정가이드_v6_종합메뉴얼.docx'), screenshotDir });
       } catch (err) { results.comprehensiveSettingDocxError = String(err); }
       try {
-        results.comprehensiveOpsDocx = buildComprehensiveOperationsGuideDocx({ outputPath: join(outDir, 'Sangfor_운영가이드_v6_종합메뉴얼.docx') });
+        results.comprehensiveOpsDocx = buildComprehensiveOperationsGuideDocx({ outputPath: join(outDir, 'Sangfor_운영가이드_v6_종합메뉴얼.docx'), screenshotDir });
       } catch (err) { results.comprehensiveOpsDocxError = String(err); }
       if (args.captureScreenshots) {
         const products = args.screenshotProducts ?? ['EPP', 'IAG', 'CC'];
@@ -150,7 +150,6 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
             (results.screenshots as Record<string, unknown>)[product] = await captureProductScreenshots({
               product: product as 'EPP' | 'IAG' | 'CC',
               outputDir: join(outDir, 'screenshots', product),
-              dryRun: true,
             });
           } catch (err) {
             (results.screenshots as Record<string, unknown>)[product] = { error: String(err) };

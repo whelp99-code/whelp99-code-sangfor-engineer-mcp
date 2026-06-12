@@ -38,6 +38,7 @@ export function dashboardHtml(): string {
     button.primary:disabled { opacity:.5; cursor:not-allowed; }
     pre.result { background:#0b1220; border:1px solid #334155; border-radius:10px; padding:12px; overflow:auto; max-height:420px; font-size:.8rem; white-space:pre-wrap; word-break:break-word; }
     .health-ok { color:var(--ok); }
+    .health-off { color:var(--muted); }
     .health-bad { color:var(--err); }
     .doc-list { list-style:none; padding:0; margin:0; }
     .doc-list li { margin:8px 0; }
@@ -195,8 +196,9 @@ export function dashboardHtml(): string {
     }
 
     function healthLine(ok, label, detail) {
-      const cls = ok ? 'health-ok' : 'health-bad';
-      return '<span class="' + cls + '">' + (ok ? '● OK' : '● FAIL') + '</span> ' + label + (detail ? ' — ' + detail : '');
+      const status = ok === null ? '● OFF' : (ok ? '● OK' : '● FAIL');
+      const cls = ok === null ? 'health-off' : (ok ? 'health-ok' : 'health-bad');
+      return '<span class="' + cls + '">' + status + '</span> ' + label + (detail ? ' — ' + detail : '');
     }
 
     async function loadDashboard() {
@@ -211,7 +213,7 @@ export function dashboardHtml(): string {
         ['RAG 청크', summary.rag?.chunkCount || 0],
         ['Store', summary.storeEnabled ? 'ON' : 'OFF']
       ].map(([l,v]) => '<div class="stat"><span>'+l+'</span><strong>'+v+'</strong></div>').join('');
-      $('store-health').innerHTML = healthLine(store.ok, store.enabled ? 'DATABASE_URL 설정됨' : '비활성', store.detail);
+      $('store-health').innerHTML = healthLine(store.enabled ? store.ok : null, store.enabled ? 'DATABASE_URL 설정됨' : '비활성', store.detail);
       $('embed-health').innerHTML = [
         healthLine(embed.embeddingHealth?.ok, '임베딩: ' + embed.embeddingProvider, embed.embeddingHealth?.detail),
         healthLine(embed.mimoRerankHealth?.ok, 'MiMo rerank' + (embed.mimoRerankEnabled ? '' : ' (off)'), embed.mimoRerankHealth?.detail),
