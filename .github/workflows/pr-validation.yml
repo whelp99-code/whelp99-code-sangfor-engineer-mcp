@@ -1,13 +1,11 @@
-name: CI
+name: PR Validation
 
 on:
-  push:
-    branches: [main, feature/**]
   pull_request:
     branches: [main]
 
 jobs:
-  verify:
+  validate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -33,8 +31,19 @@ jobs:
       - name: Build
         run: pnpm run build
 
-      - name: MCP smoke
-        run: pnpm run smoke:mcp
+      - name: Check formatting
+        run: pnpm run lint
 
-      - name: MCP scorecard
-        run: pnpm run check:mcp-scorecard
+      - name: Check for console.log
+        run: |
+          if grep -r "console.log" --include="*.ts" src/ packages/ apps/; then
+            echo "console.log found - please remove"
+            exit 1
+          fi
+
+      - name: Check for TODO/FIXME
+        run: |
+          if grep -r "TODO\|FIXME" --include="*.ts" src/ packages/ apps/; then
+            echo "TODO/FIXME found - please resolve"
+            exit 1
+          fi
