@@ -19,7 +19,7 @@ import { dashboardHtml } from './ui.js';
 
 loadEnvFile('.env');
 
-const port = Number(process.env.PORT ?? process.env.OPERATOR_CONSOLE_PORT ?? 3500);
+const port = Number(process.env.PORT ?? process.env.OPERATOR_CONSOLE_PORT ?? 3502);
 
 function json(res: http.ServerResponse, data: unknown, status = 200) {
   res.writeHead(status, { 'content-type': 'application/json; charset=utf-8' });

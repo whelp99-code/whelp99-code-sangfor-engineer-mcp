@@ -8,6 +8,7 @@
   "scripts": {
     "clean": "rm -rf dist",
     "dev:mcp": "tsx apps/mcp-server/src/index.ts",
+    "dev:http-bridge": "tsx apps/http-bridge/src/server.ts",
     "dev:mock-console": "tsx apps/mock-sangfor-console/src/server.ts",
     "dev:operator-console": "tsx apps/operator-console/src/server.ts",
     "dev:web": "tsx apps/operator-console/src/server.ts",

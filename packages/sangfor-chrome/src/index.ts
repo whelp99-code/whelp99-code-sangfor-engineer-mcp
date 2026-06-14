@@ -29,7 +29,6 @@ export const CHROMIUM_PATHS = [
 
 // Auto-detect first available Chrome path
 function findChromePath(): string {
-  const { existsSync } = require('node:fs');
   for (const p of CHROMIUM_PATHS) {
     if (existsSync(p)) return p;
   }

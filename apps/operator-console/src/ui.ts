@@ -51,7 +51,7 @@ export function dashboardHtml(): string {
 <body>
   <header>
     <h1>Sangfor Engineer Web</h1>
-    <span class="badge">MCP는 Cursor 등 stdio · 웹은 :3500</span>
+    <span class="badge">MCP는 Cursor 등 stdio · 웹은 :3502</span>
   </header>
   <main>
     <nav id="nav">
