@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+    <Relationship Id="rId100" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/epp_01_dashboard.png"/>
+    <Relationship Id="rId101" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/epp_07_agent_deploy.png"/>
+    <Relationship Id="rId102" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/iag_00_home.png"/>
+    <Relationship Id="rId103" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/cc_01_dashboard.png"/>
+    <Relationship Id="rId104" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/epp_02_app_control.png"/>
+    <Relationship Id="rId105" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/epp_03_scan_tasks.png"/>
+    <Relationship Id="rId106" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/epp_05_device_control.png"/>
+    <Relationship Id="rId107" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/iag_01_dlp_policies.png"/>
+    <Relationship Id="rId108" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/iag_03_access_policy.png"/>
+    <Relationship Id="rId109" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/iag_04_endpoint_compliance.png"/>
+    <Relationship Id="rId110" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/cc_03_threats.png"/>
+    <Relationship Id="rId111" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/cc_04_anomalies.png"/>
+    <Relationship Id="rId112" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/cc_05_response.png"/>
+</Relationships>

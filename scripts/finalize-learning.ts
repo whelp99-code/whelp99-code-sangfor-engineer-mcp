@@ -22,7 +22,7 @@ const report = {
   manifestCount: Array.isArray(manifest) ? manifest.length : 0,
   finetune: validateFineTuneDataset('data/finetune/sangfor-sources.jsonl'),
   rag: exportRagIndexSummary('data/rag/index.json'),
-  ragSmoke: ragSearch({ query: 'Sangfor HCI deployment precheck', product: 'HCI', limit: 5 }).map(h => ({
+  ragSmoke: (await ragSearch({ query: 'Sangfor HCI deployment precheck', product: 'HCI', limit: 5 })).map(h => ({
     id: h.id,
     title: h.title,
     score: h.score

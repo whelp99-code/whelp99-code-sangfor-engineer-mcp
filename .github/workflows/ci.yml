@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, feature/**]
   pull_request:
     branches: [main]
 
@@ -32,3 +32,9 @@ jobs:
 
       - name: Build
         run: pnpm run build
+
+      - name: MCP smoke
+        run: pnpm run smoke:mcp
+
+      - name: MCP scorecard
+        run: pnpm run check:mcp-scorecard

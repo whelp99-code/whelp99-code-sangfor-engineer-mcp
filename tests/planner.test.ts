@@ -48,7 +48,7 @@ describe('Sangfor Engineer MCP MVP', () => {
 import { writeFileSync, mkdtempSync, existsSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { ingestDocument, ragSearch } from '../packages/sangfor-rag/src/index.js';
+import { ingestDocument, ragSearchSync } from '../packages/sangfor-rag/src/index.js';
 import { applyObsidianWikiUpdate } from '../packages/sangfor-wiki/src/index.js';
 import { createFineTuneDataset, validateFineTuneDataset, createFineTuneJobSpec } from '../packages/sangfor-finetune/src/index.js';
 
@@ -60,7 +60,7 @@ describe('Included real integration surfaces', () => {
     writeFileSync(docPath, '# HCI Guide\n\nStorage network MTU must be validated before cluster initialization.');
     const result = await ingestDocument({ filePath: docPath, product: 'HCI', indexPath });
     expect(result.chunkCount).toBeGreaterThan(0);
-    const hits = ragSearch({ product: 'HCI', query: 'storage MTU cluster', indexPath });
+    const hits = ragSearchSync({ product: 'HCI', query: 'storage MTU cluster', indexPath });
     expect(hits[0].text.toLowerCase()).toContain('mtu');
   });
 

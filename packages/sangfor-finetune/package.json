@@ -1,1 +1,8 @@
-{ "name": "@sangfor/finetune", "type": "module", "main": "src/index.ts" }
+{
+  "name": "@sangfor/finetune",
+  "type": "module",
+  "main": "src/index.ts",
+  "dependencies": {
+    "@sangfor/shared": "workspace:*"
+  }
+}

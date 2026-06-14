@@ -56,9 +56,10 @@ fi
 
 rm -f "${NEEDS_RELOGIN_FLAG}" 2>/dev/null || true
 
-echo "[${TS}] learn:all 재실행" | tee -a "${OUT_LOG}"
+echo "[${TS}] learn:nightly 재실행" | tee -a "${OUT_LOG}"
 set +e
-/bin/zsh -lc "corepack pnpm run learn:all" 1>>"${OUT_LOG}" 2>>"${ERR_LOG}"
+/bin/zsh -lc "export SANGFOR_CDP_URL='${SANGFOR_CDP_URL:-http://127.0.0.1:9222}'; export SANGFOR_GLASS_CDP_REQUIRED=1; corepack pnpm run learn:nightly" \
+  1>>"${OUT_LOG}" 2>>"${ERR_LOG}"
 LEARN_EXIT=$?
 set -e
 

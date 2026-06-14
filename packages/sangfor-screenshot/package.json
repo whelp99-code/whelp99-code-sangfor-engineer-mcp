@@ -1,0 +1,11 @@
+{
+  "name": "@sangfor/screenshot",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "dependencies": {
+    "@sangfor/chrome": "workspace:*",
+    "@sangfor/product-adapters": "workspace:*",
+    "@sangfor/shared": "workspace:*"
+  }
+}

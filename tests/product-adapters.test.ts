@@ -51,6 +51,20 @@ describe('Product automation adapters', () => {
     expect(analysis.tasks.every(task => task.approvalRequired)).toBe(true);
   });
 
+  it('promotes IAG, Endpoint Secure and NDR adapters to ready catalogs', () => {
+    for (const product of ['IAG', 'Endpoint Secure', 'NDR'] as const) {
+      const discovery = discoverProductConsole({ product });
+      expect(discovery.apiCatalogStatus).toBe('ready');
+      expect(discovery.capabilities.some(cap => cap.apiEndpointCandidates.length > 0)).toBe(true);
+    }
+    const iagSnapshot = collectProductConfig({ product: 'IAG' });
+    expect(iagSnapshot.source).toBe('webui');
+    expect(iagSnapshot.sections[0]?.evidence.some(e => e.includes('webui_catalog=iag_v1'))).toBe(true);
+    const ndrSnapshot = collectProductConfig({ product: 'NDR', preferApi: true });
+    expect(ndrSnapshot.source).toBe('hybrid');
+    expect(ndrSnapshot.sections[0]?.evidence.some(e => e.includes('ndr_third_party_rest'))).toBe(true);
+  });
+
   it('keeps Endpoint Secure agent deployment approval-gated', () => {
     const plan = generateProductChangePlan({
       product: 'Endpoint Secure',

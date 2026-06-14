@@ -1,7 +1,24 @@
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { requiresApprovalForAction } from '@sangfor/approval';
-import { ConsoleAction, ConsoleActionResult, nowId } from '@sangfor/shared';
+import { ConsoleAction, ConsoleActionResult, nowId, ProductCode } from '@sangfor/shared';
+import {
+  ensureChromeRunning,
+  stopChrome,
+  loginToConsole,
+  navigateMenu,
+  openFormDialog,
+  fillFormFields,
+  takeScreenshot,
+  getPageSnapshot,
+  detectCaptcha,
+  ocrCaptcha,
+  type ChromeSession,
+  type LoginCredentials,
+  type MenuPathStep,
+  type FormField,
+  DEFAULT_CDP_PORT,
+} from '@sangfor/chrome';
 
 export type OperatorMode = 'mock' | 'lab' | 'poc' | 'customer_readonly' | 'customer_write' | 'production';
 
@@ -14,11 +31,17 @@ export interface OperatorSession {
   status: 'pending' | 'running' | 'waiting_approval' | 'completed' | 'failed' | 'cancelled';
   approvedChangeTicketId?: string;
   rollbackPlanId?: string;
+  cdpPort?: number;
+  chromeSession?: ChromeSession;
+  credentials?: { username: string; password: string };
+  loggedIn?: boolean;
 }
 
 export interface OperatorBrowserOptions {
   cdpEndpoint?: string;
   useLocalBrowser?: boolean;
+  cdpPort?: number;
+  startIfMissing?: boolean;
 }
 
 export interface LiveExecutionApproval {
@@ -33,12 +56,26 @@ export interface LiveConsoleActionInput {
   sessionId: string;
   action: ConsoleAction;
   approval?: LiveExecutionApproval;
+  menuPath?: MenuPathStep[];
+  formFields?: FormField[];
 }
 
 const sessions = new Map<string, OperatorSession>();
-const liveConnections = new Map<string, { browser: any; page: any; connectedOverCdp: boolean }>();
+const liveConnections = new Map<string, { browser: any; page: any; context: any; connectedOverCdp: boolean }>();
 
-export function startOperatorSession(input: { product: string; mode?: OperatorMode; targetUrl?: string; approvedChangeTicketId?: string; rollbackPlanId?: string; browser?: OperatorBrowserOptions }): OperatorSession {
+// ─── Session Management ────────────────────────────────────────────────────────
+
+export function startOperatorSession(
+  input: {
+    product: string;
+    mode?: OperatorMode;
+    targetUrl?: string;
+    approvedChangeTicketId?: string;
+    rollbackPlanId?: string;
+    browser?: OperatorBrowserOptions;
+    credentials?: { username: string; password: string };
+  }
+): OperatorSession {
   const session: OperatorSession = {
     id: nowId('session'),
     product: input.product,
@@ -47,7 +84,9 @@ export function startOperatorSession(input: { product: string; mode?: OperatorMo
     browser: input.browser,
     status: 'running',
     approvedChangeTicketId: input.approvedChangeTicketId,
-    rollbackPlanId: input.rollbackPlanId
+    rollbackPlanId: input.rollbackPlanId,
+    cdpPort: input.browser?.cdpPort ?? DEFAULT_CDP_PORT,
+    credentials: input.credentials,
   };
   sessions.set(session.id, session);
   return session;
@@ -73,11 +112,11 @@ export function readConsoleState(sessionId: string): Record<string, unknown> {
       { role: 'navigation', name: 'Policy' },
       { role: 'button', name: 'Save' },
       { role: 'button', name: 'Apply' },
-      { role: 'button', name: 'Export' }
+      { role: 'button', name: 'Export' },
     ],
     warning: session.mode === 'mock'
       ? 'Mock state. Use live read with Playwright only after lab validation.'
-      : 'Live mode requires explicit approval and environment flags before write actions.'
+      : 'Live mode requires explicit approval and environment flags before write actions.',
   };
 }
 
@@ -92,7 +131,7 @@ export function executeConsoleAction(sessionId: string, action: ConsoleAction): 
       ok: false,
       dryRun,
       approvalRequired: true,
-      message: `Blocked: approval required. Reason: ${approval.reason}`
+      message: `Blocked: approval required. Reason: ${approval.reason}`,
     };
   }
 
@@ -104,9 +143,11 @@ export function executeConsoleAction(sessionId: string, action: ConsoleAction): 
       ? `Dry-run only: would execute ${action.type} on ${action.target ?? '<no target>'}.`
       : `Executed ${action.type} on ${action.target ?? '<no target>'}.`,
     beforeScreenshotPath: `.evidence/${sessionId}/before-${Date.now()}.png`,
-    afterScreenshotPath: `.evidence/${sessionId}/after-${Date.now()}.png`
+    afterScreenshotPath: `.evidence/${sessionId}/after-${Date.now()}.png`,
   };
 }
+
+// ─── Real Execution Guards ────────────────────────────────────────────────────
 
 function assertRealExecutionAllowed(session: OperatorSession, action: ConsoleAction, approval?: LiveExecutionApproval): void {
   if (action.dryRun !== false) return;
@@ -124,61 +165,108 @@ function assertRealExecutionAllowed(session: OperatorSession, action: ConsoleAct
   }
 }
 
-async function captureScreenshot(page: any, path: string): Promise<void> {
-  mkdirSync(dirname(path), { recursive: true });
-  await page.screenshot({ path, fullPage: true });
-}
+// ─── Chrome Lifecycle ─────────────────────────────────────────────────────────
 
-function resolveCdpEndpoint(session: OperatorSession): string | undefined {
-  return session.browser?.cdpEndpoint
-    ?? process.env.SANGFOR_OPERATOR_CDP_ENDPOINT
-    ?? process.env.PLAYWRIGHT_CDP_ENDPOINT;
-}
-
-async function getLivePage(session: OperatorSession): Promise<{ browser: any; page: any; connectedOverCdp: boolean }> {
+async function ensureLivePage(session: OperatorSession): Promise<{ browser: any; page: any; context: any; connectedOverCdp: boolean }> {
   const cached = liveConnections.get(session.id);
   if (cached?.browser?.isConnected?.()) return cached;
 
-  const { chromium } = await import('playwright');
-  const cdpEndpoint = resolveCdpEndpoint(session);
-  if (session.browser?.useLocalBrowser || cdpEndpoint) {
-    if (!cdpEndpoint) {
-      throw new Error('Local browser connection requires SANGFOR_OPERATOR_CDP_ENDPOINT, PLAYWRIGHT_CDP_ENDPOINT, or browser.cdpEndpoint.');
-    }
-    const browser = await chromium.connectOverCDP(cdpEndpoint);
-    const context = browser.contexts()[0] ?? await browser.newContext({ ignoreHTTPSErrors: true });
-    const existingPage = context.pages().find(page => session.targetUrl && page.url().startsWith(session.targetUrl!))
-      ?? context.pages()[0];
-    const page = existingPage ?? await context.newPage();
-    const connection = { browser, page, connectedOverCdp: true };
-    liveConnections.set(session.id, connection);
-    return connection;
+  const cdpPort = session.cdpPort ?? DEFAULT_CDP_PORT;
+
+  // Auto-start Chrome if requested and not running
+  if (session.browser?.startIfMissing !== false && !session.browser?.useLocalBrowser) {
+    ensureChromeRunning({ cdpPort, headless: false });
+    // Give Chrome time to start
+    await new Promise(resolve => setTimeout(resolve, 3000));
   }
 
-  const browser = await chromium.launch({ headless: process.env.SANGFOR_OPERATOR_HEADLESS !== 'false' });
-  const page = await browser.newPage({ ignoreHTTPSErrors: true });
-  return { browser, page, connectedOverCdp: false };
+  const { chromium } = await import('playwright');
+  const cdpEndpoint = session.browser?.cdpEndpoint ?? process.env.SANGFOR_OPERATOR_CDP_ENDPOINT ?? `http://127.0.0.1:${cdpPort}`;
+
+  let browser: any;
+  let context: any;
+  let page: any;
+  let connectedOverCdp = false;
+
+  if (session.browser?.useLocalBrowser || cdpEndpoint) {
+    // Connect to existing Chrome via CDP
+    try {
+      const wsUrl = `ws://127.0.0.1:${cdpPort}`;
+      browser = await chromium.connectOverCDP(wsUrl);
+      context = browser.contexts()[0] ?? await browser.newContext({ ignoreHTTPSErrors: true });
+      const existingPage = context.pages().find((p: any) => session.targetUrl && p.url().includes(session.targetUrl!.split('://')[1]?.split('/')[0]));
+      page = existingPage ?? context.pages()[0] ?? await context.newPage();
+      connectedOverCdp = true;
+    } catch {
+      // Fallback: launch fresh browser
+      browser = await chromium.launch({ headless: false, args: ['--ignore-certificate-errors'] });
+      context = await browser.newContext({ ignoreHTTPSErrors: true });
+      page = await context.newPage();
+      connectedOverCdp = false;
+    }
+  } else {
+    browser = await chromium.launch({ headless: false, args: ['--ignore-certificate-errors'] });
+    context = await browser.newContext({ ignoreHTTPSErrors: true });
+    page = await context.newPage();
+  }
+
+  const connection = { browser, page, context, connectedOverCdp };
+  liveConnections.set(session.id, connection);
+  return connection;
 }
 
-async function releaseLivePage(sessionId: string, connection: { browser: any; connectedOverCdp: boolean }): Promise<void> {
-  if (connection.connectedOverCdp) return;
+async function releaseLivePage(sessionId: string): Promise<void> {
+  const conn = liveConnections.get(sessionId);
+  if (!conn) return;
+  if (conn.connectedOverCdp) {
+    // Keep CDP connection alive for session reuse
+    return;
+  }
   liveConnections.delete(sessionId);
-  await connection.browser.close();
+  try { await conn.browser.close(); } catch { /* ignore */ }
 }
+
+// ─── Live Read ───────────────────────────────────────────────────────────────
 
 export async function readLiveConsoleState(input: { sessionId: string }): Promise<Record<string, unknown>> {
   const session = getOperatorSession(input.sessionId);
   if (session.mode === 'mock') return readConsoleState(input.sessionId);
   if (!session.targetUrl) throw new Error('Live console state requires targetUrl.');
-  const connection = await getLivePage(session);
-  const { page } = connection;
+
+  const { page, browser, connectedOverCdp } = await ensureLivePage(session);
+
   try {
+    // Navigate to target
     await page.goto(session.targetUrl, { waitUntil: 'domcontentloaded', timeout: 30_000 });
+    await page.waitForTimeout(3000);
+
+    // Handle CAPTCHA if present
+    let captchaHandled = false;
+    const captcha = detectCaptcha(page);
+    if (captcha.hasCaptcha && session.credentials) {
+      const creds: LoginCredentials = {
+        username: session.credentials.username,
+        password: session.credentials.password,
+        product: session.product as LoginCredentials['product'],
+        targetUrl: session.targetUrl,
+      };
+      await loginToConsole(page, creds);
+      captchaHandled = true;
+    }
+
+    // Snapshot
     const title = await page.title();
     const url = page.url();
-    const snapshot = await page.locator('body').ariaSnapshot().catch(async () => page.locator('body').innerText({ timeout: 5_000 }));
+    let snapshot: string;
+    try {
+      snapshot = await page.locator('body').ariaSnapshot({ timeout: 5000 });
+    } catch {
+      snapshot = await page.evaluate(() => document.body.innerText);
+    }
+
     const screenshotPath = `data/evidence/${input.sessionId}/live-state-${Date.now()}.png`;
-    await captureScreenshot(page, screenshotPath);
+    await takeScreenshot(page, screenshotPath);
+
     return {
       sessionId: input.sessionId,
       mode: session.mode,
@@ -186,12 +274,16 @@ export async function readLiveConsoleState(input: { sessionId: string }): Promis
       url,
       snapshot,
       screenshotPath,
-      browser: connection.connectedOverCdp ? 'local-cdp' : 'launched-chromium'
+      captchaHandled,
+      browser: connectedOverCdp ? 'local-cdp' : 'launched-chromium',
+      product: session.product,
     };
   } finally {
-    await releaseLivePage(input.sessionId, connection);
+    await releaseLivePage(input.sessionId);
   }
 }
+
+// ─── Live Execute ─────────────────────────────────────────────────────────────
 
 export async function executeLiveConsoleAction(input: LiveConsoleActionInput): Promise<ConsoleActionResult> {
   const session = getOperatorSession(input.sessionId);
@@ -206,33 +298,80 @@ export async function executeLiveConsoleAction(input: LiveConsoleActionInput): P
   }
 
   if (!session.targetUrl) throw new Error('Live execution requires targetUrl.');
-  const connection = await getLivePage(session);
-  const { page } = connection;
-  const beforeScreenshotPath = `data/evidence/${input.sessionId}/before-live-${Date.now()}.png`;
-  const afterScreenshotPath = `data/evidence/${input.sessionId}/after-live-${Date.now()}.png`;
+
+  const { page, connectedOverCdp } = await ensureLivePage(session);
+
+  const evidenceDir = `data/evidence/${input.sessionId}`;
+  mkdirSync(evidenceDir, { recursive: true });
+  const beforeScreenshotPath = `${evidenceDir}/before-live-${Date.now()}.png`;
+  const afterScreenshotPath = `${evidenceDir}/after-live-${Date.now()}.png`;
+
   try {
+    // Navigate
     await page.goto(session.targetUrl, { waitUntil: 'domcontentloaded', timeout: 30_000 });
-    await captureScreenshot(page, beforeScreenshotPath);
+    await page.waitForTimeout(3000);
+
+    // Handle login if needed
+    if (!session.loggedIn && session.credentials) {
+      const captcha = detectCaptcha(page);
+      if (captcha.hasCaptcha) {
+        const creds: LoginCredentials = {
+          username: session.credentials.username,
+          password: session.credentials.password,
+          product: session.product as LoginCredentials['product'],
+          targetUrl: session.targetUrl,
+        };
+        await loginToConsole(page, creds);
+        session.loggedIn = true;
+      }
+    }
+
+    await takeScreenshot(page, beforeScreenshotPath);
+
+    // ─── Navigate menu path if provided ──────────────────────────────
+    if (input.menuPath?.length) {
+      await navigateMenu(page, input.menuPath);
+    }
+
+    // ─── Dry-run guard ─────────────────────────────────────────────
     if (action.dryRun !== false && ['click', 'type', 'select'].includes(action.type)) {
-      await captureScreenshot(page, afterScreenshotPath);
+      await takeScreenshot(page, afterScreenshotPath);
       return {
         ok: true,
         dryRun: true,
         approvalRequired: approval.required,
-        message: `Live dry-run stopped before ${action.type} on ${action.target ?? '<no target>'}. Browser=${connection.connectedOverCdp ? 'local-cdp' : 'launched-chromium'}.`,
+        message: `Live dry-run stopped before ${action.type} on ${action.target ?? '<no target>'}. Browser=${connectedOverCdp ? 'local-cdp' : 'launched-chromium'}.`,
         beforeScreenshotPath,
-        afterScreenshotPath
+        afterScreenshotPath,
       };
     }
+
+    // ─── Execute action ──────────────────────────────────────────────
     if (action.type === 'navigate') {
       if (!action.value && !action.target) throw new Error('navigate action requires value or target URL');
       await page.goto(action.value ?? action.target!, { waitUntil: 'domcontentloaded', timeout: 30_000 });
+      await page.waitForTimeout(2000);
     } else if (action.type === 'click') {
       if (!action.target) throw new Error('click action requires target');
-      await page.getByRole('button', { name: action.target }).click().catch(async () => page.getByText(action.target!, { exact: false }).click());
+      const clicked = await page.evaluate((target: string) => {
+        const items = Array.from(document.querySelectorAll('button, a, [role="button"], span, div'));
+        const item = items.find((el: Element) => el.textContent?.trim() === target);
+        if (item) { (item as HTMLElement).click(); return true; }
+        return false;
+      }, action.target);
+      if (!clicked) {
+        await page.getByText(action.target!, { exact: false }).click().catch(() => {
+          throw new Error(`Could not click: ${action.target}`);
+        });
+      }
+      await page.waitForTimeout(1000);
     } else if (action.type === 'type') {
       if (!action.target) throw new Error('type action requires target');
-      await page.getByLabel(action.target).fill(action.value ?? '').catch(async () => page.locator(action.target!).fill(action.value ?? ''));
+      await page.evaluate((target: string, val: string) => {
+        const inputs = Array.from(document.querySelectorAll('input, textarea'));
+        const inp = inputs.find((i: Element) => i.getAttribute('name') === target || i.getAttribute('id') === target || (i as HTMLElement).offsetParent !== null);
+        if (inp) { (inp as HTMLInputElement).value = val; (inp as HTMLElement).dispatchEvent(new Event('input', {bubbles:true})); (inp as HTMLElement).dispatchEvent(new Event('change', {bubbles:true})); }
+      }, action.target, action.value ?? '');
     } else if (action.type === 'select') {
       if (!action.target) throw new Error('select action requires target');
       await page.locator(action.target).selectOption(action.value ?? '');
@@ -240,38 +379,55 @@ export async function executeLiveConsoleAction(input: LiveConsoleActionInput): P
       await page.mouse.wheel(0, Number(action.value ?? 500));
     } else if (action.type === 'wait') {
       await page.waitForTimeout(Number(action.value ?? 1000));
-    } else if (action.type === 'screenshot') {
-      // screenshots are already captured before/after
     }
-      await captureScreenshot(page, afterScreenshotPath);
+
+    // ─── Fill form fields if provided ───────────────────────────────
+    if (input.formFields?.length) {
+      const { filled, failed } = await fillFormFields(page, input.formFields);
+      if (failed.length > 0) {
+        console.warn(`[Operator] Some form fields failed: ${failed.join(', ')}`);
+      }
+    }
+
+    await takeScreenshot(page, afterScreenshotPath);
+
     return {
       ok: true,
       dryRun: action.dryRun !== false,
       approvalRequired: approval.required,
       message: action.dryRun !== false
-        ? `Live dry-run executed in ${session.mode} mode. Browser=${connection.connectedOverCdp ? 'local-cdp' : 'launched-chromium'}.`
-        : `Live action executed in ${session.mode} mode by ${input.approval?.approvedBy ?? 'unknown'} under change ticket ${input.approval?.changeTicketId ?? 'n/a'}. Browser=${connection.connectedOverCdp ? 'local-cdp' : 'launched-chromium'}.`,
+        ? `Live dry-run executed in ${session.mode} mode. Browser=${connectedOverCdp ? 'local-cdp' : 'launched-chromium'}.`
+        : `Live action executed in ${session.mode} mode by ${input.approval?.approvedBy ?? 'unknown'} under change ticket ${input.approval?.changeTicketId ?? 'n/a'}. Browser=${connectedOverCdp ? 'local-cdp' : 'launched-chromium'}.`,
       beforeScreenshotPath,
-      afterScreenshotPath
+      afterScreenshotPath,
     };
   } catch (error) {
     session.status = 'failed';
+    try { await takeScreenshot(page, afterScreenshotPath); } catch { /* ignore */ }
     return {
       ok: false,
       dryRun: false,
       approvalRequired: approval.required,
       message: error instanceof Error ? error.message : String(error),
       beforeScreenshotPath,
-      afterScreenshotPath
+      afterScreenshotPath,
     };
   } finally {
-    await releaseLivePage(input.sessionId, connection);
+    await releaseLivePage(input.sessionId);
   }
 }
 
 export function killSession(sessionId: string): OperatorSession {
   const session = getOperatorSession(sessionId);
   session.status = 'cancelled';
-  liveConnections.delete(sessionId);
+  const conn = liveConnections.get(sessionId);
+  if (conn) {
+    liveConnections.delete(sessionId);
+    try { conn.browser.close(); } catch { /* ignore */ }
+  }
+  // Optionally stop Chrome
+  if (session.cdpPort) {
+    stopChrome(session.cdpPort);
+  }
   return session;
 }

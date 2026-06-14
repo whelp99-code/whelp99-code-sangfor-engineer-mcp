@@ -3,6 +3,8 @@ import { requiresApprovalForText } from '@sangfor/approval';
 import { executeLiveConsoleAction, readLiveConsoleState } from '@sangfor/operator';
 import { ProductCode, RiskLevel, normalizeProduct, nowId } from '@sangfor/shared';
 
+export { buildSettingGuideDocx, buildOperationsGuideDocx, buildComprehensiveSettingGuideDocx, buildComprehensiveOperationsGuideDocx, type DocxBuilderInput, type DocxBuilderResult } from './docx-builder.js';
+
 export type AutomationProductCode = 'HCI_SCP' | 'IAG' | 'ENDPOINT_SECURE' | 'NDR';
 export type RequirementProductCode = AutomationProductCode | 'external_or_manual';
 export type AdapterStrategy = 'api-first' | 'webui-first' | 'hybrid';
@@ -192,6 +194,36 @@ const HCI_SCP_ENDPOINTS = [
   'GET /openstack/network/v2.0/networks'
 ];
 
+const IAG_WEBUI_ROUTES = [
+  'WEBUI GET System > Interfaces',
+  'WEBUI GET System > Routing',
+  'WEBUI GET User Management > Authentication Source',
+  'WEBUI GET Policy > Access Control',
+  'WEBUI GET Policy > URL/Application Control',
+  'WEBUI GET Logs > Internet Access Logs'
+];
+
+const ENDPOINT_SECURE_WEBUI_ROUTES = [
+  'WEBUI GET Dashboard (Home) > Agent Status',
+  'WEBUI GET Defense > Malware Scan',
+  'WEBUI GET Policies > App Control',
+  'WEBUI GET Policies > General Policies > Endpoint Control > USB Device Control',
+  'WEBUI GET Detection and Response > Security Events',
+  'WEBUI GET Endpoints > Endpoint Inventory',
+  'WEBUI GET System > Agent Deployment',
+  'WEBUI GET System > Data Sync > Syslog Reporting'
+];
+
+const NDR_API_ENDPOINTS = [
+  'GET /api/v1/event_sources',
+  'GET /api/v1/sensors',
+  'GET /api/v1/incidents',
+  'GET /api/v1/alerts/rules',
+  'GET /api/v1/dashboards',
+  'GET /api/v1/soar/playbooks',
+  'POST /api/v1/soar/playbooks/{id}/execute'
+];
+
 const DEFAULT_EVIDENCE_NEEDS = ['current setting screenshot', 'audit/checklist row reference', 'before/after comparison candidate'];
 
 const ADAPTERS: Record<AutomationProductCode, ProductAdapter> = {
@@ -226,7 +258,7 @@ const ADAPTERS: Record<AutomationProductCode, ProductAdapter> = {
     strategy: 'webui-first',
     authMethods: ['WebUI session', 'Network/API discovery when enabled'],
     apiLikely: false,
-    apiCatalogStatus: 'discovery_required',
+    apiCatalogStatus: 'ready',
     menuRoutes: [
       'System > Interfaces',
       'System > Routing',
@@ -236,39 +268,45 @@ const ADAPTERS: Record<AutomationProductCode, ProductAdapter> = {
       'Logs > Internet Access Logs'
     ],
     capabilities: [
-      capability('auth_source', 'AD/LDAP and authentication policy planning', ['version', 'license', 'interface', 'route', 'user_auth'], ['ad', 'ldap', 'authentication', 'user', 'group', 'sso'], 'high', true, ['User Management', 'Authentication Source'], []),
-      capability('internet_policy', 'Internet access, URL and application policy planning', ['access_policy', 'url_application_policy', 'logs'], ['internet', 'url', 'application', 'policy', 'exception', 'allow', 'block'], 'high', true, ['Policy', 'Access Control'], []),
-      capability('log_validation', 'Log and audit validation', ['logs'], ['log', 'audit', 'report', 'verify'], 'low', false, ['Logs', 'Internet Access Logs'], [])
+      capability('auth_source', 'AD/LDAP and authentication policy planning', ['version', 'license', 'interface', 'route', 'user_auth'], ['ad', 'ldap', 'authentication', 'user', 'group', 'sso'], 'high', true, ['User Management', 'Authentication Source'], IAG_WEBUI_ROUTES),
+      capability('internet_policy', 'Internet access, URL and application policy planning', ['access_policy', 'url_application_policy', 'logs'], ['internet', 'url', 'application', 'policy', 'exception', 'allow', 'block'], 'high', true, ['Policy', 'Access Control'], IAG_WEBUI_ROUTES),
+      capability('log_validation', 'Log and audit validation', ['logs'], ['log', 'audit', 'report', 'verify'], 'low', false, ['Logs', 'Internet Access Logs'], IAG_WEBUI_ROUTES)
     ]
   },
   ENDPOINT_SECURE: {
     product: 'ENDPOINT_SECURE',
     aliases: ['endpoint secure', 'endpoint security', 'edr', 'epp', 'asec'],
     strategy: 'webui-first',
-    authMethods: ['WebUI session', 'Network/API discovery when enabled'],
+    authMethods: ['WebUI session', 'Operator dry-run route catalog'],
     apiLikely: false,
-    apiCatalogStatus: 'discovery_required',
+    apiCatalogStatus: 'ready',
     menuRoutes: [
-      'Dashboard > Endpoint Status',
-      'Assets > Endpoint/Agent List',
-      'Policy > Malware/Ransomware Protection',
-      'Policy > Exceptions',
-      'System > Update Management',
-      'Deployment > Agent Deployment'
+      'Dashboard (Home)',
+      'Detection and Response > Security Events',
+      'Defense > Malware Scan',
+      'Endpoints > Endpoint Inventory',
+      'Policies > App Control',
+      'Policies > General Policies > Endpoint Control > USB Device Control',
+      'System > Agent Deployment',
+      'System > Data Sync > Syslog Reporting'
     ],
     capabilities: [
-      capability('endpoint_inventory', 'Endpoint, agent and update status collection', ['license', 'endpoint_agent', 'update_status'], ['endpoint', 'agent', 'online', 'offline', 'update'], 'low', false, ['Assets', 'Endpoint/Agent List'], []),
-      capability('protection_policy', 'Protection policy rollout planning', ['policy', 'malware_ransomware', 'exception_list'], ['policy', 'monitor', 'enforce', 'malware', 'ransomware', 'exception'], 'high', true, ['Policy', 'Malware/Ransomware Protection'], []),
-      capability('agent_deployment', 'Agent deployment planning', ['endpoint_agent', 'policy'], ['deploy', 'deployment', 'install', 'agent', 'agent rollout'], 'high', true, ['Deployment', 'Agent Deployment'], [])
+      capability('endpoint_inventory', 'Endpoint, agent and update status collection', ['license', 'endpoint_agent', 'update_status'], ['endpoint', 'agent', 'online', 'offline', 'update', '에이전트', '설치'], 'low', false, ['Dashboard (Home)'], ENDPOINT_SECURE_WEBUI_ROUTES),
+      capability('protection_policy', 'Anti-malware scan and protection policy', ['policy', 'malware_ransomware', 'exception_list'], ['policy', 'malware', 'ransomware', 'scan', 'anti-virus', 'antivirus', 'engine update', '검사', '엔진'], 'high', true, ['Defense', 'Malware Scan'], ENDPOINT_SECURE_WEBUI_ROUTES),
+      capability('app_control', 'Software/application control policy', ['policy', 'software_control'], ['software control', 'unauthorized software', 'application', 'app control', '소프트웨어', '통제'], 'high', true, ['Policies', 'App Control'], ENDPOINT_SECURE_WEBUI_ROUTES),
+      capability('device_control', 'USB and device control policy', ['policy', 'device_control'], ['device control', 'usb', 'storage media', '저장매체', 'usb device'], 'high', true, ['Policies', 'General Policies', 'Endpoint Control', 'USB Device Control'], ENDPOINT_SECURE_WEBUI_ROUTES),
+      capability('security_events', 'Security event logs and audit trail', ['logs', 'security_events', 'audit'], ['log', 'event', 'audit', 'detection', '보안 이벤트', '로그', '감사'], 'low', false, ['Detection and Response', 'Security Events'], ENDPOINT_SECURE_WEBUI_ROUTES),
+      capability('agent_deployment', 'Agent deployment planning', ['endpoint_agent', 'policy'], ['deploy', 'deployment', 'install', 'agent', 'agent rollout', '배포'], 'high', true, ['System', 'Agent Deployment'], ENDPOINT_SECURE_WEBUI_ROUTES),
+      capability('syslog_export', 'Syslog/SIEM log forwarding', ['logs', 'syslog', 'siem'], ['syslog', 'siem', 'log export', 'data sync', '로그 전송'], 'medium', false, ['System', 'Data Sync', 'Syslog Reporting'], ENDPOINT_SECURE_WEBUI_ROUTES)
     ]
   },
   NDR: {
     product: 'NDR',
     aliases: ['ndr', 'cyber command', 'athena ndr', 'soc'],
     strategy: 'hybrid',
-    authMethods: ['WebUI session', 'REST API to third party when document is available'],
+    authMethods: ['WebUI session', 'NDR REST API catalog (third-party integration doc)'],
     apiLikely: true,
-    apiCatalogStatus: 'document_required',
+    apiCatalogStatus: 'ready',
     menuRoutes: [
       'Dashboard > Security Operations',
       'Assets > Sensors/Connectors',
@@ -279,9 +317,9 @@ const ADAPTERS: Record<AutomationProductCode, ProductAdapter> = {
       'System > Integrations'
     ],
     capabilities: [
-      capability('event_source', 'Event source and sensor integration planning', ['version', 'license', 'event_sources', 'sensors_connectors', 'integration_status'], ['event source', 'sensor', 'connector', 'syslog', 'api source', 'ngaf', 'iag', 'endpoint'], 'medium', false, ['Events', 'Event Sources'], ['REST API to 3rd Party: document required']),
-      capability('incident_alert', 'Incident, alert and dashboard validation', ['incidents', 'alerts'], ['incident', 'alert', 'dashboard', 'report'], 'low', false, ['Incidents', 'Incident List'], []),
-      capability('soar_response', 'SOAR/playbook response action planning', ['soar_playbooks'], ['soar', 'playbook', 'response', 'isolate', 'block', 'quarantine'], 'critical', true, ['SOAR', 'Playbooks'], ['REST API to 3rd Party: document required'])
+      capability('event_source', 'Event source and sensor integration planning', ['version', 'license', 'event_sources', 'sensors_connectors', 'integration_status'], ['event source', 'sensor', 'connector', 'syslog', 'api source', 'ngaf', 'iag', 'endpoint'], 'medium', false, ['Events', 'Event Sources'], NDR_API_ENDPOINTS),
+      capability('incident_alert', 'Incident, alert and dashboard validation', ['incidents', 'alerts'], ['incident', 'alert', 'dashboard', 'report'], 'low', false, ['Incidents', 'Incident List'], NDR_API_ENDPOINTS),
+      capability('soar_response', 'SOAR/playbook response action planning', ['soar_playbooks'], ['soar', 'playbook', 'response', 'isolate', 'block', 'quarantine'], 'critical', true, ['SOAR', 'Playbooks'], NDR_API_ENDPOINTS)
     ]
   }
 };
@@ -378,7 +416,9 @@ export function analyzeCustomerRequirements(input: RequirementAnalysisInput) {
     notes: [
       'Read-only collection can run without approval.',
       'Save/Apply/Delete and security or service-impacting changes remain approval-gated.',
-      adapter.apiCatalogStatus === 'ready' ? 'HCI/SCP API catalog can produce request previews.' : 'API discovery evidence is needed before API execution is promoted.'
+      adapter.apiCatalogStatus === 'ready'
+        ? `${adapter.product} route catalog is ready for dry-run previews (API and/or WEBUI).`
+        : 'API discovery evidence is needed before API execution is promoted.'
     ]
   };
 }
@@ -607,15 +647,24 @@ export function verifyProductChange(input: { plan: ProductChangePlan; observed?:
 function chooseSource(adapter: ProductAdapter, preferApi?: boolean): ConfigSource {
   if (adapter.strategy === 'api-first' && preferApi !== false) return 'api';
   if (adapter.strategy === 'hybrid') return preferApi === false ? 'webui' : 'hybrid';
-  return adapter.apiCatalogStatus === 'discovery_required' ? 'api-discovery' : 'webui';
+  if (adapter.apiCatalogStatus === 'ready') return 'webui';
+  return 'api-discovery';
+}
+
+function catalogHint(adapter: ProductAdapter): string {
+  if (adapter.apiCatalogStatus !== 'ready') return 'capture=webui_screenshot_and_network_discovery';
+  if (adapter.product === 'HCI_SCP') return 'api_catalog=scp_openapi_v6.10/v6.1';
+  if (adapter.product === 'IAG') return 'webui_catalog=iag_v1';
+  if (adapter.product === 'ENDPOINT_SECURE') return 'webui_catalog=endpoint_secure_v1';
+  if (adapter.product === 'NDR') return 'api_catalog=ndr_third_party_rest_v1';
+  return 'catalog=ready';
 }
 
 function buildEvidenceHints(adapter: ProductAdapter, section: string, source: ConfigSource): string[] {
   const menu = adapter.capabilities.find(cap => cap.collectSections.includes(section))?.menuPath.join(' > ');
   const hints = [`section=${section}`, `source=${source}`];
   if (menu) hints.push(`menu=${menu}`);
-  if (adapter.apiCatalogStatus === 'ready') hints.push('api_catalog=scp_openapi_v6.10/v6.1');
-  if (adapter.apiCatalogStatus !== 'ready') hints.push('capture=webui_screenshot_and_network_discovery');
+  hints.push(catalogHint(adapter));
   return hints;
 }
 
@@ -654,8 +703,20 @@ function directCapability(adapter: ProductAdapter, value: string): ProductCapabi
   if (adapter.product === 'HCI_SCP' && hasAny(['drs', 'ha/drs', 'high availability', 'resource pool'])) {
     return adapter.capabilities.find(cap => cap.id === 'ha_drs');
   }
-  if (adapter.product === 'ENDPOINT_SECURE' && hasAny(['deploy', 'deployment', 'install', 'rollout'])) {
+  if (adapter.product === 'ENDPOINT_SECURE' && hasAny(['deploy', 'deployment', 'install', 'rollout', '배포'])) {
     return adapter.capabilities.find(cap => cap.id === 'agent_deployment');
+  }
+  if (adapter.product === 'ENDPOINT_SECURE' && hasAny(['device control', 'usb', 'storage media', '저장매체'])) {
+    return adapter.capabilities.find(cap => cap.id === 'device_control');
+  }
+  if (adapter.product === 'ENDPOINT_SECURE' && hasAny(['software control', 'unauthorized software', 'application control', 'app control', '소프트웨어'])) {
+    return adapter.capabilities.find(cap => cap.id === 'app_control');
+  }
+  if (adapter.product === 'ENDPOINT_SECURE' && hasAny(['anti-virus', 'antivirus', 'malware', 'ransomware', 'engine update', 'scan', '검사', '엔진', '바이러스'])) {
+    return adapter.capabilities.find(cap => cap.id === 'protection_policy');
+  }
+  if (adapter.product === 'ENDPOINT_SECURE' && hasAny(['log', 'event', 'audit', '보안 이벤트', '로그', '감사'])) {
+    return adapter.capabilities.find(cap => cap.id === 'security_events');
   }
   if (adapter.product === 'NDR' && hasAny(['soar', 'playbook', 'response action', 'isolate', 'quarantine'])) {
     return adapter.capabilities.find(cap => cap.id === 'soar_response');
@@ -917,7 +978,11 @@ function settingLabel(capabilityId: string): string {
     internet_policy: 'Internet/URL/application access policy check',
     log_validation: 'Log retention and audit validation',
     endpoint_inventory: 'Endpoint/agent inventory check',
-    protection_policy: 'Malware/ransomware protection policy check',
+    protection_policy: 'Anti-malware scan and protection policy check',
+    app_control: 'Software/application control policy check',
+    device_control: 'USB/device control policy check',
+    security_events: 'Security event logs and audit trail',
+    syslog_export: 'Syslog/SIEM log forwarding check',
     agent_deployment: 'Agent deployment/self-protection check',
     event_source: 'Event source/sensor integration check',
     incident_alert: 'Incident/alert/dashboard validation',

@@ -52,6 +52,21 @@
       ],
       "@sangfor/product-adapters": [
         "packages/sangfor-product-adapters/src/index.ts"
+      ],
+      "@sangfor/store": [
+        "packages/sangfor-store/src/index.ts"
+      ],
+      "@sangfor/shared": [
+        "packages/shared/src/index.ts"
+      ],
+      "@sangfor/pptx": [
+        "packages/sangfor-pptx/src/index.ts"
+      ],
+      "@sangfor/screenshot": [
+        "packages/sangfor-screenshot/src/index.ts"
+      ],
+      "@sangfor/chrome": [
+        "packages/sangfor-chrome/src/index.ts"
       ]
     },
     "baseUrl": "."

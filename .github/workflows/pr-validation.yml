@@ -1,0 +1,49 @@
+name: PR Validation
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm run lint
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build
+        run: pnpm run build
+
+      - name: Check formatting
+        run: pnpm run lint
+
+      - name: Check for console.log
+        run: |
+          if grep -r "console.log" --include="*.ts" src/ packages/ apps/; then
+            echo "console.log found - please remove"
+            exit 1
+          fi
+
+      - name: Check for TODO/FIXME
+        run: |
+          if grep -r "TODO\|FIXME" --include="*.ts" src/ packages/ apps/; then
+            echo "TODO/FIXME found - please resolve"
+            exit 1
+          fi

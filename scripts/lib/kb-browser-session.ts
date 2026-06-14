@@ -2,8 +2,8 @@
  * Shared Playwright session for authenticated knowledgebase.sangfor.com browsing.
  */
 import { execSync } from 'node:child_process';
-import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, mkdirSync, readFileSync, readdirSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { chromium, type Browser, type BrowserContext, type Page } from 'playwright';
 import { loadOneSessionFromEnv, resolveAuthTokens } from '../../packages/sangfor-collector/src/index.js';
 import type { OneSessionConfig } from '../../packages/sangfor-collector/src/one-session.js';
@@ -180,8 +180,33 @@ const CHROME_PROFILE = process.env.CHROME_USER_DATA ?? (
     : `${process.env.HOME}/.config/google-chrome`
 );
 
+const DEFAULT_CDP_URL = 'http://127.0.0.1:9222';
+
+export function kbStorageStatePath(): string {
+  const repo = process.env.SANGFOR_REPO_DIR?.trim() || process.cwd();
+  return join(repo, 'data/runtime/kb-storage-state.json');
+}
+
+export async function saveKbStorageState(context: BrowserContext): Promise<void> {
+  const path = kbStorageStatePath();
+  mkdirSync(dirname(path), { recursive: true });
+  await context.storageState({ path });
+}
+
+export async function createKbContextWithStorage(browser: Browser, headed: boolean): Promise<BrowserContext> {
+  const statePath = kbStorageStatePath();
+  const base = headed ? { viewport: null, ignoreHTTPSErrors: true } : { ignoreHTTPSErrors: true };
+  if (existsSync(statePath)) {
+    return browser.newContext({ ...base, storageState: statePath });
+  }
+  return browser.newContext(base);
+}
+
 export async function launchKbBrowser(tokens: KbBrowserTokens): Promise<KbBrowserHandle> {
-  const cdpUrl = process.env.SANGFOR_CDP_URL?.trim();
+  const cdpUrl = (
+    process.env.SANGFOR_CDP_URL?.trim()
+    || (process.env.SANGFOR_GLASS_CDP_REQUIRED === '1' ? DEFAULT_CDP_URL : '')
+  );
   const headed = process.env.SANGFOR_KB_HEADED === '1';
   const useChromeProfile = process.env.SANGFOR_USE_CHROME_PROFILE === '1';
 
@@ -229,9 +254,7 @@ export async function launchKbBrowser(tokens: KbBrowserTokens): Promise<KbBrowse
     headless: !headed,
     args: headed ? ['--start-maximized'] : []
   });
-  const context = await browser.newContext(
-    headed ? { viewport: null, ignoreHTTPSErrors: true } : { ignoreHTTPSErrors: true }
-  );
+  const context = await createKbContextWithStorage(browser, headed);
   const page = await context.newPage();
   return {
     browser,
@@ -260,5 +283,9 @@ export async function prepareKbPage(tokens: KbBrowserTokens, page: Page): Promis
     }
   }
   await injectKbSession(page, tokens);
-  return waitForKbReady(page);
+  const ready = await waitForKbReady(page);
+  if (ready) {
+    await saveKbStorageState(page.context()).catch(() => {});
+  }
+  return ready;
 }

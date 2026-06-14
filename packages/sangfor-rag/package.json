@@ -1,1 +1,8 @@
-{ "name": "@sangfor/rag", "type": "module", "main": "src/index.ts" }
+{
+  "name": "@sangfor/rag",
+  "type": "module",
+  "main": "src/index.ts",
+  "dependencies": {
+    "@sangfor/shared": "workspace:*"
+  }
+}

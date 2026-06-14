@@ -112,15 +112,27 @@ cp .cursor/mcp.json.example .cursor/mcp.json
 
 도구 `sangfor.learn_sources` 로 `.env` 기반 수집도 가능.
 
-## 6. UI 데모 (선택, 다른 브랜치)
+## 6. 웹 UI (Operator Console)
 
-Operator Console 등 UI는 `cursor/ui-demo-data-expand-2b33` 브랜치:
+브라우저에서 Sangfor Engineer 기능을 사용합니다. MCP stdio 서버(`dev:mcp`)는 Cursor 등 다른 클라이언트용으로 그대로 둡니다.
 
 ```bash
-pnpm run dev:operator-console   # :3500
-pnpm run dev:mock-console       # :3400
+pnpm run dev:web          # http://localhost:3500 (alias: dev:operator-console)
+pnpm run dev:mock-console # http://localhost:3400 (선택, mock HCI)
 pnpm run seed:demo
 ```
+
+### 화면
+
+| 탭 | API | 설명 |
+|----|-----|------|
+| 대시보드 | `GET /api/summary`, `/api/health/*` | RAG·Store·임베딩 상태, 문서 링크 |
+| 프로젝트 분석 | `POST /api/analyze-project` | 리스크·누락 입력 분석 |
+| 설정 플랜 | `POST /api/generate-config-plan` | RAG 기반 설정 플랜 |
+| RAG 검색 | `POST /api/rag-search` | 로컬 인덱스 검색 |
+| 제품 어댑터 | `POST /api/discover-console`, `/api/analyze-requirements`, `/api/import-excel` | 콘솔 탐색·요구사항·Excel |
+| 피드백 | `POST /api/feedback` | 피드백 제출 |
+| 지식 브라우저 | `GET /api/knowledge` | 시드 매뉴얼/Wiki |
 
 ## 7. git에 없는 데이터 (로컬에서 새로 생성)
 
@@ -140,9 +152,70 @@ VM에서 만든 인덱스를 쓰려면 위 파일들을 **scp/rsync** 로 복사
 | `pnpm run verify:one` | ONE 세션 확인 |
 | `pnpm run learn:sources` | Community + KB + demo → RAG + JSONL |
 | `pnpm run learn:kb:full` | 제품별 URL 목록 + (가능 시) 브라우저 탐색 → 본문 크롤 → RAG |
+| `pnpm run check:glass-cdp` | Glass CDP(기본 9222) + KB 탭 상태 확인 |
+| `pnpm run check:embedding-providers` | Rapid-MLX / MiMo rerank 상태 확인 |
+| `pnpm run rag:reembed` | RAG 인덱스 semantic 재임베딩 |
+| `pnpm run learn:nightly` | learn:all + KB full crawl + reembed |
+| `pnpm run db:migrate` | Prisma migrate dev (PostgreSQL) |
+| `pnpm run db:generate` | Regenerate Prisma client |
+
+### launchd (KB daily 03:00)
+
+```bash
+cp automation/com.jmpark.sangfor.learnkb.plist ~/Library/LaunchAgents/
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.jmpark.sangfor.learnkb.plist
+launchctl print gui/$(id -u)/com.jmpark.sangfor.learnkb
+```
+
+### MiMo Token Plan
+
+- API Key format: `tp-xxxxx` (not pay-as-you-go `sk-xxxxx`)
+- Default base URL (APAC): `https://token-plan-sgp.xiaomimimo.com/v1`
+- Set `SANGFOR_MIMO_BILLING=token-plan` and `SANGFOR_MIMO_TOKEN_PLAN_CLUSTER=sgp|cn|ams`
+
+### LiteLLM (local proxy, recommended)
+
+로컬 LiteLLM 라우터(`http://localhost:4000/v1`)에 OpenAI 호환으로 연결합니다. CrewAI와 **동일한 model / api_base / api_key**를 씁니다.
+
+| CrewAI `llm` | Sangfor `.env` |
+|--------------|----------------|
+| `api_base: http://localhost:4000/v1` | `SANGFOR_LITELLM_BASE_URL` (또는 `OPENAI_API_BASE`) |
+| `api_key: sk-local-master-key-2026` | `SANGFOR_LITELLM_API_KEY` (또는 `OPENAI_API_KEY`) |
+| `model: openai/local-rapid` | `SANGFOR_LITELLM_EMBEDDING_MODEL=local-rapid` → `/v1/embeddings` |
+| `model: openai/cloud-mimo` | `SANGFOR_LITELLM_CHAT_MODEL=cloud-mimo` + `SANGFOR_MIMO_VIA_LITELLM=1` → rerank |
+
+CrewAI YAML의 `openai/` 접두사는 코드에서 자동 제거됩니다. `/v1/models`에 보이는 id(`local-rapid`, `cloud-mimo`)를 쓰면 됩니다.
+
+```bash
+# .env (방법 1 — 명시)
+SANGFOR_EMBEDDING_PROVIDER=litellm
+SANGFOR_LITELLM_BASE_URL=http://localhost:4000/v1
+SANGFOR_LITELLM_API_KEY=sk-local-master-key-2026
+SANGFOR_LITELLM_EMBEDDING_MODEL=openai/local-rapid
+SANGFOR_MIMO_VIA_LITELLM=1
+SANGFOR_LITELLM_CHAT_MODEL=openai/cloud-mimo
+
+# 방법 2 — ~/.zshrc만 써도 base/key는 자동 fallback
+# export OPENAI_API_BASE="http://localhost:4000/v1"
+# export OPENAI_API_KEY="sk-local-master-key-2026"
+
+pnpm run check:embedding-providers
+pnpm run rag:reembed
+```
+
+`SANGFOR_MIMO_VIA_LITELLM=1`이면 MiMo rerank는 LiteLLM의 `openai/cloud-mimo`로 라우팅되며 `SANGFOR_ALLOW_CLOUD_RAG` 없이 동작합니다.
+
+### Rapid-MLX (direct)
+
+`SANGFOR_EMBEDDING_PROVIDER=rapid-mlx` + `SANGFOR_RAPID_MLX_BASE_URL` 설정 후:
+
+```bash
+pnpm run rag:reembed
+```
 | `pnpm run login:one:safari` | Safari ONE/KB 토큰 → `.env` |
 | `pnpm run login:kb:chrome` | Chrome에서 KB 열고 `library_token` 캡처 |
 | `pnpm run learn:finalize` | 검증·완료 리포트 |
+| `pnpm run dev:web` | 웹 UI (Operator Console, :3500) |
 | `pnpm run dev:mcp` | MCP stdio 서버 |
 
 ## 9. 문제 해결
@@ -150,7 +223,8 @@ VM에서 만든 인덱스를 쓰려면 위 파일들을 **scp/rsync** 로 복사
 - **`pnpm install` 실패** → `npm` 대신 `pnpm` 사용 (`.npmrc` 확인)
 - **토큰 무효** → `pnpm run login:one` 다시 실행
 - **KB 본문 없음** → `kbTokenUsed: false` 정상(카탈로그만). ONE에서 KB 진입 후 capture
-- **전체 KB 사이트맵/본문** → `data/sources/sangfor_product_tables.md` 시드(Claude 표) + `pnpm run learn:kb:full`. Playwright가 Login이면 Glass/CDP(`SANGFOR_CDP_URL`) 또는 `SANGFOR_USE_CHROME_PROFILE=1` + `SANGFOR_KB_TOKEN_BY_CODE` 필요
+- **전체 KB 사이트맵/본문** → `data/sources/sangfor_product_tables.md` 시드 + `pnpm run learn:kb:full`. 매일 자동화: `automation/scripts/run-learn-kb-full.sh` (CDP `http://127.0.0.1:9222` 고정). 설계: `docs/design/KB_DAILY_CDP_AUTOMATION.md`
+- **RAG 검색 품질** → hash 임베딩 → Rapid-MLX + 샤오미 MiMo(리랭크) 전환 설계: `docs/design/RAG_SEMANTIC_EMBEDDINGS.md`, OSS 갭: `docs/OSS_GAP_ANALYSIS.md`
 - **fine-tune 검증 실패** → `pnpm run learn:rebuild-finetune`
 
 자세한 수집 정책: [SANGFOR_SOURCE_LEARNING.md](./SANGFOR_SOURCE_LEARNING.md)
