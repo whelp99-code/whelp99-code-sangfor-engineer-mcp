@@ -1,0 +1,30 @@
+# Sangfor Engineer MCP — Mock console (port 3400)
+FROM node:22-alpine AS base
+RUN corepack enable && corepack prepare pnpm@10.28.1 --activate
+
+# Dependencies — copy every workspace manifest (apps/* + packages/*)
+FROM base AS deps
+WORKDIR /app
+
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps ./apps
+COPY packages ./packages
+# Keep only package.json files so install layer is stable when sources change
+RUN find apps packages -type f ! -name 'package.json' -delete \
+ && find apps packages -type d -empty -delete 2>/dev/null || true
+
+RUN pnpm install --frozen-lockfile --prod=false || pnpm install --prod=false
+
+# Runner — source-based (tsx)
+FROM base AS runner
+WORKDIR /app
+
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+
+ENV NODE_ENV=production
+ENV PORT=3400
+
+EXPOSE 3400
+
+CMD ["pnpm", "exec", "tsx", "apps/mock-sangfor-console/src/server.ts"]
