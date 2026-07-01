@@ -14,7 +14,7 @@ import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { resolveBindHost, checkAuth, assertBindSafety } from "../../../packages/shared/src/index.js";
-import { findToolAnnotations, isToolAllowedByAnnotations } from "./tool-guard.js";
+import { authorizeToolCall } from "./tool-guard.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(__dirname, "..", "..", "..");
@@ -166,21 +166,13 @@ const server = http.createServer(async (req, res) => {
 
       const enforceWhitelist = process.env.WHELP99_ENFORCE_SAFE_TOOLS !== "false";
       const list = await mcpRequest("tools/list");
-      const annotations = list.error ? null : findToolAnnotations(list.result, name);
-      if (!annotations) {
-        return json(res, { error: `Tool annotations unavailable; refusing call: ${name}` }, 403);
-      }
-      if (annotations.destructiveHint) {
-        return json(res, { error: `Destructive tool refused by MCP annotations: ${name}` }, 403);
-      }
-      if (enforceWhitelist && !isToolAllowedByAnnotations(list.result, name)) {
-        return json(
-          res,
-          {
-            error: `Tool is not annotated read-only: ${name}`,
-          },
-          403,
-        );
+      const decision = authorizeToolCall({
+        name,
+        toolListResult: list.error ? null : list.result,
+        enforceWhitelist,
+      });
+      if (!decision.allow) {
+        return json(res, { error: decision.error }, decision.status ?? 403);
       }
 
       const call = await mcpRequest("tools/call", { name, arguments: args });
