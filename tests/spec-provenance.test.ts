@@ -42,5 +42,17 @@ describe('evaluateSpec — observed provenance (ObservedFact wrappers)', () => {
     const md = renderAdvisoryReport(spec, r);
     expect(md).toContain('patch/statistics');
     expect(md).toMatch(/관측 근거 미기록/); // realtimeOn had no source
+    // provenance is the collector's CLAIM, not a vendor-verified citation
+    expect(md).toMatch(/주장|미검증/);
+  });
+
+  it('flags an unknown collector rather than presenting it as trustworthy provenance', () => {
+    const observed = {
+      patchIsLatest: { value: true, source: { endpoint: '/x', collectedAt: 't', collector: 'totally-made-up' } },
+      realtimeOn: true,
+    };
+    const r = evaluateSpec(spec, observed);
+    const md = renderAdvisoryReport(spec, r);
+    expect(md).toMatch(/미확인 수집기|unknown collector/i);
   });
 });

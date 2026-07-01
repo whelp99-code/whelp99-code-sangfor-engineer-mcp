@@ -497,6 +497,11 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
     description: 'PM safety: acquire an exclusive device lock for an engagement before any device work. Blocks if another engagement holds it (prevents cross-engagement changes on a shared lab device).',
     inputSchema: { type: 'object', properties: { deviceId: { type: 'string' }, engagementId: { type: 'string' }, holder: { type: 'string' } }, required: ['deviceId', 'engagementId', 'holder'] },
     handler: (args: { deviceId: string; engagementId: string; holder: string }) => pmStore.acquireDevice(args.deviceId, args.engagementId, args.holder)
+  },
+  'sangfor.pm_release_device': {
+    description: 'PM safety: release a device lock held by an engagement (records a device_released audit event). Returns false if the engagement does not hold the lock.',
+    inputSchema: { type: 'object', properties: { deviceId: { type: 'string' }, engagementId: { type: 'string' } }, required: ['deviceId', 'engagementId'] },
+    handler: (args: { deviceId: string; engagementId: string }) => ({ released: pmStore.releaseDevice(args.deviceId, args.engagementId) })
   }
 };
 
@@ -513,7 +518,7 @@ const DESTRUCTIVE_TOOLS = new Set([
 
 // Tools that write local server/session/dataset/artifact state (not customer devices).
 const WRITE_TOOLS = new Set([
-  'sangfor.pm_create_engagement', 'sangfor.pm_add_work_item', 'sangfor.pm_acquire_device',
+  'sangfor.pm_create_engagement', 'sangfor.pm_add_work_item', 'sangfor.pm_acquire_device', 'sangfor.pm_release_device',
   'sangfor.create_eval_case_from_feedback', 'sangfor.create_finetune_dataset', 'sangfor.create_finetune_job_spec',
   'sangfor.propose_wiki_update', 'sangfor.approve_wiki_update',
   'sangfor.ingest_document', 'sangfor.learn_sources', 'sangfor.import_excel_requirement_list',

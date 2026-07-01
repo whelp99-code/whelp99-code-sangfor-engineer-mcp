@@ -253,7 +253,13 @@ export function renderAdvisoryReport(spec: IntendedSpec, result: EvaluationResul
     if (i.observed === undefined) return ''; // nothing observed → provenance N/A
     const s = i.observedSource;
     if (s && (s.endpoint || s.collectedAt)) {
-      return ` \n  - 관측: ${s.endpoint ?? '(endpoint 미기록)'}${s.collectedAt ? ` @ ${s.collectedAt}` : ''}${s.collector ? ` [${s.collector}]` : ''}`;
+      // This is the COLLECTOR'S claim (how the value was captured), NOT a
+      // vendor-verified citation — label it as such and flag unknown collectors.
+      const known = new Set(['live-xhr', 'dom-scrape', 'aside-snapshot', 'manual']);
+      const collectorTag = s.collector
+        ? ` [${s.collector}${known.has(s.collector) ? '' : ' ⚠ 미확인 수집기'}]`
+        : '';
+      return ` \n  - 관측(수집기 주장, 미검증): ${s.endpoint ?? '(endpoint 미기록)'}${s.collectedAt ? ` @ ${s.collectedAt}` : ''}${collectorTag}`;
     }
     return ` \n  - 관측: 관측 근거 미기록`;
   };
