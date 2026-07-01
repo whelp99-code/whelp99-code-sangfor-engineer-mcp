@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "defaultSafetyClass": "human_only",
+  "entries": [
+    {
+      "product": "HCI_SCP",
+      "capabilityId": "resource_inventory",
+      "safetyClass": "read_only",
+      "reason": "Inventory collection has no mutation path."
+    },
+    {
+      "product": "HCI_SCP",
+      "capabilityId": "ha_drs",
+      "safetyClass": "human_only",
+      "reason": "HA/DRS writes need read-back oracle and audit ledger before automation."
+    },
+    {
+      "product": "HCI_SCP",
+      "capabilityId": "vm_resource",
+      "safetyClass": "human_only",
+      "reason": "VM power, migration and delete operations can be irreversible or disruptive."
+    },
+    {
+      "product": "IAG",
+      "capabilityId": "auth_source",
+      "safetyClass": "read_only",
+      "reason": "Current scope is advisory evaluation only; console mutation is not allowed."
+    },
+    {
+      "product": "IAG",
+      "capabilityId": "internet_policy",
+      "safetyClass": "read_only",
+      "reason": "Current scope is advisory evaluation only; policy mutation is not allowed."
+    },
+    {
+      "product": "ENDPOINT_SECURE",
+      "capabilityId": "agent_deployment",
+      "safetyClass": "human_only",
+      "reason": "Agent rollout can affect endpoints and requires a field-verified recipe."
+    },
+    {
+      "product": "NDR",
+      "capabilityId": "soar_response",
+      "safetyClass": "human_only",
+      "reason": "Response actions can isolate or block assets."
+    }
+  ]
+}

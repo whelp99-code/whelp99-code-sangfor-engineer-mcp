@@ -35,6 +35,7 @@ import {
 import { buildSettingGuidePptx, buildOperationsGuidePptx } from '../../../packages/sangfor-pptx/src/index.js';
 import { captureProductScreenshots } from '../../../packages/sangfor-screenshot/src/index.js';
 import { loadSpec, evaluateSpec, renderAdvisoryReport, listSpecCoverage, type IntendedSpec } from '../../../packages/sangfor-spec/src/index.js';
+import { getCapabilitySafety, listCapabilitySafety } from '../../../packages/sangfor-safety/src/index.js';
 
 type JsonRpcRequest = { jsonrpc: '2.0'; id?: string | number; method: string; params?: any };
 
@@ -405,6 +406,13 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
     description: 'List which product/version IntendedSpecs exist (advisory coverage) so callers know what config checks are available.',
     inputSchema: { type: 'object', properties: {} },
     handler: () => ({ coverage: listSpecCoverage() })
+  },
+  'sangfor.capability_safety': {
+    description: 'Report capability safety_class and maturity from physically separated safety/competency files. Default is human_only; autoAllowed is true only for explicit auto_allowed entries, and fieldVerifiedAutoAllowed additionally requires maturity=field_verified.',
+    inputSchema: { type: 'object', properties: { product: { type: 'string' }, capabilityId: { type: 'string' } } },
+    handler: (args: { product?: string; capabilityId?: string }) => args.product && args.capabilityId
+      ? getCapabilitySafety(args.product, args.capabilityId)
+      : { capabilities: listCapabilitySafety() }
   }
 };
 

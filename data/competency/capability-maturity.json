@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "product": "IAG",
+      "capabilityId": "auth_source",
+      "maturity": "implemented_local",
+      "evidence": "tests/spec-iag-seed.test.ts"
+    },
+    {
+      "product": "IAG",
+      "capabilityId": "internet_policy",
+      "maturity": "implemented_local",
+      "evidence": "tests/spec-iag-seed.test.ts"
+    },
+    {
+      "product": "HCI_SCP",
+      "capabilityId": "resource_inventory",
+      "maturity": "planned",
+      "evidence": "docs/PROPOSAL_FIELD_ENGINEER_AUTOMATION_v1.md"
+    },
+    {
+      "product": "ENDPOINT_SECURE",
+      "capabilityId": "agent_deployment",
+      "maturity": "planned",
+      "evidence": "docs/PROPOSAL_FIELD_ENGINEER_AUTOMATION_v1.md"
+    }
+  ]
+}

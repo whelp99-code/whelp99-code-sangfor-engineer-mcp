@@ -70,6 +70,9 @@
       ],
       "@sangfor/spec": [
         "packages/sangfor-spec/src/index.ts"
+      ],
+      "@sangfor/safety": [
+        "packages/sangfor-safety/src/index.ts"
       ]
     },
     "baseUrl": "."
