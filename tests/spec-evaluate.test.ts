@@ -182,3 +182,31 @@ describe('evaluateSpec — needsSeniorReview downgrades an auto-PASS to INDETERM
     expect(result.items[0].reason).toMatch(/시니어|senior/i);
   });
 });
+
+describe('evaluateSpec — red-team edge cases (redteam M5/L13/L14/L15)', () => {
+  const item = (op: any, expected: any, extra: any = {}) => ({
+    ...baseSpec,
+    items: [{ id: 'x', capabilityId: 'c', label: 'l', observedKey: 'k', op, expected, severity: 'must', source: { manual: 'M' }, ...extra }],
+  });
+
+  it('does NOT silently unwrap a legitimate object value {value:N} that lacks provenance (no misclassification into false PASS)', () => {
+    const r = evaluateSpec(item('eq', 5), { k: { value: 5 } }); // object config that merely has a "value" field
+    expect(r.items[0].verdict).not.toBe('PASS');
+  });
+
+  it('gte rejects hex/octal/binary number strings as INDETERMINATE (Number() base syntax not trusted)', () => {
+    expect(evaluateSpec(item('gte', 10), { k: '0x10' }).items[0].verdict).toBe('INDETERMINATE');
+    expect(evaluateSpec(item('gte', 10), { k: '0b1111' }).items[0].verdict).toBe('INDETERMINATE');
+    // plain decimal string still works
+    expect(evaluateSpec(item('gte', 10), { k: '16' }).items[0].verdict).toBe('PASS');
+  });
+
+  it('includes with an empty expected is INDETERMINATE, not a vacuous PASS', () => {
+    expect(evaluateSpec(item('includes', ''), { k: 'anything' }).items[0].verdict).toBe('INDETERMINATE');
+  });
+
+  it('eq/neq with a NaN operand is INDETERMINATE (NaN is unknown, never a PASS)', () => {
+    expect(evaluateSpec(item('neq', 5), { k: NaN }).items[0].verdict).toBe('INDETERMINATE');
+    expect(evaluateSpec(item('eq', NaN), { k: NaN }).items[0].verdict).toBe('INDETERMINATE');
+  });
+});

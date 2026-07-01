@@ -227,10 +227,13 @@ export function evaluateSpec(spec: IntendedSpec, observed: Record<string, unknow
   return { specId: spec.id, ok: computeOk(summary), items, summary, coverage };
 }
 
-/** Detect the ObservedFact wrapper shape ({ value, source? }) vs a bare observed value. */
+/** Detect the ObservedFact provenance wrapper ({ value, source }) vs a bare observed
+ *  value. Requires BOTH keys so a legitimate object config that merely has a `value`
+ *  field is never silently unwrapped (which would swap the comparison target). */
 function isObservedFact(v: unknown): v is ObservedFact {
   if (typeof v !== 'object' || v === null || Array.isArray(v)) return false;
-  if (!Object.prototype.hasOwnProperty.call(v, 'value')) return false;
+  const has = (k: string) => Object.prototype.hasOwnProperty.call(v, k);
+  if (!has('value') || !has('source')) return false;
   return Object.keys(v as object).every((k) => k === 'value' || k === 'source');
 }
 
@@ -349,12 +352,15 @@ type CompareOutcome = 'pass' | 'fail' | 'indeterminate';
 const isScalar = (v: unknown): boolean =>
   v === null || v === undefined || ['string', 'number', 'boolean'].includes(typeof v);
 
-/** Parse a value to a finite number, or null if it cannot be trusted as numeric. */
+/** Parse a value to a finite number, or null if it cannot be trusted as numeric.
+ *  Only plain decimal strings are accepted — hex/binary/octal/exponent syntax
+ *  (0x10, 0b1111, 1e3) would let Number() invent a value, so they are rejected. */
+const DECIMAL_RE = /^[+-]?(\d+\.?\d*|\.\d+)$/;
 function toFiniteNumber(v: unknown): number | null {
   if (typeof v === 'number') return Number.isFinite(v) ? v : null;
   if (typeof v === 'string') {
     const t = v.trim();
-    if (t === '') return null;
+    if (!DECIMAL_RE.test(t)) return null; // rejects '', '0x10', '0b1', '1e3', 'N/A'
     const n = Number(t);
     return Number.isFinite(n) ? n : null;
   }
@@ -370,6 +376,9 @@ function compareValue(op: CompareOp, observed: unknown, expected: unknown): Comp
   switch (op) {
     case 'eq':
     case 'neq': {
+      // NaN is unknown, not a comparable value — never let NaN produce a pass/fail.
+      const isNaNv = (x: unknown) => typeof x === 'number' && Number.isNaN(x);
+      if (isNaNv(observed) || isNaNv(expected)) return 'indeterminate';
       // If both are scalars of different primitive type (e.g. boolean true vs
       // scraped string 'true'), the comparison is untrustworthy → indeterminate.
       if (isScalar(observed) && isScalar(expected) && observed != null && expected != null
@@ -387,6 +396,8 @@ function compareValue(op: CompareOp, observed: unknown, expected: unknown): Comp
       return (op === 'gte' ? a >= b : a <= b) ? 'pass' : 'fail';
     }
     case 'includes': {
+      // An empty/absent expected would make every string "contain" it — vacuous PASS.
+      if (expected === '' || expected == null) return 'indeterminate';
       if (Array.isArray(observed)) return observed.includes(expected) ? 'pass' : 'fail';
       if (typeof observed === 'string' && (typeof expected === 'string' || typeof expected === 'number')) {
         return observed.includes(String(expected)) ? 'pass' : 'fail';
