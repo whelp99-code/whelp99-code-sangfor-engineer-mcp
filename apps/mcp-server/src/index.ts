@@ -484,11 +484,61 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
   }
 };
 
-function listTools() {
+// Tools that change customer devices or external systems — clients MUST gate these.
+// Adding a new mutator without listing it here is caught by tests/mcp-tool-annotations.
+const DESTRUCTIVE_TOOLS = new Set([
+  'sangfor.apply_approved_product_change',
+  'sangfor.execute_console_action',
+  'sangfor.execute_console_action_live',
+  'sangfor.apply_wiki_update',
+  'sangfor.apply_github_wiki_update',
+  'sangfor.apply_obsidian_wiki_update',
+]);
+
+// Tools that write local server/session/dataset/artifact state (not customer devices).
+const WRITE_TOOLS = new Set([
+  'sangfor.pm_create_engagement', 'sangfor.pm_add_work_item', 'sangfor.pm_acquire_device',
+  'sangfor.create_eval_case_from_feedback', 'sangfor.create_finetune_dataset', 'sangfor.create_finetune_job_spec',
+  'sangfor.propose_wiki_update', 'sangfor.approve_wiki_update',
+  'sangfor.ingest_document', 'sangfor.learn_sources', 'sangfor.import_excel_requirement_list',
+  'sangfor.submit_feedback', 'sangfor.extract_lesson', 'sangfor.request_approval', 'sangfor.run_planner_eval',
+  'sangfor.capture_screenshots', 'sangfor.start_operator_session', 'sangfor.kill_session',
+  'sangfor.generate_all_guides', 'sangfor.generate_comprehensive_operations_guide_docx',
+  'sangfor.generate_comprehensive_setting_guide_docx', 'sangfor.generate_config_plan',
+  'sangfor.generate_evidence_report', 'sangfor.generate_excel_based_change_plan',
+  'sangfor.generate_operations_guide_docx', 'sangfor.generate_operations_guide_pptx',
+  'sangfor.generate_product_change_plan', 'sangfor.generate_setting_guide_docx', 'sangfor.generate_setting_guide_pptx',
+]);
+
+function categoryOf(name: string): string {
+  const n = name.replace(/^sangfor\./, '');
+  if (DESTRUCTIVE_TOOLS.has(name)) return 'admin';
+  if (n.startsWith('pm_')) return 'pm';
+  if (/wiki/.test(n)) return 'wiki';
+  if (n.startsWith('generate_') || /report|guide|excel/.test(n)) return 'report';
+  if (/rag|search|manual|store_health|discover/.test(n)) return 'knowledge';
+  if (/finetune|eval|feedback|lesson/.test(n)) return 'ml';
+  if (/console|operator|session|screenshot|collect/.test(n)) return 'collect';
+  return 'advisory';
+}
+
+function annotationsFor(name: string, description: string) {
+  const destructive = DESTRUCTIVE_TOOLS.has(name);
+  const write = destructive || WRITE_TOOLS.has(name);
+  return {
+    title: (description.split(/[.:—]/)[0] || name).slice(0, 60).trim(),
+    readOnlyHint: !write,
+    destructiveHint: destructive,
+  };
+}
+
+export function listTools() {
   return Object.entries(tools).map(([name, tool]) => ({
     name,
     description: tool.description,
-    inputSchema: tool.inputSchema
+    inputSchema: tool.inputSchema,
+    annotations: annotationsFor(name, tool.description),
+    category: categoryOf(name),
   }));
 }
 
@@ -514,26 +564,33 @@ async function handle(req: JsonRpcRequest) {
   }
 }
 
-const rl = readline.createInterface({ input: process.stdin, output: process.stdout, terminal: false });
-rl.on('line', async (line) => {
-  if (!line.trim()) return;
-  let req: JsonRpcRequest;
-  try {
-    req = JSON.parse(line) as JsonRpcRequest;
-  } catch {
-    // Malformed JSON must not crash the stdio server — emit a JSON-RPC parse error.
-    process.stdout.write(`${JSON.stringify({ jsonrpc: '2.0', id: null, error: { code: -32700, message: 'Parse error' } })}\n`);
-    return;
-  }
-  try {
-    const res = await handle(req);
-    process.stdout.write(`${JSON.stringify(res)}\n`);
-  } catch (err) {
-    process.stdout.write(`${JSON.stringify({ jsonrpc: '2.0', id: req?.id ?? null, error: { code: -32603, message: String(err instanceof Error ? err.message : err) } })}\n`);
-  }
-});
+function startStdioServer() {
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout, terminal: false });
+  rl.on('line', async (line) => {
+    if (!line.trim()) return;
+    let req: JsonRpcRequest;
+    try {
+      req = JSON.parse(line) as JsonRpcRequest;
+    } catch {
+      // Malformed JSON must not crash the stdio server — emit a JSON-RPC parse error.
+      process.stdout.write(`${JSON.stringify({ jsonrpc: '2.0', id: null, error: { code: -32700, message: 'Parse error' } })}\n`);
+      return;
+    }
+    try {
+      const res = await handle(req);
+      process.stdout.write(`${JSON.stringify(res)}\n`);
+    } catch (err) {
+      process.stdout.write(`${JSON.stringify({ jsonrpc: '2.0', id: req?.id ?? null, error: { code: -32603, message: String(err instanceof Error ? err.message : err) } })}\n`);
+    }
+  });
 
-process.on('unhandledRejection', (e) => process.stderr.write(`unhandledRejection: ${String(e)}\n`));
-process.on('uncaughtException', (e) => process.stderr.write(`uncaughtException: ${String(e)}\n`));
+  process.on('unhandledRejection', (e) => process.stderr.write(`unhandledRejection: ${String(e)}\n`));
+  process.on('uncaughtException', (e) => process.stderr.write(`uncaughtException: ${String(e)}\n`));
 
-process.stderr.write('sangfor-engineer-mcp stdio server started\n');
+  process.stderr.write('sangfor-engineer-mcp stdio server started\n');
+}
+
+// Guard: importing this module (e.g. from tests) must not start the stdio loop.
+if (process.env.MCP_NO_SERVE !== '1') {
+  startStdioServer();
+}
