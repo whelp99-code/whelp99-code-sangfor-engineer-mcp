@@ -67,4 +67,38 @@ describe('sangfor-pm — red-team regressions', () => {
     const pm = createPmStore();
     expect(() => pm.addWorkItem('eng_does_not_exist', { title: 'x' })).toThrow(/not found/i);
   });
+
+  it('does NOT let a different holder in the same engagement steal an existing lock', () => {
+    const pm = createPmStore();
+    const a = pm.createEngagement({ customer: 'A', product: 'EPP' });
+    pm.acquireDevice('10.80.1.106', a.id, 'engineerA');
+    const steal = pm.acquireDevice('10.80.1.106', a.id, 'engineerB');
+    expect(steal.ok).toBe(false);
+    expect(steal.heldBy?.holder).toBe('engineerA'); // original holder preserved
+  });
+
+  it('records updateWorkItem in the tamper-evident event chain with the prior status', () => {
+    const pm = createPmStore();
+    const e = pm.createEngagement({ customer: 'A', product: 'EPP' });
+    const w = pm.addWorkItem(e.id, { title: 't' });
+    const before = pm.getEvents(e.id).length;
+    pm.updateWorkItem(w.id, { status: 'done' });
+    const after = pm.getEvents(e.id);
+    expect(after.length).toBe(before + 1);
+    const last = after[after.length - 1];
+    expect(last.type).toBe('work_item_updated');
+    expect((last.payload as any).from).toBe('todo');
+    expect((last.payload as any).patch).toEqual({ status: 'done' });
+    expect(pm.verifyEventChain(e.id).ok).toBe(true);
+  });
+
+  it('records releaseDevice as a device_released event with an intact chain', () => {
+    const pm = createPmStore();
+    const a = pm.createEngagement({ customer: 'A', product: 'EPP' });
+    pm.acquireDevice('10.80.1.106', a.id, 'engineerA');
+    expect(pm.releaseDevice('10.80.1.106', a.id)).toBe(true);
+    const events = pm.getEvents(a.id);
+    expect(events.some((ev) => ev.type === 'device_released')).toBe(true);
+    expect(pm.verifyEventChain(a.id).ok).toBe(true);
+  });
 });

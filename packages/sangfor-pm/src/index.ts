@@ -56,7 +56,10 @@ export function createPmStore() {
     updateWorkItem(workItemId: string, patch: Partial<Pick<WorkItem, 'status' | 'deviceId' | 'assignee'>>): WorkItem {
       const w = workItems.get(workItemId);
       if (!w) throw new Error(`WorkItem not found: ${workItemId}`);
+      const from = w.status;
       Object.assign(w, patch);
+      // Every state transition/reassignment must leave an audit trace (symmetry with add).
+      if (engagements.has(w.engagementId)) append(w.engagementId, 'work_item_updated', { workItemId, patch, from });
       return w;
     },
     statusRollup(engagementId: string): StatusRollup {
@@ -80,15 +83,23 @@ export function createPmStore() {
     },
     acquireDevice(deviceId: string, engagementId: string, holder: string): { ok: boolean; heldBy?: DeviceLock } {
       const existing = locks.get(deviceId);
-      if (existing && existing.engagementId !== engagementId) return { ok: false, heldBy: existing };
+      // Held by another engagement, OR by a different holder within the same
+      // engagement (engineerB must not silently steal engineerA's lock) → fail-closed.
+      if (existing && (existing.engagementId !== engagementId || existing.holder !== holder)) {
+        return { ok: false, heldBy: existing };
+      }
       const lock: DeviceLock = { deviceId, engagementId, holder, acquiredAt: new Date().toISOString() };
       locks.set(deviceId, lock);
-      if (engagements.has(engagementId)) append(engagementId, 'device_acquired', { deviceId, holder });
+      if (!existing && engagements.has(engagementId)) append(engagementId, 'device_acquired', { deviceId, holder });
       return { ok: true, heldBy: lock };
     },
     releaseDevice(deviceId: string, engagementId: string): boolean {
       const existing = locks.get(deviceId);
-      if (existing && existing.engagementId === engagementId) { locks.delete(deviceId); return true; }
+      if (existing && existing.engagementId === engagementId) {
+        locks.delete(deviceId);
+        if (engagements.has(engagementId)) append(engagementId, 'device_released', { deviceId, holder: existing.holder });
+        return true;
+      }
       return false;
     },
     deviceOccupancy(): DeviceLock[] { return [...locks.values()]; },
