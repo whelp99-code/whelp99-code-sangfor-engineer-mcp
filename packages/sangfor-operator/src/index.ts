@@ -2,6 +2,7 @@ import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { requiresApprovalForAction } from '@sangfor/approval';
 import { ConsoleAction, ConsoleActionResult, nowId, ProductCode } from '@sangfor/shared';
+import { verifyExecutionApproval } from './approval.js';
 import {
   ensureChromeRunning,
   stopChrome,
@@ -46,9 +47,11 @@ export interface OperatorBrowserOptions {
 
 export interface LiveExecutionApproval {
   approvedBy: string;
-  approvalToken: string;
+  approvalToken: string; // hex HMAC-SHA256 signature, action-bound (see ./approval)
   changeTicketId: string;
   rollbackPlanId: string;
+  nonce: string;
+  expiresAt: string; // ISO 8601 — approval is rejected past this instant
   maintenanceWindow?: string;
 }
 
@@ -162,7 +165,7 @@ export function executeConsoleAction(sessionId: string, action: ConsoleAction): 
 
 // ─── Real Execution Guards ────────────────────────────────────────────────────
 
-function assertRealExecutionAllowed(session: OperatorSession, action: ConsoleAction, approval?: LiveExecutionApproval): void {
+export function assertRealExecutionAllowed(session: OperatorSession, action: ConsoleAction, approval?: LiveExecutionApproval): void {
   if (action.dryRun !== false) return;
   if (process.env.SANGFOR_ALLOW_REAL_EXECUTION !== 'true') {
     throw new Error('Live execution blocked. Set SANGFOR_ALLOW_REAL_EXECUTION=true only in an authorized lab/customer session.');
@@ -170,11 +173,16 @@ function assertRealExecutionAllowed(session: OperatorSession, action: ConsoleAct
   if (session.mode === 'production' && process.env.SANGFOR_ALLOW_PRODUCTION_EXECUTION !== 'true') {
     throw new Error('Production execution blocked. Set SANGFOR_ALLOW_PRODUCTION_EXECUTION=true only after formal change approval.');
   }
-  if (!approval?.approvedBy || !approval.approvalToken || !approval.changeTicketId || !approval.rollbackPlanId) {
-    throw new Error('Live execution requires approvedBy, approvalToken, changeTicketId, and rollbackPlanId.');
-  }
-  if (approval.approvalToken !== process.env.SANGFOR_OPERATOR_APPROVAL_TOKEN) {
-    throw new Error('Live execution approval token mismatch.');
+  // Approval must be a signature bound to THIS exact action (type+target), keyed
+  // by a server-side secret, and unexpired. A static shared token is no longer
+  // accepted: it was replayable across actions and time (redteam H1).
+  const verdict = verifyExecutionApproval({
+    action: { type: action.type, target: action.target },
+    approval,
+    secret: process.env.SANGFOR_OPERATOR_APPROVAL_SECRET,
+  });
+  if (!verdict.ok) {
+    throw new Error(`Live execution approval rejected: ${verdict.reason}.`);
   }
 }
 

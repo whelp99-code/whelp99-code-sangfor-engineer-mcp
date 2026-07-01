@@ -611,8 +611,9 @@ export async function applyApprovedProductChange(input: { plan: ProductChangePla
   const operatorEvidence = input.sessionId
     ? await executeLiveConsoleAction({
       sessionId: input.sessionId,
-      action: { type: 'screenshot', target: 'product-change-plan', dryRun: true },
-      approval: input.approval as Required<ApprovalPayload>
+      // Dry-run screenshot for evidence only — the execution gate short-circuits
+      // on dryRun before any approval is verified, so no signed approval is passed.
+      action: { type: 'screenshot', target: 'product-change-plan', dryRun: true }
     })
     : undefined;
   return {
