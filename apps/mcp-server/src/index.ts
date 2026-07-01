@@ -35,7 +35,7 @@ import {
 import { buildSettingGuidePptx, buildOperationsGuidePptx } from '../../../packages/sangfor-pptx/src/index.js';
 import { captureProductScreenshots } from '../../../packages/sangfor-screenshot/src/index.js';
 import { loadSpec, evaluateSpec, renderAdvisoryReport, renderAdvisoryReportDocx, listSpecCoverage, type IntendedSpec } from '../../../packages/sangfor-spec/src/index.js';
-import { getCapabilitySafety, listCapabilitySafety } from '../../../packages/sangfor-safety/src/index.js';
+import { getCapabilitySafety, listCapabilitySafety, loadMaturityPolicy } from '../../../packages/sangfor-safety/src/index.js';
 import { loadWorkAtoms, computeReplacementCoverage } from '../../../packages/sangfor-competency/src/index.js';
 import { suggestRca } from '../../../packages/sangfor-rca/src/index.js';
 import { recommendSizing, type SizingInput } from '../../../packages/sangfor-sizing/src/index.js';
@@ -434,7 +434,8 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
       // Anchor evidenceRoot to the same repo root the atoms come from (NOT process.cwd,
       // which would disagree with the loader anchor and zero the rate off-cwd).
       const evidenceRoot = resolveRepoData('.', 'SANGFOR_OUTPUT_ROOT');
-      return { coverage: computeReplacementCoverage(loadWorkAtoms(), { knownTools, evidenceRoot }), atoms: loadWorkAtoms() };
+      const maturityPolicy = loadMaturityPolicy().entries.map(({ product, capabilityId, maturity }) => ({ product, capabilityId, maturity }));
+      return { coverage: computeReplacementCoverage(loadWorkAtoms(), { knownTools, evidenceRoot, maturityPolicy }), atoms: loadWorkAtoms() };
     }
   },
   'sangfor.suggest_rca': {

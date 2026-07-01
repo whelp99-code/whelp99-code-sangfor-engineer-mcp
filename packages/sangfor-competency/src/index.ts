@@ -24,6 +24,13 @@ export interface WorkAtom {
   coveredBy?: string | null;
   maturity: Maturity;
   evidence?: string | null; // field-verified atoms MUST carry a real evidence link (device capture / artifact)
+  capabilityRef?: { product: string; capabilityId: string };
+}
+
+export interface MaturityPolicyEntry {
+  product: string;
+  capabilityId: string;
+  maturity: string;
 }
 
 export interface ReplacementCoverage {
@@ -36,6 +43,8 @@ export interface ReplacementCoverage {
   byProduct: Record<string, { automatable: number; replaced: number; human: number }>;
   unknownCoverage: Array<{ atomId: string; coveredBy: string }>;  // would-be replaced, but coveredBy is not a registered tool
   evidenceMissing: Array<{ atomId: string; evidence: string }>;   // would-be replaced, but evidence is not a real artifact path
+  maturityConflicts: Array<{ atomId: string; atomMaturity: string; policyMaturity: string }>;
+  unverifiedClaims: Array<{ atomId: string; reason: string }>;
 }
 
 /**
@@ -47,9 +56,28 @@ export interface ReplacementCoverage {
 export interface CoverageOptions {
   knownTools?: Set<string>;
   evidenceRoot?: string;
+  maturityPolicy?: MaturityPolicyEntry[];
 }
 
-type ReplacementStatus = 'replaced' | 'unknownCoverage' | 'evidenceMissing' | 'no';
+type ReplacementStatus = 'replaced' | 'unknownCoverage' | 'evidenceMissing' | 'unverifiedMaturity' | 'no';
+
+const MATURITY_RANK: Record<Maturity, number> = {
+  planned: 0,
+  implemented_local: 1,
+  tested_mock: 2,
+  field_verified: 3,
+};
+
+function maturityRank(value: string): number {
+  return MATURITY_RANK[value as Maturity] ?? -1;
+}
+
+function findPolicyMaturity(a: WorkAtom, opts: CoverageOptions): string | undefined {
+  if (!a.capabilityRef || !opts.maturityPolicy) return undefined;
+  return opts.maturityPolicy.find((entry) =>
+    entry.product === a.capabilityRef!.product && entry.capabilityId === a.capabilityRef!.capabilityId
+  )?.maturity;
+}
 
 /**
  * Evidence counts only when it is a REAL ARTIFACT FILE confined to evidenceRoot.
@@ -72,7 +100,16 @@ function evidenceIsArtifact(evidence: string, evidenceRoot: string): boolean {
 
 function replacementStatus(a: WorkAtom, opts: CoverageOptions): ReplacementStatus {
   if (a.automatability === 'human') return 'no';
-  if (a.maturity !== 'field_verified') return 'no';
+  const policyMaturity = findPolicyMaturity(a, opts);
+  const effectiveMaturity = policyMaturity && maturityRank(policyMaturity) < maturityRank(a.maturity)
+    ? policyMaturity
+    : a.maturity;
+  if (effectiveMaturity !== 'field_verified') {
+    if (a.maturity === 'field_verified' && policyMaturity && maturityRank(policyMaturity) < maturityRank(a.maturity)) {
+      return 'unverifiedMaturity';
+    }
+    return 'no';
+  }
   if (!a.coveredBy || !a.evidence) return 'no';
   // Base candidate met. Apply stronger checks only when the caller supplies grounds.
   if (opts.knownTools && !opts.knownTools.has(a.coveredBy)) return 'unknownCoverage';
@@ -109,6 +146,8 @@ export function computeReplacementCoverage(rawAtoms: WorkAtom[] = loadWorkAtoms(
   const byProduct: Record<string, ReturnType<typeof bucket>> = {};
   const unknownCoverage: Array<{ atomId: string; coveredBy: string }> = [];
   const evidenceMissing: Array<{ atomId: string; evidence: string }> = [];
+  const maturityConflicts: Array<{ atomId: string; atomMaturity: string; policyMaturity: string }> = [];
+  const unverifiedClaims: Array<{ atomId: string; reason: string }> = [];
   let replacedAtoms = 0;
 
   for (const a of atoms) {
@@ -125,6 +164,13 @@ export function computeReplacementCoverage(rawAtoms: WorkAtom[] = loadWorkAtoms(
       unknownCoverage.push({ atomId: a.id, coveredBy: a.coveredBy! });
     } else if (status === 'evidenceMissing') {
       evidenceMissing.push({ atomId: a.id, evidence: String(a.evidence) });
+    } else if (status === 'unverifiedMaturity') {
+      const policyMaturity = findPolicyMaturity(a, opts)!;
+      maturityConflicts.push({ atomId: a.id, atomMaturity: a.maturity, policyMaturity });
+      unverifiedClaims.push({
+        atomId: a.id,
+        reason: `capability policy maturity ${policyMaturity} is lower than atom maturity ${a.maturity}`,
+      });
     }
   }
 
@@ -138,5 +184,7 @@ export function computeReplacementCoverage(rawAtoms: WorkAtom[] = loadWorkAtoms(
     byProduct,
     unknownCoverage,
     evidenceMissing,
+    maturityConflicts,
+    unverifiedClaims,
   };
 }

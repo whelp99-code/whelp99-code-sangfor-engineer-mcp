@@ -108,3 +108,59 @@ describe('computeReplacementCoverage — verified coverage (knownTools + evidenc
     expect(cov.evidenceMissing.map((e) => e.atomId).sort()).toEqual(['abs', 'trav']);
   });
 });
+
+describe('computeReplacementCoverage — maturity policy cross-check', () => {
+  const baseVerifiedAtom: WorkAtom = {
+    id: 'cap-cross',
+    product: 'IAG',
+    phase: 'operate',
+    title: 'policy-backed capability',
+    automatability: 'auto',
+    coveredBy: 'sangfor.evaluate_config',
+    maturity: 'field_verified',
+    evidence: 'outputs/diagnosis/EPP_6.0.4_live_diagnosis.md',
+    capabilityRef: { product: 'IAG', capabilityId: 'cap.policy' },
+  };
+
+  it('excludes field_verified atom claims when policy maturity is lower', () => {
+    const cov = computeReplacementCoverage([baseVerifiedAtom], {
+      maturityPolicy: [{ product: 'IAG', capabilityId: 'cap.policy', maturity: 'tested_mock' }],
+    });
+
+    expect(cov.replacedAtoms).toBe(0);
+    expect(cov.maturityConflicts).toEqual([
+      { atomId: 'cap-cross', atomMaturity: 'field_verified', policyMaturity: 'tested_mock' },
+    ]);
+    expect(cov.unverifiedClaims).toEqual([
+      { atomId: 'cap-cross', reason: 'capability policy maturity tested_mock is lower than atom maturity field_verified' },
+    ]);
+  });
+
+  it('keeps replaced status when policy maturity is equal or higher than atom maturity', () => {
+    const equal = computeReplacementCoverage([baseVerifiedAtom], {
+      maturityPolicy: [{ product: 'IAG', capabilityId: 'cap.policy', maturity: 'field_verified' }],
+    });
+    const higher = computeReplacementCoverage([
+      { ...baseVerifiedAtom, id: 'cap-cross-local', maturity: 'tested_mock' },
+    ], {
+      maturityPolicy: [{ product: 'IAG', capabilityId: 'cap.policy', maturity: 'field_verified' }],
+    });
+
+    expect(equal.replacedAtoms).toBe(1);
+    expect(equal.maturityConflicts).toEqual([]);
+    expect(equal.unverifiedClaims).toEqual([]);
+    expect(higher.replacedAtoms).toBe(0);
+    expect(higher.maturityConflicts).toEqual([]);
+    expect(higher.unverifiedClaims).toEqual([]);
+  });
+
+  it('does not cross-check atoms without capabilityRef', () => {
+    const cov = computeReplacementCoverage([{ ...baseVerifiedAtom, id: 'no-ref', capabilityRef: undefined }], {
+      maturityPolicy: [{ product: 'IAG', capabilityId: 'cap.policy', maturity: 'planned' }],
+    });
+
+    expect(cov.replacedAtoms).toBe(1);
+    expect(cov.maturityConflicts).toEqual([]);
+    expect(cov.unverifiedClaims).toEqual([]);
+  });
+});

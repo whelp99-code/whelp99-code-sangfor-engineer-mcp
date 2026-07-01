@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { computeReplacementCoverage, loadWorkAtoms } from '../../../packages/sangfor-competency/src/index.js';
 import { resolveRepoData } from '../../../packages/shared/src/index.js';
 import { listSpecCoverage } from '../../../packages/sangfor-spec/src/index.js';
-import { listCapabilitySafety } from '../../../packages/sangfor-safety/src/index.js';
+import { listCapabilitySafety, loadMaturityPolicy } from '../../../packages/sangfor-safety/src/index.js';
 import { analyzeProject, generateConfigPlanAsync } from '../../../packages/sangfor-planner/src/index.js';
 import { listSeedManuals, searchManuals } from '../../../packages/sangfor-knowledge/src/index.js';
 import { listSeedWiki, searchWiki } from '../../../packages/sangfor-wiki/src/index.js';
@@ -149,7 +149,8 @@ export function getFieldEngineerCoverage() {
   // Human-facing surface MUST apply the same honest verification as the MCP path:
   // evidence must resolve to a real artifact under the output root (no prose/dir/absolute).
   const evidenceRoot = resolveRepoData('.', 'SANGFOR_OUTPUT_ROOT');
-  return { coverage: computeReplacementCoverage(atoms, { evidenceRoot }), atoms };
+  const maturityPolicy = loadMaturityPolicy().entries.map(({ product, capabilityId, maturity }) => ({ product, capabilityId, maturity }));
+  return { coverage: computeReplacementCoverage(atoms, { evidenceRoot, maturityPolicy }), atoms };
 }
 
 export function getSpecCoverage() {
