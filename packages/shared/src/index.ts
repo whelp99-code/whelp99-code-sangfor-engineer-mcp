@@ -66,13 +66,22 @@ function findRepoRoot(): string | null {
  * Resolve a repo data directory anchored to the package. An env override (if given)
  * always wins. Otherwise anchor to the workspace root + subdir.
  */
+const unanchoredWarned = new Set<string>();
 export function resolveRepoData(subdir: string, envVar?: string): string {
   const override = envVar ? process.env[envVar] : undefined;
   if (override) return override;
   const root = findRepoRoot();
-  // Fall back to a cwd-relative path only if the marker can't be found (e.g. a
-  // stripped-down deploy); the caller's existence guard turns that into fail-loud.
-  return root ? join(root, subdir) : subdir;
+  if (!root) {
+    // Can't anchor (stripped/relocated deploy) and no env override → a cwd-relative
+    // path here would silently return empty (the regression this helper exists to
+    // kill). Emit a loud one-time diagnostic pointing at the fix.
+    if (!unanchoredWarned.has(subdir)) {
+      unanchoredWarned.add(subdir);
+      process.stderr.write(`[data-root] could not anchor '${subdir}' (no pnpm-workspace.yaml found) — set ${envVar ?? 'SANGFOR_*_ROOT'} to avoid silent-empty data\n`);
+    }
+    return subdir;
+  }
+  return join(root, subdir);
 }
 
 export type ProductCode = 'HCI_SCP' | 'HCI' | 'IAG' | 'ENDPOINT_SECURE' | 'NDR' | 'CYBER_COMMAND';
