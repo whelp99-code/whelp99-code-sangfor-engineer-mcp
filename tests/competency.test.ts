@@ -87,4 +87,24 @@ describe('computeReplacementCoverage — verified coverage (knownTools + evidenc
     expect(cov.unknownCoverage).toEqual([]);
     expect(cov.evidenceMissing).toEqual([]);
   });
+
+  it('rejects a bare directory as evidence (must be a real artifact FILE, not a folder)', () => {
+    const dirEvidence: WorkAtom[] = [
+      { id: 'd1', product: 'HCI', phase: 'handover', title: 'x', automatability: 'auto', coveredBy: 'sangfor.evaluate_config', maturity: 'field_verified', evidence: 'outputs' },
+      { id: 'd2', product: 'HCI', phase: 'handover', title: 'x', automatability: 'auto', coveredBy: 'sangfor.evaluate_config', maturity: 'field_verified', evidence: '.' },
+    ];
+    const cov = computeReplacementCoverage(dirEvidence, { knownTools, evidenceRoot });
+    expect(cov.replacedAtoms).toBe(0);
+    expect(cov.evidenceMissing.map((e) => e.atomId).sort()).toEqual(['d1', 'd2']);
+  });
+
+  it('rejects an absolute or traversal evidence path that escapes the evidence root', () => {
+    const escapes: WorkAtom[] = [
+      { id: 'abs', product: 'X', phase: 'operate', title: 'x', automatability: 'auto', coveredBy: 'sangfor.evaluate_config', maturity: 'field_verified', evidence: '/etc/hosts' },
+      { id: 'trav', product: 'X', phase: 'operate', title: 'x', automatability: 'auto', coveredBy: 'sangfor.evaluate_config', maturity: 'field_verified', evidence: '../../../../../../etc/hosts' },
+    ];
+    const cov = computeReplacementCoverage(escapes, { knownTools, evidenceRoot });
+    expect(cov.replacedAtoms).toBe(0);
+    expect(cov.evidenceMissing.map((e) => e.atomId).sort()).toEqual(['abs', 'trav']);
+  });
 });

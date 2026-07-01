@@ -1,6 +1,7 @@
 import { writeFileSync, mkdirSync, existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { computeReplacementCoverage, loadWorkAtoms } from '../../../packages/sangfor-competency/src/index.js';
+import { resolveRepoData } from '../../../packages/shared/src/index.js';
 import { listSpecCoverage } from '../../../packages/sangfor-spec/src/index.js';
 import { listCapabilitySafety } from '../../../packages/sangfor-safety/src/index.js';
 import { analyzeProject, generateConfigPlanAsync } from '../../../packages/sangfor-planner/src/index.js';
@@ -145,7 +146,10 @@ export async function getEmbeddingHealth() {
 // ── Field-engineer automation visibility (read-only panels) ──
 export function getFieldEngineerCoverage() {
   const atoms = loadWorkAtoms();
-  return { coverage: computeReplacementCoverage(atoms), atoms };
+  // Human-facing surface MUST apply the same honest verification as the MCP path:
+  // evidence must resolve to a real artifact under the output root (no prose/dir/absolute).
+  const evidenceRoot = resolveRepoData('.', 'SANGFOR_OUTPUT_ROOT');
+  return { coverage: computeReplacementCoverage(atoms, { evidenceRoot }), atoms };
 }
 
 export function getSpecCoverage() {

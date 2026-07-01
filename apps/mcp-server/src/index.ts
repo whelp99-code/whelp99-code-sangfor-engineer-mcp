@@ -42,6 +42,7 @@ import { recommendSizing, type SizingInput } from '../../../packages/sangfor-siz
 import { createPmStore } from '../../../packages/sangfor-pm/src/index.js';
 import { checkVersionRequirement, loadVersionRequirements } from '../../../packages/sangfor-version/src/index.js';
 import { generateIntegrationGuide, listIntegrationTypes } from '../../../packages/sangfor-integration/src/index.js';
+import { resolveRepoData } from '../../../packages/shared/src/index.js';
 
 const pmStore = createPmStore(); // process-lifetime PM state for the MCP session
 
@@ -430,7 +431,9 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
       // Verify coverage against reality: coveredBy must name a registered tool and
       // evidence must resolve to a real artifact on disk (no over-claiming the rate).
       const knownTools = new Set(Object.keys(tools));
-      const evidenceRoot = process.env.SANGFOR_OUTPUT_ROOT ?? process.cwd();
+      // Anchor evidenceRoot to the same repo root the atoms come from (NOT process.cwd,
+      // which would disagree with the loader anchor and zero the rate off-cwd).
+      const evidenceRoot = resolveRepoData('.', 'SANGFOR_OUTPUT_ROOT');
       return { coverage: computeReplacementCoverage(loadWorkAtoms(), { knownTools, evidenceRoot }), atoms: loadWorkAtoms() };
     }
   },

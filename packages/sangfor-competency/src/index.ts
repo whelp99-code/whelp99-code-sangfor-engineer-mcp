@@ -6,8 +6,8 @@
  * "an MCP tool exists" never counts as replaced; a human-only atom never counts even
  * if mislabelled as covered. This keeps "1인 대체율" honest.
  */
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { join, resolve, isAbsolute, sep } from 'node:path';
 import { resolveRepoData } from '../../shared/src/index.js';
 
 export type LifecyclePhase = 'discover' | 'design' | 'validate' | 'deploy' | 'operate' | 'handover' | 'incident';
@@ -51,13 +51,32 @@ export interface CoverageOptions {
 
 type ReplacementStatus = 'replaced' | 'unknownCoverage' | 'evidenceMissing' | 'no';
 
+/**
+ * Evidence counts only when it is a REAL ARTIFACT FILE confined to evidenceRoot.
+ * A bare directory (e.g. 'outputs' or '.'), an absolute path, or a traversal that
+ * escapes the root must NOT count — otherwise "1인 대체율" inflates by pointing
+ * evidence at any folder or any file that happens to exist on the host.
+ */
+function evidenceIsArtifact(evidence: string, evidenceRoot: string): boolean {
+  const raw = String(evidence).trim();
+  if (!raw || isAbsolute(raw)) return false;
+  const rootAbs = resolve(evidenceRoot);
+  const abs = resolve(rootAbs, raw);
+  if (abs !== rootAbs && !abs.startsWith(rootAbs + sep)) return false; // escapes the root
+  try {
+    return statSync(abs).isFile(); // must be a file artifact, not a directory
+  } catch {
+    return false; // does not exist
+  }
+}
+
 function replacementStatus(a: WorkAtom, opts: CoverageOptions): ReplacementStatus {
   if (a.automatability === 'human') return 'no';
   if (a.maturity !== 'field_verified') return 'no';
   if (!a.coveredBy || !a.evidence) return 'no';
   // Base candidate met. Apply stronger checks only when the caller supplies grounds.
   if (opts.knownTools && !opts.knownTools.has(a.coveredBy)) return 'unknownCoverage';
-  if (opts.evidenceRoot && !existsSync(resolve(opts.evidenceRoot, String(a.evidence).trim()))) return 'evidenceMissing';
+  if (opts.evidenceRoot && !evidenceIsArtifact(String(a.evidence), opts.evidenceRoot)) return 'evidenceMissing';
   return 'replaced';
 }
 
