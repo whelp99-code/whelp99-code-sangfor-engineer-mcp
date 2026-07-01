@@ -1,0 +1,216 @@
+/**
+ * @sangfor/spec — IntendedSpec: the single data contract shared by the advisory
+ * services (guide / verify / diagnose). A spec declares what a correct config
+ * looks like; evaluateSpec() compares it to an observed config and produces
+ * PASS / FAIL / INDETERMINATE verdicts.
+ *
+ * Safety principle (fixes the verifier false-pass class of bug):
+ *   INDETERMINATE is NEVER counted as PASS, and overall `ok` requires positive
+ *   evidence (at least one PASS, zero FAIL, zero INDETERMINATE).
+ */
+
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { join } from 'node:path';
+
+export type CompareOp = 'eq' | 'neq' | 'gte' | 'lte' | 'includes' | 'oneOf' | 'exists';
+export type Severity = 'must' | 'recommended';
+export type Verdict = 'PASS' | 'FAIL' | 'INDETERMINATE';
+export type Category = 'ok' | 'misconfiguration' | 'missing' | 'indeterminate';
+
+export interface Citation {
+  manual: string;
+  section?: string;
+  page?: string;
+}
+
+export interface SpecItem {
+  id: string;
+  capabilityId: string;
+  label: string;
+  observedKey: string;
+  op: CompareOp;
+  expected?: unknown;
+  severity: Severity;
+  source?: Citation;
+  needsSeniorReview?: boolean;
+}
+
+export interface IntendedSpec {
+  id: string;
+  product: string;
+  version?: string;
+  items: SpecItem[];
+}
+
+export interface ItemResult {
+  id: string;
+  label: string;
+  verdict: Verdict;
+  category: Category;
+  observed?: unknown;
+  expected?: unknown;
+  reason: string;
+}
+
+export interface EvaluationSummary {
+  pass: number;
+  fail: number;
+  indeterminate: number;
+  misconfiguration: number;
+  missing: number;
+}
+
+export interface EvaluationResult {
+  specId: string;
+  ok: boolean;
+  items: ItemResult[];
+  summary: EvaluationSummary;
+}
+
+const SPEC_ROOT = process.env.SANGFOR_SPEC_ROOT ?? 'data/specs';
+
+/** Map product aliases to the spec directory code (IAG/EPP/HCI/CC/NDR/XDR/NGFW). */
+export function normalizeSpecProduct(input: string): string {
+  const s = input.trim().toLowerCase();
+  if (/\b(swg|iag|internet access|secure web)\b/.test(s)) return 'IAG';
+  if (/\b(epp|endpoint|athena ep)\b/.test(s)) return 'EPP';
+  if (/\b(cc|cyber command)\b/.test(s)) return 'CC';
+  if (/\b(ndr)\b/.test(s)) return 'NDR';
+  if (/\b(xdr)\b/.test(s)) return 'XDR';
+  if (/\b(ngfw|firewall)\b/.test(s)) return 'NGFW';
+  if (/\b(hci|scp|asv)\b/.test(s)) return 'HCI';
+  return input.trim().toUpperCase();
+}
+
+/** Load and merge all spec JSON files for a product/version, or null if none. */
+export function loadSpec(product: string, version: string, root: string = SPEC_ROOT): IntendedSpec | null {
+  const dir = join(root, normalizeSpecProduct(product), version);
+  if (!existsSync(dir)) return null;
+  const files = readdirSync(dir).filter((f) => f.endsWith('.json') && !f.startsWith('.'));
+  if (files.length === 0) return null;
+  const items: SpecItem[] = [];
+  let product0 = normalizeSpecProduct(product);
+  for (const f of files) {
+    const parsed = JSON.parse(readFileSync(join(dir, f), 'utf8')) as IntendedSpec;
+    if (parsed.product) product0 = parsed.product;
+    items.push(...(parsed.items ?? []));
+  }
+  return { id: `spec_${normalizeSpecProduct(product)}_${version}`.replace(/[^\w]/g, '_'), product: product0, version, items };
+}
+
+/** List all product/version pairs that have specs on disk. */
+export function listSpecCoverage(root: string = SPEC_ROOT): Array<{ product: string; version: string; items: number }> {
+  const out: Array<{ product: string; version: string; items: number }> = [];
+  if (!existsSync(root)) return out;
+  for (const product of readdirSync(root)) {
+    const pDir = join(root, product);
+    if (!statSync(pDir).isDirectory()) continue;
+    for (const version of readdirSync(pDir)) {
+      const vDir = join(pDir, version);
+      if (!statSync(vDir).isDirectory()) continue;
+      const spec = loadSpec(product, version, root);
+      if (spec) out.push({ product, version, items: spec.items.length });
+    }
+  }
+  return out;
+}
+
+export function evaluateSpec(spec: IntendedSpec, observed: Record<string, unknown>): EvaluationResult {
+  const items: ItemResult[] = spec.items.map((item) => {
+    const base = { id: item.id, label: item.label, expected: item.expected };
+
+    // Cannot assert a MUST item without a source citation — needs senior review.
+    if (item.severity === 'must' && !item.source) {
+      return { ...base, verdict: 'INDETERMINATE', category: 'indeterminate',
+        reason: 'MUST item has no source citation — needs senior review before asserting misconfiguration' };
+    }
+
+    // No observed value → cannot determine.
+    if (!Object.prototype.hasOwnProperty.call(observed, item.observedKey)) {
+      return { ...base, verdict: 'INDETERMINATE', category: 'indeterminate',
+        reason: `No observed value for "${item.observedKey}"` };
+    }
+
+    const value = observed[item.observedKey];
+    const ok = compareValue(item.op, value, item.expected);
+    if (ok) {
+      return { ...base, verdict: 'PASS', category: 'ok', observed: value, reason: 'matches expected' };
+    }
+    const category: Category = item.severity === 'must' ? 'misconfiguration' : 'missing';
+    return { ...base, verdict: 'FAIL', category, observed: value,
+      reason: `expected ${item.op} ${JSON.stringify(item.expected)}, observed ${JSON.stringify(value)}` };
+  });
+
+  const summary = summarize(items);
+  return { specId: spec.id, ok: computeOk(summary), items, summary };
+}
+
+/** Render a Korean advisory report separating 잘못된 설정 / 추가 필요 / 판정 불가 / 정상. */
+export function renderAdvisoryReport(spec: IntendedSpec, result: EvaluationResult): string {
+  const byCat = (c: Category) => result.items.filter((i) => i.category === c);
+  const cite = (id: string) => {
+    const item = spec.items.find((s) => s.id === id);
+    const src = item?.source;
+    return src ? ` \n  - 근거: ${src.manual}${src.section ? ` — ${src.section}` : ''}${src.page ? `\n  - 출처: ${src.page}` : ''}` : ' \n  - 근거: (출처 없음 — 시니어 검토 필요)';
+  };
+  const line = (i: ItemResult) => {
+    const ev = i.observed !== undefined ? ` (기대: ${JSON.stringify(i.expected)}, 실제: ${JSON.stringify(i.observed)})` : (i.expected !== undefined ? ` (기대: ${JSON.stringify(i.expected)}, 실제: 확인 불가)` : '');
+    return `- **${i.label}**${ev}${cite(i.id)}`;
+  };
+  const section = (title: string, cat: Category, empty: string) => {
+    const items = byCat(cat);
+    return `## ${title} (${items.length})\n\n${items.length ? items.map(line).join('\n\n') : `_${empty}_`}\n`;
+  };
+
+  const s = result.summary;
+  return [
+    `# Sangfor 설정 자문 리포트 — ${spec.product} ${spec.version ?? ''}`.trim(),
+    ``,
+    `> ⚠️ **면책**: 본 리포트는 AI가 수집된 제품 매뉴얼을 근거로 생성한 **참고용 자문**입니다. 최종 판단과 적용은 담당 엔지니어의 책임입니다. AI는 어떤 장비 설정도 변경하지 않았습니다(read-only).`,
+    ``,
+    `- 대상 제품/버전: **${spec.product} ${spec.version ?? ''}**`,
+    `- 요약: 잘못됨 ${s.misconfiguration} · 추가 필요 ${s.missing} · 판정 불가 ${s.indeterminate} · 정상 ${s.pass}`,
+    `- 종합 판정(ok): **${result.ok ? '정상' : '조치 필요'}**`,
+    ``,
+    section('잘못된 설정 (misconfiguration)', 'misconfiguration', '없음'),
+    section('추가로 필요 (missing/recommended)', 'missing', '없음'),
+    section('판정 불가 (indeterminate — 설정값 미확인/근거 부족)', 'indeterminate', '없음'),
+    section('정상 (ok)', 'ok', '없음'),
+    `---`,
+    ``,
+    `## 사람 최종 확인 (sign-off)`,
+    ``,
+    `- [ ] 위 잘못된 설정 항목을 담당 엔지니어가 검토하고 조치 여부를 결정함`,
+    `- [ ] 판정 불가 항목의 실제 설정값을 사람이 직접 확인함`,
+    `- 담당 엔지니어: ____________  일자: __________`,
+    ``,
+  ].join('\n');
+}
+
+function compareValue(op: CompareOp, observed: unknown, expected: unknown): boolean {
+  switch (op) {
+    case 'eq': return observed === expected;
+    case 'neq': return observed !== expected;
+    case 'gte': return Number(observed) >= Number(expected);
+    case 'lte': return Number(observed) <= Number(expected);
+    case 'includes': return String(observed).includes(String(expected));
+    case 'oneOf': return Array.isArray(expected) && expected.includes(observed);
+    case 'exists': return observed !== undefined && observed !== null && observed !== '';
+    default: return false;
+  }
+}
+
+function summarize(items: ItemResult[]): EvaluationSummary {
+  return {
+    pass: items.filter((i) => i.verdict === 'PASS').length,
+    fail: items.filter((i) => i.verdict === 'FAIL').length,
+    indeterminate: items.filter((i) => i.verdict === 'INDETERMINATE').length,
+    misconfiguration: items.filter((i) => i.category === 'misconfiguration').length,
+    missing: items.filter((i) => i.category === 'missing').length,
+  };
+}
+
+function computeOk(s: EvaluationSummary): boolean {
+  // positive evidence required; no failures; nothing undetermined
+  return s.pass > 0 && s.fail === 0 && s.indeterminate === 0;
+}

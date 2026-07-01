@@ -56,6 +56,15 @@ export interface VerificationCheck {
   error?: string;
 }
 
+/**
+ * Live verification `ok` is TRUE only with positive evidence: at least one check
+ * and EVERY check passed. manual_required / skipped / failed / pending all block
+ * ok — an undetermined result must never read as "verified" (false-pass guard).
+ */
+export function computeLiveVerificationOk(checks: VerificationCheck[]): boolean {
+  return checks.length > 0 && checks.every((c) => c.status === 'passed');
+}
+
 export interface VerificationResult {
   planId: string;
   ok: boolean;
@@ -370,13 +379,9 @@ export async function verifyResultLive(
     }
   }
 
-  const passed = checks.filter(c => c.status === 'passed').length;
-  const failed = checks.filter(c => c.status === 'failed').length;
-  const manual = checks.filter(c => c.status === 'manual_required').length;
-
   return {
     planId: input.plan.id,
-    ok: failed === 0 && (mode === 'dry' || mode === 'observe' || manual > 0),
+    ok: computeLiveVerificationOk(checks),
     planErrors,
     checks,
     mode,

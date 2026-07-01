@@ -34,6 +34,7 @@ import {
 } from '../../../packages/sangfor-product-adapters/src/index.js';
 import { buildSettingGuidePptx, buildOperationsGuidePptx } from '../../../packages/sangfor-pptx/src/index.js';
 import { captureProductScreenshots } from '../../../packages/sangfor-screenshot/src/index.js';
+import { loadSpec, evaluateSpec, renderAdvisoryReport, listSpecCoverage, type IntendedSpec } from '../../../packages/sangfor-spec/src/index.js';
 
 type JsonRpcRequest = { jsonrpc: '2.0'; id?: string | number; method: string; params?: any };
 
@@ -388,6 +389,22 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
     description: 'Run built-in planner evals against a generated config plan.',
     inputSchema: { type: 'object', properties: { planId: { type: 'string' }, plan: { type: 'object' } } },
     handler: ({ planId, plan }) => runPlannerEval(plan ?? plans.get(planId))
+  },
+  'sangfor.evaluate_config': {
+    description: 'Advisory (read-only) config check: compare an observed product config against an IntendedSpec (from manuals) and split findings into misconfiguration / missing / indeterminate / ok. Never mutates a device. INDETERMINATE never counts as pass; MUST items without a source citation stay indeterminate. Returns the evaluation and a Korean advisory report.',
+    inputSchema: { type: 'object', properties: { product: { type: 'string' }, version: { type: 'string' }, observed: { type: 'object', description: 'observed config key→value map (from screenshot/backup/human)' }, spec: { type: 'object', description: 'optional inline IntendedSpec; if omitted, loaded by product+version' } }, required: ['observed'] },
+    handler: (args: { product?: string; version?: string; observed: Record<string, unknown>; spec?: IntendedSpec }) => {
+      const spec = args.spec ?? (args.product && args.version ? loadSpec(args.product, args.version) : null);
+      if (!spec) return { error: `No IntendedSpec found for ${args.product ?? '?'} ${args.version ?? '?'}. Provide an inline spec or seed data/specs/. Coverage: ${JSON.stringify(listSpecCoverage())}` };
+      const result = evaluateSpec(spec, args.observed ?? {});
+      const report = renderAdvisoryReport(spec, result);
+      return { result, report };
+    }
+  },
+  'sangfor.list_spec_coverage': {
+    description: 'List which product/version IntendedSpecs exist (advisory coverage) so callers know what config checks are available.',
+    inputSchema: { type: 'object', properties: {} },
+    handler: () => ({ coverage: listSpecCoverage() })
   }
 };
 

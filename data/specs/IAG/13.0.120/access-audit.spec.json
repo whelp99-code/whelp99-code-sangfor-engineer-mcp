@@ -1,0 +1,49 @@
+{
+  "id": "spec_iag_13_0_120_access_audit",
+  "product": "IAG",
+  "version": "13.0.120",
+  "items": [
+    {
+      "id": "log_retention_days",
+      "capabilityId": "log_validation",
+      "label": "Internet access log retention ≥ 180 days",
+      "observedKey": "logRetentionDays",
+      "op": "gte",
+      "expected": 180,
+      "severity": "must",
+      "source": {
+        "manual": "Sangfor IAG v13.0.120 User Manual",
+        "section": "Functions / Internet Access Analytics / Log Option",
+        "page": "https://support.sangfor.com/productDocument/read?product_id=22&version_id=1144&category_id=2633191"
+      }
+    },
+    {
+      "id": "web_authentication_enabled",
+      "capabilityId": "auth_source",
+      "label": "Web authentication is enabled for user identification",
+      "observedKey": "webAuthEnabled",
+      "op": "eq",
+      "expected": true,
+      "severity": "must",
+      "source": {
+        "manual": "Sangfor IAG v13.0.120 User Manual",
+        "section": "Functions / Access Management / Web Authentication",
+        "page": "https://support.sangfor.com/productDocument/read?product_id=22&version_id=1144&category_id=2633218"
+      }
+    },
+    {
+      "id": "dot1x_access_control",
+      "capabilityId": "internet_policy",
+      "label": "802.1X access control configured (recommended for managed LAN)",
+      "observedKey": "dot1xEnabled",
+      "op": "eq",
+      "expected": true,
+      "severity": "recommended",
+      "source": {
+        "manual": "Sangfor IAG v13.0.120 User Manual",
+        "section": "Functions / Access Management / 802.1X Authentication / 802.1X Access Control",
+        "page": "https://support.sangfor.com/productDocument/read?product_id=22&version_id=1144&category_id=2633214"
+      }
+    }
+  ]
+}

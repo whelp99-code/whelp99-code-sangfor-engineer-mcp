@@ -17,3 +17,4 @@ outputs/customer-setting-guide/docx-work/
 data/sources/learn-run.log
 data/sources/local-bootstrap.log
 data/sources/learning-complete.json
+data/sources/*storage-state*.json
