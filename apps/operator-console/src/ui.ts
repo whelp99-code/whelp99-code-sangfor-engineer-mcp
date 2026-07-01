@@ -1,6 +1,14 @@
 import { PRODUCTS } from '../../../packages/shared/src/index.js';
 
 const productOptions = PRODUCTS.map(p => `<option value="${p.code}">${p.name} (${p.code})</option>`).join('');
+export const API_TOKEN_STORAGE_KEY = 'sangfor_api_token';
+
+export function buildApiHeaders(token?: string | null, headers: Record<string, string> = {}): Record<string, string> {
+  const out = { ...headers };
+  const trimmed = String(token ?? '').trim();
+  if (trimmed) out.authorization = `Bearer ${trimmed}`;
+  return out;
+}
 
 export function dashboardHtml(): string {
   return `<!doctype html>
@@ -16,6 +24,10 @@ export function dashboardHtml(): string {
     header { padding:16px 24px; border-bottom:1px solid #334155; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; }
     h1 { margin:0; font-size:1.25rem; }
     .badge { background:#0369a1; padding:4px 10px; border-radius:999px; font-size:.75rem; }
+    .auth-box { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+    .auth-box input { width:220px; }
+    .auth-box button { padding:8px 10px; border:1px solid #334155; border-radius:8px; background:#0b1220; color:var(--text); cursor:pointer; }
+    .auth-hint { color:var(--warn); font-size:.8rem; }
     main { display:grid; grid-template-columns:200px 1fr; min-height:calc(100vh - 56px); }
     nav { padding:16px; border-right:1px solid #334155; }
     nav button { display:block; width:100%; text-align:left; margin:4px 0; padding:9px 11px; border:1px solid #334155; border-radius:8px; background:var(--card); color:var(--text); cursor:pointer; font-size:.9rem; }
@@ -51,7 +63,12 @@ export function dashboardHtml(): string {
 <body>
   <header>
     <h1>Sangfor Engineer Web</h1>
-    <span class="badge">MCP는 Cursor 등 stdio · 웹은 :3502</span>
+    <div class="auth-box">
+      <input id="api-token" type="password" autocomplete="off" placeholder="API bearer token" />
+      <button id="save-token" type="button">토큰 저장</button>
+      <span id="auth-hint" class="auth-hint"></span>
+      <span class="badge">MCP는 Cursor 등 stdio · 웹은 :3502</span>
+    </div>
   </header>
   <main>
     <nav id="nav">
@@ -185,6 +202,7 @@ export function dashboardHtml(): string {
     </section>
   </main>
   <script>
+    const API_TOKEN_STORAGE_KEY = '${API_TOKEN_STORAGE_KEY}';
     const $ = (id) => document.getElementById(id);
     const panels = document.querySelectorAll('.panel');
     document.querySelectorAll('#nav button').forEach(btn => {
@@ -196,6 +214,31 @@ export function dashboardHtml(): string {
         if (btn.dataset.panel === 'automation') loadAutomation();
       };
     });
+
+    function readApiToken() {
+      try { return localStorage.getItem(API_TOKEN_STORAGE_KEY) || ''; }
+      catch { return ''; }
+    }
+
+    function buildApiHeaders(token, headers) {
+      const out = Object.assign({}, headers || {});
+      const trimmed = String(token || '').trim();
+      if (trimmed) out.authorization = 'Bearer ' + trimmed;
+      return out;
+    }
+
+    function initTokenInput() {
+      const tokenInput = $('api-token');
+      tokenInput.value = readApiToken();
+      $('save-token').onclick = () => {
+        try {
+          localStorage.setItem(API_TOKEN_STORAGE_KEY, tokenInput.value.trim());
+          $('auth-hint').textContent = '토큰 저장됨';
+        } catch (e) {
+          $('auth-hint').textContent = '토큰 저장 실패';
+        }
+      };
+    }
 
     async function loadAutomation() {
       try {
@@ -217,8 +260,13 @@ export function dashboardHtml(): string {
     }
 
     async function api(path, opts) {
-      const r = await fetch(path, opts);
+      const request = Object.assign({}, opts || {});
+      request.headers = buildApiHeaders(readApiToken(), request.headers);
+      const r = await fetch(path, request);
       const data = await r.json().catch(() => ({}));
+      if (r.status === 401) {
+        $('auth-hint').textContent = '401 인증 필요: API bearer token을 저장하세요';
+      }
       if (!r.ok) throw new Error(data.error || r.statusText);
       return data;
     }
@@ -359,6 +407,7 @@ export function dashboardHtml(): string {
       )).join('') || '<p class="meta">청크 없음</p>';
     };
 
+    initTokenInput();
     loadDashboard();
   </script>
 </body>
