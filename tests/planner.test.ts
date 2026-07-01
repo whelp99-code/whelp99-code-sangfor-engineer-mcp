@@ -34,7 +34,8 @@ describe('Sangfor Engineer MCP MVP', () => {
   it('blocks wiki apply before approval', () => {
     const p = proposeWikiUpdate({ lessonTitle: 'Test lesson', lessonBody: 'Body' });
     expect(() => applyWikiUpdate(p.id)).toThrow();
-    approveWikiUpdate(p.id, 'approved');
+    process.env.SANGFOR_WIKI_APPROVAL_TOKEN = 'test-wiki-token';
+    approveWikiUpdate(p.id, 'approved', { token: 'test-wiki-token' });
     expect(applyWikiUpdate(p.id).status).toBe('applied');
   });
 
@@ -67,7 +68,8 @@ describe('Included real integration surfaces', () => {
   it('writes approved proposal to an Obsidian vault path', async () => {
     const vaultPath = mkdtempSync(join(tmpdir(), 'obsidian-'));
     const p = proposeWikiUpdate({ lessonTitle: 'HCI rollback lesson', lessonBody: 'Always keep rollback window.', targetPage: 'Sangfor/HCI/Lessons.md', adapter: 'obsidian' });
-    approveWikiUpdate(p.id, 'approved');
+    process.env.SANGFOR_WIKI_APPROVAL_TOKEN = 'test-wiki-token';
+    approveWikiUpdate(p.id, 'approved', { token: 'test-wiki-token' });
     await applyObsidianWikiUpdate({ proposalId: p.id, vaultPath });
     const notePath = join(vaultPath, 'Sangfor/HCI/Lessons.md');
     expect(existsSync(notePath)).toBe(true);

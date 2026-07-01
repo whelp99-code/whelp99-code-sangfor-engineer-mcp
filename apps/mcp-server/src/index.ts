@@ -355,8 +355,8 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
   },
   'sangfor.approve_wiki_update': {
     description: 'Approve or reject a wiki update proposal.',
-    inputSchema: { type: 'object', properties: { proposalId: { type: 'string' }, decision: { type: 'string' } }, required: ['proposalId', 'decision'] },
-    handler: ({ proposalId, decision }) => approveWikiUpdate(proposalId, decision)
+    inputSchema: { type: 'object', properties: { proposalId: { type: 'string' }, decision: { type: 'string' }, token: { type: 'string' }, reviewer: { type: 'string' } }, required: ['proposalId', 'decision'] },
+    handler: ({ proposalId, decision, token, reviewer }) => approveWikiUpdate(proposalId, decision, { token, reviewer })
   },
   'sangfor.apply_wiki_update': {
     description: 'Apply an approved wiki update proposal. Blocks pending proposals.',

@@ -1,4 +1,5 @@
 import { execFileSync } from 'node:child_process';
+import { createHash, timingSafeEqual } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { KnowledgeChunk, normalizeProduct, nowId } from '@sangfor/shared';
@@ -195,11 +196,29 @@ export function proposeWikiUpdate(input: { lessonTitle: string; lessonBody: stri
   return proposal;
 }
 
-export function approveWikiUpdate(proposalId: string, decision: 'approved' | 'rejected', reviewer = 'manual-reviewer'): WikiUpdateProposal {
+export function approveWikiUpdate(
+  proposalId: string,
+  decision: 'approved' | 'rejected',
+  opts: { reviewer?: string; token?: string } = {},
+): WikiUpdateProposal {
   const proposal = proposals.get(proposalId);
   if (!proposal) throw new Error(`Unknown proposal: ${proposalId}`);
+  // Approving unlocks a write into the knowledge base, so it must present a valid
+  // token (redteam H3: previously anyone could approve any proposal). Rejection
+  // is always safe and needs no token. Fail-closed when no token is configured.
+  if (decision === 'approved') {
+    const expected = process.env.SANGFOR_WIKI_APPROVAL_TOKEN;
+    if (!expected) {
+      throw new Error('Wiki approval blocked: SANGFOR_WIKI_APPROVAL_TOKEN is not configured (fail-closed).');
+    }
+    const provided = opts.token ?? '';
+    const h = (s: string) => createHash('sha256').update(s).digest();
+    if (!timingSafeEqual(h(provided), h(expected))) {
+      throw new Error('Wiki approval token mismatch.');
+    }
+  }
   proposal.status = decision;
-  proposal.reviewer = reviewer;
+  proposal.reviewer = opts.reviewer ?? 'manual-reviewer';
   return proposal;
 }
 
