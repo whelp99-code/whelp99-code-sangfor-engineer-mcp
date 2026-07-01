@@ -210,4 +210,18 @@ describe('sangfor-pm — renderStatusReport (citable narrative from recorded eve
     const pm = createPmStore();
     expect(() => pm.renderStatusReport('nope')).toThrow(/not found/i);
   });
+
+  it('discloses when the audit chain is NOT cryptographically keyed (no false confidence)', () => {
+    const pm = createPmStore(); // no secret → unkeyed
+    const e = pm.createEngagement({ customer: 'A', product: 'IAG' });
+    pm.appendPmEvent(e.id, 'diagnosis_run', { device: 'x' });
+    expect(pm.renderStatusReport(e.id)).toMatch(/keyed|서명되지 않|키가 없|tamper-evidence/i);
+  });
+
+  it('does not show the unkeyed disclosure when a chain secret is configured', () => {
+    const pm = createPmStore({ secret: 'audit-secret' });
+    const e = pm.createEngagement({ customer: 'A', product: 'IAG' });
+    pm.appendPmEvent(e.id, 'diagnosis_run', { device: 'x' });
+    expect(pm.renderStatusReport(e.id)).not.toMatch(/서명되지 않은 감사 추적|NOT cryptographically keyed/i);
+  });
 });

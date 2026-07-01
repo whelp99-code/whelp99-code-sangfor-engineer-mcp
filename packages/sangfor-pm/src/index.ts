@@ -118,6 +118,9 @@ export function createPmStore(opts?: { secret?: string }) {
       const broken = v.ok ? 0 : (v.brokenAt ?? 0);
       const lines: string[] = [`# PM 진행 보고 — ${e.customer} / ${e.product}`, ''];
       if (broken) lines.push(`> ⚠️ AUDIT CHAIN BROKEN at seq ${broken} — 이벤트 무결성 손상, 보고 신뢰 불가`, '');
+      // An intact chain is only tamper-evident if it is keyed. Disclose an unkeyed
+      // chain instead of letting it read as trustworthy (no false confidence).
+      if (!v.keyed) lines.push(`> ⚠️ 서명되지 않은 감사 추적(NOT cryptographically keyed) — SANGFOR_PM_CHAIN_SECRET 미설정, 변조 탐지 제한적`, '');
       lines.push(
         `- 진행률: ${pct}% (${done}/${total} 완료)`,
         `- 상태: todo ${by('todo')} · 진행 ${by('in_progress')} · 블록 ${by('blocked')} · 완료 ${done}`,
