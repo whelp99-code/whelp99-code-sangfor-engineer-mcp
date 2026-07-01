@@ -1,0 +1,10 @@
+{
+  "note": "Sizing tier boundaries per product. `source` MUST be present for a tier to be emitted; products absent here return tier 'unsourced' (판정불가). These boundaries are PROVISIONAL field heuristics, NOT the official Sangfor Sizing Guide — replace with cited guide figures + sourceUrl when collected.",
+  "thresholds": [
+    { "product": "IAG",  "driver": "concurrent users",     "thresholds": [1000, 5000, 20000], "source": "Provisional field heuristic — pending official IAG Sizing Guide (not vendor-cited)" },
+    { "product": "EPP",  "driver": "managed endpoints",    "thresholds": [500, 2000, 10000],  "source": "Provisional field heuristic — pending official Endpoint Secure Sizing Guide (not vendor-cited)" },
+    { "product": "HCI",  "driver": "VM count",             "thresholds": [50, 200, 1000],     "source": "Provisional field heuristic — pending official HCI/SCP Sizing Guide (not vendor-cited)" },
+    { "product": "CC",   "driver": "events per second",    "thresholds": [2000, 10000, 50000], "source": "Provisional field heuristic — pending official Cyber Command Sizing Guide (not vendor-cited)" },
+    { "product": "NGFW", "driver": "throughput (Mbps)",    "thresholds": [1000, 5000, 20000], "source": "Provisional field heuristic — pending official Network Secure Sizing Guide (not vendor-cited)" }
+  ]
+}
