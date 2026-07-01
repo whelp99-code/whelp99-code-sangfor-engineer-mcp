@@ -426,7 +426,13 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
   'sangfor.field_engineer_coverage': {
     description: 'Honest "field-engineer replacement rate" from the WorkAtom taxonomy: counts ONLY automatable AND field_verified atoms. Human-only atoms never count. Returns per-phase and per-product breakdown.',
     inputSchema: { type: 'object', properties: {} },
-    handler: () => ({ coverage: computeReplacementCoverage(loadWorkAtoms()), atoms: loadWorkAtoms() })
+    handler: () => {
+      // Verify coverage against reality: coveredBy must name a registered tool and
+      // evidence must resolve to a real artifact on disk (no over-claiming the rate).
+      const knownTools = new Set(Object.keys(tools));
+      const evidenceRoot = process.env.SANGFOR_OUTPUT_ROOT ?? process.cwd();
+      return { coverage: computeReplacementCoverage(loadWorkAtoms(), { knownTools, evidenceRoot }), atoms: loadWorkAtoms() };
+    }
   },
   'sangfor.suggest_rca': {
     description: 'Suggest ranked root-cause candidates + concrete check steps for a symptom (read-only advisory). Grounded in product manuals; returns empty (no fabrication) for unrelated symptoms.',

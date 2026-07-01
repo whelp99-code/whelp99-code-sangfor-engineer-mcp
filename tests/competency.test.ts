@@ -48,3 +48,43 @@ describe('computeReplacementCoverage — red-team regressions', () => {
     expect(computeReplacementCoverage(dup).automatableAtoms).toBe(1);
   });
 });
+
+describe('computeReplacementCoverage — verified coverage (knownTools + evidenceRoot)', () => {
+  const knownTools = new Set(['sangfor.evaluate_config']);
+  const evidenceRoot = process.cwd();
+
+  it('(a) excludes an atom whose coveredBy is not a registered tool + reports it in unknownCoverage', () => {
+    const orphan: WorkAtom[] = [
+      { id: 'o1', product: 'EPP', phase: 'operate', title: 't', automatability: 'auto', coveredBy: 'sangfor.deleted_tool', maturity: 'field_verified', evidence: 'outputs/diagnosis/EPP_6.0.4_live_diagnosis.md' },
+    ];
+    const cov = computeReplacementCoverage(orphan, { knownTools, evidenceRoot });
+    expect(cov.replacedAtoms).toBe(0);
+    expect(cov.unknownCoverage).toEqual([{ atomId: 'o1', coveredBy: 'sangfor.deleted_tool' }]);
+  });
+
+  it('(b) excludes an atom whose evidence is prose (not a real path) + reports it in evidenceMissing', () => {
+    const prose: WorkAtom[] = [
+      { id: 'deploy_asbuilt_doc', product: 'HCI', phase: 'handover', title: 'as-built', automatability: 'auto', coveredBy: 'sangfor.evaluate_config', maturity: 'field_verified', evidence: 'outputs/ (generated setting/operations guides)' },
+    ];
+    const cov = computeReplacementCoverage(prose, { knownTools, evidenceRoot });
+    expect(cov.replacedAtoms).toBe(0);
+    expect(cov.evidenceMissing.map((e) => e.atomId)).toContain('deploy_asbuilt_doc');
+  });
+
+  it('(c) keeps an atom whose evidence is a real file and coveredBy is registered', () => {
+    const real: WorkAtom[] = [
+      { id: 'op_daily_health', product: 'EPP', phase: 'operate', title: 'daily health', automatability: 'auto', coveredBy: 'sangfor.evaluate_config', maturity: 'field_verified', evidence: 'outputs/diagnosis/EPP_6.0.4_live_diagnosis.md' },
+    ];
+    const cov = computeReplacementCoverage(real, { knownTools, evidenceRoot });
+    expect(cov.replacedAtoms).toBe(1);
+    expect(cov.unknownCoverage).toHaveLength(0);
+    expect(cov.evidenceMissing).toHaveLength(0);
+  });
+
+  it('without opts, behavior is unchanged (backward compatible)', () => {
+    const cov = computeReplacementCoverage(atoms);
+    expect(cov.replacedAtoms).toBe(1);
+    expect(cov.unknownCoverage).toEqual([]);
+    expect(cov.evidenceMissing).toEqual([]);
+  });
+});
