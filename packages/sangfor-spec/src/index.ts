@@ -69,22 +69,36 @@ export interface EvaluationResult {
 
 const SPEC_ROOT = process.env.SANGFOR_SPEC_ROOT ?? 'data/specs';
 
-/** Map product aliases to the spec directory code (IAG/EPP/HCI/CC/NDR/XDR/NGFW). */
+/** Map product aliases to the canonical product code used across planner/adapters/spec joins. */
 export function normalizeSpecProduct(input: string): string {
   const s = input.trim().toLowerCase();
   if (/\b(swg|iag|internet access|secure web)\b/.test(s)) return 'IAG';
-  if (/\b(epp|endpoint|athena ep)\b/.test(s)) return 'EPP';
-  if (/\b(cc|cyber command)\b/.test(s)) return 'CC';
+  if (/\b(epp|endpoint|athena ep|asec)\b/.test(s)) return 'ENDPOINT_SECURE';
+  if (/\b(cc|cyber command)\b/.test(s)) return 'CYBER_COMMAND';
   if (/\b(ndr)\b/.test(s)) return 'NDR';
   if (/\b(xdr)\b/.test(s)) return 'XDR';
   if (/\b(ngfw|firewall)\b/.test(s)) return 'NGFW';
-  if (/\b(hci|scp|asv)\b/.test(s)) return 'HCI';
+  if (/\b(scp|hci\/scp|hci scp|sangfor cloud platform)\b/.test(s)) return 'HCI_SCP';
+  if (/\b(hci|asv)\b/.test(s)) return 'HCI';
   return input.trim().toUpperCase();
+}
+
+function specDirectoryCandidates(product: string): string[] {
+  const canonical = normalizeSpecProduct(product);
+  const legacy: Record<string, string[]> = {
+    ENDPOINT_SECURE: ['EPP'],
+    CYBER_COMMAND: ['CC'],
+    HCI_SCP: ['HCI', 'SCP'],
+    IAG: ['SWG'],
+  };
+  return [canonical, ...(legacy[canonical] ?? [])];
 }
 
 /** Load and merge all spec JSON files for a product/version, or null if none. */
 export function loadSpec(product: string, version: string, root: string = SPEC_ROOT): IntendedSpec | null {
-  const dir = join(root, normalizeSpecProduct(product), version);
+  const productDir = specDirectoryCandidates(product).find((candidate) => existsSync(join(root, candidate, version)));
+  if (!productDir) return null;
+  const dir = join(root, productDir, version);
   if (!existsSync(dir)) return null;
   const files = readdirSync(dir).filter((f) => f.endsWith('.json') && !f.startsWith('.'));
   if (files.length === 0) return null;
@@ -92,7 +106,7 @@ export function loadSpec(product: string, version: string, root: string = SPEC_R
   let product0 = normalizeSpecProduct(product);
   for (const f of files) {
     const parsed = JSON.parse(readFileSync(join(dir, f), 'utf8')) as IntendedSpec;
-    if (parsed.product) product0 = parsed.product;
+    if (parsed.product) product0 = normalizeSpecProduct(parsed.product);
     items.push(...(parsed.items ?? []));
   }
   return { id: `spec_${normalizeSpecProduct(product)}_${version}`.replace(/[^\w]/g, '_'), product: product0, version, items };
