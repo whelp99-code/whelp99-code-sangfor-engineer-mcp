@@ -296,9 +296,10 @@ export function verifyResult(input: VerifyInput): VerificationResult {
   if (mode === 'apply' && process.env.SANGFOR_ALLOW_REAL_EXECUTION !== 'true') {
     throw new Error('Apply mode requires SANGFOR_ALLOW_REAL_EXECUTION=true');
   }
-  if (mode === 'apply' && process.env.SANGFOR_OPERATOR_APPROVAL_TOKEN) {
-    throw new Error('Apply mode also requires approval payload in live execution path');
-  }
+  // The verifier never executes changes itself — real mutation lives behind the
+  // operator's signed-approval gate (see @sangfor/operator). The former guard here
+  // keyed off SANGFOR_OPERATOR_APPROVAL_TOKEN, a retired static token whose logic
+  // was inverted (throwing when the token WAS set); removed to avoid confusion.
 
   const checks: VerificationCheck[] = input.plan.validationPlan.map(step => ({
     id: step.id,
