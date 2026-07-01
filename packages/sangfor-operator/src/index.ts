@@ -62,6 +62,19 @@ export interface LiveConsoleActionInput {
 
 const sessions = new Map<string, OperatorSession>();
 const liveConnections = new Map<string, { browser: any; page: any; context: any; connectedOverCdp: boolean }>();
+const CLICK_TARGET_SELECTOR = [
+  'button',
+  'a',
+  '[role="button"]',
+  'input[type="button"]',
+  'input[type="submit"]',
+  '[data-action]',
+  '[onclick]',
+  '[class*="x-btn"]',
+  '[class*="x-menu-item"]',
+  '[class*="x-boundlist-item"]',
+].join(', ');
+const INPUT_TARGET_SELECTOR = 'input:not([type="hidden"]):not([disabled]), textarea:not([disabled])';
 
 // ─── Session Management ────────────────────────────────────────────────────────
 
@@ -226,6 +239,90 @@ async function releaseLivePage(sessionId: string): Promise<void> {
   try { await conn.browser.close(); } catch { /* ignore */ }
 }
 
+// ─── Fail-Closed Live Action Locators ────────────────────────────────────────
+
+function strictTargetError(action: string, target: string, count: number): Error {
+  if (count === 0) return new Error(`Could not ${action}: no unique target matched "${target}"`);
+  return new Error(`Could not ${action}: ambiguous target "${target}" matched ${count} elements`);
+}
+
+export async function clickUniqueTextTarget(page: any, target: string): Promise<void> {
+  const locator = page.locator(CLICK_TARGET_SELECTOR);
+  const matches = await locator.evaluateAll((elements: Element[], wanted: string) => {
+    const isVisible = (el: Element) => {
+      const style = window.getComputedStyle(el);
+      const rect = (el as HTMLElement).getBoundingClientRect();
+      return style.visibility !== 'hidden' && style.display !== 'none' && rect.width > 0 && rect.height > 0;
+    };
+    const textOf = (el: Element) => {
+      if (el instanceof HTMLInputElement) return el.value || el.getAttribute('aria-label') || el.title || '';
+      return el.textContent?.trim() || el.getAttribute('aria-label') || el.getAttribute('title') || '';
+    };
+    return elements
+      .map((el, index) => ({ index, text: textOf(el).trim(), visible: isVisible(el) }))
+      .filter((item) => item.visible && item.text === wanted)
+      .map((item) => item.index);
+  }, target);
+  if (matches.length !== 1) throw strictTargetError('click', target, matches.length);
+  await locator.nth(matches[0]).click();
+}
+
+export async function typeUniqueInputTarget(page: any, target: string, value: string): Promise<void> {
+  const locator = page.locator(INPUT_TARGET_SELECTOR);
+  const matches = await locator.evaluateAll((elements: Element[], wanted: string) => {
+    const isVisible = (el: Element) => {
+      const style = window.getComputedStyle(el);
+      const rect = (el as HTMLElement).getBoundingClientRect();
+      return style.visibility !== 'hidden' && style.display !== 'none' && rect.width > 0 && rect.height > 0;
+    };
+    const keyOf = (el: Element) => [
+      el.getAttribute('name'),
+      el.getAttribute('id'),
+      el.getAttribute('aria-label'),
+      el.getAttribute('placeholder'),
+    ].filter(Boolean);
+    return elements
+      .map((el, index) => ({ index, keys: keyOf(el), visible: isVisible(el) }))
+      .filter((item) => item.visible && item.keys.includes(wanted))
+      .map((item) => item.index);
+  }, target);
+  if (matches.length !== 1) throw strictTargetError('type into', target, matches.length);
+  const input = locator.nth(matches[0]);
+  await input.fill(value);
+  await input.dispatchEvent('change');
+}
+
+export async function selectUniqueTarget(page: any, target: string, value: string): Promise<void> {
+  let locator = page.locator(target);
+  let count = await locator.count().catch(() => 0);
+
+  if (count === 0) {
+    locator = page.locator('select').filter({ has: page.locator(`option`) });
+    const matches = await locator.evaluateAll((elements: HTMLSelectElement[], wanted: string) => {
+      const isVisible = (el: Element) => {
+        const style = window.getComputedStyle(el);
+        const rect = (el as HTMLElement).getBoundingClientRect();
+        return style.visibility !== 'hidden' && style.display !== 'none' && rect.width > 0 && rect.height > 0;
+      };
+      return elements
+        .map((el, index) => ({
+          index,
+          keys: [el.getAttribute('name'), el.getAttribute('id'), el.getAttribute('aria-label')].filter(Boolean),
+          visible: isVisible(el),
+        }))
+        .filter((item) => item.visible && item.keys.includes(wanted))
+        .map((item) => item.index);
+    }, target);
+    count = matches.length;
+    if (count !== 1) throw strictTargetError('select', target, count);
+    await locator.nth(matches[0]).selectOption(value);
+    return;
+  }
+
+  if (count !== 1) throw strictTargetError('select', target, count);
+  await locator.selectOption(value);
+}
+
 // ─── Live Read ───────────────────────────────────────────────────────────────
 
 export async function readLiveConsoleState(input: { sessionId: string }): Promise<Record<string, unknown>> {
@@ -353,28 +450,14 @@ export async function executeLiveConsoleAction(input: LiveConsoleActionInput): P
       await page.waitForTimeout(2000);
     } else if (action.type === 'click') {
       if (!action.target) throw new Error('click action requires target');
-      const clicked = await page.evaluate((target: string) => {
-        const items = Array.from(document.querySelectorAll('button, a, [role="button"], span, div'));
-        const item = items.find((el: Element) => el.textContent?.trim() === target);
-        if (item) { (item as HTMLElement).click(); return true; }
-        return false;
-      }, action.target);
-      if (!clicked) {
-        await page.getByText(action.target!, { exact: false }).click().catch(() => {
-          throw new Error(`Could not click: ${action.target}`);
-        });
-      }
+      await clickUniqueTextTarget(page, action.target);
       await page.waitForTimeout(1000);
     } else if (action.type === 'type') {
       if (!action.target) throw new Error('type action requires target');
-      await page.evaluate((target: string, val: string) => {
-        const inputs = Array.from(document.querySelectorAll('input, textarea'));
-        const inp = inputs.find((i: Element) => i.getAttribute('name') === target || i.getAttribute('id') === target || (i as HTMLElement).offsetParent !== null);
-        if (inp) { (inp as HTMLInputElement).value = val; (inp as HTMLElement).dispatchEvent(new Event('input', {bubbles:true})); (inp as HTMLElement).dispatchEvent(new Event('change', {bubbles:true})); }
-      }, action.target, action.value ?? '');
+      await typeUniqueInputTarget(page, action.target, action.value ?? '');
     } else if (action.type === 'select') {
       if (!action.target) throw new Error('select action requires target');
-      await page.locator(action.target).selectOption(action.value ?? '');
+      await selectUniqueTarget(page, action.target, action.value ?? '');
     } else if (action.type === 'scroll') {
       await page.mouse.wheel(0, Number(action.value ?? 500));
     } else if (action.type === 'wait') {
