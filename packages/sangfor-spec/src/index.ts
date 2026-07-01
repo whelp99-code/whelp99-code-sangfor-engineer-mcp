@@ -148,13 +148,26 @@ export function evaluateSpec(spec: IntendedSpec, observed: Record<string, unknow
     }
 
     const value = observed[item.observedKey];
-    const ok = compareValue(item.op, value, item.expected);
-    if (ok) {
+    const cmp = compareValue(item.op, value, item.expected);
+    if (cmp === 'indeterminate') {
+      // Observed type/shape is incompatible with the expected type (e.g. scraped
+      // string 'true' vs boolean true, 'N/A' vs a numeric threshold). Comparing
+      // anyway would fabricate a PASS or FAIL — surface it as 판정 불가 instead.
+      return { ...base, verdict: 'INDETERMINATE', category: 'indeterminate', observed: value,
+        reason: `관측 타입(${typeof value})이 기대 타입과 불일치하거나 수치 변환 불가 — 판정 불가` };
+    }
+    if (cmp === 'pass') {
+      // A datum flagged for senior review must never be auto-PASSed, even on a match.
+      if (item.needsSeniorReview) {
+        return { ...base, verdict: 'INDETERMINATE', category: 'indeterminate', observed: value,
+          reason: '시니어 검토 필요 항목 — 자동 PASS 금지 (senior review required)' };
+      }
       return { ...base, verdict: 'PASS', category: 'ok', observed: value, reason: 'matches expected' };
     }
     const category: Category = item.severity === 'must' ? 'misconfiguration' : 'missing';
+    const seniorNote = item.needsSeniorReview ? ' — 시니어 검토 필요(senior review)' : '';
     return { ...base, verdict: 'FAIL', category, observed: value,
-      reason: `expected ${item.op} ${JSON.stringify(item.expected)}, observed ${JSON.stringify(value)}` };
+      reason: `expected ${item.op} ${JSON.stringify(item.expected)}, observed ${JSON.stringify(value)}${seniorNote}` };
   });
 
   const summary = summarize(items);
@@ -171,7 +184,8 @@ export function renderAdvisoryReport(spec: IntendedSpec, result: EvaluationResul
   };
   const line = (i: ItemResult) => {
     const ev = i.observed !== undefined ? ` (기대: ${JSON.stringify(i.expected)}, 실제: ${JSON.stringify(i.observed)})` : (i.expected !== undefined ? ` (기대: ${JSON.stringify(i.expected)}, 실제: 확인 불가)` : '');
-    return `- **${i.label}**${ev}${cite(i.id)}`;
+    const senior = spec.items.find((s) => s.id === i.id)?.needsSeniorReview ? ' ⚠ 시니어 검토 필요' : '';
+    return `- **${i.label}**${senior}${ev}${cite(i.id)}`;
   };
   const section = (title: string, cat: Category, empty: string) => {
     const items = byCat(cat);
@@ -253,16 +267,62 @@ export function renderAdvisoryReportDocx(spec: IntendedSpec, result: EvaluationR
   return { docxPath: outputPath, size: statSync(absOut).size };
 }
 
-function compareValue(op: CompareOp, observed: unknown, expected: unknown): boolean {
+type CompareOutcome = 'pass' | 'fail' | 'indeterminate';
+
+const isScalar = (v: unknown): boolean =>
+  v === null || v === undefined || ['string', 'number', 'boolean'].includes(typeof v);
+
+/** Parse a value to a finite number, or null if it cannot be trusted as numeric. */
+function toFiniteNumber(v: unknown): number | null {
+  if (typeof v === 'number') return Number.isFinite(v) ? v : null;
+  if (typeof v === 'string') {
+    const t = v.trim();
+    if (t === '') return null;
+    const n = Number(t);
+    return Number.isFinite(n) ? n : null;
+  }
+  return null; // boolean / object / null / undefined are not trustworthy numbers
+}
+
+/**
+ * Compare an observed value to the spec's expected value. Returns a THREE-state
+ * outcome: a type/shape mismatch yields 'indeterminate' rather than silently
+ * coercing into a fabricated 'pass'/'fail' (INDETERMINATE ≠ PASS principle).
+ */
+function compareValue(op: CompareOp, observed: unknown, expected: unknown): CompareOutcome {
   switch (op) {
-    case 'eq': return observed === expected;
-    case 'neq': return observed !== expected;
-    case 'gte': return Number(observed) >= Number(expected);
-    case 'lte': return Number(observed) <= Number(expected);
-    case 'includes': return String(observed).includes(String(expected));
-    case 'oneOf': return Array.isArray(expected) && expected.includes(observed);
-    case 'exists': return observed !== undefined && observed !== null && observed !== '';
-    default: return false;
+    case 'eq':
+    case 'neq': {
+      // If both are scalars of different primitive type (e.g. boolean true vs
+      // scraped string 'true'), the comparison is untrustworthy → indeterminate.
+      if (isScalar(observed) && isScalar(expected) && observed != null && expected != null
+        && typeof observed !== typeof expected) {
+        return 'indeterminate';
+      }
+      const equal = observed === expected;
+      return (op === 'eq' ? equal : !equal) ? 'pass' : 'fail';
+    }
+    case 'gte':
+    case 'lte': {
+      const a = toFiniteNumber(observed);
+      const b = toFiniteNumber(expected);
+      if (a === null || b === null) return 'indeterminate';
+      return (op === 'gte' ? a >= b : a <= b) ? 'pass' : 'fail';
+    }
+    case 'includes': {
+      if (Array.isArray(observed)) return observed.includes(expected) ? 'pass' : 'fail';
+      if (typeof observed === 'string' && (typeof expected === 'string' || typeof expected === 'number')) {
+        return observed.includes(String(expected)) ? 'pass' : 'fail';
+      }
+      return 'indeterminate';
+    }
+    case 'oneOf':
+      if (!Array.isArray(expected)) return 'indeterminate';
+      return expected.includes(observed) ? 'pass' : 'fail';
+    case 'exists':
+      return observed !== undefined && observed !== null && observed !== '' ? 'pass' : 'fail';
+    default:
+      return 'indeterminate';
   }
 }
 
