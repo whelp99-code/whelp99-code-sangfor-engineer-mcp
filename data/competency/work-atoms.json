@@ -107,8 +107,8 @@
       "phase": "deploy",
       "title": "AD/LDAP/SIEM 연동",
       "automatability": "auto",
-      "coveredBy": null,
-      "maturity": "planned"
+      "coveredBy": "sangfor.integration_guide",
+      "maturity": "implemented_local"
     },
     {
       "id": "deploy_asbuilt_doc",
@@ -136,8 +136,8 @@
       "phase": "operate",
       "title": "업그레이드·패치 호환성 자문",
       "automatability": "hybrid",
-      "coveredBy": null,
-      "maturity": "planned"
+      "coveredBy": "sangfor.check_version",
+      "maturity": "implemented_local"
     },
     {
       "id": "op_backup_dr",

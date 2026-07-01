@@ -41,6 +41,7 @@ import { suggestRca } from '../../../packages/sangfor-rca/src/index.js';
 import { recommendSizing, type SizingInput } from '../../../packages/sangfor-sizing/src/index.js';
 import { createPmStore } from '../../../packages/sangfor-pm/src/index.js';
 import { checkVersionRequirement, loadVersionRequirements } from '../../../packages/sangfor-version/src/index.js';
+import { generateIntegrationGuide, listIntegrationTypes } from '../../../packages/sangfor-integration/src/index.js';
 
 const pmStore = createPmStore(); // process-lifetime PM state for the MCP session
 
@@ -451,6 +452,15 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
     description: 'PM: status rollup for an engagement + current device occupancy (who holds which device).',
     inputSchema: { type: 'object', properties: { engagementId: { type: 'string' } }, required: ['engagementId'] },
     handler: (args: { engagementId: string }) => ({ rollup: pmStore.statusRollup(args.engagementId), deviceOccupancy: pmStore.deviceOccupancy(), chainOk: pmStore.verifyEventChain(args.engagementId) })
+  },
+  'sangfor.integration_guide': {
+    description: 'Standard integration guide (AD/LDAP, RADIUS, SIEM/syslog): cited prerequisites → steps → validation → pitfalls for the human to follow. Unknown integration type returns an error (no fabrication). No type → list supported types.',
+    inputSchema: { type: 'object', properties: { type: { type: 'string', description: 'LDAP/AD, RADIUS, or SIEM/syslog' }, product: { type: 'string' } } },
+    handler: (args: { type?: string; product?: string }) => {
+      if (!args.type) return { supported: listIntegrationTypes() };
+      const g = generateIntegrationGuide(args.type, args.product);
+      return g ?? { error: `Unknown integration type "${args.type}". Supported: ${listIntegrationTypes().join(', ')}` };
+    }
   },
   'sangfor.check_version': {
     description: 'Upgrade advisory: check a device version against the collected Version Requirements (min/recommended) and return meetsMin/atRecommended + cited advice. Returns null-style error for unknown devices (no fabricated compatibility claim). No args → list known requirements.',

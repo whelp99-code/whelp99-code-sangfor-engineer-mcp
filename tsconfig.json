@@ -88,6 +88,9 @@
       ],
       "@sangfor/version": [
         "packages/sangfor-version/src/index.ts"
+      ],
+      "@sangfor/integration": [
+        "packages/sangfor-integration/src/index.ts"
       ]
     },
     "baseUrl": "."
