@@ -45,14 +45,35 @@ export interface IntendedSpec {
   items: SpecItem[];
 }
 
+export interface ObservedSource {
+  endpoint?: string;    // e.g. 'POST /api/edrgoweb/v1/patch/statistics'
+  collectedAt?: string; // ISO timestamp of capture
+  collector?: string;   // e.g. 'live-xhr' | 'dom-scrape' | 'aside-snapshot'
+}
+
+/** An observed value that carries its own provenance. evaluateSpec accepts either
+ *  a bare value or this wrapper per observedKey. */
+export interface ObservedFact {
+  value: unknown;
+  source?: ObservedSource;
+}
+
 export interface ItemResult {
   id: string;
   label: string;
   verdict: Verdict;
   category: Category;
   observed?: unknown;
+  observedSource?: ObservedSource;
   expected?: unknown;
   reason: string;
+}
+
+export interface CoverageInfo {
+  specifiedTotal: number;    // spec items
+  observedTotal: number;     // observed keys supplied
+  unspecifiedKeys: string[]; // observed keys with no matching spec item (audit targets — config present but not intended)
+  unobservedItems: string[]; // spec item ids with no observed value (blind spots)
 }
 
 export interface EvaluationSummary {
@@ -68,6 +89,7 @@ export interface EvaluationResult {
   ok: boolean;
   items: ItemResult[];
   summary: EvaluationSummary;
+  coverage: CoverageInfo;
 }
 
 const SPEC_ROOT = resolveRepoData('data/specs', 'SANGFOR_SPEC_ROOT');
@@ -148,31 +170,53 @@ export function evaluateSpec(spec: IntendedSpec, observed: Record<string, unknow
         reason: `No observed value for "${item.observedKey}"` };
     }
 
-    const value = observed[item.observedKey];
+    const fact = normalizeFact(observed[item.observedKey]);
+    const value = fact.value;
+    const observedSource = fact.source;
+    const withSrc = <T extends object>(r: T) => (observedSource ? { ...r, observedSource } : r);
     const cmp = compareValue(item.op, value, item.expected);
     if (cmp === 'indeterminate') {
       // Observed type/shape is incompatible with the expected type (e.g. scraped
       // string 'true' vs boolean true, 'N/A' vs a numeric threshold). Comparing
       // anyway would fabricate a PASS or FAIL — surface it as 판정 불가 instead.
-      return { ...base, verdict: 'INDETERMINATE', category: 'indeterminate', observed: value,
-        reason: `관측 타입(${typeof value})이 기대 타입과 불일치하거나 수치 변환 불가 — 판정 불가` };
+      return withSrc({ ...base, verdict: 'INDETERMINATE' as Verdict, category: 'indeterminate' as Category, observed: value,
+        reason: `관측 타입(${typeof value})이 기대 타입과 불일치하거나 수치 변환 불가 — 판정 불가` });
     }
     if (cmp === 'pass') {
       // A datum flagged for senior review must never be auto-PASSed, even on a match.
       if (item.needsSeniorReview) {
-        return { ...base, verdict: 'INDETERMINATE', category: 'indeterminate', observed: value,
-          reason: '시니어 검토 필요 항목 — 자동 PASS 금지 (senior review required)' };
+        return withSrc({ ...base, verdict: 'INDETERMINATE' as Verdict, category: 'indeterminate' as Category, observed: value,
+          reason: '시니어 검토 필요 항목 — 자동 PASS 금지 (senior review required)' });
       }
-      return { ...base, verdict: 'PASS', category: 'ok', observed: value, reason: 'matches expected' };
+      return withSrc({ ...base, verdict: 'PASS' as Verdict, category: 'ok' as Category, observed: value, reason: 'matches expected' });
     }
     const category: Category = item.severity === 'must' ? 'misconfiguration' : 'missing';
     const seniorNote = item.needsSeniorReview ? ' — 시니어 검토 필요(senior review)' : '';
-    return { ...base, verdict: 'FAIL', category, observed: value,
-      reason: `expected ${item.op} ${JSON.stringify(item.expected)}, observed ${JSON.stringify(value)}${seniorNote}` };
+    return withSrc({ ...base, verdict: 'FAIL' as Verdict, category, observed: value,
+      reason: `expected ${item.op} ${JSON.stringify(item.expected)}, observed ${JSON.stringify(value)}${seniorNote}` });
   });
 
   const summary = summarize(items);
-  return { specId: spec.id, ok: computeOk(summary), items, summary };
+  const observedKeys = Object.keys(observed);
+  const specKeys = new Set(spec.items.map((i) => i.observedKey));
+  const coverage: CoverageInfo = {
+    specifiedTotal: spec.items.length,
+    observedTotal: observedKeys.length,
+    unspecifiedKeys: observedKeys.filter((k) => !specKeys.has(k)),
+    unobservedItems: spec.items.filter((i) => !Object.prototype.hasOwnProperty.call(observed, i.observedKey)).map((i) => i.id),
+  };
+  return { specId: spec.id, ok: computeOk(summary), items, summary, coverage };
+}
+
+/** Detect the ObservedFact wrapper shape ({ value, source? }) vs a bare observed value. */
+function isObservedFact(v: unknown): v is ObservedFact {
+  if (typeof v !== 'object' || v === null || Array.isArray(v)) return false;
+  if (!Object.prototype.hasOwnProperty.call(v, 'value')) return false;
+  return Object.keys(v as object).every((k) => k === 'value' || k === 'source');
+}
+
+function normalizeFact(raw: unknown): ObservedFact {
+  return isObservedFact(raw) ? { value: raw.value, source: raw.source } : { value: raw };
 }
 
 /** Render a Korean advisory report separating 잘못된 설정 / 추가 필요 / 판정 불가 / 정상. */
@@ -183,10 +227,18 @@ export function renderAdvisoryReport(spec: IntendedSpec, result: EvaluationResul
     const src = item?.source;
     return src ? ` \n  - 근거: ${src.manual}${src.section ? ` — ${src.section}` : ''}${src.page ? `\n  - 출처: ${src.page}` : ''}` : ' \n  - 근거: (출처 없음 — 시니어 검토 필요)';
   };
+  const provenance = (i: ItemResult) => {
+    if (i.observed === undefined) return ''; // nothing observed → provenance N/A
+    const s = i.observedSource;
+    if (s && (s.endpoint || s.collectedAt)) {
+      return ` \n  - 관측: ${s.endpoint ?? '(endpoint 미기록)'}${s.collectedAt ? ` @ ${s.collectedAt}` : ''}${s.collector ? ` [${s.collector}]` : ''}`;
+    }
+    return ` \n  - 관측: 관측 근거 미기록`;
+  };
   const line = (i: ItemResult) => {
     const ev = i.observed !== undefined ? ` (기대: ${JSON.stringify(i.expected)}, 실제: ${JSON.stringify(i.observed)})` : (i.expected !== undefined ? ` (기대: ${JSON.stringify(i.expected)}, 실제: 확인 불가)` : '');
     const senior = spec.items.find((s) => s.id === i.id)?.needsSeniorReview ? ' ⚠ 시니어 검토 필요' : '';
-    return `- **${i.label}**${senior}${ev}${cite(i.id)}`;
+    return `- **${i.label}**${senior}${ev}${cite(i.id)}${provenance(i)}`;
   };
   const section = (title: string, cat: Category, empty: string) => {
     const items = byCat(cat);
@@ -207,6 +259,11 @@ export function renderAdvisoryReport(spec: IntendedSpec, result: EvaluationResul
     section('추가로 필요 (missing/recommended)', 'missing', '없음'),
     section('판정 불가 (indeterminate — 설정값 미확인/근거 부족)', 'indeterminate', '없음'),
     section('정상 (ok)', 'ok', '없음'),
+    `## 커버리지 (감사 범위)`,
+    ``,
+    `- 스펙 항목 ${result.coverage.specifiedTotal}개 중 관측값 미확인 ${result.coverage.unobservedItems.length}개${result.coverage.unobservedItems.length ? ` (${result.coverage.unobservedItems.join(', ')})` : ''}`,
+    `- 스펙 외 관측 키 ${result.coverage.unspecifiedKeys.length}개${result.coverage.unspecifiedKeys.length ? ` (감사 대상: ${result.coverage.unspecifiedKeys.join(', ')})` : ' — 의도 항목 외 설정 없음'}`,
+    ``,
     `---`,
     ``,
     `## 사람 최종 확인 (sign-off)`,

@@ -8,13 +8,18 @@ const patch = g('patch/statistics'), vulner = g('vulner/list/homepageVulner'),
   vver = g('vulner/list/version'), baseline = g('baseline/getRule'),
   domain = g('domain_detect/get_domain_info'), dar = g('cnapp/professional/dar/webapi/interval/status');
 
+// Wrap each observed value with its provenance (the XHR endpoint it came from), so
+// the report cites the OBSERVED side too — not just the manual on the spec side.
+const collectedAt = new Date().toISOString();
+const fact = (endpoint: string, value: unknown) => ({ value, source: { endpoint: `POST /api/edrgoweb/v1/${endpoint}`, collectedAt, collector: 'live-xhr' } });
+
 const observed: Record<string, unknown> = {
-  patchIsLatest: patch?.isLatest,
-  vulnDefUpdateAvailable: vver?.update,
-  vulnerabilityCount: vulner?.vulnerCount,
-  securityBaselineRuleCount: baseline?.count,
-  maliciousDomainBlockCount: domain?.count,
-  darMonitoringActive: dar?.interval != null,
+  patchIsLatest: fact('patch/statistics', patch?.isLatest),
+  vulnDefUpdateAvailable: fact('vulner/list/version', vver?.update),
+  vulnerabilityCount: fact('vulner/list/homepageVulner', vulner?.vulnerCount),
+  securityBaselineRuleCount: fact('baseline/getRule', baseline?.count),
+  maliciousDomainBlockCount: fact('domain_detect/get_domain_info', domain?.count),
+  darMonitoringActive: fact('cnapp/professional/dar/webapi/interval/status', dar?.interval != null),
   // malwareScanScheduleEnabled: not exposed by captured endpoints → stays INDETERMINATE
 };
 
