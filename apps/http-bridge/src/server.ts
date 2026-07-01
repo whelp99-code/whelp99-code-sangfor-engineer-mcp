@@ -14,20 +14,11 @@ import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { resolveBindHost, checkAuth, assertBindSafety } from "../../../packages/shared/src/index.js";
+import { findToolAnnotations, isToolAllowedByAnnotations } from "./tool-guard.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(__dirname, "..", "..", "..");
 const MCP_ENTRY = join(REPO_ROOT, "apps/mcp-server/src/index.ts");
-
-/** Read-only tools allowed for live device-control smoke without mutation. */
-export const SAFE_TOOL_WHITELIST = new Set([
-  "sangfor.products",
-  "sangfor.search_manuals",
-  "sangfor.get_manual_section",
-  "sangfor.rag_search",
-  "sangfor.rag_index_summary",
-  "sangfor.store_health",
-]);
 
 const PORT = Number(process.env.PORT ?? process.env.WHELP99_HTTP_BRIDGE_PORT ?? 3600);
 const BIND_HOST = resolveBindHost();
@@ -174,12 +165,19 @@ const server = http.createServer(async (req, res) => {
       }
 
       const enforceWhitelist = process.env.WHELP99_ENFORCE_SAFE_TOOLS !== "false";
-      if (enforceWhitelist && !SAFE_TOOL_WHITELIST.has(name)) {
+      const list = await mcpRequest("tools/list");
+      const annotations = list.error ? null : findToolAnnotations(list.result, name);
+      if (!annotations) {
+        return json(res, { error: `Tool annotations unavailable; refusing call: ${name}` }, 403);
+      }
+      if (annotations.destructiveHint) {
+        return json(res, { error: `Destructive tool refused by MCP annotations: ${name}` }, 403);
+      }
+      if (enforceWhitelist && !isToolAllowedByAnnotations(list.result, name)) {
         return json(
           res,
           {
-            error: `Tool not in safe whitelist: ${name}`,
-            allowedTools: [...SAFE_TOOL_WHITELIST],
+            error: `Tool is not annotated read-only: ${name}`,
           },
           403,
         );
