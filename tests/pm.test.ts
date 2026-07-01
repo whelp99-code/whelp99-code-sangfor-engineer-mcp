@@ -32,6 +32,26 @@ describe('sangfor-pm — PmEvent hash chain (tamper-evident audit)', () => {
     events[0].payload = { device: 'TAMPERED' }; // mutate in place
     expect(pm.verifyEventChain(e.id).ok).toBe(false);
   });
+
+  it('detects TAIL TRUNCATION — dropping the last event(s) leaves a valid prefix but must fail', () => {
+    const pm = createPmStore();
+    const e = pm.createEngagement({ customer: 'A', product: 'IAG' });
+    pm.appendPmEvent(e.id, 'e1', { a: 1 });
+    pm.appendPmEvent(e.id, 'e2', { a: 2 });
+    pm.appendPmEvent(e.id, 'e3', { a: 3 });
+    pm.getEvents(e.id).pop(); // truncate the tail — remaining [e1,e2] is internally consistent
+    expect(pm.verifyEventChain(e.id).ok).toBe(false);
+  });
+
+  it('detects seq reordering', () => {
+    const pm = createPmStore();
+    const e = pm.createEngagement({ customer: 'A', product: 'IAG' });
+    pm.appendPmEvent(e.id, 'e1', { a: 1 });
+    pm.appendPmEvent(e.id, 'e2', { a: 2 });
+    const ev = pm.getEvents(e.id);
+    [ev[0], ev[1]] = [ev[1], ev[0]]; // swap order
+    expect(pm.verifyEventChain(e.id).ok).toBe(false);
+  });
 });
 
 describe('sangfor-pm — DeviceOccupancy lock (shared-device safety)', () => {
@@ -59,6 +79,16 @@ describe('sangfor-pm — DeviceOccupancy lock (shared-device safety)', () => {
     const a = pm.createEngagement({ customer: 'A', product: 'EPP' });
     pm.acquireDevice('10.80.1.106', a.id, 'engineerA');
     expect(pm.acquireDevice('10.80.1.106', a.id, 'engineerA').ok).toBe(true);
+  });
+
+  it('idempotent re-acquire preserves the ORIGINAL acquiredAt (occupancy age cannot be reset)', () => {
+    const pm = createPmStore();
+    const a = pm.createEngagement({ customer: 'A', product: 'EPP' });
+    const first = pm.acquireDevice('10.80.1.106', a.id, 'engineerA');
+    const firstAt = first.heldBy!.acquiredAt;
+    const again = pm.acquireDevice('10.80.1.106', a.id, 'engineerA');
+    expect(again.heldBy!.acquiredAt).toBe(firstAt);
+    expect(pm.deviceOccupancy()[0].acquiredAt).toBe(firstAt);
   });
 });
 

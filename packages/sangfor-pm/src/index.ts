@@ -25,6 +25,7 @@ export function createPmStore() {
   const engagements = new Map<string, Engagement>();
   const workItems = new Map<string, WorkItem>();
   const events = new Map<string, PmEvent[]>();       // engagementId → chain
+  const chainMeta = new Map<string, { count: number; head: string }>(); // independent length/tip anchor
   const locks = new Map<string, DeviceLock>();       // deviceId → lock
   let n = 0;
   const id = (p: string) => `${p}_${++n}`;
@@ -36,7 +37,27 @@ export function createPmStore() {
     const ev: PmEvent = { id: id('ev'), seq, engagementId, type, payload, prevHash, hash: hashEvent(prevHash, seq, type, payload) };
     chain.push(ev);
     events.set(engagementId, chain);
+    // Anchor the authoritative length + tip so tail truncation of the array is detectable.
+    chainMeta.set(engagementId, { count: chain.length, head: ev.hash });
     return ev;
+  };
+
+  // Verify structure + contiguity + independent length/tip anchor.
+  const verifyChain = (engagementId: string): { ok: boolean; brokenAt?: number } => {
+    const chain = events.get(engagementId) ?? [];
+    let prevHash = 'GENESIS';
+    for (let i = 0; i < chain.length; i++) {
+      const ev = chain[i];
+      if (ev.seq !== i + 1) return { ok: false, brokenAt: ev.seq };          // reorder / gap
+      if (ev.prevHash !== prevHash) return { ok: false, brokenAt: ev.seq };
+      if (ev.hash !== hashEvent(prevHash, ev.seq, ev.type, ev.payload)) return { ok: false, brokenAt: ev.seq };
+      prevHash = ev.hash;
+    }
+    const meta = chainMeta.get(engagementId);
+    if (meta && (chain.length !== meta.count || (chain.length > 0 && chain[chain.length - 1].hash !== meta.head))) {
+      return { ok: false, brokenAt: chain.length }; // tail truncation / append-array tamper
+    }
+    return { ok: true };
   };
 
   return {
@@ -82,13 +103,9 @@ export function createPmStore() {
       const done = by('done');
       const pct = total ? Math.round((done / total) * 100) : 0;
       const chain = events.get(engagementId) ?? [];
-      // Inline chain verification so a broken audit trail is disclosed, not hidden.
-      let broken = 0;
-      let prevHash = 'GENESIS';
-      for (const ev of chain) {
-        if (ev.prevHash !== prevHash || ev.hash !== hashEvent(prevHash, ev.seq, ev.type, ev.payload)) { broken = ev.seq; break; }
-        prevHash = ev.hash;
-      }
+      // Disclose a broken audit trail (incl. tail truncation) rather than hide it.
+      const v = verifyChain(engagementId);
+      const broken = v.ok ? 0 : (v.brokenAt ?? 0);
       const lines: string[] = [`# PM 진행 보고 — ${e.customer} / ${e.product}`, ''];
       if (broken) lines.push(`> ⚠️ AUDIT CHAIN BROKEN at seq ${broken} — 이벤트 무결성 손상, 보고 신뢰 불가`, '');
       lines.push(
@@ -107,14 +124,7 @@ export function createPmStore() {
     appendPmEvent(engagementId: string, type: string, payload: unknown): PmEvent { return append(engagementId, type, payload); },
     getEvents(engagementId: string): PmEvent[] { return events.get(engagementId) ?? []; },
     verifyEventChain(engagementId: string): { ok: boolean; brokenAt?: number } {
-      const chain = events.get(engagementId) ?? [];
-      let prevHash = 'GENESIS';
-      for (const ev of chain) {
-        if (ev.prevHash !== prevHash) return { ok: false, brokenAt: ev.seq };
-        if (ev.hash !== hashEvent(prevHash, ev.seq, ev.type, ev.payload)) return { ok: false, brokenAt: ev.seq };
-        prevHash = ev.hash;
-      }
-      return { ok: true };
+      return verifyChain(engagementId);
     },
     acquireDevice(deviceId: string, engagementId: string, holder: string): { ok: boolean; heldBy?: DeviceLock } {
       const existing = locks.get(deviceId);
@@ -123,9 +133,12 @@ export function createPmStore() {
       if (existing && (existing.engagementId !== engagementId || existing.holder !== holder)) {
         return { ok: false, heldBy: existing };
       }
+      // Idempotent re-acquire by the same holder: keep the ORIGINAL lock (do not reset
+      // acquiredAt — occupancy age must not be silently refreshed) and emit no new event.
+      if (existing) return { ok: true, heldBy: existing };
       const lock: DeviceLock = { deviceId, engagementId, holder, acquiredAt: new Date().toISOString() };
       locks.set(deviceId, lock);
-      if (!existing && engagements.has(engagementId)) append(engagementId, 'device_acquired', { deviceId, holder });
+      if (engagements.has(engagementId)) append(engagementId, 'device_acquired', { deviceId, holder, acquiredAt: lock.acquiredAt });
       return { ok: true, heldBy: lock };
     },
     releaseDevice(deviceId: string, engagementId: string): boolean {
