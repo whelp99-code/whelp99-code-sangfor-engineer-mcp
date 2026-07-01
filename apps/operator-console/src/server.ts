@@ -1,7 +1,7 @@
 import http from 'node:http';
 import { URL } from 'node:url';
 import { loadEnvFile } from '../../../packages/sangfor-collector/src/load-env.js';
-import { PRODUCTS } from '../../../packages/shared/src/index.js';
+import { PRODUCTS, resolveBindHost, checkAuth, assertBindSafety } from '../../../packages/shared/src/index.js';
 import {
   getSummary,
   getKnowledge,
@@ -23,6 +23,9 @@ import { dashboardHtml } from './ui.js';
 loadEnvFile('.env');
 
 const port = Number(process.env.PORT ?? process.env.OPERATOR_CONSOLE_PORT ?? 3502);
+const bindHost = resolveBindHost();
+const apiToken = process.env.SANGFOR_API_TOKEN;
+assertBindSafety(bindHost, apiToken); // fail closed: no public bind without a token
 
 function json(res: http.ServerResponse, data: unknown, status = 200) {
   res.writeHead(status, { 'content-type': 'application/json; charset=utf-8' });
@@ -44,6 +47,12 @@ async function readJsonBody(req: http.IncomingMessage): Promise<Record<string, u
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url ?? '/', `http://localhost:${port}`);
   const method = req.method ?? 'GET';
+
+  // Shared-secret gate for API routes (no-op when SANGFOR_API_TOKEN is unset).
+  if (url.pathname.startsWith('/api/')) {
+    const auth = checkAuth(req.headers['authorization'], apiToken);
+    if (!auth.ok) return error(res, 'unauthorized', auth.status ?? 401);
+  }
 
   try {
     if (method === 'GET' && url.pathname === '/api/summary') {
@@ -134,7 +143,7 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(port, () => {
-  console.log(`Sangfor Engineer Web listening on http://localhost:${port}`);
+server.listen(port, bindHost, () => {
+  console.log(`Sangfor Engineer Web listening on http://${bindHost}:${port}${apiToken ? ' (token-gated)' : ''}`);
   console.log('MCP stdio server: pnpm run dev:mcp (unchanged for Cursor)');
 });

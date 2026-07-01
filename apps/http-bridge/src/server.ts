@@ -13,6 +13,7 @@ import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { resolveBindHost, checkAuth, assertBindSafety } from "../../../packages/shared/src/index.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(__dirname, "..", "..", "..");
@@ -29,6 +30,9 @@ export const SAFE_TOOL_WHITELIST = new Set([
 ]);
 
 const PORT = Number(process.env.PORT ?? process.env.WHELP99_HTTP_BRIDGE_PORT ?? 3600);
+const BIND_HOST = resolveBindHost();
+const API_TOKEN = process.env.SANGFOR_API_TOKEN;
+assertBindSafety(BIND_HOST, API_TOKEN); // fail closed: no public bind without a token
 
 type JsonRpcResponse = {
   jsonrpc: string;
@@ -132,6 +136,12 @@ function json(res: http.ServerResponse, data: unknown, status = 200) {
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url ?? "/", `http://127.0.0.1:${PORT}`);
 
+  // Shared-secret gate for tool routes (health stays open for liveness probes).
+  if (url.pathname === "/tools" || url.pathname === "/tools/call") {
+    const auth = checkAuth(req.headers["authorization"], API_TOKEN);
+    if (!auth.ok) return json(res, { error: "unauthorized" }, auth.status ?? 401);
+  }
+
   try {
     if (req.method === "GET" && url.pathname === "/health") {
       const init = await mcpRequest("tools/list");
@@ -192,8 +202,8 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, () => {
-  console.log(`whelp99 MCP HTTP bridge listening on http://localhost:${PORT}`);
+server.listen(PORT, BIND_HOST, () => {
+  console.log(`whelp99 MCP HTTP bridge listening on http://${BIND_HOST}:${PORT}${API_TOKEN ? " (token-gated)" : ""}`);
 });
 
 process.on("SIGINT", () => {

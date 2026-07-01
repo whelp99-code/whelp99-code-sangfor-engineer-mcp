@@ -1,6 +1,41 @@
 import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { timingSafeEqual } from 'node:crypto';
+
+// ── HTTP exposure guard ─────────────────────────────────────────────────────
+// The operator-console / http-bridge servers previously bound to 0.0.0.0 with no
+// auth, exposing device-adjacent tooling to the LAN. These helpers make loopback
+// the default, gate requests behind an optional shared secret, and fail closed
+// when a non-loopback bind has no token.
+
+export function resolveBindHost(): string {
+  return process.env.BIND_HOST ?? '127.0.0.1';
+}
+
+export function isLoopback(host: string): boolean {
+  return host === '127.0.0.1' || host === 'localhost' || host === '::1';
+}
+
+/** Constant-time Bearer-token check. Open (ok) when no token is configured. */
+export function checkAuth(authHeader: string | undefined, token: string | undefined): { ok: boolean; status?: number } {
+  if (!token) return { ok: true };
+  const expected = `Bearer ${token}`;
+  const got = authHeader ?? '';
+  const a = Buffer.from(got);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length || !timingSafeEqual(a, b)) return { ok: false, status: 401 };
+  return { ok: true };
+}
+
+/** Refuse to start a routable (non-loopback) server with no shared secret. */
+export function assertBindSafety(bindHost: string, token: string | undefined): void {
+  if (!isLoopback(bindHost) && !token) {
+    throw new Error(
+      `Refusing to bind ${bindHost} (non-loopback) without SANGFOR_API_TOKEN — set a token or bind to 127.0.0.1`,
+    );
+  }
+}
 
 /**
  * Walk up from this module to the workspace root (marked by pnpm-workspace.yaml),
