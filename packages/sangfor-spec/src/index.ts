@@ -157,12 +157,15 @@ export function loadSpec(product: string, version: string, root: string = SPEC_R
 export function listSpecCoverage(root: string = SPEC_ROOT): Array<{ product: string; version: string; items: number }> {
   const out: Array<{ product: string; version: string; items: number }> = [];
   if (!existsSync(root)) return out;
+  const isDir = (p: string): boolean => {
+    try { return statSync(p).isDirectory(); } catch { return false; } // dangling symlink / perms → skip
+  };
   for (const product of readdirSync(root)) {
     const pDir = join(root, product);
-    if (!statSync(pDir).isDirectory()) continue;
+    if (!isDir(pDir)) continue;
     for (const version of readdirSync(pDir)) {
       const vDir = join(pDir, version);
-      if (!statSync(vDir).isDirectory()) continue;
+      if (!isDir(vDir)) continue;
       const spec = loadSpec(product, version, root);
       if (spec) out.push({ product, version, items: spec.items.length });
     }

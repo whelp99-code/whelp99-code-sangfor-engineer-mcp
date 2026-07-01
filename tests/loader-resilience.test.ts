@@ -1,9 +1,11 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { loadSpec } from '../packages/sangfor-spec/src/index.js';
+import { loadSpec, listSpecCoverage } from '../packages/sangfor-spec/src/index.js';
 import { loadWorkAtoms } from '../packages/sangfor-competency/src/index.js';
+import { recommendSizing } from '../packages/sangfor-sizing/src/index.js';
+import { getCapabilitySafety } from '../packages/sangfor-safety/src/index.js';
 
 const dirs: string[] = [];
 afterEach(() => { for (const d of dirs) rmSync(d, { recursive: true, force: true }); dirs.length = 0; });
@@ -43,5 +45,41 @@ describe('loadWorkAtoms — one corrupt atom file is skipped, the rest still loa
     let atoms: ReturnType<typeof loadWorkAtoms> = [];
     expect(() => { atoms = loadWorkAtoms(root); }).not.toThrow();
     expect(atoms.some((a) => a.id === 'a1')).toBe(true);
+  });
+});
+
+describe('recommendSizing — corrupt thresholds.json degrades to unsourced (판정불가), not a crash', () => {
+  it('does not throw and returns tier "unsourced"', () => {
+    const root = mk();
+    writeFileSync(join(root, 'thresholds.json'), '{ corrupt json');
+    let r: ReturnType<typeof recommendSizing>;
+    expect(() => { r = recommendSizing('IAG', { concurrentUsers: 8000 }, root); }).not.toThrow();
+    expect(r!.tier).toBe('unsourced');
+    expect(r!.tierSource).toBeNull();
+  });
+});
+
+describe('listSpecCoverage — a dangling symlink in the spec root must not crash the scan', () => {
+  it('skips the dangling entry and returns without throwing', () => {
+    const root = mk();
+    const good = join(root, 'IAG', '13.0.120');
+    mkdirSync(good, { recursive: true });
+    writeFileSync(join(good, 's.json'), JSON.stringify({ product: 'IAG', items: [{ id: 'i', capabilityId: 'c', label: 'l', observedKey: 'k', op: 'exists', severity: 'recommended' }] }));
+    symlinkSync(join(root, 'does-not-exist'), join(root, 'DANGLING')); // statSync would ENOENT
+    let cov: ReturnType<typeof listSpecCoverage> = [];
+    expect(() => { cov = listSpecCoverage(root); }).not.toThrow();
+    expect(cov.some((c) => c.product === 'IAG')).toBe(true);
+  });
+});
+
+describe('getCapabilitySafety — corrupt safety policy degrades to human_only deny, not a crash', () => {
+  it('does not throw and defaults to the safe deny class', () => {
+    const root = mk();
+    mkdirSync(join(root, 'safety'), { recursive: true });
+    writeFileSync(join(root, 'safety', 'capability-safety.json'), 'NOT JSON');
+    let s: ReturnType<typeof getCapabilitySafety>;
+    expect(() => { s = getCapabilitySafety('HCI', 'anything', root); }).not.toThrow();
+    expect(s!.safetyClass).toBe('human_only');
+    expect(s!.autoAllowed).toBe(false);
   });
 });

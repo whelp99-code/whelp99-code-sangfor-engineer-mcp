@@ -47,14 +47,26 @@ const MATURITY_PATH = 'competency/capability-maturity.json';
 
 export function loadSafetyPolicy(dataRoot: string = DEFAULT_DATA_ROOT): SafetyPolicy {
   const path = join(dataRoot, SAFETY_PATH);
-  if (!existsSync(path)) return { version: 1, defaultSafetyClass: 'human_only', entries: [] };
-  return JSON.parse(readFileSync(path, 'utf8')) as SafetyPolicy;
+  const deny: SafetyPolicy = { version: 1, defaultSafetyClass: 'human_only', entries: [] };
+  if (!existsSync(path)) return deny;
+  try {
+    return JSON.parse(readFileSync(path, 'utf8')) as SafetyPolicy;
+  } catch {
+    // A corrupt safety policy must fail SAFE (deny / human_only), never crash the gate.
+    process.stderr.write('[safety] unparseable capability-safety.json — defaulting to human_only deny\n');
+    return deny;
+  }
 }
 
 export function loadMaturityPolicy(dataRoot: string = DEFAULT_DATA_ROOT): MaturityPolicy {
   const path = join(dataRoot, MATURITY_PATH);
   if (!existsSync(path)) return { version: 1, entries: [] };
-  return JSON.parse(readFileSync(path, 'utf8')) as MaturityPolicy;
+  try {
+    return JSON.parse(readFileSync(path, 'utf8')) as MaturityPolicy;
+  } catch {
+    process.stderr.write('[safety] unparseable capability-maturity.json — treating as no maturity evidence\n');
+    return { version: 1, entries: [] };
+  }
 }
 
 export function getCapabilitySafety(

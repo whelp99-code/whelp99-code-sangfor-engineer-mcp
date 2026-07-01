@@ -62,8 +62,15 @@ const DRIVER_FIELD: Record<string, keyof SizingInput> = {
 export function loadSizingThresholds(root: string = DATA_ROOT): ThresholdEntry[] {
   const file = join(root, 'thresholds.json');
   if (!existsSync(file)) return [];
-  const parsed = JSON.parse(readFileSync(file, 'utf8'));
-  const arr = Array.isArray(parsed) ? parsed : parsed.thresholds;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(readFileSync(file, 'utf8'));
+  } catch {
+    // Corrupt thresholds must degrade to 'unsourced' (판정불가), never crash sizing.
+    process.stderr.write('[sizing] unparseable thresholds.json — treating as no sourced thresholds\n');
+    return [];
+  }
+  const arr = Array.isArray(parsed) ? parsed : (parsed as { thresholds?: unknown }).thresholds;
   return Array.isArray(arr) ? (arr as ThresholdEntry[]) : [];
 }
 
