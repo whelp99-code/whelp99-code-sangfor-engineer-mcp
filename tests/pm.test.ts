@@ -101,4 +101,44 @@ describe('sangfor-pm — red-team regressions', () => {
     expect(events.some((ev) => ev.type === 'device_released')).toBe(true);
     expect(pm.verifyEventChain(a.id).ok).toBe(true);
   });
+
+  it('statusRollup throws on an unknown engagement (consistent with addWorkItem — no fake 0%)', () => {
+    const pm = createPmStore();
+    expect(() => pm.statusRollup('eng_nope')).toThrow(/not found/i);
+  });
+
+  it('getEngagement returns the engagement for a valid id and undefined for an unknown one', () => {
+    const pm = createPmStore();
+    const e = pm.createEngagement({ customer: 'A', product: 'EPP' });
+    expect(pm.getEngagement(e.id)?.customer).toBe('A');
+    expect(pm.getEngagement('nope')).toBeUndefined();
+  });
+});
+
+describe('sangfor-pm — renderStatusReport (citable narrative from recorded events)', () => {
+  it('includes rollup %, every recorded event seq, and derives only from events', () => {
+    const pm = createPmStore();
+    const e = pm.createEngagement({ customer: 'ACME', product: 'IAG' });
+    const w = pm.addWorkItem(e.id, { title: 'deploy' });
+    pm.updateWorkItem(w.id, { status: 'done' });
+    const md = pm.renderStatusReport(e.id);
+    expect(md).toMatch(/ACME/);
+    expect(md).toMatch(/100%|1\/1/);
+    expect(md).toMatch(/work_item_added/);
+    expect(md).toMatch(/work_item_updated/);
+    expect(md).toMatch(/기록된 이벤트|미기록 진행 추정 없음/);
+  });
+
+  it('shows an AUDIT CHAIN BROKEN banner when the event chain is tampered', () => {
+    const pm = createPmStore();
+    const e = pm.createEngagement({ customer: 'A', product: 'IAG' });
+    pm.appendPmEvent(e.id, 'diagnosis_run', { device: 'x' });
+    pm.getEvents(e.id)[0].payload = { device: 'TAMPERED' };
+    expect(pm.renderStatusReport(e.id)).toMatch(/AUDIT CHAIN BROKEN/i);
+  });
+
+  it('throws on an unknown engagement rather than rendering an empty report', () => {
+    const pm = createPmStore();
+    expect(() => pm.renderStatusReport('nope')).toThrow(/not found/i);
+  });
 });

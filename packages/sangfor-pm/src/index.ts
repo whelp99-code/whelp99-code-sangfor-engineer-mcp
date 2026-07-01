@@ -62,12 +62,47 @@ export function createPmStore() {
       if (engagements.has(w.engagementId)) append(w.engagementId, 'work_item_updated', { workItemId, patch, from });
       return w;
     },
+    getEngagement(engagementId: string): Engagement | undefined { return engagements.get(engagementId); },
     statusRollup(engagementId: string): StatusRollup {
+      // Unknown id must not masquerade as an empty engagement (fake 0%) — be
+      // consistent with addWorkItem and fail loudly.
+      if (!engagements.has(engagementId)) throw new Error(`Engagement not found: ${engagementId}`);
       const items = [...workItems.values()].filter((w) => w.engagementId === engagementId);
       const by = (s: WorkStatus) => items.filter((w) => w.status === s).length;
       const total = items.length;
       const done = by('done');
       return { total, todo: by('todo'), in_progress: by('in_progress'), blocked: by('blocked'), done, percentDone: total ? (done / total) * 100 : 0 };
+    },
+    renderStatusReport(engagementId: string): string {
+      if (!engagements.has(engagementId)) throw new Error(`Engagement not found: ${engagementId}`);
+      const e = engagements.get(engagementId)!;
+      const items = [...workItems.values()].filter((w) => w.engagementId === engagementId);
+      const by = (s: WorkStatus) => items.filter((w) => w.status === s).length;
+      const total = items.length;
+      const done = by('done');
+      const pct = total ? Math.round((done / total) * 100) : 0;
+      const chain = events.get(engagementId) ?? [];
+      // Inline chain verification so a broken audit trail is disclosed, not hidden.
+      let broken = 0;
+      let prevHash = 'GENESIS';
+      for (const ev of chain) {
+        if (ev.prevHash !== prevHash || ev.hash !== hashEvent(prevHash, ev.seq, ev.type, ev.payload)) { broken = ev.seq; break; }
+        prevHash = ev.hash;
+      }
+      const lines: string[] = [`# PM 진행 보고 — ${e.customer} / ${e.product}`, ''];
+      if (broken) lines.push(`> ⚠️ AUDIT CHAIN BROKEN at seq ${broken} — 이벤트 무결성 손상, 보고 신뢰 불가`, '');
+      lines.push(
+        `- 진행률: ${pct}% (${done}/${total} 완료)`,
+        `- 상태: todo ${by('todo')} · 진행 ${by('in_progress')} · 블록 ${by('blocked')} · 완료 ${done}`,
+        '', '## 작업 항목', '',
+      );
+      if (!items.length) lines.push('_없음_');
+      for (const w of items) lines.push(`- [${w.status}] ${w.title}${w.deviceId ? ` (device: ${w.deviceId})` : ''}${w.assignee ? ` — ${w.assignee}` : ''}`);
+      lines.push('', `## 이벤트 타임라인 (기록된 ${chain.length}건에서 도출)`, '');
+      if (!chain.length) lines.push('_없음_');
+      for (const ev of chain) lines.push(`- #${ev.seq} ${ev.type} — ${JSON.stringify(ev.payload)}`);
+      lines.push('', '> 본 보고는 기록된 이벤트에서만 도출되었습니다(미기록 진행 추정 없음).', '');
+      return lines.join('\n');
     },
     appendPmEvent(engagementId: string, type: string, payload: unknown): PmEvent { return append(engagementId, type, payload); },
     getEvents(engagementId: string): PmEvent[] { return events.get(engagementId) ?? []; },
