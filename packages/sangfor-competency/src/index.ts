@@ -8,6 +8,7 @@
  */
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { resolveRepoData } from '../../shared/src/index.js';
 
 export type LifecyclePhase = 'discover' | 'design' | 'validate' | 'deploy' | 'operate' | 'handover' | 'incident';
 export type Automatability = 'auto' | 'hybrid' | 'human';
@@ -60,7 +61,7 @@ function replacementStatus(a: WorkAtom, opts: CoverageOptions): ReplacementStatu
   return 'replaced';
 }
 
-const DATA_ROOT = process.env.SANGFOR_COMPETENCY_ROOT ?? 'data/competency';
+const DATA_ROOT = resolveRepoData('data/competency', 'SANGFOR_COMPETENCY_ROOT');
 
 export function loadWorkAtoms(root: string = DATA_ROOT): WorkAtom[] {
   if (!existsSync(root)) return [];

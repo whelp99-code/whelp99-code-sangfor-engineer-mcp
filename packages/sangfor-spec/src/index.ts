@@ -13,6 +13,7 @@ import { existsSync, readdirSync, readFileSync, statSync, mkdirSync, writeFileSy
 import { join, dirname, resolve, sep } from 'node:path';
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
+import { resolveRepoData } from '../../shared/src/index.js';
 
 export type CompareOp = 'eq' | 'neq' | 'gte' | 'lte' | 'includes' | 'oneOf' | 'exists';
 export type Severity = 'must' | 'recommended';
@@ -69,7 +70,7 @@ export interface EvaluationResult {
   summary: EvaluationSummary;
 }
 
-const SPEC_ROOT = process.env.SANGFOR_SPEC_ROOT ?? 'data/specs';
+const SPEC_ROOT = resolveRepoData('data/specs', 'SANGFOR_SPEC_ROOT');
 
 /** Map product aliases to the canonical product code used across planner/adapters/spec joins. */
 export function normalizeSpecProduct(input: string): string {

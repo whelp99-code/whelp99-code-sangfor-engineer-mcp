@@ -1,3 +1,37 @@
+import { existsSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+/**
+ * Walk up from this module to the workspace root (marked by pnpm-workspace.yaml),
+ * so data roots resolve relative to the CODE, not the process cwd. Without this,
+ * running the MCP/http-bridge/Docker from any other directory made every loader
+ * silently return empty — indistinguishable from "nothing is misconfigured".
+ */
+function findRepoRoot(): string | null {
+  let dir = dirname(fileURLToPath(import.meta.url));
+  for (let i = 0; i < 16; i++) {
+    if (existsSync(join(dir, 'pnpm-workspace.yaml'))) return dir;
+    const parent = dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return null;
+}
+
+/**
+ * Resolve a repo data directory anchored to the package. An env override (if given)
+ * always wins. Otherwise anchor to the workspace root + subdir.
+ */
+export function resolveRepoData(subdir: string, envVar?: string): string {
+  const override = envVar ? process.env[envVar] : undefined;
+  if (override) return override;
+  const root = findRepoRoot();
+  // Fall back to a cwd-relative path only if the marker can't be found (e.g. a
+  // stripped-down deploy); the caller's existence guard turns that into fail-loud.
+  return root ? join(root, subdir) : subdir;
+}
+
 export type ProductCode = 'HCI_SCP' | 'HCI' | 'IAG' | 'ENDPOINT_SECURE' | 'NDR' | 'CYBER_COMMAND';
 
 export const PRODUCT_PRIORITY: ProductCode[] = [

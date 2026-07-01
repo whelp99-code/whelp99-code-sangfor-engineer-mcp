@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { resolveRepoData } from '../../shared/src/index.js';
 
 export type SafetyClass = 'auto_allowed' | 'read_only' | 'human_only';
 export type MaturityLevel = 'planned' | 'implemented_local' | 'tested_mock' | 'field_verified';
@@ -40,7 +41,7 @@ export interface CapabilitySafetySummary {
   evidence?: string;
 }
 
-const DEFAULT_DATA_ROOT = 'data';
+const DEFAULT_DATA_ROOT = resolveRepoData('data', 'SANGFOR_DATA_ROOT');
 const SAFETY_PATH = 'safety/capability-safety.json';
 const MATURITY_PATH = 'competency/capability-maturity.json';
 
