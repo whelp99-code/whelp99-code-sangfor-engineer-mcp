@@ -151,13 +151,23 @@ export function executeConsoleAction(sessionId: string, action: ConsoleAction): 
     };
   }
 
+  // The mock console must never fabricate a real "Executed" result. Any non-dry-run
+  // request has to go through the live signed-approval path (executeLiveConsoleAction),
+  // so it fails closed here rather than claiming a write it did not perform.
+  if (!dryRun) {
+    return {
+      ok: false,
+      dryRun,
+      approvalRequired: approval.required,
+      message: 'Blocked: the mock console cannot perform live execution. Use the live signed-approval path (executeLiveConsoleAction).',
+    };
+  }
+
   return {
     ok: true,
     dryRun,
     approvalRequired: approval.required,
-    message: dryRun
-      ? `Dry-run only: would execute ${action.type} on ${action.target ?? '<no target>'}.`
-      : `Executed ${action.type} on ${action.target ?? '<no target>'}.`,
+    message: `Dry-run only: would execute ${action.type} on ${action.target ?? '<no target>'}.`,
     beforeScreenshotPath: `.evidence/${sessionId}/before-${Date.now()}.png`,
     afterScreenshotPath: `.evidence/${sessionId}/after-${Date.now()}.png`,
   };

@@ -31,6 +31,13 @@ describe('Sangfor Engineer MCP MVP', () => {
     expect(result.approvalRequired).toBe(true);
   });
 
+  it('never fabricates an "Executed" claim on the mock console for a non-dry-run action', () => {
+    const session = startOperatorSession({ product: 'HCI' });
+    const result = executeConsoleAction(session.id, { type: 'click', target: 'benign-toggle', dryRun: false });
+    expect(result.ok).toBe(false);
+    expect(result.message ?? '').not.toMatch(/^Executed/);
+  });
+
   it('blocks wiki apply before approval', () => {
     const p = proposeWikiUpdate({ lessonTitle: 'Test lesson', lessonBody: 'Body' });
     expect(() => applyWikiUpdate(p.id)).toThrow();
