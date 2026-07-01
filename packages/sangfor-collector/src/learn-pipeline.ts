@@ -13,6 +13,17 @@ import {
 import { listDemoDocTargets } from './demo-docs.js';
 import { parseCollectionLimit } from './load-env.js';
 
+/**
+ * Resolve the product a collected document declares in its frontmatter header.
+ * Returns null when no `product:` header is present — callers MUST NOT fabricate
+ * a product (previously this silently defaulted to 'HCI', misattributing
+ * unrelated manuals to HCI and producing falsely-labelled "official" citations).
+ */
+export function resolveDocumentProduct(content: string): string | null {
+  const match = content.match(/^product:\s*(\w+)/m);
+  return match?.[1] ?? null;
+}
+
 export interface LearnPipelineResult {
   collected: number;
   community: number;
@@ -94,9 +105,15 @@ export async function runLearnSourcesPipeline(
   const paths = saveCollectedDocuments(all, rawDir);
 
   let ingestedChunks = 0;
+  let skippedNoProduct = 0;
   for (const path of paths) {
-    const productMatch = readFileSync(path, 'utf8').match(/^product:\s*(\w+)/m);
-    const product = productMatch?.[1] ?? 'HCI';
+    const product = resolveDocumentProduct(readFileSync(path, 'utf8'));
+    if (!product) {
+      // Honest metrics over coverage: do not fabricate an HCI attribution.
+      console.warn(`[learn-pipeline] no product header in ${path}; skipping ingest to avoid false attribution`);
+      skippedNoProduct += 1;
+      continue;
+    }
     const result = await options.ingestDocumentFn({
       filePath: path,
       product,
