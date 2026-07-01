@@ -1,0 +1,14 @@
+{
+  "product": "EPP",
+  "version": "6.0.4",
+  "collectedFrom": "10.80.1.106 live console XHR (read-only)",
+  "endpoints": 20,
+  "observed": {
+    "patchIsLatest": true,
+    "vulnDefUpdateAvailable": false,
+    "vulnerabilityCount": 0,
+    "securityBaselineRuleCount": 1,
+    "maliciousDomainBlockCount": 35,
+    "darMonitoringActive": true
+  }
+}
