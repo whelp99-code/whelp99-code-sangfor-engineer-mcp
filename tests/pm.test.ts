@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { createHash } from 'node:crypto';
 import { createPmStore } from '../packages/sangfor-pm/src/index.js';
 
 describe('sangfor-pm — engagements & rollup', () => {
@@ -50,6 +51,44 @@ describe('sangfor-pm — PmEvent hash chain (tamper-evident audit)', () => {
     pm.appendPmEvent(e.id, 'e2', { a: 2 });
     const ev = pm.getEvents(e.id);
     [ev[0], ev[1]] = [ev[1], ev[0]]; // swap order
+    expect(pm.verifyEventChain(e.id).ok).toBe(false);
+  });
+});
+
+describe('sangfor-pm — keyed audit chain (tamper-evidence against a recomputing adversary)', () => {
+  it('reports keyed=true only when a chain secret is configured', () => {
+    const keyed = createPmStore({ secret: 's1' });
+    const ek = keyed.createEngagement({ customer: 'A', product: 'IAG' });
+    keyed.appendPmEvent(ek.id, 'x', { a: 1 });
+    expect(keyed.verifyEventChain(ek.id).keyed).toBe(true);
+
+    const unkeyed = createPmStore();
+    const eu = unkeyed.createEngagement({ customer: 'A', product: 'IAG' });
+    unkeyed.appendPmEvent(eu.id, 'x', { a: 1 });
+    expect(unkeyed.verifyEventChain(eu.id).keyed).toBe(false);
+  });
+
+  it('binds event hashes to the secret so an identical event hashes differently under a different key', () => {
+    const a = createPmStore({ secret: 'secret-A' });
+    const b = createPmStore({ secret: 'secret-B' });
+    const ea = a.createEngagement({ customer: 'X', product: 'HCI' });
+    const eb = b.createEngagement({ customer: 'X', product: 'HCI' });
+    a.appendPmEvent(ea.id, 'evt', { k: 1 });
+    b.appendPmEvent(eb.id, 'evt', { k: 1 });
+    expect(a.getEvents(ea.id)[0].hash).not.toBe(b.getEvents(eb.id)[0].hash);
+  });
+
+  it('defeats a sophisticated tamperer who recomputes a hash without the secret', () => {
+    const pm = createPmStore({ secret: 'server-side-pm-secret' });
+    const e = pm.createEngagement({ customer: 'A', product: 'IAG' });
+    pm.appendPmEvent(e.id, 'diagnosis_run', { device: 'orig' });
+    const events = pm.getEvents(e.id);
+    // Attacker with write access mutates the payload and forges a hash using the
+    // PUBLIC algorithm (no secret). Keyed verification must still reject it.
+    events[0].payload = { device: 'TAMPERED' };
+    events[0].hash = createHash('sha256')
+      .update(`GENESIS|1|diagnosis_run|${JSON.stringify({ device: 'TAMPERED' })}`)
+      .digest('hex');
     expect(pm.verifyEventChain(e.id).ok).toBe(false);
   });
 });

@@ -6,7 +6,7 @@
  * device lock prevents one engagement's change from landing on a device another
  * engagement is actively using (the shared-lab disaster the addendum flagged).
  */
-import { createHash } from 'node:crypto';
+import { createHash, createHmac } from 'node:crypto';
 
 export type WorkStatus = 'todo' | 'in_progress' | 'blocked' | 'done';
 
@@ -17,11 +17,20 @@ export interface DeviceLock { deviceId: string; engagementId: string; holder: st
 
 export interface StatusRollup { total: number; todo: number; in_progress: number; blocked: number; done: number; percentDone: number; }
 
-function hashEvent(prevHash: string, seq: number, type: string, payload: unknown): string {
-  return createHash('sha256').update(`${prevHash}|${seq}|${type}|${JSON.stringify(payload ?? null)}`).digest('hex');
+// Keyed when a secret is present: a write-capable adversary cannot recompute a
+// valid hash chain without the server-side secret (redteam H2). Falls back to a
+// plain (unkeyed) digest when no secret is configured — this still detects
+// accidental corruption/truncation but NOT a knowledgeable tamperer, which is
+// why verifyChain surfaces `keyed` so callers do not over-trust an unkeyed chain.
+function hashEvent(secret: string | undefined, prevHash: string, seq: number, type: string, payload: unknown): string {
+  const material = `${prevHash}|${seq}|${type}|${JSON.stringify(payload ?? null)}`;
+  return secret
+    ? createHmac('sha256', secret).update(material).digest('hex')
+    : createHash('sha256').update(material).digest('hex');
 }
 
-export function createPmStore() {
+export function createPmStore(opts?: { secret?: string }) {
+  const chainSecret = opts?.secret ?? process.env.SANGFOR_PM_CHAIN_SECRET;
   const engagements = new Map<string, Engagement>();
   const workItems = new Map<string, WorkItem>();
   const events = new Map<string, PmEvent[]>();       // engagementId → chain
@@ -34,7 +43,7 @@ export function createPmStore() {
     const chain = events.get(engagementId) ?? [];
     const seq = chain.length + 1;
     const prevHash = chain.length ? chain[chain.length - 1].hash : 'GENESIS';
-    const ev: PmEvent = { id: id('ev'), seq, engagementId, type, payload, prevHash, hash: hashEvent(prevHash, seq, type, payload) };
+    const ev: PmEvent = { id: id('ev'), seq, engagementId, type, payload, prevHash, hash: hashEvent(chainSecret, prevHash, seq, type, payload) };
     chain.push(ev);
     events.set(engagementId, chain);
     // Anchor the authoritative length + tip so tail truncation of the array is detectable.
@@ -43,21 +52,22 @@ export function createPmStore() {
   };
 
   // Verify structure + contiguity + independent length/tip anchor.
-  const verifyChain = (engagementId: string): { ok: boolean; brokenAt?: number } => {
+  const verifyChain = (engagementId: string): { ok: boolean; brokenAt?: number; keyed: boolean } => {
+    const keyed = Boolean(chainSecret);
     const chain = events.get(engagementId) ?? [];
     let prevHash = 'GENESIS';
     for (let i = 0; i < chain.length; i++) {
       const ev = chain[i];
-      if (ev.seq !== i + 1) return { ok: false, brokenAt: ev.seq };          // reorder / gap
-      if (ev.prevHash !== prevHash) return { ok: false, brokenAt: ev.seq };
-      if (ev.hash !== hashEvent(prevHash, ev.seq, ev.type, ev.payload)) return { ok: false, brokenAt: ev.seq };
+      if (ev.seq !== i + 1) return { ok: false, brokenAt: ev.seq, keyed };          // reorder / gap
+      if (ev.prevHash !== prevHash) return { ok: false, brokenAt: ev.seq, keyed };
+      if (ev.hash !== hashEvent(chainSecret, prevHash, ev.seq, ev.type, ev.payload)) return { ok: false, brokenAt: ev.seq, keyed };
       prevHash = ev.hash;
     }
     const meta = chainMeta.get(engagementId);
     if (meta && (chain.length !== meta.count || (chain.length > 0 && chain[chain.length - 1].hash !== meta.head))) {
-      return { ok: false, brokenAt: chain.length }; // tail truncation / append-array tamper
+      return { ok: false, brokenAt: chain.length, keyed }; // tail truncation / append-array tamper
     }
-    return { ok: true };
+    return { ok: true, keyed };
   };
 
   return {
@@ -123,7 +133,7 @@ export function createPmStore() {
     },
     appendPmEvent(engagementId: string, type: string, payload: unknown): PmEvent { return append(engagementId, type, payload); },
     getEvents(engagementId: string): PmEvent[] { return events.get(engagementId) ?? []; },
-    verifyEventChain(engagementId: string): { ok: boolean; brokenAt?: number } {
+    verifyEventChain(engagementId: string): { ok: boolean; brokenAt?: number; keyed: boolean } {
       return verifyChain(engagementId);
     },
     acquireDevice(deviceId: string, engagementId: string, holder: string): { ok: boolean; heldBy?: DeviceLock } {
