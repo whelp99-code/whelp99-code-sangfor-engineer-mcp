@@ -999,9 +999,6 @@ function classifyRequirementProduct(text: string): RequirementProductCode {
   if (hasAny(text, ['software control', 'device control', 'unauthorized software', 'storage media', 'anti-virus', 'antivirus', 'edr', 'epp', 'malware', 'ransomware', 'agent', 'endpoint', 'engine update', 'virus'])) return 'ENDPOINT_SECURE';
   if (hasAny(text, ['log retention', 'retained at least 1 year', 'retained for less than 1 year', 'network access contro', 'network access control', 'nac', 'internet access', 'vpn', 'f/w', 'firewall', 'dmz', 'auth', 'ldap', 'ad ', 'url', 'application policy', 'access policy'])) return 'IAG';
   if (hasAny(text, ['log management', 'security monitoring', 'siem', 'security system logs', 'event source', 'incident', 'alert', 'soar', 'sensor', 'dashboard', 'response', 'playbook'])) return 'NDR';
-  if (hasAny(text, ['anti-virus', 'antivirus', 'edr', 'epp', 'malware', 'ransomware', 'agent', 'endpoint', 'engine update', 'virus'])) return 'ENDPOINT_SECURE';
-  if (hasAny(text, ['log retention', 'internet access', 'vpn', 'f/w', 'firewall', 'dmz', 'auth', 'ldap', 'ad ', 'url', 'application policy', 'access policy'])) return 'IAG';
-  if (hasAny(text, ['incident', 'alert', 'event source', 'soar', 'sensor', 'dashboard', 'response', 'playbook'])) return 'NDR';
   return 'external_or_manual';
 }
 
