@@ -1,0 +1,5 @@
+{ "id":"spec_ngfw_8_0_107_policy","product":"NGFW","version":"8.0.107","items":[
+  {"id":"threat_prevention_enabled","capabilityId":"internet_policy","label":"위협 방지(IPS/AV) 프로파일 활성","observedKey":"threatPreventionEnabled","op":"eq","expected":true,"severity":"must","source":{"manual":"Sangfor Network Secure v8 User Manual","section":"Security / Threat Prevention","page":"support.sangfor.com NGFW User Manual"}},
+  {"id":"default_deny_policy","capabilityId":"internet_policy","label":"정책 최하단 기본 거부(default-deny) 존재","observedKey":"defaultDenyPresent","op":"eq","expected":true,"severity":"recommended","source":{"manual":"Sangfor Network Secure v8 User Manual","section":"Policy / Access Control","page":"support.sangfor.com NGFW User Manual"}},
+  {"id":"log_forwarding","capabilityId":"log_validation","label":"로그 SIEM/syslog 포워딩 구성","observedKey":"syslogForwarding","op":"eq","expected":true,"severity":"recommended","source":{"manual":"Sangfor Network Secure v8 User Manual","section":"Logs / Syslog","page":"support.sangfor.com NGFW User Manual"}}
+]}

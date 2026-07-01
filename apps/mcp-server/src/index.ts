@@ -40,6 +40,7 @@ import { loadWorkAtoms, computeReplacementCoverage } from '../../../packages/san
 import { suggestRca } from '../../../packages/sangfor-rca/src/index.js';
 import { recommendSizing, type SizingInput } from '../../../packages/sangfor-sizing/src/index.js';
 import { createPmStore } from '../../../packages/sangfor-pm/src/index.js';
+import { checkVersionRequirement, loadVersionRequirements } from '../../../packages/sangfor-version/src/index.js';
 
 const pmStore = createPmStore(); // process-lifetime PM state for the MCP session
 
@@ -450,6 +451,15 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
     description: 'PM: status rollup for an engagement + current device occupancy (who holds which device).',
     inputSchema: { type: 'object', properties: { engagementId: { type: 'string' } }, required: ['engagementId'] },
     handler: (args: { engagementId: string }) => ({ rollup: pmStore.statusRollup(args.engagementId), deviceOccupancy: pmStore.deviceOccupancy(), chainOk: pmStore.verifyEventChain(args.engagementId) })
+  },
+  'sangfor.check_version': {
+    description: 'Upgrade advisory: check a device version against the collected Version Requirements (min/recommended) and return meetsMin/atRecommended + cited advice. Returns null-style error for unknown devices (no fabricated compatibility claim). No args → list known requirements.',
+    inputSchema: { type: 'object', properties: { device: { type: 'string' }, currentVersion: { type: 'string' } } },
+    handler: (args: { device?: string; currentVersion?: string }) => {
+      if (!args.device || !args.currentVersion) return { requirements: loadVersionRequirements() };
+      const r = checkVersionRequirement(args.device, args.currentVersion);
+      return r ?? { error: `No version requirement on file for device "${args.device}". Known: ${loadVersionRequirements().map((x) => x.device).join(', ')}` };
+    }
   },
   'sangfor.pm_acquire_device': {
     description: 'PM safety: acquire an exclusive device lock for an engagement before any device work. Blocks if another engagement holds it (prevents cross-engagement changes on a shared lab device).',

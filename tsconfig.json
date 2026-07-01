@@ -85,6 +85,9 @@
       ],
       "@sangfor/sizing": [
         "packages/sangfor-sizing/src/index.ts"
+      ],
+      "@sangfor/version": [
+        "packages/sangfor-version/src/index.ts"
       ]
     },
     "baseUrl": "."

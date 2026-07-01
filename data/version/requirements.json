@@ -1,0 +1,5 @@
+{ "version": 1, "requirements": [
+  { "device": "Athena NDR", "minVersion": "3.0.92", "recommendedVersion": "3.0.98",
+    "source": "Athena XDR 3.0.98 User Manual — Version Requirements for Sangfor Security Devices",
+    "sourceUrl": "https://support.sangfor.com/productDocument/read?product_id=25&version_id=1361&category_id=2653679" }
+]}

@@ -1,0 +1,5 @@
+{ "id":"spec_cc_3_0_98_soc","product":"CYBER_COMMAND","version":"3.0.98","items":[
+  {"id":"ntp_synced","capabilityId":"event_source","label":"NTP 동기화(상관분석 품질의 근간)","observedKey":"ntpSynced","op":"eq","expected":true,"severity":"must","source":{"manual":"Cyber Command 3.0 User Manual","section":"System / NTP","page":"support.sangfor.com CC 3.0 User Manual"}},
+  {"id":"event_sources_active","capabilityId":"event_source","label":"이벤트 소스가 1개 이상 활성","observedKey":"activeEventSources","op":"gte","expected":1,"severity":"must","source":{"manual":"Cyber Command 3.0 User Manual","section":"Events / Event Sources","page":"support.sangfor.com CC 3.0 User Manual"}},
+  {"id":"alert_channel_configured","capabilityId":"incident_alert","label":"알림 채널(Email/SMS/Syslog) 구성","observedKey":"alertChannelConfigured","op":"eq","expected":true,"severity":"recommended","source":{"manual":"Cyber Command 3.0 User Manual","section":"Alerts / Notification","page":"support.sangfor.com CC 3.0 User Manual"}}
+]}
