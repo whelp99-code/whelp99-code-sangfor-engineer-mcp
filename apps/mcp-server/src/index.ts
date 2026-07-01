@@ -34,8 +34,14 @@ import {
 } from '../../../packages/sangfor-product-adapters/src/index.js';
 import { buildSettingGuidePptx, buildOperationsGuidePptx } from '../../../packages/sangfor-pptx/src/index.js';
 import { captureProductScreenshots } from '../../../packages/sangfor-screenshot/src/index.js';
-import { loadSpec, evaluateSpec, renderAdvisoryReport, listSpecCoverage, type IntendedSpec } from '../../../packages/sangfor-spec/src/index.js';
+import { loadSpec, evaluateSpec, renderAdvisoryReport, renderAdvisoryReportDocx, listSpecCoverage, type IntendedSpec } from '../../../packages/sangfor-spec/src/index.js';
 import { getCapabilitySafety, listCapabilitySafety } from '../../../packages/sangfor-safety/src/index.js';
+import { loadWorkAtoms, computeReplacementCoverage } from '../../../packages/sangfor-competency/src/index.js';
+import { suggestRca } from '../../../packages/sangfor-rca/src/index.js';
+import { recommendSizing, type SizingInput } from '../../../packages/sangfor-sizing/src/index.js';
+import { createPmStore } from '../../../packages/sangfor-pm/src/index.js';
+
+const pmStore = createPmStore(); // process-lifetime PM state for the MCP session
 
 type JsonRpcRequest = { jsonrpc: '2.0'; id?: string | number; method: string; params?: any };
 
@@ -392,14 +398,15 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
     handler: ({ planId, plan }) => runPlannerEval(plan ?? plans.get(planId))
   },
   'sangfor.evaluate_config': {
-    description: 'Advisory (read-only) config check: compare an observed product config against an IntendedSpec (from manuals) and split findings into misconfiguration / missing / indeterminate / ok. Never mutates a device. INDETERMINATE never counts as pass; MUST items without a source citation stay indeterminate. Returns the evaluation and a Korean advisory report.',
-    inputSchema: { type: 'object', properties: { product: { type: 'string' }, version: { type: 'string' }, observed: { type: 'object', description: 'observed config key→value map (from screenshot/backup/human)' }, spec: { type: 'object', description: 'optional inline IntendedSpec; if omitted, loaded by product+version' } }, required: ['observed'] },
-    handler: (args: { product?: string; version?: string; observed: Record<string, unknown>; spec?: IntendedSpec }) => {
+    description: 'Advisory (read-only) config check: compare an observed product config against an IntendedSpec (from manuals) and split findings into misconfiguration / missing / indeterminate / ok. Never mutates a device. INDETERMINATE never counts as pass; MUST items without a source citation stay indeterminate. Returns the evaluation and a Korean advisory report; pass docxPath to also write a .docx.',
+    inputSchema: { type: 'object', properties: { product: { type: 'string' }, version: { type: 'string' }, observed: { type: 'object', description: 'observed config key→value map (from screenshot/backup/human)' }, spec: { type: 'object', description: 'optional inline IntendedSpec; if omitted, loaded by product+version' }, docxPath: { type: 'string', description: 'optional path to also write the report as a .docx' } }, required: ['observed'] },
+    handler: (args: { product?: string; version?: string; observed: Record<string, unknown>; spec?: IntendedSpec; docxPath?: string }) => {
       const spec = args.spec ?? (args.product && args.version ? loadSpec(args.product, args.version) : null);
       if (!spec) return { error: `No IntendedSpec found for ${args.product ?? '?'} ${args.version ?? '?'}. Provide an inline spec or seed data/specs/. Coverage: ${JSON.stringify(listSpecCoverage())}` };
       const result = evaluateSpec(spec, args.observed ?? {});
       const report = renderAdvisoryReport(spec, result);
-      return { result, report };
+      const docx = args.docxPath ? renderAdvisoryReportDocx(spec, result, args.docxPath) : undefined;
+      return { result, report, ...(docx ? { docx } : {}) };
     }
   },
   'sangfor.list_spec_coverage': {
@@ -413,6 +420,41 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
     handler: (args: { product?: string; capabilityId?: string }) => args.product && args.capabilityId
       ? getCapabilitySafety(args.product, args.capabilityId)
       : { capabilities: listCapabilitySafety() }
+  },
+  'sangfor.field_engineer_coverage': {
+    description: 'Honest "field-engineer replacement rate" from the WorkAtom taxonomy: counts ONLY automatable AND field_verified atoms. Human-only atoms never count. Returns per-phase and per-product breakdown.',
+    inputSchema: { type: 'object', properties: {} },
+    handler: () => ({ coverage: computeReplacementCoverage(loadWorkAtoms()), atoms: loadWorkAtoms() })
+  },
+  'sangfor.suggest_rca': {
+    description: 'Suggest ranked root-cause candidates + concrete check steps for a symptom (read-only advisory). Grounded in product manuals; returns empty (no fabrication) for unrelated symptoms.',
+    inputSchema: { type: 'object', properties: { symptom: { type: 'string' }, product: { type: 'string' } }, required: ['symptom'] },
+    handler: (args: { symptom: string; product?: string }) => suggestRca(args.symptom, args.product)
+  },
+  'sangfor.recommend_sizing': {
+    description: 'Advisory sizing tier (small/medium/large/xlarge) from the primary scale driver (IAG=users, EPP=endpoints, HCI=vmCount, CC=eps, NGFW=Mbps). Never invents an exact model/BOM — defers to official Sizing Guide + SE validation.',
+    inputSchema: { type: 'object', properties: { product: { type: 'string' }, concurrentUsers: { type: 'number' }, endpoints: { type: 'number' }, vmCount: { type: 'number' }, eventsPerSecond: { type: 'number' }, throughputMbps: { type: 'number' } }, required: ['product'] },
+    handler: (args: { product: string } & SizingInput) => recommendSizing(args.product, args)
+  },
+  'sangfor.pm_create_engagement': {
+    description: 'PM: create an engagement (customer project).',
+    inputSchema: { type: 'object', properties: { customer: { type: 'string' }, product: { type: 'string' } }, required: ['customer', 'product'] },
+    handler: (args: { customer: string; product: string }) => pmStore.createEngagement(args)
+  },
+  'sangfor.pm_add_work_item': {
+    description: 'PM: add a work item to an engagement.',
+    inputSchema: { type: 'object', properties: { engagementId: { type: 'string' }, title: { type: 'string' }, deviceId: { type: 'string' }, assignee: { type: 'string' } }, required: ['engagementId', 'title'] },
+    handler: (args: { engagementId: string; title: string; deviceId?: string; assignee?: string }) => pmStore.addWorkItem(args.engagementId, args)
+  },
+  'sangfor.pm_status': {
+    description: 'PM: status rollup for an engagement + current device occupancy (who holds which device).',
+    inputSchema: { type: 'object', properties: { engagementId: { type: 'string' } }, required: ['engagementId'] },
+    handler: (args: { engagementId: string }) => ({ rollup: pmStore.statusRollup(args.engagementId), deviceOccupancy: pmStore.deviceOccupancy(), chainOk: pmStore.verifyEventChain(args.engagementId) })
+  },
+  'sangfor.pm_acquire_device': {
+    description: 'PM safety: acquire an exclusive device lock for an engagement before any device work. Blocks if another engagement holds it (prevents cross-engagement changes on a shared lab device).',
+    inputSchema: { type: 'object', properties: { deviceId: { type: 'string' }, engagementId: { type: 'string' }, holder: { type: 'string' } }, required: ['deviceId', 'engagementId', 'holder'] },
+    handler: (args: { deviceId: string; engagementId: string; holder: string }) => pmStore.acquireDevice(args.deviceId, args.engagementId, args.holder)
   }
 };
 
@@ -449,9 +491,23 @@ async function handle(req: JsonRpcRequest) {
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout, terminal: false });
 rl.on('line', async (line) => {
   if (!line.trim()) return;
-  const req = JSON.parse(line) as JsonRpcRequest;
-  const res = await handle(req);
-  process.stdout.write(`${JSON.stringify(res)}\n`);
+  let req: JsonRpcRequest;
+  try {
+    req = JSON.parse(line) as JsonRpcRequest;
+  } catch {
+    // Malformed JSON must not crash the stdio server — emit a JSON-RPC parse error.
+    process.stdout.write(`${JSON.stringify({ jsonrpc: '2.0', id: null, error: { code: -32700, message: 'Parse error' } })}\n`);
+    return;
+  }
+  try {
+    const res = await handle(req);
+    process.stdout.write(`${JSON.stringify(res)}\n`);
+  } catch (err) {
+    process.stdout.write(`${JSON.stringify({ jsonrpc: '2.0', id: req?.id ?? null, error: { code: -32603, message: String(err instanceof Error ? err.message : err) } })}\n`);
+  }
 });
+
+process.on('unhandledRejection', (e) => process.stderr.write(`unhandledRejection: ${String(e)}\n`));
+process.on('uncaughtException', (e) => process.stderr.write(`uncaughtException: ${String(e)}\n`));
 
 process.stderr.write('sangfor-engineer-mcp stdio server started\n');

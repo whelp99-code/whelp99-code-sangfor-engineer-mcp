@@ -13,7 +13,10 @@ import {
   postImportExcel,
   postFeedback,
   getStoreHealth,
-  getEmbeddingHealth
+  getEmbeddingHealth,
+  getFieldEngineerCoverage,
+  getSpecCoverage,
+  getDiagnoses
 } from './api.js';
 import { dashboardHtml } from './ui.js';
 
@@ -55,6 +58,18 @@ const server = http.createServer(async (req, res) => {
       const product = url.searchParams.get('product') ?? 'HCI';
       const type = url.searchParams.get('type') ?? 'manual';
       return json(res, getKnowledge(product, type));
+    }
+
+    if (method === 'GET' && url.pathname === '/api/coverage') {
+      return json(res, getFieldEngineerCoverage());
+    }
+
+    if (method === 'GET' && url.pathname === '/api/spec-coverage') {
+      return json(res, getSpecCoverage());
+    }
+
+    if (method === 'GET' && url.pathname === '/api/diagnoses') {
+      return json(res, getDiagnoses());
     }
 
     if (method === 'GET' && url.pathname === '/api/health/store') {

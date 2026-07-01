@@ -1,5 +1,8 @@
-import { writeFileSync, mkdirSync } from 'node:fs';
+import { writeFileSync, mkdirSync, existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { computeReplacementCoverage, loadWorkAtoms } from '../../../packages/sangfor-competency/src/index.js';
+import { listSpecCoverage } from '../../../packages/sangfor-spec/src/index.js';
+import { listCapabilitySafety } from '../../../packages/sangfor-safety/src/index.js';
 import { analyzeProject, generateConfigPlanAsync } from '../../../packages/sangfor-planner/src/index.js';
 import { listSeedManuals, searchManuals } from '../../../packages/sangfor-knowledge/src/index.js';
 import { listSeedWiki, searchWiki } from '../../../packages/sangfor-wiki/src/index.js';
@@ -137,4 +140,28 @@ export async function getEmbeddingHealth() {
     mimoRerankHealth: mimoHealth,
     allowCloudRag: process.env.SANGFOR_ALLOW_CLOUD_RAG === '1'
   };
+}
+
+// ── Field-engineer automation visibility (read-only panels) ──
+export function getFieldEngineerCoverage() {
+  const atoms = loadWorkAtoms();
+  return { coverage: computeReplacementCoverage(atoms), atoms };
+}
+
+export function getSpecCoverage() {
+  return { specs: listSpecCoverage(), safety: listCapabilitySafety() };
+}
+
+export function getDiagnoses() {
+  const dir = join(process.cwd(), 'outputs', 'diagnosis');
+  if (!existsSync(dir)) return { diagnoses: [] };
+  const diagnoses = readdirSync(dir)
+    .filter((f) => f.endsWith('.md') && !f.startsWith('.'))
+    .map((f) => {
+      const text = readFileSync(join(dir, f), 'utf8');
+      const summary = text.match(/요약:[^\n]*/)?.[0] ?? '';
+      const verdict = text.match(/종합 판정\(ok\):[^\n]*/)?.[0] ?? '';
+      return { file: f, summary, verdict, chars: text.length };
+    });
+  return { diagnoses };
 }

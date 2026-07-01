@@ -1,0 +1,187 @@
+{
+  "version": 1,
+  "atoms": [
+    {
+      "id": "disc_requirements",
+      "product": "ALL",
+      "phase": "discover",
+      "title": "고객 요구 발굴·매핑",
+      "automatability": "hybrid",
+      "humanReason": "대화·맥락 판단",
+      "coveredBy": null,
+      "maturity": "planned"
+    },
+    {
+      "id": "design_sizing",
+      "product": "ALL",
+      "phase": "design",
+      "title": "솔루션 사이징(노드/처리량/라이선스)",
+      "automatability": "auto",
+      "coveredBy": "sangfor.recommend_sizing",
+      "maturity": "implemented_local"
+    },
+    {
+      "id": "design_topology",
+      "product": "ALL",
+      "phase": "design",
+      "title": "토폴로지·HA·DR 설계",
+      "automatability": "hybrid",
+      "coveredBy": null,
+      "maturity": "planned"
+    },
+    {
+      "id": "design_competitive",
+      "product": "ALL",
+      "phase": "design",
+      "title": "경쟁 분석·포지셔닝",
+      "automatability": "auto",
+      "coveredBy": null,
+      "maturity": "planned"
+    },
+    {
+      "id": "poc_report",
+      "product": "ALL",
+      "phase": "validate",
+      "title": "PoC 실행·증적·리포트",
+      "automatability": "auto",
+      "coveredBy": "sangfor.generate_setting_guide_docx",
+      "maturity": "tested_mock"
+    },
+    {
+      "id": "poc_success_criteria",
+      "product": "ALL",
+      "phase": "validate",
+      "title": "성공기준 합의",
+      "automatability": "human",
+      "humanReason": "계약적 판단",
+      "maturity": "planned"
+    },
+    {
+      "id": "deploy_site_survey",
+      "product": "ALL",
+      "phase": "deploy",
+      "title": "사이트 실사·준비도 체크",
+      "automatability": "hybrid",
+      "coveredBy": null,
+      "maturity": "planned"
+    },
+    {
+      "id": "deploy_rack_cable",
+      "product": "ALL",
+      "phase": "deploy",
+      "title": "물리 설치(랙킹·케이블·전원)",
+      "automatability": "human",
+      "humanReason": "물리 작업",
+      "maturity": "planned"
+    },
+    {
+      "id": "deploy_cluster_init",
+      "product": "HCI",
+      "phase": "deploy",
+      "title": "클러스터 초기 구성",
+      "automatability": "hybrid",
+      "coveredBy": null,
+      "maturity": "planned"
+    },
+    {
+      "id": "deploy_policy_impl",
+      "product": "ALL",
+      "phase": "deploy",
+      "title": "보안 정책 구현(가이드+사람적용)",
+      "automatability": "hybrid",
+      "coveredBy": "sangfor.evaluate_config",
+      "maturity": "tested_mock"
+    },
+    {
+      "id": "deploy_migration",
+      "product": "HCI",
+      "phase": "deploy",
+      "title": "P2V/V2V 마이그레이션·cutover",
+      "automatability": "hybrid",
+      "humanReason": "비가역·고위험",
+      "maturity": "planned"
+    },
+    {
+      "id": "deploy_integration",
+      "product": "ALL",
+      "phase": "deploy",
+      "title": "AD/LDAP/SIEM 연동",
+      "automatability": "auto",
+      "coveredBy": null,
+      "maturity": "planned"
+    },
+    {
+      "id": "deploy_asbuilt_doc",
+      "product": "ALL",
+      "phase": "handover",
+      "title": "as-built 문서·런북·인계",
+      "automatability": "auto",
+      "coveredBy": "sangfor.generate_comprehensive_operations_guide_docx",
+      "maturity": "field_verified",
+      "evidence": "outputs/ (generated setting/operations guides)"
+    },
+    {
+      "id": "op_daily_health",
+      "product": "ALL",
+      "phase": "operate",
+      "title": "일일 헬스·설정 진단",
+      "automatability": "auto",
+      "coveredBy": "sangfor.evaluate_config",
+      "maturity": "field_verified",
+      "evidence": "outputs/diagnosis/EPP_6.0.4_live_diagnosis.md"
+    },
+    {
+      "id": "op_upgrade",
+      "product": "ALL",
+      "phase": "operate",
+      "title": "업그레이드·패치 호환성 자문",
+      "automatability": "hybrid",
+      "coveredBy": null,
+      "maturity": "planned"
+    },
+    {
+      "id": "op_backup_dr",
+      "product": "HCI",
+      "phase": "operate",
+      "title": "백업/DR 테스트",
+      "automatability": "hybrid",
+      "maturity": "planned"
+    },
+    {
+      "id": "op_rca",
+      "product": "ALL",
+      "phase": "incident",
+      "title": "장애 RCA(근본원인 후보 제시)",
+      "automatability": "hybrid",
+      "coveredBy": "sangfor.suggest_rca",
+      "maturity": "implemented_local"
+    },
+    {
+      "id": "op_threat_soar",
+      "product": "CC",
+      "phase": "operate",
+      "title": "위협운영·SOAR",
+      "automatability": "hybrid",
+      "humanReason": "critical 자동실행 금지",
+      "maturity": "planned"
+    },
+    {
+      "id": "op_final_apply",
+      "product": "ALL",
+      "phase": "operate",
+      "title": "비가역 변경 최종 적용",
+      "automatability": "human",
+      "humanReason": "책임·비가역",
+      "maturity": "planned"
+    },
+    {
+      "id": "pm_signoff",
+      "product": "ALL",
+      "phase": "handover",
+      "title": "인수 sign-off·책임 서명",
+      "automatability": "human",
+      "humanReason": "법적 책임",
+      "maturity": "planned"
+    }
+  ]
+}

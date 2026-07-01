@@ -1,0 +1,13 @@
+{
+  "id": "spec_hci_6_11_3_cluster", "product": "HCI", "version": "6.11.3",
+  "items": [
+    { "id": "storage_mtu_consistent", "capabilityId": "resource_inventory", "label": "스토리지망 MTU가 end-to-end 일관(권장 9000, 전구간 지원 시)", "observedKey": "storageMtu", "op": "gte", "expected": 9000, "severity": "recommended",
+      "source": { "manual": "HCI 6.11 User Manual", "section": "Storage Network / MTU", "page": "support.sangfor.com HCI 6.11 User Manual" } },
+    { "id": "ntp_synced", "capabilityId": "license_alert", "label": "NTP 동기화 활성", "observedKey": "ntpSynced", "op": "eq", "expected": true, "severity": "must",
+      "source": { "manual": "HCI 6.11 User Manual", "section": "System / Time", "page": "support.sangfor.com HCI 6.11 User Manual" } },
+    { "id": "license_valid", "capabilityId": "license_alert", "label": "라이선스 유효(만료 아님)", "observedKey": "licenseValid", "op": "eq", "expected": true, "severity": "must",
+      "source": { "manual": "HCI 6.11 User Manual", "section": "System / Licensing", "page": "support.sangfor.com HCI 6.11 User Manual" } },
+    { "id": "ha_enabled", "capabilityId": "ha_drs", "label": "HA 활성(가용성)", "observedKey": "haEnabled", "op": "eq", "expected": true, "severity": "recommended",
+      "source": { "manual": "HCI 6.11 User Manual", "section": "Reliability / HA", "page": "support.sangfor.com HCI 6.11 User Manual" } }
+  ]
+}

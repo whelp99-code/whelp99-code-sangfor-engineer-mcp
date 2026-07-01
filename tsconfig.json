@@ -73,6 +73,18 @@
       ],
       "@sangfor/safety": [
         "packages/sangfor-safety/src/index.ts"
+      ],
+      "@sangfor/competency": [
+        "packages/sangfor-competency/src/index.ts"
+      ],
+      "@sangfor/rca": [
+        "packages/sangfor-rca/src/index.ts"
+      ],
+      "@sangfor/pm": [
+        "packages/sangfor-pm/src/index.ts"
+      ],
+      "@sangfor/sizing": [
+        "packages/sangfor-sizing/src/index.ts"
       ]
     },
     "baseUrl": "."

@@ -62,6 +62,7 @@ export function dashboardHtml(): string {
       <button data-panel="products">제품 어댑터</button>
       <button data-panel="feedback">피드백</button>
       <button data-panel="knowledge">지식 브라우저</button>
+      <button data-panel="automation">자동화 현황</button>
     </nav>
     <section>
       <div id="dashboard" class="panel active">
@@ -81,6 +82,17 @@ export function dashboardHtml(): string {
         </div>
         <p class="meta" style="margin-top:14px">Mock HCI 콘솔: <a class="link" href="http://localhost:3400" target="_blank">http://localhost:3400</a></p>
         <iframe src="http://localhost:3400" title="Mock Sangfor HCI Console"></iframe>
+      </div>
+
+      <div id="automation" class="panel">
+        <h2>필드 엔지니어 자동화 현황</h2>
+        <p class="meta">read-only 자문/진단의 통합 가시성. "대체율"은 automatable AND field_verified atom만 카운트(정직 지표).</p>
+        <div class="stats" id="auto-stats"></div>
+        <div class="row2">
+          <div class="card"><h3>실장비 진단 (Service 3)</h3><div id="auto-diagnoses" class="meta">로딩…</div></div>
+          <div class="card"><h3>Spec 커버리지 · 안전등급</h3><div id="auto-specs" class="meta">로딩…</div></div>
+        </div>
+        <div class="card" style="margin-top:14px"><h3>WorkAtom (제품×라이프사이클)</h3><pre class="result" id="auto-atoms">로딩…</pre></div>
       </div>
 
       <div id="analyze" class="panel">
@@ -181,8 +193,28 @@ export function dashboardHtml(): string {
         btn.classList.add('active');
         panels.forEach(p => p.classList.toggle('active', p.id === btn.dataset.panel));
         if (btn.dataset.panel === 'dashboard') loadDashboard();
+        if (btn.dataset.panel === 'automation') loadAutomation();
       };
     });
+
+    async function loadAutomation() {
+      try {
+        const [cov, diag, spec] = await Promise.all([api('/api/coverage'), api('/api/diagnoses'), api('/api/spec-coverage')]);
+        const c = cov.coverage;
+        $('auto-stats').innerHTML =
+          '<div class="stat"><strong>' + (c.replacementRate * 100).toFixed(1) + '%</strong>1인 대체율(정직)</div>' +
+          '<div class="stat"><strong>' + c.replacedAtoms + '/' + c.automatableAtoms + '</strong>field_verified 대체</div>' +
+          '<div class="stat"><strong>' + c.humanOnlyAtoms + '</strong>사람 전용</div>' +
+          '<div class="stat"><strong>' + c.totalAtoms + '</strong>총 WorkAtom</div>';
+        $('auto-diagnoses').innerHTML = (diag.diagnoses || []).length
+          ? diag.diagnoses.map(d => '<div><b>' + d.file + '</b><br>' + (d.summary || '') + '<br>' + (d.verdict || '') + '</div>').join('<hr style="border-color:#334155">')
+          : '진단 산출물 없음';
+        $('auto-specs').innerHTML =
+          '<b>Spec:</b> ' + (spec.specs || []).map(s => s.product + ' ' + s.version + '(' + s.items + ')').join(', ') +
+          '<br><b>안전등급:</b> ' + (spec.safety || []).map(s => s.capabilityId + '=' + s.safetyClass).slice(0, 8).join(', ');
+        $('auto-atoms').textContent = JSON.stringify(c.byPhase, null, 2);
+      } catch (e) { $('auto-stats').innerHTML = '오류: ' + e.message; }
+    }
 
     async function api(path, opts) {
       const r = await fetch(path, opts);

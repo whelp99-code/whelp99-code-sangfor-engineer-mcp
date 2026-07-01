@@ -1,0 +1,9 @@
+{
+  "id": "spec_iag_13_0_120_dashboard", "product": "IAG", "version": "13.0.120",
+  "items": [
+    { "id": "unhandled_security_events_zero", "capabilityId": "log_validation", "label": "미처리 보안 이벤트 수가 0 (권장)", "observedKey": "securityEventsCount", "op": "lte", "expected": 0, "severity": "recommended",
+      "source": { "manual": "Sangfor IAG v13.0.120 User Manual", "section": "Dashboard / Security", "page": "https://support.sangfor.com/productDocument/read?product_id=22&version_id=1144" } },
+    { "id": "ha_enabled", "capabilityId": "internet_policy", "label": "고가용성(HA) 활성화 (가용성 권장)", "observedKey": "haEnabled", "op": "eq", "expected": true, "severity": "recommended",
+      "source": { "manual": "Sangfor IAG v13.0.120 User Manual", "section": "System / High Availability", "page": "https://support.sangfor.com/productDocument/read?product_id=22&version_id=1144" } }
+  ]
+}

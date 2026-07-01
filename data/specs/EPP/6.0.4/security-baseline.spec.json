@@ -1,0 +1,91 @@
+{
+  "id": "spec_epp_6_0_4_security_baseline",
+  "product": "ENDPOINT_SECURE",
+  "version": "6.0.4",
+  "items": [
+    {
+      "id": "vuln_patch_latest",
+      "capabilityId": "protection_policy",
+      "label": "취약점/패치 DB가 최신 상태 (Vulnerability patch DB is up to date)",
+      "observedKey": "patchIsLatest",
+      "op": "eq",
+      "expected": true,
+      "severity": "must",
+      "source": {
+        "manual": "Athena EPP 6.0.4 User Manual",
+        "section": "Vulnerabilities / Patch Management",
+        "page": "support.sangfor.com EPP 6.0.4 User Manual"
+      }
+    },
+    {
+      "id": "security_baseline_configured",
+      "capabilityId": "protection_policy",
+      "label": "보안 베이스라인(Compliance Baseline) 규칙이 1개 이상 구성됨",
+      "observedKey": "securityBaselineRuleCount",
+      "op": "gte",
+      "expected": 1,
+      "severity": "must",
+      "source": {
+        "manual": "Athena EPP 6.0.4 User Manual",
+        "section": "Compliance Check / Baseline",
+        "page": "support.sangfor.com EPP 6.0.4 User Manual"
+      }
+    },
+    {
+      "id": "open_vulnerabilities_zero",
+      "capabilityId": "security_events",
+      "label": "미조치 취약점 수가 0 (권장)",
+      "observedKey": "vulnerabilityCount",
+      "op": "lte",
+      "expected": 0,
+      "severity": "recommended",
+      "source": {
+        "manual": "Athena EPP 6.0.4 User Manual",
+        "section": "Vulnerabilities / Vuln List",
+        "page": "support.sangfor.com EPP 6.0.4 User Manual"
+      }
+    },
+    {
+      "id": "malware_scan_schedule_enabled",
+      "capabilityId": "protection_policy",
+      "label": "정기 멀웨어 검사 스케줄이 활성화됨",
+      "observedKey": "malwareScanScheduleEnabled",
+      "op": "eq",
+      "expected": true,
+      "severity": "must",
+      "source": {
+        "manual": "Athena EPP 6.0.4 User Manual",
+        "section": "Defense / Malware Scan",
+        "page": "support.sangfor.com EPP 6.0.4 User Manual"
+      }
+    },
+    {
+      "id": "vuln_defs_current",
+      "capabilityId": "protection_policy",
+      "label": "취약점 정의 DB에 미적용 업데이트 없음",
+      "observedKey": "vulnDefUpdateAvailable",
+      "op": "eq",
+      "expected": false,
+      "severity": "recommended",
+      "source": {
+        "manual": "Athena EPP 6.0.4 User Manual",
+        "section": "Vulnerabilities / Version",
+        "page": "support.sangfor.com EPP 6.0.4 User Manual"
+      }
+    },
+    {
+      "id": "dar_monitoring_active",
+      "capabilityId": "security_events",
+      "label": "Data-at-Risk(민감데이터) 모니터링 활성",
+      "observedKey": "darMonitoringActive",
+      "op": "eq",
+      "expected": true,
+      "severity": "recommended",
+      "source": {
+        "manual": "Athena EPP 6.0.4 User Manual",
+        "section": "Data at Risk",
+        "page": "support.sangfor.com EPP 6.0.4 User Manual"
+      }
+    }
+  ]
+}
