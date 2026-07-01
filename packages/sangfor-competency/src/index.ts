@@ -67,8 +67,14 @@ export function loadWorkAtoms(root: string = DATA_ROOT): WorkAtom[] {
   if (!existsSync(root)) return [];
   const out: WorkAtom[] = [];
   for (const f of readdirSync(root).filter((x) => x.endsWith('.json') && !x.startsWith('.'))) {
-    const parsed = JSON.parse(readFileSync(join(root, f), 'utf8'));
-    const arr = Array.isArray(parsed) ? parsed : parsed.atoms;
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(readFileSync(join(root, f), 'utf8'));
+    } catch {
+      process.stderr.write(`[competency] skipping unparseable atom file: ${f}\n`);
+      continue; // one corrupt file must not take down the whole catalog
+    }
+    const arr = Array.isArray(parsed) ? parsed : (parsed as { atoms?: unknown }).atoms;
     if (Array.isArray(arr)) out.push(...(arr as WorkAtom[])); // ignore non-atom files (e.g. capability-maturity.json)
   }
   return out;

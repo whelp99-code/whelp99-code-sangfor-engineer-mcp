@@ -130,7 +130,23 @@ export function loadSpec(product: string, version: string, root: string = SPEC_R
   const items: SpecItem[] = [];
   let product0 = normalizeSpecProduct(product);
   for (const f of files) {
-    const parsed = JSON.parse(readFileSync(join(dir, f), 'utf8')) as IntendedSpec;
+    let parsed: IntendedSpec;
+    try {
+      parsed = JSON.parse(readFileSync(join(dir, f), 'utf8')) as IntendedSpec;
+    } catch {
+      // A single corrupt spec file must not crash the whole product's advisory, nor
+      // vanish silently. Surface it as a MUST-without-source sentinel → evaluates to
+      // INDETERMINATE (senior review) instead of a false clean bill of health.
+      items.push({
+        id: `_unparseable_${f}`.replace(/[^\w]/g, '_'),
+        capabilityId: '_load_error',
+        label: `스펙 파일 파싱 실패: ${f} — 시니어 검토 필요 (unparseable spec file)`,
+        observedKey: '_unparseable',
+        op: 'exists',
+        severity: 'must',
+      });
+      continue;
+    }
     if (parsed.product) product0 = normalizeSpecProduct(parsed.product);
     items.push(...(parsed.items ?? []));
   }
