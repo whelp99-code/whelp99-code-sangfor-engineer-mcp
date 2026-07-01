@@ -13,6 +13,12 @@ describe('resolveBindHost — loopback by default (no accidental LAN exposure)',
     process.env.BIND_HOST = '0.0.0.0';
     expect(resolveBindHost()).toBe('0.0.0.0');
   });
+  it('treats an empty or whitespace BIND_HOST as unset (no accidental all-interfaces bind)', () => {
+    process.env.BIND_HOST = '';
+    expect(resolveBindHost()).toBe('127.0.0.1');
+    process.env.BIND_HOST = '   ';
+    expect(resolveBindHost()).toBe('127.0.0.1');
+  });
 });
 
 describe('isLoopback', () => {
@@ -21,9 +27,16 @@ describe('isLoopback', () => {
     expect(isLoopback('localhost')).toBe(true);
     expect(isLoopback('::1')).toBe(true);
   });
+  it('recognizes the whole 127.0.0.0/8 range and IPv4-mapped IPv6 loopback', () => {
+    expect(isLoopback('127.0.0.2')).toBe(true);
+    expect(isLoopback('127.255.255.255')).toBe(true);
+    expect(isLoopback('::ffff:127.0.0.1')).toBe(true);
+  });
   it('treats routable addresses as non-loopback', () => {
     expect(isLoopback('0.0.0.0')).toBe(false);
     expect(isLoopback('10.0.0.5')).toBe(false);
+    expect(isLoopback('128.0.0.1')).toBe(false);
+    expect(isLoopback('126.255.255.255')).toBe(false);
   });
 });
 
@@ -39,6 +52,11 @@ describe('checkAuth — shared-secret Bearer gate', () => {
     expect(checkAuth(undefined, 's3cret')).toEqual({ ok: false, status: 401 });
     expect(checkAuth('Bearer nope', 's3cret')).toEqual({ ok: false, status: 401 });
     expect(checkAuth('s3cret', 's3cret')).toEqual({ ok: false, status: 401 }); // missing "Bearer " prefix
+  });
+  it('rejects a differently-sized header without throwing (constant-width compare, no length leak)', () => {
+    expect(() => checkAuth('Bearer short', 'a-much-longer-secret-token')).not.toThrow();
+    expect(checkAuth('Bearer short', 'a-much-longer-secret-token')).toEqual({ ok: false, status: 401 });
+    expect(checkAuth('', 'tok')).toEqual({ ok: false, status: 401 });
   });
 });
 

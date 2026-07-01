@@ -1,7 +1,8 @@
 import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { timingSafeEqual } from 'node:crypto';
+import { createHash, timingSafeEqual } from 'node:crypto';
+import { isIP } from 'node:net';
 
 // ── HTTP exposure guard ─────────────────────────────────────────────────────
 // The operator-console / http-bridge servers previously bound to 0.0.0.0 with no
@@ -10,22 +11,29 @@ import { timingSafeEqual } from 'node:crypto';
 // when a non-loopback bind has no token.
 
 export function resolveBindHost(): string {
-  return process.env.BIND_HOST ?? '127.0.0.1';
+  const raw = process.env.BIND_HOST?.trim();
+  return raw ? raw : '127.0.0.1'; // empty/whitespace must not become an all-interfaces bind
 }
 
 export function isLoopback(host: string): boolean {
-  return host === '127.0.0.1' || host === 'localhost' || host === '::1';
+  const h = host.trim().toLowerCase();
+  if (h === 'localhost' || h === '::1') return true;
+  // IPv4-mapped IPv6 loopback (e.g. ::ffff:127.0.0.1)
+  const mapped = h.startsWith('::ffff:') ? h.slice(7) : h;
+  if (isIP(mapped) === 4) {
+    return mapped.split('.')[0] === '127'; // entire 127.0.0.0/8 range
+  }
+  return false;
 }
 
 /** Constant-time Bearer-token check. Open (ok) when no token is configured. */
 export function checkAuth(authHeader: string | undefined, token: string | undefined): { ok: boolean; status?: number } {
   if (!token) return { ok: true };
-  const expected = `Bearer ${token}`;
-  const got = authHeader ?? '';
-  const a = Buffer.from(got);
-  const b = Buffer.from(expected);
-  if (a.length !== b.length || !timingSafeEqual(a, b)) return { ok: false, status: 401 };
-  return { ok: true };
+  // Hash both sides to a fixed width first: constant-time regardless of input length
+  // (no early length branch leaking the secret's size) and never throws.
+  const h = (s: string) => createHash('sha256').update(s).digest();
+  const ok = timingSafeEqual(h(authHeader ?? ''), h(`Bearer ${token}`));
+  return ok ? { ok: true } : { ok: false, status: 401 };
 }
 
 /** Refuse to start a routable (non-loopback) server with no shared secret. */
