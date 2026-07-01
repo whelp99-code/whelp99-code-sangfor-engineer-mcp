@@ -1,12 +1,16 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { tmpdir } from 'node:os';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
 import { loadSpec, listSpecCoverage } from '../packages/sangfor-spec/src/index.js';
 import { loadWorkAtoms } from '../packages/sangfor-competency/src/index.js';
 
 const originalCwd = process.cwd();
+const tmpRoots: string[] = [];
 afterEach(() => {
   process.chdir(originalCwd);
   delete process.env.SANGFOR_SPEC_ROOT;
+  for (const root of tmpRoots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
 
 describe('data-root loaders are anchored to the package, not cwd', () => {
@@ -36,5 +40,13 @@ describe('data-root loaders are anchored to the package, not cwd', () => {
     // Re-import to pick up the env at module load is not possible mid-file; instead
     // assert via the explicit-root argument path which mirrors the override semantics.
     expect(loadSpec('IAG', '13.0.120', tmpdir())).toBeNull();
+  });
+
+  it('SANGFOR_SPEC_ROOT set after import is evaluated when loadSpec is called', () => {
+    const emptySpecRoot = mkdtempSync(join(tmpdir(), 'sangfor-empty-specs-'));
+    tmpRoots.push(emptySpecRoot);
+    process.env.SANGFOR_SPEC_ROOT = emptySpecRoot;
+
+    expect(loadSpec('IAG', '13.0.120')).toBeNull();
   });
 });

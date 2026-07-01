@@ -41,11 +41,11 @@ export interface CapabilitySafetySummary {
   evidence?: string;
 }
 
-const DEFAULT_DATA_ROOT = resolveRepoData('data', 'SANGFOR_DATA_ROOT');
+const defaultDataRoot = () => resolveRepoData('data', 'SANGFOR_DATA_ROOT');
 const SAFETY_PATH = 'safety/capability-safety.json';
 const MATURITY_PATH = 'competency/capability-maturity.json';
 
-export function loadSafetyPolicy(dataRoot: string = DEFAULT_DATA_ROOT): SafetyPolicy {
+export function loadSafetyPolicy(dataRoot: string = defaultDataRoot()): SafetyPolicy {
   const path = join(dataRoot, SAFETY_PATH);
   const deny: SafetyPolicy = { version: 1, defaultSafetyClass: 'human_only', entries: [] };
   if (!existsSync(path)) return deny;
@@ -58,7 +58,7 @@ export function loadSafetyPolicy(dataRoot: string = DEFAULT_DATA_ROOT): SafetyPo
   }
 }
 
-export function loadMaturityPolicy(dataRoot: string = DEFAULT_DATA_ROOT): MaturityPolicy {
+export function loadMaturityPolicy(dataRoot: string = defaultDataRoot()): MaturityPolicy {
   const path = join(dataRoot, MATURITY_PATH);
   if (!existsSync(path)) return { version: 1, entries: [] };
   try {
@@ -72,7 +72,7 @@ export function loadMaturityPolicy(dataRoot: string = DEFAULT_DATA_ROOT): Maturi
 export function getCapabilitySafety(
   product: string,
   capabilityId: string,
-  dataRoot: string = DEFAULT_DATA_ROOT,
+  dataRoot: string = defaultDataRoot(),
 ): CapabilitySafetySummary {
   const safety = loadSafetyPolicy(dataRoot);
   const maturity = loadMaturityPolicy(dataRoot);
@@ -93,7 +93,7 @@ export function getCapabilitySafety(
   };
 }
 
-export function listCapabilitySafety(dataRoot: string = DEFAULT_DATA_ROOT): CapabilitySafetySummary[] {
+export function listCapabilitySafety(dataRoot: string = defaultDataRoot()): CapabilitySafetySummary[] {
   const safety = loadSafetyPolicy(dataRoot);
   const maturity = loadMaturityPolicy(dataRoot);
   const keys = new Map<string, { product: string; capabilityId: string }>();

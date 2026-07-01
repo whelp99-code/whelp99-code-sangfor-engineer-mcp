@@ -42,7 +42,7 @@ interface ThresholdEntry {
 }
 
 const BASE_DISCLAIMER = '자문용 티어 추정입니다. 정확한 모델/노드/라이선스는 공식 Sangfor Sizing Guide와 SE 검증으로 확정하세요. AI는 정확한 BOM을 단정하지 않습니다.';
-const DATA_ROOT = resolveRepoData('data/sizing', 'SANGFOR_SIZING_ROOT');
+const dataRoot = () => resolveRepoData('data/sizing', 'SANGFOR_SIZING_ROOT');
 
 /** Canonical product key + which input field is its scale driver. */
 function canonical(product: string): string | null {
@@ -59,7 +59,7 @@ const DRIVER_FIELD: Record<string, keyof SizingInput> = {
   IAG: 'concurrentUsers', EPP: 'endpoints', HCI: 'vmCount', CC: 'eventsPerSecond', NGFW: 'throughputMbps',
 };
 
-export function loadSizingThresholds(root: string = DATA_ROOT): ThresholdEntry[] {
+export function loadSizingThresholds(root: string = dataRoot()): ThresholdEntry[] {
   const file = join(root, 'thresholds.json');
   if (!existsSync(file)) return [];
   let parsed: unknown;
@@ -81,7 +81,7 @@ function tierByThresholds(value: number, [s, m, l]: [number, number, number]): S
   return 'xlarge';
 }
 
-export function recommendSizing(product: string, input: SizingInput, root: string = DATA_ROOT): SizingResult {
+export function recommendSizing(product: string, input: SizingInput, root: string = dataRoot()): SizingResult {
   const key = canonical(product);
   const entry = key ? loadSizingThresholds(root).find((e) => e.product.toUpperCase() === key) : undefined;
 

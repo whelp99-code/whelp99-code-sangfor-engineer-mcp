@@ -92,7 +92,7 @@ export interface EvaluationResult {
   coverage: CoverageInfo;
 }
 
-const SPEC_ROOT = resolveRepoData('data/specs', 'SANGFOR_SPEC_ROOT');
+const specRoot = () => resolveRepoData('data/specs', 'SANGFOR_SPEC_ROOT');
 
 /** Map product aliases to the canonical product code used across planner/adapters/spec joins. */
 export function normalizeSpecProduct(input: string): string {
@@ -120,7 +120,7 @@ function specDirectoryCandidates(product: string): string[] {
 }
 
 /** Load and merge all spec JSON files for a product/version, or null if none. */
-export function loadSpec(product: string, version: string, root: string = SPEC_ROOT): IntendedSpec | null {
+export function loadSpec(product: string, version: string, root: string = specRoot()): IntendedSpec | null {
   const productDir = specDirectoryCandidates(product).find((candidate) => existsSync(join(root, candidate, version)));
   if (!productDir) return null;
   const dir = join(root, productDir, version);
@@ -154,7 +154,7 @@ export function loadSpec(product: string, version: string, root: string = SPEC_R
 }
 
 /** List all product/version pairs that have specs on disk. */
-export function listSpecCoverage(root: string = SPEC_ROOT): Array<{ product: string; version: string; items: number }> {
+export function listSpecCoverage(root: string = specRoot()): Array<{ product: string; version: string; items: number }> {
   const out: Array<{ product: string; version: string; items: number }> = [];
   if (!existsSync(root)) return out;
   const isDir = (p: string): boolean => {

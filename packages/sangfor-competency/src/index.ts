@@ -117,9 +117,9 @@ function replacementStatus(a: WorkAtom, opts: CoverageOptions): ReplacementStatu
   return 'replaced';
 }
 
-const DATA_ROOT = resolveRepoData('data/competency', 'SANGFOR_COMPETENCY_ROOT');
+const dataRoot = () => resolveRepoData('data/competency', 'SANGFOR_COMPETENCY_ROOT');
 
-export function loadWorkAtoms(root: string = DATA_ROOT): WorkAtom[] {
+export function loadWorkAtoms(root: string = dataRoot()): WorkAtom[] {
   if (!existsSync(root)) return [];
   const out: WorkAtom[] = [];
   for (const f of readdirSync(root).filter((x) => x.endsWith('.json') && !x.startsWith('.'))) {
