@@ -3,3 +3,4 @@ export * from './token-provider.js';
 export * from './client.js';
 export * from './volumes.js';
 export * from './inventory.js';
+export * from './read-back.js';
