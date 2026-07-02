@@ -1,21 +1,13 @@
 {
   "product": "EPP",
   "version": "6.0.4",
-  "collectedFrom": "10.80.1.106 live console XHR (read-only, Chrome CDP)",
-  "endpoints": 12,
-  "mappedKeys": [
-    "patchIsLatest",
-    "vulnerabilityCount",
-    "maliciousDomainBlockCount",
-    "maliciousDomainDetectionActive",
-    "assetInventoryClassifiedCount"
-  ],
+  "collectedFrom": "10.80.1.106 (CDP read-only XHR + engineer-observed policy values)",
   "observed": {
     "patchIsLatest": {
       "value": true,
       "source": {
         "endpoint": "POST /api/edrgoweb/v1/patch/statistics",
-        "collectedAt": "2026-07-02T16:47:01.108Z",
+        "collectedAt": "2026-07-02T17:12:44.521Z",
         "collector": "live-xhr"
       }
     },
@@ -23,7 +15,7 @@
       "value": 0,
       "source": {
         "endpoint": "POST /api/edrgoweb/v1/vulner/list/homepageVulner",
-        "collectedAt": "2026-07-02T16:47:01.108Z",
+        "collectedAt": "2026-07-02T17:12:44.521Z",
         "collector": "live-xhr"
       }
     },
@@ -31,7 +23,7 @@
       "value": 35,
       "source": {
         "endpoint": "POST /api/edrgoweb/v1/domain_detect/get_domain_info",
-        "collectedAt": "2026-07-02T16:47:01.108Z",
+        "collectedAt": "2026-07-02T17:12:44.521Z",
         "collector": "live-xhr"
       }
     },
@@ -39,7 +31,7 @@
       "value": true,
       "source": {
         "endpoint": "POST /api/edrgoweb/v1/domain_detect/get_domain_info",
-        "collectedAt": "2026-07-02T16:47:01.108Z",
+        "collectedAt": "2026-07-02T17:12:44.521Z",
         "collector": "live-xhr"
       }
     },
@@ -47,8 +39,64 @@
       "value": 5,
       "source": {
         "endpoint": "POST /api/edrgoweb/v1/asset/inventory/classify",
-        "collectedAt": "2026-07-02T16:47:01.108Z",
+        "collectedAt": "2026-07-02T17:12:44.521Z",
         "collector": "live-xhr"
+      }
+    },
+    "securityBaselineRuleCount": {
+      "value": 0,
+      "source": {
+        "collector": "engineer-observed",
+        "collectedAt": "2026-07-03",
+        "endpoint": "EPP console General Policies (human read)"
+      }
+    },
+    "malwareScanScheduleEnabled": {
+      "value": true,
+      "source": {
+        "collector": "engineer-observed",
+        "collectedAt": "2026-07-03",
+        "endpoint": "EPP console General Policies (human read)"
+      }
+    },
+    "darMonitoringActive": {
+      "value": false,
+      "source": {
+        "collector": "engineer-observed",
+        "collectedAt": "2026-07-03",
+        "endpoint": "EPP console General Policies (human read)"
+      }
+    },
+    "endpointIsolationConfigured": {
+      "value": true,
+      "source": {
+        "collector": "engineer-observed",
+        "collectedAt": "2026-07-03",
+        "endpoint": "EPP console General Policies (human read)"
+      }
+    },
+    "agentAutoUpdateEnabled": {
+      "value": true,
+      "source": {
+        "collector": "engineer-observed",
+        "collectedAt": "2026-07-03",
+        "endpoint": "EPP console General Policies (human read)"
+      }
+    },
+    "deviceControlConfigured": {
+      "value": false,
+      "source": {
+        "collector": "engineer-observed",
+        "collectedAt": "2026-07-03",
+        "endpoint": "EPP console General Policies (human read)"
+      }
+    },
+    "exclusionListManaged": {
+      "value": false,
+      "source": {
+        "collector": "engineer-observed",
+        "collectedAt": "2026-07-03",
+        "endpoint": "EPP console General Policies (human read)"
       }
     }
   }

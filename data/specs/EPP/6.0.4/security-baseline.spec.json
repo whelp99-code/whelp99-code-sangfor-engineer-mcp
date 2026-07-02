@@ -92,74 +92,80 @@
       "capabilityId": "response",
       "label": "엔드포인트 격리 정책 구성됨",
       "observedKey": "endpointIsolationConfigured",
-      "op": "exists",
+      "op": "eq",
       "severity": "recommended",
       "source": {
         "manual": "Sangfor Endpoint Secure 6.0.4 User Manual",
         "section": "Response / Endpoint Isolation"
-      }
+      },
+      "expected": true
     },
     {
       "id": "agent_auto_update_enabled",
       "capabilityId": "update",
       "label": "에이전트 자동 업데이트 활성",
       "observedKey": "agentAutoUpdateEnabled",
-      "op": "exists",
+      "op": "eq",
       "severity": "recommended",
       "source": {
         "manual": "Sangfor Endpoint Secure 6.0.4 User Manual",
         "section": "Update / Agent Update Policy"
-      }
+      },
+      "expected": true
     },
     {
       "id": "quarantine_policy_present",
       "capabilityId": "response",
       "label": "격리(quarantine) 정책 구성됨",
       "observedKey": "quarantineConfigured",
-      "op": "exists",
+      "op": "eq",
       "severity": "recommended",
       "source": {
         "manual": "Sangfor Endpoint Secure 6.0.4 User Manual",
         "section": "Response / Quarantine"
-      }
+      },
+      "expected": true
     },
     {
       "id": "edr_behavior_monitoring_enabled",
       "capabilityId": "edr",
       "label": "EDR 행위 모니터링 활성",
       "observedKey": "edrBehaviorMonitoringEnabled",
-      "op": "exists",
+      "op": "eq",
       "severity": "recommended",
       "source": {
         "manual": "Sangfor Endpoint Secure 6.0.4 User Manual",
         "section": "Defense / EDR Behavior Monitoring"
-      }
+      },
+      "expected": true
     },
     {
       "id": "device_control_policy_present",
       "capabilityId": "device_control",
       "label": "디바이스 컨트롤 정책 구성됨(환경 의존)",
       "observedKey": "deviceControlConfigured",
-      "op": "exists",
+      "op": "eq",
       "severity": "recommended",
       "source": {
         "manual": "Sangfor Endpoint Secure 6.0.4 User Manual",
         "section": "Defense / Device Control"
       },
-      "contextDependent": true
+      "contextDependent": true,
+      "expected": true
     },
     {
       "id": "exclusion_list_managed",
       "capabilityId": "exclusion",
       "label": "예외(exclusion) 목록 관리됨(환경 의존)",
       "observedKey": "exclusionListManaged",
-      "op": "exists",
+      "op": "eq",
       "severity": "recommended",
       "source": {
         "manual": "Sangfor Endpoint Secure 6.0.4 User Manual",
         "section": "Policy / Exclusions"
       },
-      "contextDependent": true
+      "contextDependent": true,
+      "expected": true
     },
     {
       "id": "malicious_domain_detection_active",
