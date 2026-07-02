@@ -13,8 +13,8 @@ import { isSafeNavLabel } from '../packages/sangfor-collector/src/safe-nav.js';
 
 const PRODUCT = (process.env.PRODUCT ?? 'EPP').toUpperCase();
 const CFG: Record<string, any> = {
-  EPP: { url: 'https://10.80.1.106', user: 'admin', pass: 'Itac123!@#', port: 9340, captchaSel: 'img[src*="randcode"]', userSel: '#user, input[name="user"]', passSel: '#password, input[type="password"]', apiRe: /\/api\// },
-  IAG: { url: 'https://10.80.1.108', user: 'admin', pass: 'Itac123#@!', port: 9342, captchaSel: 'img[src*="captcha"], img[src*="randcode"]', userSel: 'input[name="user"], input[name="username"], input[type="text"]', passSel: 'input[type="password"]', apiRe: /\/(api|php|rest|cgi)/ },
+  EPP: { url: 'https://10.80.1.106', user: 'admin', pass: 'Itac123!@#', port: 9340, captchaSel: 'img[src*="randcode"]', userSel: '#user, input[name="user"]', passSel: '#password, input[type="password"]', apiRe: /\/api\//, menuSel: 'li.ix-menu-item' },
+  IAG: { url: 'https://10.80.1.108', user: 'admin', pass: 'Itac123#@!', port: 9342, captchaSel: 'img[src*="captcha"], img[src*="randcode"]', userSel: '#user, input[name="user"], input[name="username"]', passSel: '#password, input[type="password"]', apiRe: /\/(api|php|rest|cgi)/, menuSel: 'li.ix-menu-item' },
 };
 const c = CFG[PRODUCT];
 if (!c) { console.error('unknown product', PRODUCT); process.exit(1); }
@@ -68,6 +68,11 @@ async function main() {
       const el = page.locator(s).first(); if (await el.count().catch(() => 0)) { await el.fill(captchaCode).catch(() => {}); break; }
     }
   }
+  // check any visible unchecked agreement checkbox (required by some consoles, e.g. IAG)
+  try {
+    const cb = page.locator('input[type="checkbox"]').first();
+    if (await cb.count().catch(() => 0) && !(await cb.isChecked().catch(() => true))) await cb.check({ timeout: 2000 }).catch(() => {});
+  } catch { /* ignore */ }
   for (const s of ['button:has-text("Log In")', 'button:has-text("Login")', 'input#button', 'button[type="submit"]', 'input[type="submit"]']) {
     const el = page.locator(s).first(); if (await el.count().catch(() => 0)) { await el.click({ timeout: 5000 }).catch(() => {}); break; }
   }
@@ -77,13 +82,14 @@ async function main() {
   if (!loggedIn) { console.error(`[${PRODUCT}] LOGIN_FAIL`); await browser.close(); return; }
   await page.screenshot({ path: `${DIR}/${PRODUCT}_home.png` }).catch(() => {});
 
-  // ── traverse: collect li.ix-menu-item labels, click only safe ones ──
-  const dumpLabels = async (): Promise<string[]> => page.evaluate(() => {
-    const els = [...document.querySelectorAll('li.ix-menu-item')] as HTMLElement[];
+  // ── traverse: collect menu labels (per-product menuSel), click only safe ones ──
+  const MENU_SEL: string = c.menuSel ?? 'li.ix-menu-item';
+  const dumpLabels = async (): Promise<string[]> => page.evaluate((sel) => {
+    const els = [...document.querySelectorAll(sel)] as HTMLElement[];
     const visible = els.filter((e) => e.offsetParent !== null);
     return [...new Set(visible.map((e) => (e.innerText || e.textContent || '').trim().split('\n')[0])
       .filter((t) => t && t.length > 1 && t.length < 28 && !/^\d+$/.test(t)))];
-  });
+  }, MENU_SEL);
   await page.goto(page.url(), { waitUntil: 'domcontentloaded' }).catch(() => {});
   await sl(6000);
   const seen = new Set<string>();
@@ -93,11 +99,11 @@ async function main() {
       if (seen.has(label)) continue; seen.add(label);
       if (!isSafeNavLabel(label)) { console.error(`[${PRODUCT}] SKIP unsafe label: "${label}"`); continue; }
       try {
-        await page.evaluate((text) => {
-          const els = [...document.querySelectorAll('li.ix-menu-item')] as HTMLElement[];
+        await page.evaluate(({ text, sel }) => {
+          const els = [...document.querySelectorAll(sel)] as HTMLElement[];
           const el = els.find((e) => (e.innerText || e.textContent || '').trim().split('\n')[0] === text);
           if (el) (el as HTMLElement).click();
-        }, label);
+        }, { text: label, sel: MENU_SEL });
         await sl(1500);
       } catch {}
     }
