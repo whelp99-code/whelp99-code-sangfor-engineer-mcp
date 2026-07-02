@@ -21,6 +21,18 @@
       "reason": "VM power, migration and delete operations can be irreversible or disruptive."
     },
     {
+      "product": "HCI_SCP",
+      "capabilityId": "volume_create",
+      "safetyClass": "human_only",
+      "reason": "M4 real-device slice pending; mock-verified only. Promote to auto_allowed with captured evidence after the real-device create->read-back->restore run."
+    },
+    {
+      "product": "HCI_SCP",
+      "capabilityId": "volume_delete",
+      "safetyClass": "human_only",
+      "reason": "Reverse op of create-volume (restore path). Stays human_only until the M4 slice; deletes are refused over the HTTP bridge regardless."
+    },
+    {
       "product": "IAG",
       "capabilityId": "auth_source",
       "safetyClass": "read_only",
