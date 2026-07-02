@@ -4,8 +4,8 @@ import { readFileSync } from 'node:fs';
 describe('hci api catalog', () => {
   const catalog = JSON.parse(readFileSync('data/hci-api/catalog.json', 'utf8'));
 
-  it('carries the honesty label until M4 verifies it on a real device', () => {
-    expect(catalog.source.contractStatus).toBe('doc_contract_unverified_on_real_device');
+  it('carries the honesty label reflecting the M4 real-device verification', () => {
+    expect(catalog.source.contractStatus).toBe('auth_verified_on_10.80.1.104_2026-07-02; volume_service_unavailable_503');
   });
 
   it('pins the read-back trap note on the volume service', () => {

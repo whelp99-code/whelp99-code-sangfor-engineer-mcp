@@ -80,7 +80,7 @@ export function createOpenStackMock(port = 3400) {
           },
           serviceCatalog: [
             { endpoints: [{ publicURL: `${base}/openstack/identity/v2.0` }], type: 'identity', name: 'keystone' },
-            { endpoints: [{ publicURL: `${base}/openstack/volume/v2/${MOCK_TENANT_ID}` }], type: 'volume', name: 'cinder' },
+            { endpoints: [{ publicURL: `${base}/openstack/volume/v2/${MOCK_TENANT_ID}` }], type: 'volumev2', name: 'cinderv2' },
             { endpoints: [{ publicURL: `${base}/openstack/compute/v2` }], type: 'compute', name: 'nova' },
             { endpoints: [{ publicURL: `${base}/openstack/image` }], type: 'image', name: 'glance' },
           ],

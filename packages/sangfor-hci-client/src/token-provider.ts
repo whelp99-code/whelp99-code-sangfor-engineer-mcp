@@ -2,9 +2,10 @@ import { httpJson } from './http.js';
 
 // Keystone v2.0 password auth exactly as documented in the official HCI OpenAPI
 // guide (auth.tenantName + passwordCredentials -> access.token + serviceCatalog).
-// This is a DOC CONTRACT: it has not been verified against a real device yet.
-// M4 captures the real handshake and either confirms this or forces a fix.
-export const HCI_AUTH_CONTRACT_STATUS = 'doc_contract_unverified_on_real_device';
+// M4 verified this handshake against the real SCP at 10.80.1.104 on 2026-07-02:
+// auth + identity/compute/image all worked as documented; the volume service
+// was unavailable there (503, cinder/volumev2 backend not deployed on that SCP).
+export const HCI_AUTH_CONTRACT_STATUS = 'verified_on_10.80.1.104_2026-07-02';
 
 export interface HciConnectionConfig {
   identityBaseUrl: string;   // e.g. https://{acmp_ip}/openstack/identity/v2.0

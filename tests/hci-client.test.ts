@@ -20,7 +20,7 @@ const provider = () => new KeystoneV2TokenProvider({
 
 describe('KeystoneV2TokenProvider (doc contract)', () => {
   it('exposes the honesty label', () => {
-    expect(HCI_AUTH_CONTRACT_STATUS).toBe('doc_contract_unverified_on_real_device');
+    expect(HCI_AUTH_CONTRACT_STATUS).toBe('verified_on_10.80.1.104_2026-07-02');
   });
 
   it('authenticates and caches the token', async () => {
@@ -30,7 +30,7 @@ describe('KeystoneV2TokenProvider (doc contract)', () => {
     expect(a.tokenId).toMatch(/^mock-token-/);
     expect(a.tenantId).toBe('mocktenant0001');
     expect(b.tokenId).toBe(a.tokenId); // cached, no re-auth
-    expect(a.serviceCatalog.map((s) => s.type)).toContain('volume');
+    expect(a.serviceCatalog.map((s) => s.type)).toContain('volumev2');
   });
 
   it('fails loudly on bad credentials (no guessing)', async () => {

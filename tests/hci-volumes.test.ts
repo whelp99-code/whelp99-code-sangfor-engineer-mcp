@@ -53,4 +53,10 @@ describe('hci volumes (read-only + single reversible write primitive)', () => {
     expect(inv.readOnly).toBe(true);
     expect(inv.volumes).toBeInstanceOf(Array);
   });
+
+  it('collectInventory reports volumeServiceAvailable when the volume service responds', async () => {
+    const inv = await collectInventory(mkClient());
+    expect(inv.volumeServiceAvailable).toBe(true);
+    expect(Array.isArray(inv.volumes)).toBe(true);
+  });
 });

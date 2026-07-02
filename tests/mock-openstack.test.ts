@@ -25,7 +25,7 @@ describe('mock openstack: keystone', () => {
     expect(body.access.token.id).toMatch(/^mock-token-/);
     expect(body.access.token.tenant.id).toBe('mocktenant0001');
     const types = body.access.serviceCatalog.map((s: any) => s.type);
-    expect(types).toEqual(expect.arrayContaining(['identity', 'volume', 'compute', 'image']));
+    expect(types).toEqual(expect.arrayContaining(['identity', 'volumev2', 'compute', 'image']));
   });
 
   it('rejects bad credentials with 401', async () => {
@@ -43,7 +43,7 @@ describe('mock openstack: volumes', () => {
   beforeAll(async () => {
     const body = await (await auth()).json() as any;
     token = body.access.token.id;
-    volBase = body.access.serviceCatalog.find((s: any) => s.type === 'volume').endpoints[0].publicURL
+    volBase = body.access.serviceCatalog.find((s: any) => s.type === 'volumev2').endpoints[0].publicURL
       .replace(/^http:\/\/127\.0\.0\.1:\d+/, base); // catalog carries the default port; rebase to the ephemeral one
   });
   const H = () => ({ 'content-type': 'application/json', 'x-auth-token': token });

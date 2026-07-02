@@ -4,7 +4,15 @@
     "publisher": "Sangfor",
     "year": 2020,
     "location": "/Volumes/My Passport/00. Attached/5. HCI/",
-    "contractStatus": "doc_contract_unverified_on_real_device"
+    "contractStatus": "auth_verified_on_10.80.1.104_2026-07-02; volume_service_unavailable_503"
+  },
+  "realDeviceFindings": {
+    "host": "10.80.1.104:4430",
+    "date": "2026-07-02",
+    "authVerified": true,
+    "volumeServiceType": "volumev2",
+    "volumeServiceStatus": "503 unavailable (cinder/volumev2 backend not deployed on this SCP)",
+    "servicesWorking": ["identity", "compute", "image"]
   },
   "auth": {
     "type": "keystone_v2_password",
