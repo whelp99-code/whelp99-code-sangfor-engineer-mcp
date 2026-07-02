@@ -1,0 +1,46 @@
+{
+  "product": "EPP",
+  "version": "6.0.4",
+  "collectedFrom": "10.80.1.106 live console XHR (read-only, Chrome CDP)",
+  "endpoints": 15,
+  "mappedKeys": [
+    "patchIsLatest",
+    "vulnDefUpdateAvailable",
+    "vulnerabilityCount",
+    "maliciousDomainBlockCount"
+  ],
+  "observed": {
+    "patchIsLatest": {
+      "value": true,
+      "source": {
+        "endpoint": "POST /api/edrgoweb/v1/patch/statistics",
+        "collectedAt": "2026-07-02T16:20:40.709Z",
+        "collector": "live-xhr"
+      }
+    },
+    "vulnDefUpdateAvailable": {
+      "value": false,
+      "source": {
+        "endpoint": "POST /api/edrgoweb/v1/vulner/list/version",
+        "collectedAt": "2026-07-02T16:20:40.709Z",
+        "collector": "live-xhr"
+      }
+    },
+    "vulnerabilityCount": {
+      "value": 0,
+      "source": {
+        "endpoint": "POST /api/edrgoweb/v1/vulner/list/homepageVulner",
+        "collectedAt": "2026-07-02T16:20:40.709Z",
+        "collector": "live-xhr"
+      }
+    },
+    "maliciousDomainBlockCount": {
+      "value": 35,
+      "source": {
+        "endpoint": "POST /api/edrgoweb/v1/domain_detect/get_domain_info",
+        "collectedAt": "2026-07-02T16:20:40.709Z",
+        "collector": "live-xhr"
+      }
+    }
+  }
+}
