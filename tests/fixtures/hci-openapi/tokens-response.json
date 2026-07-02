@@ -1,0 +1,17 @@
+{
+  "access": {
+    "token": {
+      "issued_at": "2026-07-02T00:00:00.000000Z",
+      "expires": "2026-07-02T01:00:00.000000Z",
+      "id": "mock-token-0001",
+      "tenant": { "enabled": true, "description": "", "name": "lab", "id": "mocktenant0001" }
+    },
+    "serviceCatalog": [
+      { "endpoints": [{ "publicURL": "http://127.0.0.1:3400/openstack/identity/v2.0" }], "type": "identity", "name": "keystone" },
+      { "endpoints": [{ "publicURL": "http://127.0.0.1:3400/openstack/volume/v2/mocktenant0001" }], "type": "volume", "name": "cinder" },
+      { "endpoints": [{ "publicURL": "http://127.0.0.1:3400/openstack/compute/v2" }], "type": "compute", "name": "nova" },
+      { "endpoints": [{ "publicURL": "http://127.0.0.1:3400/openstack/image" }], "type": "image", "name": "glance" }
+    ],
+    "user": { "username": "admin", "roles": [{ "name": "tenant" }], "name": "admin" }
+  }
+}
