@@ -43,7 +43,8 @@
         "manual": "Sangfor IAG v13.0.120 User Manual",
         "section": "Functions / Access Management / 802.1X Authentication / 802.1X Access Control",
         "page": "https://support.sangfor.com/productDocument/read?product_id=22&version_id=1144&category_id=2633214"
-      }
+      },
+      "contextDependent": true
     }
   ]
 }

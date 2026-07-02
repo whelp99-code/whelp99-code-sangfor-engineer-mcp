@@ -1,5 +1,86 @@
-{ "id":"spec_cc_3_0_98_soc","product":"CYBER_COMMAND","version":"3.0.98","items":[
-  {"id":"ntp_synced","capabilityId":"event_source","label":"NTP 동기화(상관분석 품질의 근간)","observedKey":"ntpSynced","op":"eq","expected":true,"severity":"must","source":{"manual":"Cyber Command 3.0 User Manual","section":"System / NTP","page":"support.sangfor.com CC 3.0 User Manual"}},
-  {"id":"event_sources_active","capabilityId":"event_source","label":"이벤트 소스가 1개 이상 활성","observedKey":"activeEventSources","op":"gte","expected":1,"severity":"must","source":{"manual":"Cyber Command 3.0 User Manual","section":"Events / Event Sources","page":"support.sangfor.com CC 3.0 User Manual"}},
-  {"id":"alert_channel_configured","capabilityId":"incident_alert","label":"알림 채널(Email/SMS/Syslog) 구성","observedKey":"alertChannelConfigured","op":"eq","expected":true,"severity":"recommended","source":{"manual":"Cyber Command 3.0 User Manual","section":"Alerts / Notification","page":"support.sangfor.com CC 3.0 User Manual"}}
-]}
+{
+  "id": "spec_cc_3_0_98_soc",
+  "product": "CYBER_COMMAND",
+  "version": "3.0.98",
+  "items": [
+    {
+      "id": "ntp_synced",
+      "capabilityId": "event_source",
+      "label": "NTP 동기화(상관분석 품질의 근간)",
+      "observedKey": "ntpSynced",
+      "op": "eq",
+      "expected": true,
+      "severity": "must",
+      "source": {
+        "manual": "Cyber Command 3.0 User Manual",
+        "section": "System / NTP",
+        "page": "support.sangfor.com CC 3.0 User Manual"
+      }
+    },
+    {
+      "id": "event_sources_active",
+      "capabilityId": "event_source",
+      "label": "이벤트 소스가 1개 이상 활성",
+      "observedKey": "activeEventSources",
+      "op": "gte",
+      "expected": 1,
+      "severity": "must",
+      "source": {
+        "manual": "Cyber Command 3.0 User Manual",
+        "section": "Events / Event Sources",
+        "page": "support.sangfor.com CC 3.0 User Manual"
+      }
+    },
+    {
+      "id": "alert_channel_configured",
+      "capabilityId": "incident_alert",
+      "label": "알림 채널(Email/SMS/Syslog) 구성",
+      "observedKey": "alertChannelConfigured",
+      "op": "eq",
+      "expected": true,
+      "severity": "recommended",
+      "source": {
+        "manual": "Cyber Command 3.0 User Manual",
+        "section": "Alerts / Notification",
+        "page": "support.sangfor.com CC 3.0 User Manual"
+      }
+    },
+    {
+      "id": "alarm_noise_tuning_present",
+      "capabilityId": "alarm",
+      "label": "알람 노이즈 튜닝 구성됨(환경 의존)",
+      "observedKey": "alarmTuningConfigured",
+      "op": "exists",
+      "severity": "recommended",
+      "source": {
+        "manual": "Sangfor Cyber Command 3.0.98 User Manual",
+        "section": "Alarm / Tuning"
+      },
+      "contextDependent": true
+    },
+    {
+      "id": "syslog_forwarding_present",
+      "capabilityId": "integration",
+      "label": "syslog 로그 전달 구성됨",
+      "observedKey": "syslogForwardingConfigured",
+      "op": "exists",
+      "severity": "recommended",
+      "source": {
+        "manual": "Sangfor Cyber Command 3.0.98 User Manual",
+        "section": "System / Syslog"
+      }
+    },
+    {
+      "id": "scheduled_report_present",
+      "capabilityId": "reporting",
+      "label": "정기 리포트 스케줄 구성됨",
+      "observedKey": "scheduledReportConfigured",
+      "op": "exists",
+      "severity": "recommended",
+      "source": {
+        "manual": "Sangfor Cyber Command 3.0.98 User Manual",
+        "section": "Report / Scheduled Report"
+      }
+    }
+  ]
+}
