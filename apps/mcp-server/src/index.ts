@@ -42,7 +42,15 @@ import { recommendSizing, type SizingInput } from '../../../packages/sangfor-siz
 import { createPmStore } from '../../../packages/sangfor-pm/src/index.js';
 import { checkVersionRequirement, loadVersionRequirements } from '../../../packages/sangfor-version/src/index.js';
 import { generateIntegrationGuide, listIntegrationTypes } from '../../../packages/sangfor-integration/src/index.js';
-import { resolveRepoData } from '../../../packages/shared/src/index.js';
+import { resolveRepoData, isLoopback, nowId } from '../../../packages/shared/src/index.js';
+import { randomBytes } from 'node:crypto';
+import {
+  HciClient, KeystoneV2TokenProvider, HCI_AUTH_CONTRACT_STATUS,
+  collectInventory, readBackVolume, applyCreateVolume, deleteVolume, getVolume,
+  AuditLedger, validateCreateVolumeInput,
+} from '../../../packages/sangfor-hci-client/src/index.js';
+import { verifyExecutionApproval } from '../../../packages/sangfor-operator/src/approval.js';
+import { consumeApprovalNonce } from '../../../packages/sangfor-operator/src/nonce-store.js';
 
 const pmStore = createPmStore(); // process-lifetime PM state for the MCP session
 
@@ -51,11 +59,114 @@ type JsonRpcRequest = { jsonrpc: '2.0'; id?: string | number; method: string; pa
 type ToolHandler = (args: any) => unknown | Promise<unknown>;
 
 const plans = new Map<string, any>();
+
+// ─── HCI/SCP OpenAPI wiring (doc-contract; verified on a real device in M4) ────
+function hciConnection(args: Record<string, unknown> = {}) {
+  const identityBaseUrl = String(args.identityBaseUrl ?? process.env.SANGFOR_HCI_IDENTITY_URL ?? 'http://127.0.0.1:3400/openstack/identity/v2.0');
+  return {
+    identityBaseUrl,
+    tenantName: String(args.tenantName ?? process.env.SANGFOR_HCI_TENANT ?? 'lab'),
+    username: String(args.username ?? process.env.SANGFOR_HCI_USER ?? 'admin'),
+    password: String(args.password ?? process.env.SANGFOR_HCI_PASSWORD ?? 'mock-password'),
+    tlsSkipVerify: true,
+    host: new URL(identityBaseUrl).hostname,
+  };
+}
+
+function hciClientFor(args: Record<string, unknown> = {}) {
+  const cfg = hciConnection(args);
+  return { client: new HciClient(new KeystoneV2TokenProvider(cfg), { tlsSkipVerify: cfg.tlsSkipVerify }), cfg };
+}
+
+function hciWriteGate(
+  kind: 'hci.create-volume' | 'hci.delete-volume',
+  target: string,
+  host: string,
+  approval: unknown,
+  capabilityId: 'volume_create' | 'volume_delete',
+): { ok: boolean; error?: string } {
+  const verdict = verifyExecutionApproval({ action: { type: kind, target }, approval: approval as never, secret: process.env.SANGFOR_OPERATOR_APPROVAL_SECRET });
+  if (!verdict.ok) return { ok: false, error: `approval rejected: ${verdict.reason}` };
+  const a = approval as { nonce: string; expiresAt: string };
+  const consumed = consumeApprovalNonce({ nonce: a.nonce, expiresAt: a.expiresAt });
+  if (!consumed.ok) return { ok: false, error: `approval rejected: ${consumed.reason}` };
+  // Loopback (mock) rehearses the full gate but is exempt from real-exec + safety-class;
+  // a non-loopback (real device) target additionally needs the real-exec flag AND an
+  // explicit auto_allowed safety class (promoted only after the M4 real-device slice).
+  if (!isLoopback(host)) {
+    if (process.env.SANGFOR_ALLOW_REAL_EXECUTION !== 'true') return { ok: false, error: 'SANGFOR_ALLOW_REAL_EXECUTION=true is required for a non-loopback HCI target.' };
+    const safety = getCapabilitySafety('HCI_SCP', capabilityId);
+    if (!safety.autoAllowed) return { ok: false, error: `capability ${capabilityId} is ${safety.safetyClass} (not auto_allowed) — real-device write refused until the M4 promotion. ${safety.reason}` };
+  }
+  return { ok: true };
+}
+
 const tools: Record<string, { description: string; inputSchema: any; handler: ToolHandler }> = {
   'sangfor.products': {
     description: 'List supported Sangfor products in current priority order.',
     inputSchema: { type: 'object', properties: {} },
     handler: () => ({ products: PRODUCTS })
+  },
+  'sangfor.hci_inventory': {
+    description: `Read-only HCI/SCP inventory over the OpenAPI surface (volumes/servers/images). Auth contract: ${HCI_AUTH_CONTRACT_STATUS}.`,
+    inputSchema: { type: 'object', properties: { identityBaseUrl: { type: 'string' }, tenantName: { type: 'string' }, username: { type: 'string' }, password: { type: 'string' } } },
+    handler: async (args: Record<string, unknown>) => {
+      const { client } = hciClientFor(args);
+      return { ...(await collectInventory(client)), authContract: HCI_AUTH_CONTRACT_STATUS };
+    }
+  },
+  'sangfor.hci_plan_create_volume': {
+    description: 'Plan (no mutation): validate a create-volume intent, mint the idempotency clientToken, and describe the SignedApproval required to apply.',
+    inputSchema: { type: 'object', properties: { name: { type: 'string' }, sizeGb: { type: 'number' }, description: { type: 'string' }, identityBaseUrl: { type: 'string' } }, required: ['name', 'sizeGb'] },
+    handler: (args: { name: string; sizeGb: number; description?: string; identityBaseUrl?: string }) => {
+      const clientToken = `cv-${randomBytes(8).toString('hex')}`;
+      const problems = validateCreateVolumeInput({ name: args.name, sizeGb: args.sizeGb, description: args.description, clientToken });
+      const { cfg } = hciClientFor(args as Record<string, unknown>);
+      return {
+        ok: problems.length === 0, problems, mutationPerformed: false,
+        plannedRequest: { method: 'POST', path: '/volumes', body: { volume: { name: args.name, size: args.sizeGb, description: args.description ?? null } }, idempotencyHeader: { 'X-Client-Token': clientToken } },
+        clientToken,
+        approvalRequired: { action: { type: 'hci.create-volume', target: `${cfg.host}:${args.name}` }, fields: ['approvedBy', 'approvalToken', 'changeTicketId', 'rollbackPlanId', 'nonce', 'expiresAt'], mint: 'scripts/mint-hci-approval.ts' },
+        rollback: { op: 'hci.delete-volume', note: 'the single documented reverse op; requires its own approval' },
+        authContract: HCI_AUTH_CONTRACT_STATUS,
+      };
+    }
+  },
+  'sangfor.hci_apply_create_volume': {
+    description: 'WRITE: apply a planned create-volume through the state machine (idempotent POST -> read-back verify -> succeed or HALT). Requires a SignedApproval; nonce is single-use.',
+    inputSchema: { type: 'object', properties: { name: { type: 'string' }, sizeGb: { type: 'number' }, description: { type: 'string' }, clientToken: { type: 'string' }, approval: { type: 'object' }, identityBaseUrl: { type: 'string' } }, required: ['name', 'sizeGb', 'clientToken', 'approval'] },
+    handler: async (args: { name: string; sizeGb: number; description?: string; clientToken: string; approval: unknown; identityBaseUrl?: string }) => {
+      const { client, cfg } = hciClientFor(args as Record<string, unknown>);
+      const gate = hciWriteGate('hci.create-volume', `${cfg.host}:${args.name}`, cfg.host, args.approval, 'volume_create');
+      if (!gate.ok) return { ok: false, mutationPerformed: false, error: gate.error };
+      const result = await applyCreateVolume(client, { name: args.name, sizeGb: args.sizeGb, description: args.description, clientToken: args.clientToken }, new AuditLedger());
+      return { ...result, mutationPerformed: result.finalState === 'SUCCEEDED' || Boolean(result.volumeId), ledger: new AuditLedger().pathFor(result.runId) };
+    }
+  },
+  'sangfor.hci_verify_volume': {
+    description: 'Read-only read-back verification of a volume against an expectation (PASS/FAIL/INDETERMINATE; INDETERMINATE never passes).',
+    inputSchema: { type: 'object', properties: { volumeId: { type: 'string' }, name: { type: 'string' }, sizeGb: { type: 'number' }, identityBaseUrl: { type: 'string' } }, required: ['name', 'sizeGb'] },
+    handler: async (args: { volumeId?: string; name: string; sizeGb: number; identityBaseUrl?: string }) => {
+      const { client } = hciClientFor(args as Record<string, unknown>);
+      return readBackVolume(client, { volumeId: args.volumeId, name: args.name, sizeGb: args.sizeGb });
+    }
+  },
+  'sangfor.hci_delete_volume': {
+    description: 'DESTRUCTIVE: delete a volume (the reverse op of create). Requires a SignedApproval bound to the exact volumeId. Always refused over the HTTP bridge.',
+    inputSchema: { type: 'object', properties: { volumeId: { type: 'string' }, approval: { type: 'object' }, identityBaseUrl: { type: 'string' } }, required: ['volumeId', 'approval'] },
+    handler: async (args: { volumeId: string; approval: unknown; identityBaseUrl?: string }) => {
+      const { client, cfg } = hciClientFor(args as Record<string, unknown>);
+      const gate = hciWriteGate('hci.delete-volume', `${cfg.host}:${args.volumeId}`, cfg.host, args.approval, 'volume_delete');
+      if (!gate.ok) return { ok: false, mutationPerformed: false, error: gate.error };
+      const before = await getVolume(client, args.volumeId);
+      if (!before) return { ok: false, mutationPerformed: false, error: `volume ${args.volumeId} not found` };
+      const res = await deleteVolume(client, args.volumeId);
+      const ledger = new AuditLedger();
+      const runId = nowId('hci_delete');
+      ledger.append(runId, 'request', { op: 'delete-volume', volumeId: args.volumeId, before });
+      ledger.append(runId, 'response', { status: res.status });
+      return { ok: res.status === 202, mutationPerformed: res.status === 202, status: res.status, runId };
+    }
   },
   'sangfor.discover_product_console': {
     description: 'Discover product console strategy, login/API likelihood, menu routes and product capabilities for HCI/SCP, IAG, Endpoint Secure or NDR.',
@@ -515,6 +626,7 @@ const DESTRUCTIVE_TOOLS = new Set([
   'sangfor.apply_wiki_update',
   'sangfor.apply_github_wiki_update',
   'sangfor.apply_obsidian_wiki_update',
+  'sangfor.hci_delete_volume',
 ]);
 
 // Tools that write local server/session/dataset/artifact state (not customer devices).
@@ -530,11 +642,13 @@ const WRITE_TOOLS = new Set([
   'sangfor.generate_evidence_report', 'sangfor.generate_excel_based_change_plan',
   'sangfor.generate_operations_guide_docx', 'sangfor.generate_operations_guide_pptx',
   'sangfor.generate_product_change_plan', 'sangfor.generate_setting_guide_docx', 'sangfor.generate_setting_guide_pptx',
+  'sangfor.hci_apply_create_volume',
 ]);
 
 function categoryOf(name: string): string {
   const n = name.replace(/^sangfor\./, '');
   if (DESTRUCTIVE_TOOLS.has(name)) return 'admin';
+  if (n.startsWith('hci_')) return 'hci';
   if (n.startsWith('pm_')) return 'pm';
   if (/wiki/.test(n)) return 'wiki';
   if (n.startsWith('generate_') || /report|guide|excel/.test(n)) return 'report';
@@ -552,6 +666,10 @@ function annotationsFor(name: string, description: string) {
     readOnlyHint: !write,
     destructiveHint: destructive,
   };
+}
+
+export function getToolHandler(name: string): ToolHandler | undefined {
+  return tools[name]?.handler;
 }
 
 export function listTools() {
@@ -613,6 +731,6 @@ function startStdioServer() {
 }
 
 // Guard: importing this module (e.g. from tests) must not start the stdio loop.
-if (process.env.MCP_NO_SERVE !== '1') {
+if (process.env.MCP_NO_SERVE !== '1' && process.env.VITEST === undefined) {
   startStdioServer();
 }

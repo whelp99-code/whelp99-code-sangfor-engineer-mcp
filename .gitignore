@@ -19,3 +19,6 @@ data/sources/local-bootstrap.log
 data/sources/learning-complete.json
 data/sources/*storage-state*.json
 .serena/
+
+# HCI change audit ledgers (runtime)
+data/evidence/change-runs/

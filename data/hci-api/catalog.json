@@ -1,0 +1,41 @@
+{
+  "source": {
+    "document": "API_HCI_SCP_open-api_Eng.Ver- Overview & user guide.docx",
+    "publisher": "Sangfor",
+    "year": 2020,
+    "location": "/Volumes/My Passport/00. Attached/5. HCI/",
+    "contractStatus": "doc_contract_unverified_on_real_device"
+  },
+  "auth": {
+    "type": "keystone_v2_password",
+    "endpoint": "POST {base}/openstack/identity/v2.0/tokens",
+    "requestShape": "auth.tenantName + auth.passwordCredentials{username,password}",
+    "tokenHeader": "X-Auth-Token",
+    "notes": [
+      "serviceCatalog in the token response is the endpoint directory",
+      "token has expires; refresh before expiry"
+    ]
+  },
+  "idempotency": {
+    "header": "X-Client-Token",
+    "rule": "same URL + same params + same X-Client-Token = same request; server returns the prior result without re-execution"
+  },
+  "services": {
+    "identity": { "base": "{acmp}/openstack/identity/v2.0", "readOnly": ["GET /tenants"] },
+    "volume": {
+      "base": "{acmp}/openstack/volume/v2/{project_id}",
+      "readOnly": ["GET /volumes", "GET /volumes/detail", "GET /volumes/{volume_id}"],
+      "write": ["POST /volumes (202)", "PUT /volumes/{volume_id}", "DELETE /volumes/{volume_id} (202)"],
+      "trap": "quota-exceeded extend returns 202 while the volume stays unchanged — 202 is NOT proof of effect; verify by GET read-back"
+    },
+    "compute": {
+      "base": "{acmp}/openstack/compute/v2",
+      "readOnly": ["GET /servers", "GET /servers/detail", "GET /servers/{id}", "GET /flavors", "GET /flavors/detail"]
+    },
+    "image": { "base": "{acmp}/openstack/image", "readOnly": ["GET /v2/images"] },
+    "scpJanus": {
+      "status": "capture_gated",
+      "note": "SCP uses /janus/v2/public-key + /janus/v2/login; DO NOT implement before the M4 real-device capture"
+    }
+  }
+}

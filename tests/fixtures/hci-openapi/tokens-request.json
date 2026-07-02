@@ -1,0 +1,6 @@
+{
+  "auth": {
+    "tenantName": "lab",
+    "passwordCredentials": { "username": "admin", "password": "REPLACE_AT_RUNTIME" }
+  }
+}

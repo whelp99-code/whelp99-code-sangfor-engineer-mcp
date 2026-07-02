@@ -17,6 +17,9 @@
       "@sangfor/shared": [
         "packages/shared/src/index.ts"
       ],
+      "@sangfor/hci-client": [
+        "packages/sangfor-hci-client/src/index.ts"
+      ],
       "@sangfor/knowledge": [
         "packages/sangfor-knowledge/src/index.ts"
       ],

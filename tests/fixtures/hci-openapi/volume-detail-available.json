@@ -1,0 +1,17 @@
+{
+  "volume": {
+    "status": "available",
+    "attachments": [],
+    "availability_zone": "mock-az",
+    "bootable": "false",
+    "encrypted": false,
+    "multiattach": false,
+    "volume_type": null,
+    "name": "volume_001",
+    "description": "create volume",
+    "snapshot_id": null,
+    "source_volid": null,
+    "id": "vol-0001",
+    "size": 10
+  }
+}

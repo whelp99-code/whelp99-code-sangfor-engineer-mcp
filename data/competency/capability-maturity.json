@@ -16,8 +16,14 @@
     {
       "product": "HCI_SCP",
       "capabilityId": "resource_inventory",
-      "maturity": "planned",
-      "evidence": "docs/PROPOSAL_FIELD_ENGINEER_AUTOMATION_v1.md"
+      "maturity": "implemented_local",
+      "evidence": "tests/hci-volumes.test.ts"
+    },
+    {
+      "product": "HCI_SCP",
+      "capabilityId": "volume_create",
+      "maturity": "tested_mock",
+      "evidence": "tests/hci-slice-e2e.test.ts"
     },
     {
       "product": "ENDPOINT_SECURE",
