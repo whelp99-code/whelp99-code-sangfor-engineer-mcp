@@ -203,6 +203,19 @@ export function assertRealExecutionAllowed(session: OperatorSession, action: Con
   }
 }
 
+// A dry-run may navigate/observe, but navigation must stay within the session's
+// own origin — a cross-origin navigate is refused even under dry-run (fail-closed),
+// so an errant target can never drive the browser off the intended console.
+export function assertNavigationWithinTarget(session: { targetUrl?: string }, action: { type: string; target?: string }): void {
+  if (action.type !== 'navigate' || !action.target) return;
+  if (!session.targetUrl) throw new Error('navigate requires a session targetUrl.');
+  const origin = new URL(session.targetUrl);
+  const target = new URL(action.target, origin);
+  if (target.origin !== origin.origin) {
+    throw new Error(`navigate blocked: ${target.origin} is outside the session origin ${origin.origin} (fail-closed).`);
+  }
+}
+
 // ─── Chrome Lifecycle ─────────────────────────────────────────────────────────
 
 async function ensureLivePage(session: OperatorSession): Promise<{ browser: any; page: any; context: any; connectedOverCdp: boolean }> {
@@ -413,6 +426,7 @@ export async function executeLiveConsoleAction(input: LiveConsoleActionInput): P
   const approval = requiresApprovalForAction(action);
 
   assertRealExecutionAllowed(session, action, input.approval);
+  assertNavigationWithinTarget(session, action);
 
   if (approval.required && action.dryRun === false && !input.approval) {
     session.status = 'waiting_approval';
