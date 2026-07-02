@@ -69,7 +69,9 @@ export function createOpenStackMock(port = 3400) {
       }
       const id = `mock-token-${String(++tokenSeq).padStart(4, '0')}`;
       tokens.set(id, { expiresAt: Date.now() + 60 * 60_000 });
-      const base = `http://127.0.0.1:${port}`;
+      // Build the serviceCatalog from the address the client actually reached us on
+      // (like a real OpenStack), so clients can trust the catalog URLs verbatim.
+      const base = `http://${req.headers.host ?? `127.0.0.1:${port}`}`;
       json(res, 200, {
         access: {
           token: {
