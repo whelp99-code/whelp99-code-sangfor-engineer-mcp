@@ -10,9 +10,10 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 //   - unforgeable    (cannot be produced without the secret)
 //   - constant-time verified (no timing oracle on the signature)
 //
-// Residual (documented, not hidden): the same (action, nonce, expiresAt) tuple
-// can be replayed within its expiry window. Single-use enforcement requires a
-// durable nonce store and is intentionally out of scope here; keep windows short.
+// Single-use enforcement lives in ./nonce-store (FileNonceStore) — a verified
+// nonce is consumed durably, so replay of the same (action, nonce, expiresAt)
+// tuple within its expiry window is rejected (closes redteam R1). Keep windows
+// short regardless, so the store stays small and expired entries GC quickly.
 
 export interface ApprovalActionRef {
   type: string;

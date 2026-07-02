@@ -3,6 +3,7 @@ import { dirname } from 'node:path';
 import { requiresApprovalForAction } from '@sangfor/approval';
 import { ConsoleAction, ConsoleActionResult, nowId, ProductCode } from '@sangfor/shared';
 import { verifyExecutionApproval } from './approval.js';
+import { consumeApprovalNonce } from './nonce-store.js';
 import {
   ensureChromeRunning,
   stopChrome,
@@ -193,6 +194,12 @@ export function assertRealExecutionAllowed(session: OperatorSession, action: Con
   });
   if (!verdict.ok) {
     throw new Error(`Live execution approval rejected: ${verdict.reason}.`);
+  }
+  // Single-use: a verified approval consumes its nonce; replay within the
+  // expiry window is rejected by the durable store (closes redteam R1).
+  const consumed = consumeApprovalNonce({ nonce: approval!.nonce, expiresAt: approval!.expiresAt });
+  if (!consumed.ok) {
+    throw new Error(`Live execution approval rejected: ${consumed.reason}.`);
   }
 }
 
@@ -532,3 +539,6 @@ export function killSession(sessionId: string): OperatorSession {
   }
   return session;
 }
+
+export { FileNonceStore, consumeApprovalNonce, defaultNonceStorePath } from './nonce-store.js';
+export type { NonceConsumeResult } from './nonce-store.js';
