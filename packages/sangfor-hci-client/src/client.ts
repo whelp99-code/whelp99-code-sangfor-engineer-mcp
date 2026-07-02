@@ -3,6 +3,13 @@ import type { TokenProvider } from './token-provider.js';
 
 export type HciServiceType = 'identity' | 'volume' | 'compute' | 'image';
 
+// The logical 'volume' service resolves to the real device's catalog type
+// 'volumev2' (cinderv2), verified against the live SCP on 2026-07-02.
+// 'volume' is kept as a fallback for older/other catalogs that use it verbatim.
+function catalogTypesFor(serviceType: HciServiceType): string[] {
+  return serviceType === 'volume' ? ['volumev2', 'volume'] : [serviceType];
+}
+
 export class HciClient {
   constructor(
     private readonly tokenProvider: TokenProvider,
@@ -11,7 +18,8 @@ export class HciClient {
 
   async endpointFor(serviceType: HciServiceType): Promise<string> {
     const token = await this.tokenProvider.getToken();
-    const entry = token.serviceCatalog.find((s) => s.type === serviceType);
+    const wanted = catalogTypesFor(serviceType);
+    const entry = token.serviceCatalog.find((s) => wanted.includes(s.type));
     if (!entry) throw new Error(`service '${serviceType}' not present in the Keystone serviceCatalog (fail-closed).`);
     return entry.publicURL.replace(/\/$/, '');
   }
@@ -23,7 +31,8 @@ export class HciClient {
   ): Promise<HttpJsonResult> {
     const doRequest = async (force: boolean): Promise<HttpJsonResult> => {
       const token = await this.tokenProvider.getToken(force);
-      const entry = token.serviceCatalog.find((s) => s.type === serviceType);
+      const wanted = catalogTypesFor(serviceType);
+      const entry = token.serviceCatalog.find((s) => wanted.includes(s.type));
       if (!entry) throw new Error(`service '${serviceType}' not present in the Keystone serviceCatalog (fail-closed).`);
       return httpJson(`${entry.publicURL.replace(/\/$/, '')}${path}`, {
         method: init.method ?? 'GET',
