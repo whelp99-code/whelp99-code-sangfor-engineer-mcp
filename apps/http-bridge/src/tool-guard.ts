@@ -38,6 +38,7 @@ export interface ToolAuthDecision {
  * Invariants (regression-pinned):
  *  - unknown/missing annotations  → refuse (fail-closed)
  *  - destructiveHint              → refuse ALWAYS, even with the whitelist off
+ *  - write tool on a remote bind  → refuse unless allowRemoteWrite is explicit (redteam R3)
  *  - non-read-only ("write") tool → refuse unless the whitelist is explicitly disabled
  *  - read-only tool               → allow
  */
@@ -45,14 +46,20 @@ export function authorizeToolCall(params: {
   name: string;
   toolListResult: unknown;
   enforceWhitelist: boolean;
+  remoteBind?: boolean;        // bridge is bound beyond loopback
+  allowRemoteWrite?: boolean;  // SANGFOR_ALLOW_REMOTE_WRITE === 'true'
 }): ToolAuthDecision {
-  const { name, toolListResult, enforceWhitelist } = params;
+  const { name, toolListResult, enforceWhitelist, remoteBind = false, allowRemoteWrite = false } = params;
   const annotations = findToolAnnotations(toolListResult, name);
   if (!annotations) {
     return { allow: false, status: 403, error: `Tool annotations unavailable; refusing call: ${name}` };
   }
   if (annotations.destructiveHint) {
     return { allow: false, status: 403, error: `Destructive tool refused by MCP annotations: ${name}` };
+  }
+  const isWrite = annotations.readOnlyHint !== true;
+  if (isWrite && remoteBind && !allowRemoteWrite) {
+    return { allow: false, status: 403, error: `Write tool refused on a remote (non-loopback) bind: ${name}. Set SANGFOR_ALLOW_REMOTE_WRITE=true only for an authorized deployment.` };
   }
   if (enforceWhitelist && !isToolAllowedByAnnotations(toolListResult, name)) {
     return { allow: false, status: 403, error: `Tool is not annotated read-only: ${name}` };

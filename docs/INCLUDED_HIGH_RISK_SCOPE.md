@@ -17,15 +17,16 @@ Real customer or production execution is never the default. A non-dry-run live a
 
 1. `SANGFOR_ALLOW_REAL_EXECUTION=true`
 2. For production mode: `SANGFOR_ALLOW_PRODUCTION_EXECUTION=true`
-3. `SANGFOR_OPERATOR_APPROVAL_TOKEN` set in runtime environment
-4. Tool call approval payload containing:
-   - `approvedBy`
-   - `approvalToken`
-   - `changeTicketId`
-   - `rollbackPlanId`
+3. `SANGFOR_OPERATOR_APPROVAL_SECRET` set in the runtime environment (server-side HMAC key; approvals are unforgeable without it — fail-closed)
+4. Tool call approval payload containing a **signed, action-bound, time-bound approval**:
+   - `approvedBy`, `changeTicketId`, `rollbackPlanId`
+   - `nonce` (single-use — replay is rejected by a durable store)
+   - `expiresAt` (ISO 8601; expired approvals are rejected)
+   - `approvalToken` = HMAC-SHA256 over (fields above + action type + action target)
 5. Before/after screenshot evidence
 6. A rollback plan reference
 7. A change ticket reference
+8. Over HTTP (http-bridge): destructive tools are always refused; write tools are refused on a non-loopback bind unless `SANGFOR_ALLOW_REMOTE_WRITE=true` (and a bearer token is mandatory on any non-loopback bind).
 
 ## Why this is included this way
 

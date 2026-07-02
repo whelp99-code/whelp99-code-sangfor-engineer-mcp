@@ -3,6 +3,7 @@ import { dirname } from 'node:path';
 import { requiresApprovalForAction } from '@sangfor/approval';
 import { ConsoleAction, ConsoleActionResult, nowId, ProductCode } from '@sangfor/shared';
 import { verifyExecutionApproval } from './approval.js';
+import { consumeApprovalNonce } from './nonce-store.js';
 import {
   ensureChromeRunning,
   stopChrome,
@@ -193,6 +194,25 @@ export function assertRealExecutionAllowed(session: OperatorSession, action: Con
   });
   if (!verdict.ok) {
     throw new Error(`Live execution approval rejected: ${verdict.reason}.`);
+  }
+  // Single-use: a verified approval consumes its nonce; replay within the
+  // expiry window is rejected by the durable store (closes redteam R1).
+  const consumed = consumeApprovalNonce({ nonce: approval!.nonce, expiresAt: approval!.expiresAt });
+  if (!consumed.ok) {
+    throw new Error(`Live execution approval rejected: ${consumed.reason}.`);
+  }
+}
+
+// A dry-run may navigate/observe, but navigation must stay within the session's
+// own origin — a cross-origin navigate is refused even under dry-run (fail-closed),
+// so an errant target can never drive the browser off the intended console.
+export function assertNavigationWithinTarget(session: { targetUrl?: string }, action: { type: string; target?: string }): void {
+  if (action.type !== 'navigate' || !action.target) return;
+  if (!session.targetUrl) throw new Error('navigate requires a session targetUrl.');
+  const origin = new URL(session.targetUrl);
+  const target = new URL(action.target, origin);
+  if (target.origin !== origin.origin) {
+    throw new Error(`navigate blocked: ${target.origin} is outside the session origin ${origin.origin} (fail-closed).`);
   }
 }
 
@@ -406,6 +426,7 @@ export async function executeLiveConsoleAction(input: LiveConsoleActionInput): P
   const approval = requiresApprovalForAction(action);
 
   assertRealExecutionAllowed(session, action, input.approval);
+  assertNavigationWithinTarget(session, action);
 
   if (approval.required && action.dryRun === false && !input.approval) {
     session.status = 'waiting_approval';
@@ -532,3 +553,6 @@ export function killSession(sessionId: string): OperatorSession {
   }
   return session;
 }
+
+export { FileNonceStore, consumeApprovalNonce, defaultNonceStorePath } from './nonce-store.js';
+export type { NonceConsumeResult } from './nonce-store.js';

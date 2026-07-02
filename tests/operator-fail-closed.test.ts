@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
+  assertNavigationWithinTarget,
   clickUniqueTextTarget,
   selectUniqueTarget,
   typeUniqueInputTarget,
@@ -137,5 +138,21 @@ describe('live operator fail-closed locators', () => {
     await selectUniqueTarget(page, '#action', 'block');
 
     expect(page.selects[0].selected).toBe('block');
+  });
+});
+
+describe('navigate origin guard', () => {
+  it('allows same-origin and relative navigation', () => {
+    const s = { targetUrl: 'https://10.80.1.9/console' };
+    expect(() => assertNavigationWithinTarget(s, { type: 'navigate', target: 'https://10.80.1.9/vols' })).not.toThrow();
+    expect(() => assertNavigationWithinTarget(s, { type: 'navigate', target: '/vols' })).not.toThrow();
+    expect(() => assertNavigationWithinTarget(s, { type: 'click', target: 'Save' })).not.toThrow();
+  });
+  it('blocks cross-origin navigation even in dry-run', () => {
+    const s = { targetUrl: 'https://10.80.1.9/console' };
+    expect(() => assertNavigationWithinTarget(s, { type: 'navigate', target: 'https://evil.example/x' })).toThrow(/outside the session origin/);
+  });
+  it('blocks navigate without a session targetUrl', () => {
+    expect(() => assertNavigationWithinTarget({}, { type: 'navigate', target: 'https://10.80.1.9/' })).toThrow(/targetUrl/);
   });
 });

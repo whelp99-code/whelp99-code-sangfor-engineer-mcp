@@ -13,7 +13,7 @@ import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { resolveBindHost, checkAuth, assertBindSafety } from "../../../packages/shared/src/index.js";
+import { resolveBindHost, checkAuth, assertBindSafety, isLoopback } from "../../../packages/shared/src/index.js";
 import { authorizeToolCall } from "./tool-guard.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -24,6 +24,8 @@ const PORT = Number(process.env.PORT ?? process.env.WHELP99_HTTP_BRIDGE_PORT ?? 
 const BIND_HOST = resolveBindHost();
 const API_TOKEN = process.env.SANGFOR_API_TOKEN;
 assertBindSafety(BIND_HOST, API_TOKEN); // fail closed: no public bind without a token
+const REMOTE_BIND = !isLoopback(BIND_HOST);
+const ALLOW_REMOTE_WRITE = process.env.SANGFOR_ALLOW_REMOTE_WRITE === "true";
 
 type JsonRpcResponse = {
   jsonrpc: string;
@@ -170,6 +172,8 @@ const server = http.createServer(async (req, res) => {
         name,
         toolListResult: list.error ? null : list.result,
         enforceWhitelist,
+        remoteBind: REMOTE_BIND,
+        allowRemoteWrite: ALLOW_REMOTE_WRITE,
       });
       if (!decision.allow) {
         return json(res, { error: decision.error }, decision.status ?? 403);
