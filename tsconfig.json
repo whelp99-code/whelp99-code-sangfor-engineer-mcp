@@ -20,6 +20,9 @@
       "@sangfor/hci-client": [
         "packages/sangfor-hci-client/src/index.ts"
       ],
+      "@sangfor/config-state": [
+        "packages/sangfor-config-state/src/index.ts"
+      ],
       "@sangfor/knowledge": [
         "packages/sangfor-knowledge/src/index.ts"
       ],
