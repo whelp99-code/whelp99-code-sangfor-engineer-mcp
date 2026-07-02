@@ -4,6 +4,11 @@
 > 전제: HCI(aCMP) 어플라이언스 **존재 확인됨**(사용자 WebUI 자격증명 보유, 2026-07-02). OpenAPI 활성화·인증은 AI가 처리(사용자 지시).
 > 원칙: 전 과정 [[Global Constraints]] 준수 — read-back oracle 전용, fail-closed, 시크릿 미커밋, 승격은 evidence 링크와 함께만.
 
+## STATUS 2026-07-02 (VPN 연결 후 실행됨)
+- **접속 확정:** OpenAPI 호스트 = **SCP 10.80.1.104:4430** (HCI .105 아님). admin / Itac123!@#.
+- **Step 1-3 완료:** 인증 계약 **VERIFIED**(Keystone v2 passwordCredentials, provider 계약 일치) → read-only smoke 통과(compute 28 VM, image 0). 코드 수정 반영(volumev2 타입 해석, inventory 관대). 증적: `outputs/diagnosis/HCI_SCP_real_device_smoke_2026-07-02.md`, 재현: `scripts/hci-real-smoke.ts`.
+- **Step 4-5 차단:** volume 서비스 **503(cinder 미배포)** → create-volume 실장비 write 불가. + write 가능한 compute는 실 프로덕션 VM 대상이라 **write 미수행**. `volume_create`=tested_mock 유지(field_verified 아님). **volume 서비스가 배포된 SCP 확보 시 Step 4-5 재개.**
+
 ## 시작 전 사용자에게 필요한 것 (블로커)
 
 1. **FortiClient VPN 연결** — 사용자가 직접 Connect(비번 입력). 연결 후 AI가 `utun` 인터페이스 + HCI IP 도달성으로 검증.
