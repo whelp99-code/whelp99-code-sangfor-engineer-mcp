@@ -19,10 +19,17 @@ const humanObserved: Record<string, unknown> = {
   agentAutoUpdateEnabled: h(true),          // 5 = on
   deviceControlConfigured: h(false),        // 8 = none
   exclusionListManaged: h(false),           // 9 = none
-  // 6 quarantineConfigured, 7 edrBehaviorMonitoringEnabled = UNKNOWN → omitted → INDETERMINATE
 };
 
-const observed = { ...captured, ...humanObserved };
+// 6, 7: read directly from the EPP WebUI (safe-nav, no button clicks) on 2026-07-03.
+const uisrc = { collector: 'dom-scrape', collectedAt: DATE, endpoint: 'EPP General Policies > Realtime Protection / Anti-Malware (UI read)' };
+const u = (value: unknown) => ({ value, source: uisrc });
+const uiObserved: Record<string, unknown> = {
+  quarantineConfigured: u(true),            // 6: Anti-Malware Auto-Fix quarantines malicious files (restore-from-Quarantine available)
+  edrBehaviorMonitoringEnabled: u(true),    // 7: Realtime File Protection enabled (+ realtime WebShell/hacktool behavioral detection)
+};
+
+const observed = { ...captured, ...humanObserved, ...uiObserved };
 mkdirSync('outputs/diagnosis', { recursive: true });
 writeFileSync(`outputs/diagnosis/EPP_6.0.4_configstate_${DATE}.json`, JSON.stringify({ product: 'EPP', version: '6.0.4', collectedFrom: '10.80.1.106 (CDP read-only XHR + engineer-observed policy values)', observed }, null, 2));
 
@@ -30,7 +37,7 @@ const spec = loadSpec('EPP', '6.0.4')!;
 const result = evaluateSpec(spec, observed);
 const report = renderAdvisoryReport(spec, result)
   + `\n\n> 수집: 10.80.1.106 EPP 6.0.4 (${DATE}). Read-only. 캡처=CDP XHR(patch/vuln/domain/asset), 정책값=담당 엔지니어 콘솔 육안(baseline=0규칙, 멀웨어스케줄=on, DAR=off, 격리정책=구성, 자동업데이트=on, 디바이스컨트롤=없음, 예외목록=없음).`
-  + `\n> quarantine/EDR 항목은 미확인→판정불가(추정 안 함).\n`;
+  + `\n> quarantine=구성(격리 자동조치)·EDR 행위모니터링=on(실시간 파일보호)은 safe-nav로 WebUI 직접 확인(버튼 클릭 없음).\n`;
 writeFileSync(`outputs/diagnosis/EPP_6.0.4_live_diagnosis_${DATE}.md`, report);
 console.log('summary:', JSON.stringify(result.summary), 'ok:', result.ok);
 console.log('observed keys:', Object.keys(observed).join(','));

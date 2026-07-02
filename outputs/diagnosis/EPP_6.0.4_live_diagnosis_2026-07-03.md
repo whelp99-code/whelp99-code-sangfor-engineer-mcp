@@ -3,7 +3,7 @@
 > ⚠️ **면책**: 본 리포트는 AI가 수집된 제품 매뉴얼을 근거로 생성한 **참고용 자문**입니다. 최종 판단과 적용은 담당 엔지니어의 책임입니다. AI는 어떤 장비 설정도 변경하지 않았습니다(read-only).
 
 - 대상 제품/버전: **ENDPOINT_SECURE 6.0.4**
-- 요약: 잘못됨 1 · 추가 필요 1 · 환경 의존 2 · 판정 불가 3 · 정상 7
+- 요약: 잘못됨 1 · 추가 필요 1 · 환경 의존 2 · 판정 불가 1 · 정상 9
 - 종합 판정(ok): **조치 필요**
 
 ## 잘못된 설정 (misconfiguration) (1)
@@ -32,29 +32,23 @@
   - 근거: Sangfor Endpoint Secure 6.0.4 User Manual — Policy / Exclusions 
   - 관측(수집기 주장, 미검증): EPP console General Policies (human read) @ 2026-07-03 [engineer-observed ⚠ 미확인 수집기]
 
-## 판정 불가 (indeterminate — 설정값 미확인/근거 부족) (3)
+## 판정 불가 (indeterminate — 설정값 미확인/근거 부족) (1)
 
 - **취약점 정의 DB에 미적용 업데이트 없음** (기대: false, 실제: 확인 불가) 
   - 근거: Athena EPP 6.0.4 User Manual — Vulnerabilities / Version
   - 출처: support.sangfor.com EPP 6.0.4 User Manual
 
-- **격리(quarantine) 정책 구성됨** (기대: true, 실제: 확인 불가) 
-  - 근거: Sangfor Endpoint Secure 6.0.4 User Manual — Response / Quarantine
-
-- **EDR 행위 모니터링 활성** (기대: true, 실제: 확인 불가) 
-  - 근거: Sangfor Endpoint Secure 6.0.4 User Manual — Defense / EDR Behavior Monitoring
-
-## 정상 (ok) (7)
+## 정상 (ok) (9)
 
 - **취약점/패치 DB가 최신 상태 (Vulnerability patch DB is up to date)** (기대: true, 실제: true) 
   - 근거: Athena EPP 6.0.4 User Manual — Vulnerabilities / Patch Management
   - 출처: support.sangfor.com EPP 6.0.4 User Manual 
-  - 관측(수집기 주장, 미검증): POST /api/edrgoweb/v1/patch/statistics @ 2026-07-02T17:12:44.521Z [live-xhr]
+  - 관측(수집기 주장, 미검증): POST /api/edrgoweb/v1/patch/statistics @ 2026-07-02T17:21:04.103Z [live-xhr]
 
 - **미조치 취약점 수가 0 (권장)** (기대: 0, 실제: 0) 
   - 근거: Athena EPP 6.0.4 User Manual — Vulnerabilities / Vuln List
   - 출처: support.sangfor.com EPP 6.0.4 User Manual 
-  - 관측(수집기 주장, 미검증): POST /api/edrgoweb/v1/vulner/list/homepageVulner @ 2026-07-02T17:12:44.521Z [live-xhr]
+  - 관측(수집기 주장, 미검증): POST /api/edrgoweb/v1/vulner/list/homepageVulner @ 2026-07-02T17:21:04.103Z [live-xhr]
 
 - **정기 멀웨어 검사 스케줄이 활성화됨** (기대: true, 실제: true) 
   - 근거: Athena EPP 6.0.4 User Manual — Defense / Malware Scan
@@ -69,19 +63,27 @@
   - 근거: Sangfor Endpoint Secure 6.0.4 User Manual — Update / Agent Update Policy 
   - 관측(수집기 주장, 미검증): EPP console General Policies (human read) @ 2026-07-03 [engineer-observed ⚠ 미확인 수집기]
 
+- **격리(quarantine) 정책 구성됨** (기대: true, 실제: true) 
+  - 근거: Sangfor Endpoint Secure 6.0.4 User Manual — Response / Quarantine 
+  - 관측(수집기 주장, 미검증): EPP General Policies > Realtime Protection / Anti-Malware (UI read) @ 2026-07-03 [dom-scrape]
+
+- **EDR 행위 모니터링 활성** (기대: true, 실제: true) 
+  - 근거: Sangfor Endpoint Secure 6.0.4 User Manual — Defense / EDR Behavior Monitoring 
+  - 관측(수집기 주장, 미검증): EPP General Policies > Realtime Protection / Anti-Malware (UI read) @ 2026-07-03 [dom-scrape]
+
 - **악성 도메인 탐지 활성 (malicious domain detection active)** (기대: true, 실제: true) 
   - 근거: Athena EPP 6.0.4 User Manual — Detection and Response / Malicious Domain Detection
   - 출처: support.sangfor.com EPP 6.0.4 User Manual 
-  - 관측(수집기 주장, 미검증): POST /api/edrgoweb/v1/domain_detect/get_domain_info @ 2026-07-02T17:12:44.521Z [live-xhr]
+  - 관측(수집기 주장, 미검증): POST /api/edrgoweb/v1/domain_detect/get_domain_info @ 2026-07-02T17:21:04.103Z [live-xhr]
 
 - **자산 인벤토리 분류 구성됨 (asset inventory classified)** (기대: 1, 실제: 5) 
   - 근거: Athena EPP 6.0.4 User Manual — Endpoint Inventory / Asset Classification
   - 출처: support.sangfor.com EPP 6.0.4 User Manual 
-  - 관측(수집기 주장, 미검증): POST /api/edrgoweb/v1/asset/inventory/classify @ 2026-07-02T17:12:44.521Z [live-xhr]
+  - 관측(수집기 주장, 미검증): POST /api/edrgoweb/v1/asset/inventory/classify @ 2026-07-02T17:21:04.103Z [live-xhr]
 
 ## 커버리지 (감사 범위)
 
-- 스펙 항목 14개 중 관측값 미확인 3개 (vuln_defs_current, quarantine_policy_present, edr_behavior_monitoring_enabled)
+- 스펙 항목 14개 중 관측값 미확인 1개 (vuln_defs_current)
 - 스펙 외 관측 키 1개 (감사 대상: maliciousDomainBlockCount)
 
 ---
@@ -94,4 +96,4 @@
 
 
 > 수집: 10.80.1.106 EPP 6.0.4 (2026-07-03). Read-only. 캡처=CDP XHR(patch/vuln/domain/asset), 정책값=담당 엔지니어 콘솔 육안(baseline=0규칙, 멀웨어스케줄=on, DAR=off, 격리정책=구성, 자동업데이트=on, 디바이스컨트롤=없음, 예외목록=없음).
-> quarantine/EDR 항목은 미확인→판정불가(추정 안 함).
+> quarantine=구성(격리 자동조치)·EDR 행위모니터링=on(실시간 파일보호)은 safe-nav로 WebUI 직접 확인(버튼 클릭 없음).

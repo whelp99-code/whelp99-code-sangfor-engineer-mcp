@@ -7,7 +7,7 @@
       "value": true,
       "source": {
         "endpoint": "POST /api/edrgoweb/v1/patch/statistics",
-        "collectedAt": "2026-07-02T17:12:44.521Z",
+        "collectedAt": "2026-07-02T17:21:04.103Z",
         "collector": "live-xhr"
       }
     },
@@ -15,7 +15,7 @@
       "value": 0,
       "source": {
         "endpoint": "POST /api/edrgoweb/v1/vulner/list/homepageVulner",
-        "collectedAt": "2026-07-02T17:12:44.521Z",
+        "collectedAt": "2026-07-02T17:21:04.103Z",
         "collector": "live-xhr"
       }
     },
@@ -23,7 +23,7 @@
       "value": 35,
       "source": {
         "endpoint": "POST /api/edrgoweb/v1/domain_detect/get_domain_info",
-        "collectedAt": "2026-07-02T17:12:44.521Z",
+        "collectedAt": "2026-07-02T17:21:04.103Z",
         "collector": "live-xhr"
       }
     },
@@ -31,7 +31,7 @@
       "value": true,
       "source": {
         "endpoint": "POST /api/edrgoweb/v1/domain_detect/get_domain_info",
-        "collectedAt": "2026-07-02T17:12:44.521Z",
+        "collectedAt": "2026-07-02T17:21:04.103Z",
         "collector": "live-xhr"
       }
     },
@@ -39,7 +39,7 @@
       "value": 5,
       "source": {
         "endpoint": "POST /api/edrgoweb/v1/asset/inventory/classify",
-        "collectedAt": "2026-07-02T17:12:44.521Z",
+        "collectedAt": "2026-07-02T17:21:04.103Z",
         "collector": "live-xhr"
       }
     },
@@ -97,6 +97,22 @@
         "collector": "engineer-observed",
         "collectedAt": "2026-07-03",
         "endpoint": "EPP console General Policies (human read)"
+      }
+    },
+    "quarantineConfigured": {
+      "value": true,
+      "source": {
+        "collector": "dom-scrape",
+        "collectedAt": "2026-07-03",
+        "endpoint": "EPP General Policies > Realtime Protection / Anti-Malware (UI read)"
+      }
+    },
+    "edrBehaviorMonitoringEnabled": {
+      "value": true,
+      "source": {
+        "collector": "dom-scrape",
+        "collectedAt": "2026-07-03",
+        "endpoint": "EPP General Policies > Realtime Protection / Anti-Malware (UI read)"
       }
     }
   }
