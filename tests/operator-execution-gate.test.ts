@@ -1,4 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 import {
   assertRealExecutionAllowed,
   type OperatorSession,
@@ -30,13 +33,19 @@ function validApproval(action: ConsoleAction): LiveExecutionApproval {
 
 describe('assertRealExecutionAllowed — live-execution gate failure branches', () => {
   const saved = { ...process.env };
+  let nonceDir: string;
   beforeEach(() => {
     delete process.env.SANGFOR_ALLOW_REAL_EXECUTION;
     delete process.env.SANGFOR_ALLOW_PRODUCTION_EXECUTION;
     delete process.env.SANGFOR_OPERATOR_APPROVAL_SECRET;
+    // Isolate the durable single-use nonce store so a fixed test nonce cannot
+    // collide across runs (the store persists to data/runtime otherwise).
+    nonceDir = mkdtempSync(join(tmpdir(), 'gate-nonce-'));
+    process.env.SANGFOR_NONCE_STORE_PATH = join(nonceDir, 'nonces.json');
   });
   afterEach(() => {
     process.env = { ...saved };
+    rmSync(nonceDir, { recursive: true, force: true });
   });
 
   it('is a no-op for dry-run actions (default safe path)', () => {
