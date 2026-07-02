@@ -9,6 +9,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { chromium, type Page } from 'playwright';
 import { ensureChromeRunning } from '../packages/sangfor-chrome/src/index.js';
+import { isSafeNavLabel } from '../packages/sangfor-collector/src/safe-nav.js';
 
 const PRODUCT = (process.env.PRODUCT ?? 'EPP').toUpperCase();
 const CFG: Record<string, any> = {
@@ -44,9 +45,9 @@ async function main() {
   console.error(`[${PRODUCT}] goto ${c.url}`);
   await page.goto(c.url, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
   await sl(5000);
-  await page.locator(c.userSel).first().fill(c.user).catch(() => {});
-  await page.locator(c.passSel).first().fill(c.pass).catch(() => {});
-  await sl(400);
+
+  // capture captcha FIRST (before filling fields, to avoid triggering a reload)
+  let captchaCode = '';
   const captcha = page.locator(c.captchaSel).first();
   if (await captcha.isVisible({ timeout: 3000 }).catch(() => false)) {
     const box = await captcha.boundingBox();
@@ -55,9 +56,16 @@ async function main() {
       console.error(`[${PRODUCT}] CAPTCHA_READY: ${CAPTCHA_PNG} — waiting for ${CODE_FILE}`);
       const deadline = Date.now() + 180000; let code = '';
       while (Date.now() < deadline) { if (existsSync(CODE_FILE)) { code = readFileSync(CODE_FILE, 'utf8').trim(); if (code) break; } await sl(2000); }
-      for (const s of ['input[name="captcha"]', 'input[name="verify_code"]', 'input[name="code"]', 'input[placeholder*="code" i]']) {
-        const el = page.locator(s).first(); if (await el.count().catch(() => 0)) { await el.fill(code).catch(() => {}); break; }
-      }
+      captchaCode = code;
+    }
+  }
+
+  // fill user, password, captcha together AFTER capturing captcha
+  await page.locator(c.userSel).first().fill(c.user).catch(() => {});
+  await page.locator(c.passSel).first().fill(c.pass).catch(() => {});
+  if (captchaCode) {
+    for (const s of ['input[name="captcha"]', 'input[name="verify_code"]', 'input[name="code"]', 'input[placeholder*="code" i]']) {
+      const el = page.locator(s).first(); if (await el.count().catch(() => 0)) { await el.fill(captchaCode).catch(() => {}); break; }
     }
   }
   for (const s of ['button:has-text("Log In")', 'button:has-text("Login")', 'input#button', 'button[type="submit"]', 'input[type="submit"]']) {
@@ -69,20 +77,29 @@ async function main() {
   if (!loggedIn) { console.error(`[${PRODUCT}] LOGIN_FAIL`); await browser.close(); return; }
   await page.screenshot({ path: `${DIR}/${PRODUCT}_home.png` }).catch(() => {});
 
-  // ── traverse: dump short-text labels, click each via getByText (robust) ──
+  // ── traverse: collect li.ix-menu-item labels, click only safe ones ──
   const dumpLabels = async (): Promise<string[]> => page.evaluate(() => {
-    const els = [...document.querySelectorAll('a,li,span,div,button')] as HTMLElement[];
-    return [...new Set(els.map((e) => (e.innerText || e.textContent || '').trim().split('\n')[0])
+    const els = [...document.querySelectorAll('li.ix-menu-item')] as HTMLElement[];
+    const visible = els.filter((e) => e.offsetParent !== null);
+    return [...new Set(visible.map((e) => (e.innerText || e.textContent || '').trim().split('\n')[0])
       .filter((t) => t && t.length > 1 && t.length < 28 && !/^\d+$/.test(t)))];
   });
-  await page.reload({ waitUntil: 'networkidle', timeout: 30000 }).catch(() => {});
+  await page.goto(page.url(), { waitUntil: 'domcontentloaded' }).catch(() => {});
   await sl(6000);
   const seen = new Set<string>();
   for (let pass = 0; pass < 3; pass++) {
     const labels = await dumpLabels();
     for (const label of labels) {
       if (seen.has(label)) continue; seen.add(label);
-      try { const loc = page.getByText(label, { exact: true }).first(); if (await loc.count()) { await loc.click({ timeout: 1800 }).catch(() => {}); await sl(1500); } } catch {}
+      if (!isSafeNavLabel(label)) { console.error(`[${PRODUCT}] SKIP unsafe label: "${label}"`); continue; }
+      try {
+        await page.evaluate((text) => {
+          const els = [...document.querySelectorAll('li.ix-menu-item')] as HTMLElement[];
+          const el = els.find((e) => (e.innerText || e.textContent || '').trim().split('\n')[0] === text);
+          if (el) (el as HTMLElement).click();
+        }, label);
+        await sl(1500);
+      } catch {}
     }
     console.error(`[${PRODUCT}] pass ${pass}: ${seen.size} labels visited, pool=${Object.keys(pool).length} apis`);
   }

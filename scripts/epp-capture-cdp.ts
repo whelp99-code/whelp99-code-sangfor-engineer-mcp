@@ -56,15 +56,18 @@ async function main() {
   if (!loggedIn) { console.error('LOGIN_FAIL'); await browser.close(); process.exit(1); }
   await sl(5000);
 
-  // ── route-based navigation: click each router-link (no networkidle) ──
-  const routes: string[] = await page.evaluate(() => {
-    const set = new Set<string>();
-    document.querySelectorAll('a[href^="#/"]').forEach((a) => set.add((a as HTMLAnchorElement).getAttribute('href') || ''));
-    return [...set].filter(Boolean);
-  });
-  console.error(`routes(${routes.length}): ${JSON.stringify(routes)}`);
-  for (const r of routes) {
-    try { await page.locator(`a[href="${r}"]`).first().click({ timeout: 3000 }); await sl(2800); } catch {}
+  // ── menu traversal: click every li.ix-menu-item (EPP's Vue menu component).
+  // Multi-pass so newly-expanded submenu leaves get visited too. No networkidle
+  // (an SPA never idles), no getByText/href (this menu is neither). ──
+  const clicked = new Set<string>();
+  for (let pass = 0; pass < 5; pass++) {
+    const texts: string[] = await page.evaluate(() => [...document.querySelectorAll('li.ix-menu-item')].filter((e) => (e as HTMLElement).offsetParent).map((e) => ((e as HTMLElement).innerText || '').trim().split('\n')[0]).filter(Boolean));
+    for (const t of texts) {
+      if (clicked.has(t)) continue; clicked.add(t);
+      await page.evaluate((txt) => { const el = [...document.querySelectorAll('li.ix-menu-item')].find((e) => (e as HTMLElement).offsetParent && ((e as HTMLElement).innerText || '').trim().split('\n')[0] === txt) as HTMLElement | undefined; if (el) el.click(); }, t).catch(() => {});
+      await sl(2800);
+    }
+    console.error(`pass ${pass}: ${clicked.size} items visited, pool ${Object.keys(pool).length}`);
   }
 
   writeFileSync(OUT, JSON.stringify(pool, null, 2));
