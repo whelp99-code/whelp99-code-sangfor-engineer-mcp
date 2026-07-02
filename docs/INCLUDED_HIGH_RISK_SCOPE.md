@@ -26,6 +26,7 @@ Real customer or production execution is never the default. A non-dry-run live a
 5. Before/after screenshot evidence
 6. A rollback plan reference
 7. A change ticket reference
+8. Over HTTP (http-bridge): destructive tools are always refused; write tools are refused on a non-loopback bind unless `SANGFOR_ALLOW_REMOTE_WRITE=true` (and a bearer token is mandatory on any non-loopback bind).
 
 ## Why this is included this way
 

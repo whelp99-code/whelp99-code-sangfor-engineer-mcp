@@ -40,3 +40,32 @@ describe('authorizeToolCall — http-bridge runtime authorization', () => {
     expect(d.error).toMatch(/annotations unavailable/i);
   });
 });
+
+describe('authorizeToolCall — remote write policy (R3)', () => {
+  it('refuses a write tool on a remote bind even with the whitelist disabled', () => {
+    const d = authorizeToolCall({ name: 'write', toolListResult: toolList, enforceWhitelist: false, remoteBind: true, allowRemoteWrite: false });
+    expect(d.allow).toBe(false);
+    expect(d.status).toBe(403);
+    expect(d.error).toMatch(/remote/i);
+  });
+
+  it('allows a write tool on a remote bind only with explicit allowRemoteWrite', () => {
+    const d = authorizeToolCall({ name: 'write', toolListResult: toolList, enforceWhitelist: false, remoteBind: true, allowRemoteWrite: true });
+    expect(d.allow).toBe(true);
+  });
+
+  it('still refuses destructive tools remotely regardless of every toggle', () => {
+    const d = authorizeToolCall({ name: 'destructive', toolListResult: toolList, enforceWhitelist: false, remoteBind: true, allowRemoteWrite: true });
+    expect(d.allow).toBe(false);
+  });
+
+  it('read-only tools are unaffected by a remote bind', () => {
+    const d = authorizeToolCall({ name: 'ro', toolListResult: toolList, enforceWhitelist: true, remoteBind: true, allowRemoteWrite: false });
+    expect(d.allow).toBe(true);
+  });
+
+  it('loopback bind keeps the prior behavior (write allowed when whitelist off)', () => {
+    const d = authorizeToolCall({ name: 'write', toolListResult: toolList, enforceWhitelist: false, remoteBind: false, allowRemoteWrite: false });
+    expect(d.allow).toBe(true);
+  });
+});
