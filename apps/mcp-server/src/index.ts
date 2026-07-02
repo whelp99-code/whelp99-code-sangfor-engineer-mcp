@@ -1,5 +1,5 @@
 import readline from 'node:readline';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { analyzeProject, generateConfigPlan, generateConfigPlanAsync, validateConfigPlan } from '../../../packages/sangfor-planner/src/index.js';
 import { searchManuals, getManualSection } from '../../../packages/sangfor-knowledge/src/index.js';
@@ -42,7 +42,8 @@ import { recommendSizing, type SizingInput } from '../../../packages/sangfor-siz
 import { createPmStore } from '../../../packages/sangfor-pm/src/index.js';
 import { checkVersionRequirement, loadVersionRequirements } from '../../../packages/sangfor-version/src/index.js';
 import { generateIntegrationGuide, listIntegrationTypes } from '../../../packages/sangfor-integration/src/index.js';
-import { resolveRepoData, isLoopback, nowId } from '../../../packages/shared/src/index.js';
+import { resolveRepoData, isLoopback, nowId, normalizeProduct } from '../../../packages/shared/src/index.js';
+import { mapEppPoolToConfigState } from '../../../packages/sangfor-config-state/src/index.js';
 import { randomBytes } from 'node:crypto';
 import {
   HciClient, KeystoneV2TokenProvider, HCI_AUTH_CONTRACT_STATUS,
@@ -527,6 +528,22 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
     description: 'List which product/version IntendedSpecs exist (advisory coverage) so callers know what config checks are available.',
     inputSchema: { type: 'object', properties: {} },
     handler: () => ({ coverage: listSpecCoverage() })
+  },
+  'sangfor.collect_device_config': {
+    description: 'Advisory: map a captured device XHR pool file (from scripts/device-collect.ts) into a provenance-carrying ConfigState, evaluate it against the IntendedSpec, and render the Korean advisory report. Read-only; live capture is NOT performed here (VPN + interactive session required — see docs/DEVICE_DIAGNOSIS_RUNBOOK.md).',
+    inputSchema: { type: 'object', properties: { product: { type: 'string' }, version: { type: 'string' }, poolPath: { type: 'string' }, docxPath: { type: 'string' }, live: { type: 'boolean' } }, required: ['product', 'version', 'poolPath'] },
+    handler: (args: { product: string; version: string; poolPath: string; docxPath?: string; live?: boolean }) => {
+      if (args.live) return { error: 'live capture is not available from this tool: it needs VPN + an interactive browser session. Run scripts/device-collect.ts per docs/DEVICE_DIAGNOSIS_RUNBOOK.md, then pass the pool file here.' };
+      if (normalizeProduct(args.product) !== 'ENDPOINT_SECURE') return { error: `no pool mapper for ${args.product} yet (EPP only). CC/IAG mappers land with the M3 campaign — fabricating one without captured data is forbidden.` };
+      const pool = JSON.parse(readFileSync(args.poolPath, 'utf8'));
+      const mapped = mapEppPoolToConfigState(pool);
+      const spec = loadSpec('EPP', args.version);
+      if (!spec) return { error: `no IntendedSpec for EPP ${args.version}. Coverage: ${JSON.stringify(listSpecCoverage())}` };
+      const result = evaluateSpec(spec, mapped.observed);
+      const report = renderAdvisoryReport(spec, result);
+      const docx = args.docxPath ? renderAdvisoryReportDocx(spec, result, args.docxPath) : undefined;
+      return { mapped: { endpointsCaptured: mapped.endpointsCaptured, mappedKeys: mapped.mappedKeys }, result, report, ...(docx ? { docx } : {}) };
+    }
   },
   'sangfor.capability_safety': {
     description: 'Report capability safety_class and maturity from physically separated safety/competency files. Default is human_only; autoAllowed is true only for explicit auto_allowed entries, and fieldVerifiedAutoAllowed additionally requires maturity=field_verified.',

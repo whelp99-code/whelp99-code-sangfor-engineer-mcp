@@ -66,6 +66,8 @@ importers:
 
   packages/sangfor-competency: {}
 
+  packages/sangfor-config-state: {}
+
   packages/sangfor-evals: {}
 
   packages/sangfor-evidence:

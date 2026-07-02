@@ -18,7 +18,7 @@ import { resolveRepoData } from '../../shared/src/index.js';
 export type CompareOp = 'eq' | 'neq' | 'gte' | 'lte' | 'includes' | 'oneOf' | 'exists';
 export type Severity = 'must' | 'recommended';
 export type Verdict = 'PASS' | 'FAIL' | 'INDETERMINATE';
-export type Category = 'ok' | 'misconfiguration' | 'missing' | 'indeterminate';
+export type Category = 'ok' | 'misconfiguration' | 'missing' | 'indeterminate' | 'context_dependent';
 
 export interface Citation {
   manual: string;
@@ -36,6 +36,10 @@ export interface SpecItem {
   severity: Severity;
   source?: Citation;
   needsSeniorReview?: boolean;
+  /** A deviating value may be an intended choice given the customer environment
+   *  (size, segmentation, compliance, business apps). Such a FAIL is classified
+   *  'context_dependent' — never asserted as a misconfiguration — pending human review. */
+  contextDependent?: boolean;
 }
 
 export interface IntendedSpec {
@@ -82,6 +86,7 @@ export interface EvaluationSummary {
   indeterminate: number;
   misconfiguration: number;
   missing: number;
+  contextDependent: number;
 }
 
 export interface EvaluationResult {
@@ -209,7 +214,11 @@ export function evaluateSpec(spec: IntendedSpec, observed: Record<string, unknow
       }
       return withSrc({ ...base, verdict: 'PASS' as Verdict, category: 'ok' as Category, observed: value, reason: 'matches expected' });
     }
-    const category: Category = item.severity === 'must' ? 'misconfiguration' : 'missing';
+    // A deviating value that is environment-dependent is NOT a misconfiguration:
+    // classify it separately so it never inflates the misconfig/missing counts.
+    const category: Category = item.contextDependent
+      ? 'context_dependent'
+      : item.severity === 'must' ? 'misconfiguration' : 'missing';
     const seniorNote = item.needsSeniorReview ? ' — 시니어 검토 필요(senior review)' : '';
     return withSrc({ ...base, verdict: 'FAIL' as Verdict, category, observed: value,
       reason: `expected ${item.op} ${JSON.stringify(item.expected)}, observed ${JSON.stringify(value)}${seniorNote}` });
@@ -280,11 +289,12 @@ export function renderAdvisoryReport(spec: IntendedSpec, result: EvaluationResul
     `> ⚠️ **면책**: 본 리포트는 AI가 수집된 제품 매뉴얼을 근거로 생성한 **참고용 자문**입니다. 최종 판단과 적용은 담당 엔지니어의 책임입니다. AI는 어떤 장비 설정도 변경하지 않았습니다(read-only).`,
     ``,
     `- 대상 제품/버전: **${spec.product} ${spec.version ?? ''}**`,
-    `- 요약: 잘못됨 ${s.misconfiguration} · 추가 필요 ${s.missing} · 판정 불가 ${s.indeterminate} · 정상 ${s.pass}`,
+    `- 요약: 잘못됨 ${s.misconfiguration} · 추가 필요 ${s.missing} · 환경 의존 ${s.contextDependent} · 판정 불가 ${s.indeterminate} · 정상 ${s.pass}`,
     `- 종합 판정(ok): **${result.ok ? '정상' : '조치 필요'}**`,
     ``,
     section('잘못된 설정 (misconfiguration)', 'misconfiguration', '없음'),
     section('추가로 필요 (missing/recommended)', 'missing', '없음'),
+    `## 환경 의존 (context_dependent — 고객 환경 프로파일 확인 필요, 조건부) (${byCat('context_dependent').length})\n\n권장 기준과 다르지만, 고객 환경(규모·망분리·컴플라이언스·업무 앱)에 따라 의도된 구성일 수 있습니다. 아래 항목은 잘못된 설정으로 단정하지 않으며, 담당 엔지니어가 환경 프로파일과 대조해 확정해야 합니다.\n\n${byCat('context_dependent').length ? byCat('context_dependent').map(line).join('\n\n') : '_없음_'}\n`,
     section('판정 불가 (indeterminate — 설정값 미확인/근거 부족)', 'indeterminate', '없음'),
     section('정상 (ok)', 'ok', '없음'),
     `## 커버리지 (감사 범위)`,
@@ -427,6 +437,7 @@ function summarize(items: ItemResult[]): EvaluationSummary {
     indeterminate: items.filter((i) => i.verdict === 'INDETERMINATE').length,
     misconfiguration: items.filter((i) => i.category === 'misconfiguration').length,
     missing: items.filter((i) => i.category === 'missing').length,
+    contextDependent: items.filter((i) => i.category === 'context_dependent').length,
   };
 }
 

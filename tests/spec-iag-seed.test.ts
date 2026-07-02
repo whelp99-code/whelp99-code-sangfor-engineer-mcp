@@ -17,11 +17,12 @@ describe('IAG 13.0.120 seed spec — end-to-end advisory evaluation', () => {
     const observed = {
       logRetentionDays: 30,   // below 180 → MUST fail → misconfiguration
       webAuthEnabled: true,   // ok
-      dot1xEnabled: false,    // recommended fail → missing
+      dot1xEnabled: false,    // recommended fail, environment-dependent → context_dependent
     };
     const r = evaluateSpec(spec, observed);
     expect(r.summary.misconfiguration).toBe(1);
-    expect(r.summary.missing).toBe(1);
+    expect(r.summary.missing).toBe(0);
+    expect(r.summary.contextDependent).toBe(1); // 802.1X is env-dependent (managed LAN only)
     expect(r.summary.pass).toBe(1);
     expect(r.ok).toBe(false);
   });
