@@ -2,27 +2,20 @@
   "product": "EPP",
   "version": "6.0.4",
   "collectedFrom": "10.80.1.106 live console XHR (read-only, Chrome CDP)",
-  "endpoints": 15,
+  "endpoints": 12,
   "mappedKeys": [
     "patchIsLatest",
-    "vulnDefUpdateAvailable",
     "vulnerabilityCount",
-    "maliciousDomainBlockCount"
+    "maliciousDomainBlockCount",
+    "maliciousDomainDetectionActive",
+    "assetInventoryClassifiedCount"
   ],
   "observed": {
     "patchIsLatest": {
       "value": true,
       "source": {
         "endpoint": "POST /api/edrgoweb/v1/patch/statistics",
-        "collectedAt": "2026-07-02T16:20:40.709Z",
-        "collector": "live-xhr"
-      }
-    },
-    "vulnDefUpdateAvailable": {
-      "value": false,
-      "source": {
-        "endpoint": "POST /api/edrgoweb/v1/vulner/list/version",
-        "collectedAt": "2026-07-02T16:20:40.709Z",
+        "collectedAt": "2026-07-02T16:47:01.108Z",
         "collector": "live-xhr"
       }
     },
@@ -30,7 +23,7 @@
       "value": 0,
       "source": {
         "endpoint": "POST /api/edrgoweb/v1/vulner/list/homepageVulner",
-        "collectedAt": "2026-07-02T16:20:40.709Z",
+        "collectedAt": "2026-07-02T16:47:01.108Z",
         "collector": "live-xhr"
       }
     },
@@ -38,7 +31,23 @@
       "value": 35,
       "source": {
         "endpoint": "POST /api/edrgoweb/v1/domain_detect/get_domain_info",
-        "collectedAt": "2026-07-02T16:20:40.709Z",
+        "collectedAt": "2026-07-02T16:47:01.108Z",
+        "collector": "live-xhr"
+      }
+    },
+    "maliciousDomainDetectionActive": {
+      "value": true,
+      "source": {
+        "endpoint": "POST /api/edrgoweb/v1/domain_detect/get_domain_info",
+        "collectedAt": "2026-07-02T16:47:01.108Z",
+        "collector": "live-xhr"
+      }
+    },
+    "assetInventoryClassifiedCount": {
+      "value": 5,
+      "source": {
+        "endpoint": "POST /api/edrgoweb/v1/asset/inventory/classify",
+        "collectedAt": "2026-07-02T16:47:01.108Z",
         "collector": "live-xhr"
       }
     }

@@ -160,6 +160,34 @@
         "section": "Policy / Exclusions"
       },
       "contextDependent": true
+    },
+    {
+      "id": "malicious_domain_detection_active",
+      "capabilityId": "threat_detection",
+      "label": "악성 도메인 탐지 활성 (malicious domain detection active)",
+      "observedKey": "maliciousDomainDetectionActive",
+      "op": "eq",
+      "expected": true,
+      "severity": "recommended",
+      "source": {
+        "manual": "Athena EPP 6.0.4 User Manual",
+        "section": "Detection and Response / Malicious Domain Detection",
+        "page": "support.sangfor.com EPP 6.0.4 User Manual"
+      }
+    },
+    {
+      "id": "asset_inventory_classified",
+      "capabilityId": "asset_visibility",
+      "label": "자산 인벤토리 분류 구성됨 (asset inventory classified)",
+      "observedKey": "assetInventoryClassifiedCount",
+      "op": "gte",
+      "expected": 1,
+      "severity": "recommended",
+      "source": {
+        "manual": "Athena EPP 6.0.4 User Manual",
+        "section": "Endpoint Inventory / Asset Classification",
+        "page": "support.sangfor.com EPP 6.0.4 User Manual"
+      }
     }
   ]
 }

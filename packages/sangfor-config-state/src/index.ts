@@ -12,6 +12,8 @@ const EPP_KEYMAP: Array<{ key: string; endpoint: string; pick: (d: any) => unkno
   { key: 'vulnerabilityCount', endpoint: 'vulner/list/homepageVulner', pick: (d) => d?.vulnerCount },
   { key: 'securityBaselineRuleCount', endpoint: 'baseline/getRule', pick: (d) => d?.count },
   { key: 'maliciousDomainBlockCount', endpoint: 'domain_detect/get_domain_info', pick: (d) => d?.count },
+  { key: 'maliciousDomainDetectionActive', endpoint: 'domain_detect/get_domain_info', pick: (d) => (typeof d?.isDetected === 'boolean' ? d.isDetected : undefined) },
+  { key: 'assetInventoryClassifiedCount', endpoint: 'asset/inventory/classify', pick: (d) => (Array.isArray(d) ? d.length : undefined) },
   { key: 'darMonitoringActive', endpoint: 'cnapp/professional/dar/webapi/interval/status', pick: (d) => (d?.interval != null) },
 ];
 

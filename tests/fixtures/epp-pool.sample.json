@@ -2,5 +2,6 @@
   "POST /api/edrgoweb/v1/patch/statistics": { "isLatest": true },
   "POST /api/edrgoweb/v1/vulner/list/homepageVulner": { "vulnerCount": 0 },
   "POST /api/edrgoweb/v1/baseline/getRule": { "count": 1 },
-  "POST /api/edrgoweb/v1/domain_detect/get_domain_info": { "count": 35 }
+  "POST /api/edrgoweb/v1/domain_detect/get_domain_info": { "count": 35, "isDetected": true },
+  "POST /api/edrgoweb/v1/asset/inventory/classify": [1, 2, 3, 4, 5]
 }

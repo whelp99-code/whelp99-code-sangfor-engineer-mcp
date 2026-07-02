@@ -10,6 +10,8 @@ describe('mapEppPoolToConfigState', () => {
     expect(r.observed.patchIsLatest.value).toBe(true);
     expect(r.observed.patchIsLatest.source.endpoint).toBe('POST /api/edrgoweb/v1/patch/statistics');
     expect(r.observed.securityBaselineRuleCount.value).toBe(1);
+    expect(r.observed.maliciousDomainDetectionActive.value).toBe(true);
+    expect(r.observed.assetInventoryClassifiedCount.value).toBe(5);
   });
 
   it('omits keys whose endpoint was not captured (never fabricates)', () => {
