@@ -48,7 +48,7 @@ import { randomBytes } from 'node:crypto';
 import {
   HciClient, KeystoneV2TokenProvider, HCI_AUTH_CONTRACT_STATUS,
   collectInventory, readBackVolume, applyCreateVolume, deleteVolume, getVolume,
-  AuditLedger, validateCreateVolumeInput,
+  AuditLedger, validateCreateVolumeInput, summarizeHciHealth, renderHciHealthReport,
 } from '../../../packages/sangfor-hci-client/src/index.js';
 import { verifyExecutionApproval } from '../../../packages/sangfor-operator/src/approval.js';
 import { consumeApprovalNonce } from '../../../packages/sangfor-operator/src/nonce-store.js';
@@ -114,6 +114,16 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
     handler: async (args: Record<string, unknown>) => {
       const { client } = hciClientFor(args);
       return { ...(await collectInventory(client)), authContract: HCI_AUTH_CONTRACT_STATUS };
+    }
+  },
+  'sangfor.hci_health_report': {
+    description: `Read-only HCI/SCP operations health report (volume status distribution, error volumes, findings) rendered as a Korean advisory. Never mutates. Auth contract: ${HCI_AUTH_CONTRACT_STATUS}.`,
+    inputSchema: { type: 'object', properties: { identityBaseUrl: { type: 'string' }, tenantName: { type: 'string' }, username: { type: 'string' }, password: { type: 'string' } } },
+    handler: async (args: Record<string, unknown>) => {
+      const { client, cfg } = hciClientFor(args);
+      const inv = await collectInventory(client);
+      const summary = summarizeHciHealth(inv);
+      return { summary, report: renderHciHealthReport(summary, { host: cfg.host, collectedAt: new Date().toISOString() }), authContract: HCI_AUTH_CONTRACT_STATUS };
     }
   },
   'sangfor.hci_plan_create_volume': {
