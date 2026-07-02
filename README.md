@@ -46,7 +46,9 @@ Non-dry-run live action requires:
 
 ```bash
 export SANGFOR_ALLOW_REAL_EXECUTION=true
-export SANGFOR_OPERATOR_APPROVAL_TOKEN='set-a-one-time-approval-token'
+# Server-side HMAC key that signs approvals; the call must carry an action-bound,
+# unexpired, single-use signed approval (see docs/INCLUDED_HIGH_RISK_SCOPE.md).
+export SANGFOR_OPERATOR_APPROVAL_SECRET='set-a-strong-server-side-secret'
 ```
 
 Production mode additionally requires:
