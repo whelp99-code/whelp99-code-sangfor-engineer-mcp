@@ -1,0 +1,16 @@
+{
+  "name": "@sangfor-engineer/cisco-client",
+  "version": "0.0.1",
+  "type": "module",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "files": ["dist"],
+  "dependencies": {
+    "@sangfor-engineer/sangfor-spec": "workspace:*",
+    "@sangfor-engineer/cisco-spec": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}
