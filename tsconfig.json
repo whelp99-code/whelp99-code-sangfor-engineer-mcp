@@ -98,7 +98,7 @@
       "@sangfor/integration": [
         "packages/sangfor-integration/src/index.ts"
       ],
-      "@sangfor/fortios-spec": [
+      "@sangfor-engineer/fortios-spec": [
         "packages/fortios-spec/src/index.ts"
       ]
     },

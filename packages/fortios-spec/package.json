@@ -1,1 +1,15 @@
-{"name":"@sangfor/fortios-spec","version":"0.0.1","type":"module","main":"src/index.ts"}
+{
+  "name": "@sangfor-engineer/fortios-spec",
+  "version": "0.0.1",
+  "type": "module",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "files": ["dist"],
+  "dependencies": {
+    "@sangfor/spec": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}
