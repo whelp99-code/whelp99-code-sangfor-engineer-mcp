@@ -44,11 +44,16 @@ import { checkVersionRequirement, loadVersionRequirements } from '../../../packa
 import { generateIntegrationGuide, listIntegrationTypes } from '../../../packages/sangfor-integration/src/index.js';
 import { resolveRepoData, isLoopback, nowId, normalizeProduct } from '../../../packages/shared/src/index.js';
 import { mapEppPoolToConfigState } from '../../../packages/sangfor-config-state/src/index.js';
+import { fortios_policy_baseline } from '../../../packages/fortios-spec/src/index.js';
+import { mapFortiOSConfigState } from '../../../packages/fortios-client/src/index.js';
+import { cisco_interface_baseline } from '../../../packages/cisco-spec/src/index.js';
+import { mapCiscoConfigState } from '../../../packages/cisco-client/src/index.js';
 import { randomBytes } from 'node:crypto';
 import {
   HciClient, KeystoneV2TokenProvider, HCI_AUTH_CONTRACT_STATUS,
   collectInventory, readBackVolume, applyCreateVolume, deleteVolume, getVolume,
   AuditLedger, validateCreateVolumeInput, summarizeHciHealth, renderHciHealthReport,
+  httpJson,
 } from '../../../packages/sangfor-hci-client/src/index.js';
 import { verifyExecutionApproval } from '../../../packages/sangfor-operator/src/approval.js';
 import { consumeApprovalNonce } from '../../../packages/sangfor-operator/src/nonce-store.js';
@@ -100,6 +105,20 @@ function hciWriteGate(
     if (!safety.autoAllowed) return { ok: false, error: `capability ${capabilityId} is ${safety.safetyClass} (not auto_allowed) — real-device write refused until the M4 promotion. ${safety.reason}` };
   }
   return { ok: true };
+}
+
+// ─── FortiOS / Cisco IOS-XE advisor wiring (read-only GET; never mutates) ──────
+// `host` may be a bare IP/hostname (defaults to https://) or a full base URL
+// (e.g. http://127.0.0.1:PORT), which lets tests point at a plain-HTTP mock
+// without needing a self-signed TLS server.
+function apiBaseUrl(host: string): string {
+  return /^https?:\/\//i.test(host) ? host.replace(/\/$/, '') : `https://${host}`;
+}
+
+// evaluateSpec() takes a flat observedKey->value record; the client mappers
+// return provenance-carrying ConfigStateItem[] — flatten one into the other.
+function toObservedRecord(items: Array<{ observedKey: string; value: unknown }>): Record<string, unknown> {
+  return Object.fromEntries(items.map((i) => [i.observedKey, i.value]));
 }
 
 const tools: Record<string, { description: string; inputSchema: any; handler: ToolHandler }> = {
@@ -538,6 +557,64 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
     description: 'List which product/version IntendedSpecs exist (advisory coverage) so callers know what config checks are available.',
     inputSchema: { type: 'object', properties: {} },
     handler: () => ({ coverage: listSpecCoverage() })
+  },
+  'sangfor.advisor_fortios': {
+    description: 'Read-only self-assessment advisor for FortiOS firewalls (policies, interfaces, routing). HTTP GET only against the REST API; never mutates the device.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        host: { type: 'string', description: 'FortiOS device IP or hostname (or a full base URL for testing, e.g. http://127.0.0.1:9999)' },
+        username: { type: 'string', description: 'Admin username' },
+        password: { type: 'string', description: 'Admin password' },
+        specVersion: { type: 'string', description: 'Spec version (e.g., 8.0.0)', default: '8.0.0' },
+      },
+      required: ['host', 'username', 'password'],
+    },
+    handler: async (args: { host: string; username: string; password: string; specVersion?: string }) => {
+      const timestamp = new Date().toISOString();
+      try {
+        const auth = Buffer.from(`${args.username}:${args.password}`).toString('base64');
+        const { status, json, text } = await httpJson(`${apiBaseUrl(args.host)}/api/v2/firewall/policy`, {
+          headers: { Authorization: `Basic ${auth}` },
+          tlsSkipVerify: true,
+        });
+        if (status < 200 || status >= 300) throw new Error(`FortiOS API returned HTTP ${status}: ${text.slice(0, 200)}`);
+        const configState = mapFortiOSConfigState(json, 'api');
+        const evaluation = evaluateSpec(fortios_policy_baseline, toObservedRecord(configState));
+        return { product: 'FORTIOS', device: args.host, evaluation, timestamp };
+      } catch (err) {
+        return { product: 'FORTIOS', device: args.host, error: `device query failed: ${String(err instanceof Error ? err.message : err)}`, timestamp };
+      }
+    }
+  },
+  'sangfor.advisor_cisco_iosxe': {
+    description: 'Read-only self-assessment advisor for Cisco IOS-XE routers/switches (interfaces, routing, ACLs). RESTCONF GET only; never mutates the device.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        host: { type: 'string', description: 'Cisco device IP or hostname (or a full base URL for testing, e.g. http://127.0.0.1:9999)' },
+        username: { type: 'string', description: 'Admin username' },
+        password: { type: 'string', description: 'Admin password' },
+        specVersion: { type: 'string', description: 'Spec version (e.g., 17.0.0)', default: '17.0.0' },
+      },
+      required: ['host', 'username', 'password'],
+    },
+    handler: async (args: { host: string; username: string; password: string; specVersion?: string }) => {
+      const timestamp = new Date().toISOString();
+      try {
+        const auth = Buffer.from(`${args.username}:${args.password}`).toString('base64');
+        const { status, json, text } = await httpJson(`${apiBaseUrl(args.host)}/restconf/data/ietf-interfaces:interfaces`, {
+          headers: { Authorization: `Basic ${auth}`, Accept: 'application/yang-data+json' },
+          tlsSkipVerify: true,
+        });
+        if (status < 200 || status >= 300) throw new Error(`Cisco RESTCONF API returned HTTP ${status}: ${text.slice(0, 200)}`);
+        const configState = mapCiscoConfigState(json, 'api');
+        const evaluation = evaluateSpec(cisco_interface_baseline, toObservedRecord(configState));
+        return { product: 'CISCO_IOSXE', device: args.host, evaluation, timestamp };
+      } catch (err) {
+        return { product: 'CISCO_IOSXE', device: args.host, error: `device query failed: ${String(err instanceof Error ? err.message : err)}`, timestamp };
+      }
+    }
   },
   'sangfor.collect_device_config': {
     description: 'Advisory: map a captured device XHR pool file (from scripts/device-collect.ts) into a provenance-carrying ConfigState, evaluate it against the IntendedSpec, and render the Korean advisory report. Read-only; live capture is NOT performed here (VPN + interactive session required — see docs/DEVICE_DIAGNOSIS_RUNBOOK.md).',

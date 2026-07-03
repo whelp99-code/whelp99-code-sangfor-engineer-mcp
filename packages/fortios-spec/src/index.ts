@@ -12,6 +12,9 @@ export const fortios_policy_baseline: IntendedSpec = {
       observedKey: 'policyCount',
       op: 'exists',
       severity: 'must',
+      source: {
+        manual: 'FortiOS 8.0 Administration Guide — Firewall Policy',
+      },
     },
     {
       id: 'ssl_inspection_enabled',
@@ -20,6 +23,9 @@ export const fortios_policy_baseline: IntendedSpec = {
       observedKey: 'sslInspectionEnabled',
       op: 'exists',
       severity: 'must',
+      source: {
+        manual: 'FortiOS 8.0 Administration Guide — SSL/SSH Inspection',
+      },
     },
     {
       id: 'threat_logging_enabled',
@@ -28,6 +34,9 @@ export const fortios_policy_baseline: IntendedSpec = {
       observedKey: 'threatLoggingEnabled',
       op: 'exists',
       severity: 'must',
+      source: {
+        manual: 'FortiOS 8.0 Administration Guide — Logging and Reporting',
+      },
     },
   ],
 };
@@ -44,6 +53,9 @@ export const fortios_interface_baseline: IntendedSpec = {
       observedKey: 'wanInterfaceCount',
       op: 'exists',
       severity: 'must',
+      source: {
+        manual: 'FortiOS 8.0 Administration Guide — Interface Configuration',
+      },
     },
   ],
 };

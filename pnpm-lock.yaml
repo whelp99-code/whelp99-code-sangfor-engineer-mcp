@@ -46,6 +46,8 @@ importers:
 
   apps/operator-console: {}
 
+  packages/fortios-spec: {}
+
   packages/sangfor-approval:
     dependencies:
       '@sangfor/shared':
