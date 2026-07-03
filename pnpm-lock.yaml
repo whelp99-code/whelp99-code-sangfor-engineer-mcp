@@ -46,7 +46,51 @@ importers:
 
   apps/operator-console: {}
 
-  packages/fortios-spec: {}
+  packages/cisco-client:
+    dependencies:
+      '@sangfor-engineer/cisco-spec':
+        specifier: workspace:*
+        version: link:../cisco-spec
+      '@sangfor-engineer/sangfor-spec':
+        specifier: workspace:*
+        version: link:../sangfor-spec
+    devDependencies:
+      typescript:
+        specifier: ^5.0.0
+        version: 5.9.3
+
+  packages/cisco-spec:
+    dependencies:
+      '@sangfor-engineer/sangfor-spec':
+        specifier: workspace:*
+        version: link:../sangfor-spec
+    devDependencies:
+      typescript:
+        specifier: ^5.0.0
+        version: 5.9.3
+
+  packages/fortios-client:
+    dependencies:
+      '@sangfor-engineer/fortios-spec':
+        specifier: workspace:*
+        version: link:../fortios-spec
+      '@sangfor-engineer/sangfor-spec':
+        specifier: workspace:*
+        version: link:../sangfor-spec
+    devDependencies:
+      typescript:
+        specifier: ^5.0.0
+        version: 5.9.3
+
+  packages/fortios-spec:
+    dependencies:
+      '@sangfor-engineer/sangfor-spec':
+        specifier: workspace:*
+        version: link:../sangfor-spec
+    devDependencies:
+      typescript:
+        specifier: ^5.0.0
+        version: 5.9.3
 
   packages/sangfor-approval:
     dependencies:
