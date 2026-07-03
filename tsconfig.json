@@ -103,6 +103,9 @@
       ],
       "@sangfor-engineer/fortios-client": [
         "packages/fortios-client/src/index.ts"
+      ],
+      "@sangfor-engineer/cisco-client": [
+        "packages/cisco-client/src/index.ts"
       ]
     },
     "baseUrl": "."

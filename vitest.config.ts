@@ -17,7 +17,8 @@ export default defineConfig({
       '@sangfor/wiki': fromRoot('./packages/sangfor-wiki/src/index.ts'),
       '@sangfor/pptx': fromRoot('./packages/sangfor-pptx/src/index.ts'),
       '@sangfor/screenshot': fromRoot('./packages/sangfor-screenshot/src/index.ts'),
-      '@sangfor-engineer/fortios-client': fromRoot('./packages/fortios-client/src/index.ts')
+      '@sangfor-engineer/fortios-client': fromRoot('./packages/fortios-client/src/index.ts'),
+      '@sangfor-engineer/cisco-client': fromRoot('./packages/cisco-client/src/index.ts')
     }
   },
   test: {
