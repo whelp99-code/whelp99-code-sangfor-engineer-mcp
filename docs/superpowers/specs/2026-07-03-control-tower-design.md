@@ -531,7 +531,8 @@ advisorTools에 read_only가 아닌 도구가 섞여 있으면 해당 도구만 
 
 ## 11. 기존 시스템 영향
 
-- `apps/mcp-server`, `packages/sangfor-operator`, `apps/operator-console`, `apps/mock-sangfor-console`: **무수정**
+- `apps/mcp-server`, `packages/sangfor-operator`, `apps/operator-console`: **무수정**
+- `apps/mock-sangfor-console`: **추가 라우트만 허용, 기존 라우트 무변경.** advisor 도구는 실제 벤더 API 경로(`/api/v2/*`, `/restconf/*`)를 조회하는데 mock은 `/api/v1/*` 경로만 서빙하므로, 기존 핸들러를 실제 경로에 alias 등록해야 라이브 sweep이 가능하다 (advisor의 `host` 인자는 `http://127.0.0.1:3400` 같은 전체 base URL 허용 — `apiBaseUrl()` 확인됨)
 - `apps/http-bridge`: tool-guard 확장(승인 분기) + server.ts의 approval 필드 전달 (기본 동작 무변경, T-BR-1로 고정)
 - 루트 `package.json`: `dev:control-tower` 스크립트 추가
 - `tsconfig.json` paths + `vitest.config.ts` alias: `@sangfor/runs` 추가
