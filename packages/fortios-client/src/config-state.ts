@@ -59,3 +59,119 @@ export function mapFortiOSConfigState(apiResponse: any, source: 'api' | 'mock' =
 
   return items;
 }
+
+/**
+ * Map FortiOS system health metrics (CPU, memory, disk, ASIC load, HA status)
+ * Consumes: /api/v2/monitor/system/status, /api/v2/monitor/system/npu-stats, /api/v2/cmdb/system/ha-setting
+ */
+export function mapFortiOSSystemHealth(
+  statusResponse: any,
+  npuResponse: any,
+  haResponse: any,
+  source: 'api' | 'mock' = 'api'
+): ConfigStateItem[] {
+  const items: ConfigStateItem[] = [];
+
+  // CPU usage from status (single value for system)
+  if (statusResponse?.results?.[0]?.cpu) {
+    items.push({
+      observedKey: 'systemCpuUsage',
+      value: statusResponse.results[0].cpu,
+      source,
+    });
+  }
+
+  // Memory usage
+  if (statusResponse?.results?.[0]?.mem) {
+    items.push({
+      observedKey: 'systemMemoryUsage',
+      value: statusResponse.results[0].mem,
+      source,
+    });
+  }
+
+  // Disk usage
+  if (statusResponse?.results?.[0]?.disk) {
+    items.push({
+      observedKey: 'systemDiskUsage',
+      value: statusResponse.results[0].disk,
+      source,
+    });
+  }
+
+  // ASIC (NP7) CPU usage from npu-stats
+  if (npuResponse?.results?.[0]?.cpu) {
+    items.push({
+      observedKey: 'npuCpuUsage',
+      value: npuResponse.results[0].cpu,
+      source,
+    });
+  }
+
+  // HA mode (a-p for active-passive, a-a for active-active, standalone)
+  if (haResponse?.results?.[0]?.mode) {
+    items.push({
+      observedKey: 'haMode',
+      value: haResponse.results[0].mode === 'a-p' ? 'active-passive' :
+             haResponse.results[0].mode === 'a-a' ? 'active-active' : 'standalone',
+      source,
+    });
+  }
+
+  // HA primary unit (state === 'master')
+  if (haResponse?.results?.[0]?.state) {
+    items.push({
+      observedKey: 'haPrimaryUnit',
+      value: haResponse.results[0].state === 'master',
+      source,
+    });
+  }
+
+  return items;
+}
+
+/**
+ * Map FortiOS policy audit (syntax validity, duplicates, IPS signature version)
+ * Consumes: /api/v2/cmdb/firewall/policy, /api/v2/cmdb/ips/sensor
+ */
+export function mapFortiOSPolicyAudit(
+  policyResponse: any,
+  ipsResponse: any,
+  source: 'api' | 'mock' = 'api'
+): ConfigStateItem[] {
+  const items: ConfigStateItem[] = [];
+
+  // Policy syntax validation: check for required fields (action, srcintf, dstintf)
+  if (policyResponse?.results && Array.isArray(policyResponse.results)) {
+    const allValid = policyResponse.results.every((p: any) =>
+      p.action && p.srcintf && p.dstintf
+    );
+    items.push({
+      observedKey: 'policySyntaxValid',
+      value: allValid,
+      source,
+    });
+
+    // Count duplicate policies (same source + destination + action)
+    const policySignatures = policyResponse.results.map((p: any) =>
+      `${p.srcintf}-${p.dstintf}-${p.action}`
+    );
+    const duplicateCount = policySignatures.length - new Set(policySignatures).size;
+    items.push({
+      observedKey: 'policyDuplicateCount',
+      value: duplicateCount,
+      source,
+    });
+  }
+
+  // IPS signature version
+  if (ipsResponse?.results?.[0]?.signature_database) {
+    items.push({
+      observedKey: 'ipsSignatureVersion',
+      value: ipsResponse.results[0].signature_database,
+      source,
+    });
+  }
+
+  return items;
+}
