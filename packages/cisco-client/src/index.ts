@@ -1,1 +1,6 @@
-export { mapCiscoConfigState, type ConfigStateItem } from './config-state.js';
+export {
+  mapCiscoConfigState,
+  mapCiscoSystemHealth,
+  mapCiscoPolicyAudit,
+  type ConfigStateItem,
+} from './config-state.js';
