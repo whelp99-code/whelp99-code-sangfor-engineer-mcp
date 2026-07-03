@@ -13,6 +13,7 @@ export default defineConfig({
       '@sangfor/operator': fromRoot('./packages/sangfor-operator/src/index.ts'),
       '@sangfor/product-adapters': fromRoot('./packages/sangfor-product-adapters/src/index.ts'),
       '@sangfor/rag': fromRoot('./packages/sangfor-rag/src/index.ts'),
+      '@sangfor/runs': fromRoot('./packages/sangfor-runs/src/index.ts'),
       '@sangfor/shared': fromRoot('./packages/shared/src/index.ts'),
       '@sangfor/wiki': fromRoot('./packages/sangfor-wiki/src/index.ts'),
       '@sangfor/pptx': fromRoot('./packages/sangfor-pptx/src/index.ts'),

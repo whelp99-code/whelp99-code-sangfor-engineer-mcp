@@ -106,6 +106,9 @@
       ],
       "@sangfor-engineer/cisco-client": [
         "packages/cisco-client/src/index.ts"
+      ],
+      "@sangfor/runs": [
+        "packages/sangfor-runs/src/index.ts"
       ]
     },
     "baseUrl": "."
