@@ -1,5 +1,6 @@
 import http from 'node:http';
 import { createOpenStackMock } from './openstack.js';
+import { fortiOSPolicyHandler, fortiOSInterfaceHandler } from './fortios.js';
 
 const port = Number(process.env.PORT ?? 3400);
 
@@ -14,6 +15,17 @@ function page(product: string) {
 export function createMockConsoleServer(): http.Server {
   const openstack = createOpenStackMock(port);
   return http.createServer(async (req, res) => {
+    // Register FortiOS routes
+    if (req.url?.startsWith('/api/v1/fortios/')) {
+      if (req.url === '/api/v1/fortios/query-policy') {
+        fortiOSPolicyHandler(req, res);
+        return;
+      }
+      if (req.url === '/api/v1/fortios/query-interface') {
+        fortiOSInterfaceHandler(req, res);
+        return;
+      }
+    }
     if (await openstack.handle(req, res)) return;
     const url = req.url ?? '/';
     if (url === '/state') {
