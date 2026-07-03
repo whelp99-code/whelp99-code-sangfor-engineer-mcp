@@ -393,7 +393,7 @@ export interface VendorDescriptor {
     "defaultArgs": { "specVersion": "17.0.0" } },
   { "product": "HCI_SCP", "label": "Sangfor HCI/SCP",
     "advisorTools": ["sangfor.hci_health_report"],
-    "credentialFields": ["identityUrl", "username", "password"],
+    "credentialFields": ["identityBaseUrl", "username", "password"],
     "defaultArgs": {} }
 ]
 ```
