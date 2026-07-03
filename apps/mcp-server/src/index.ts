@@ -46,8 +46,8 @@ import { resolveRepoData, isLoopback, nowId, normalizeProduct } from '../../../p
 import { mapEppPoolToConfigState } from '../../../packages/sangfor-config-state/src/index.js';
 import { fortios_policy_baseline, fortios_system_health_baseline, fortios_policy_audit_baseline } from '../../../packages/fortios-spec/src/index.js';
 import { mapFortiOSConfigState, mapFortiOSSystemHealth, mapFortiOSPolicyAudit } from '../../../packages/fortios-client/src/index.js';
-import { cisco_interface_baseline } from '../../../packages/cisco-spec/src/index.js';
-import { mapCiscoConfigState } from '../../../packages/cisco-client/src/index.js';
+import { cisco_interface_baseline, cisco_system_health_baseline, cisco_policy_audit_baseline } from '../../../packages/cisco-spec/src/index.js';
+import { mapCiscoConfigState, mapCiscoSystemHealth, mapCiscoPolicyAudit } from '../../../packages/cisco-client/src/index.js';
 import { randomBytes } from 'node:crypto';
 import {
   HciClient, KeystoneV2TokenProvider, HCI_AUTH_CONTRACT_STATUS,
@@ -651,6 +651,46 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
         return { product: 'CISCO_IOSXE', device: args.host, evaluation, timestamp };
       } catch (err) {
         return { product: 'CISCO_IOSXE', device: args.host, error: `device query failed: ${String(err instanceof Error ? err.message : err)}`, timestamp };
+      }
+    }
+  },
+  'sangfor.advisor_cisco_iosxe_advanced': {
+    description: 'Advanced read-only Cisco IOS-XE advisor: system health (per-core CPU average, memory usage, interface down count, VRF count) plus policy audit (zone-pair policy count, ACL rule count, SNORT signature version/inspection status). RESTCONF GET only across 7 endpoints; never mutates the device.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        host: { type: 'string', description: 'Cisco device IP or hostname (or a full base URL for testing, e.g. http://127.0.0.1:9999)' },
+        username: { type: 'string', description: 'Admin username' },
+        password: { type: 'string', description: 'Admin password' },
+        specVersion: { type: 'string', description: 'Spec version (e.g., 17.0.0)', default: '17.0.0' },
+      },
+      required: ['host', 'username', 'password'],
+    },
+    handler: async (args: { host: string; username: string; password: string; specVersion?: string }) => {
+      const timestamp = new Date().toISOString();
+      try {
+        const auth = Buffer.from(`${args.username}:${args.password}`).toString('base64');
+        const base = apiBaseUrl(args.host);
+        const get = (path: string) => httpJson(`${base}${path}`, { headers: { Authorization: `Basic ${auth}`, Accept: 'application/yang-data+json' }, tlsSkipVerify: true });
+        const [cpuRes, memRes, ifaceRes, vrfRes, zonePolicyRes, aclRes, snortRes] = await Promise.all([
+          get('/restconf/data/Cisco-IOS-XE-utilization:system'),
+          get('/restconf/data/Cisco-IOS-XE-memory:memory'),
+          get('/restconf/data/ietf-interfaces:interfaces-state'),
+          get('/restconf/data/ietf-routing:routing'),
+          get('/restconf/data/Cisco-IOS-XE-zone-based-firewall:zone-pair'),
+          get('/restconf/data/Cisco-IOS-XE-acl:ip'),
+          get('/restconf/data/Cisco-IOS-XE-snort:snort'),
+        ]);
+        for (const r of [cpuRes, memRes, ifaceRes, vrfRes, zonePolicyRes, aclRes, snortRes]) {
+          if (r.status < 200 || r.status >= 300) throw new Error(`Cisco RESTCONF API returned HTTP ${r.status}: ${r.text.slice(0, 200)}`);
+        }
+        const healthState = mapCiscoSystemHealth(cpuRes.json, memRes.json, ifaceRes.json, vrfRes.json, 'api');
+        const auditState = mapCiscoPolicyAudit(zonePolicyRes.json, aclRes.json, snortRes.json, 'api');
+        const healthEvaluation = evaluateSpec(cisco_system_health_baseline, toObservedRecord(healthState));
+        const auditEvaluation = evaluateSpec(cisco_policy_audit_baseline, toObservedRecord(auditState));
+        return { product: 'CISCO_IOSXE_ADVANCED', device: args.host, evaluations: [healthEvaluation, auditEvaluation], timestamp };
+      } catch (err) {
+        return { product: 'CISCO_IOSXE_ADVANCED', device: args.host, error: `device query failed: ${String(err instanceof Error ? err.message : err)}`, timestamp };
       }
     }
   },
