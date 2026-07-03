@@ -44,8 +44,8 @@ import { checkVersionRequirement, loadVersionRequirements } from '../../../packa
 import { generateIntegrationGuide, listIntegrationTypes } from '../../../packages/sangfor-integration/src/index.js';
 import { resolveRepoData, isLoopback, nowId, normalizeProduct } from '../../../packages/shared/src/index.js';
 import { mapEppPoolToConfigState } from '../../../packages/sangfor-config-state/src/index.js';
-import { fortios_policy_baseline } from '../../../packages/fortios-spec/src/index.js';
-import { mapFortiOSConfigState } from '../../../packages/fortios-client/src/index.js';
+import { fortios_policy_baseline, fortios_system_health_baseline, fortios_policy_audit_baseline } from '../../../packages/fortios-spec/src/index.js';
+import { mapFortiOSConfigState, mapFortiOSSystemHealth, mapFortiOSPolicyAudit } from '../../../packages/fortios-client/src/index.js';
 import { cisco_interface_baseline } from '../../../packages/cisco-spec/src/index.js';
 import { mapCiscoConfigState } from '../../../packages/cisco-client/src/index.js';
 import { randomBytes } from 'node:crypto';
@@ -584,6 +584,44 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
         return { product: 'FORTIOS', device: args.host, evaluation, timestamp };
       } catch (err) {
         return { product: 'FORTIOS', device: args.host, error: `device query failed: ${String(err instanceof Error ? err.message : err)}`, timestamp };
+      }
+    }
+  },
+  'sangfor.advisor_fortios_advanced': {
+    description: 'Advanced read-only FortiOS advisor: system health (CPU/memory/disk usage, ASIC/NPU load, HA mode and primary-unit status) plus policy audit (syntax validity, duplicate policies, IPS signature version). HTTP GET only across 5 endpoints; never mutates the device.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        host: { type: 'string', description: 'FortiOS device IP or hostname (or a full base URL for testing, e.g. http://127.0.0.1:9999)' },
+        username: { type: 'string', description: 'Admin username' },
+        password: { type: 'string', description: 'Admin password' },
+        specVersion: { type: 'string', description: 'Spec version (e.g., 8.0.0)', default: '8.0.0' },
+      },
+      required: ['host', 'username', 'password'],
+    },
+    handler: async (args: { host: string; username: string; password: string; specVersion?: string }) => {
+      const timestamp = new Date().toISOString();
+      try {
+        const auth = Buffer.from(`${args.username}:${args.password}`).toString('base64');
+        const base = apiBaseUrl(args.host);
+        const get = (path: string) => httpJson(`${base}${path}`, { headers: { Authorization: `Basic ${auth}` }, tlsSkipVerify: true });
+        const [statusRes, npuRes, haRes, policyRes, ipsRes] = await Promise.all([
+          get('/api/v2/monitor/system/status'),
+          get('/api/v2/monitor/system/npu-stats'),
+          get('/api/v2/cmdb/system/ha-setting'),
+          get('/api/v2/cmdb/firewall/policy'),
+          get('/api/v2/cmdb/ips/sensor'),
+        ]);
+        for (const r of [statusRes, npuRes, haRes, policyRes, ipsRes]) {
+          if (r.status < 200 || r.status >= 300) throw new Error(`FortiOS API returned HTTP ${r.status}: ${r.text.slice(0, 200)}`);
+        }
+        const healthState = mapFortiOSSystemHealth(statusRes.json, npuRes.json, haRes.json, 'api');
+        const auditState = mapFortiOSPolicyAudit(policyRes.json, ipsRes.json, 'api');
+        const healthEvaluation = evaluateSpec(fortios_system_health_baseline, toObservedRecord(healthState));
+        const auditEvaluation = evaluateSpec(fortios_policy_audit_baseline, toObservedRecord(auditState));
+        return { product: 'FORTIOS_ADVANCED', device: args.host, evaluations: [healthEvaluation, auditEvaluation], timestamp };
+      } catch (err) {
+        return { product: 'FORTIOS_ADVANCED', device: args.host, error: `device query failed: ${String(err instanceof Error ? err.message : err)}`, timestamp };
       }
     }
   },
