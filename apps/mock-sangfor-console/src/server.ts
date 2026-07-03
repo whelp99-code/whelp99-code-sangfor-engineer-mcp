@@ -1,6 +1,7 @@
 import http from 'node:http';
 import { createOpenStackMock } from './openstack.js';
 import { fortiOSPolicyHandler, fortiOSInterfaceHandler } from './fortios.js';
+import { ciscoInterfaceHandler, ciscoRoutingHandler } from './cisco-iosxe.js';
 
 const port = Number(process.env.PORT ?? 3400);
 
@@ -23,6 +24,17 @@ export function createMockConsoleServer(): http.Server {
       }
       if (req.url === '/api/v1/fortios/query-interface') {
         fortiOSInterfaceHandler(req, res);
+        return;
+      }
+    }
+    // Register Cisco IOS-XE routes
+    if (req.url?.startsWith('/api/v1/cisco-iosxe/')) {
+      if (req.url === '/api/v1/cisco-iosxe/query-interfaces') {
+        ciscoInterfaceHandler(req, res);
+        return;
+      }
+      if (req.url === '/api/v1/cisco-iosxe/query-routing') {
+        ciscoRoutingHandler(req, res);
         return;
       }
     }
