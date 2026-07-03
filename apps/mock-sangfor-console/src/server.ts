@@ -1,6 +1,6 @@
 import http from 'node:http';
 import { createOpenStackMock } from './openstack.js';
-import { fortiOSPolicyHandler, fortiOSInterfaceHandler } from './fortios.js';
+import { fortiOSPolicyHandler, fortiOSInterfaceHandler, fortiOSSystemStatsHandler, fortiOSNPUStatsHandler, fortiOSHASettingHandler, fortiOSIPSStatsHandler } from './fortios.js';
 import { ciscoInterfaceHandler, ciscoRoutingHandler } from './cisco-iosxe.js';
 
 const port = Number(process.env.PORT ?? 3400);
@@ -24,6 +24,22 @@ export function createMockConsoleServer(): http.Server {
       }
       if (req.url === '/api/v1/fortios/query-interface') {
         fortiOSInterfaceHandler(req, res);
+        return;
+      }
+      if (req.url === '/api/v1/fortios/query-system-stats') {
+        fortiOSSystemStatsHandler(req, res);
+        return;
+      }
+      if (req.url === '/api/v1/fortios/query-npu-stats') {
+        fortiOSNPUStatsHandler(req, res);
+        return;
+      }
+      if (req.url === '/api/v1/fortios/query-ha-setting') {
+        fortiOSHASettingHandler(req, res);
+        return;
+      }
+      if (req.url === '/api/v1/fortios/query-ips-stats') {
+        fortiOSIPSStatsHandler(req, res);
         return;
       }
     }
