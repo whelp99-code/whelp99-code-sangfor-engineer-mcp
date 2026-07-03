@@ -100,6 +100,9 @@
       ],
       "@sangfor-engineer/fortios-spec": [
         "packages/fortios-spec/src/index.ts"
+      ],
+      "@sangfor-engineer/fortios-client": [
+        "packages/fortios-client/src/index.ts"
       ]
     },
     "baseUrl": "."
