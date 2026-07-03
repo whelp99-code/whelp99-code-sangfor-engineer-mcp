@@ -1,0 +1,34 @@
+{
+  "id": "spec_fortios_8_0_0_policy",
+  "product": "FORTIOS",
+  "version": "8.0.0",
+  "items": [
+    {
+      "id": "firewall_policy_count",
+      "capabilityId": "internet_policy",
+      "label": "파이어월 정책 개수",
+      "observedKey": "policyCount",
+      "citation": {
+        "manual": "FortiOS 8.0.0 Administration Guide — Firewall Policies"
+      }
+    },
+    {
+      "id": "ssl_inspection_enabled",
+      "capabilityId": "internet_policy",
+      "label": "SSL/TLS 검사 활성",
+      "observedKey": "sslInspectionEnabled",
+      "citation": {
+        "manual": "FortiOS 8.0.0 Administration Guide — SSL Inspection"
+      }
+    },
+    {
+      "id": "threat_logging_enabled",
+      "capabilityId": "internet_policy",
+      "label": "위협 로깅 활성",
+      "observedKey": "threatLoggingEnabled",
+      "citation": {
+        "manual": "FortiOS 8.0.0 Administration Guide — Logging"
+      }
+    }
+  ]
+}
