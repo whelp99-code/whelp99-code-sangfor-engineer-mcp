@@ -19,6 +19,7 @@ export type CompareOp = 'eq' | 'neq' | 'gte' | 'lte' | 'includes' | 'oneOf' | 'e
 export type Severity = 'must' | 'recommended';
 export type Verdict = 'PASS' | 'FAIL' | 'INDETERMINATE';
 export type Category = 'ok' | 'misconfiguration' | 'missing' | 'indeterminate' | 'context_dependent';
+export type ProductCode = 'HCI_SCP' | 'HCI' | 'IAG' | 'ENDPOINT_SECURE' | 'NDR' | 'CYBER_COMMAND' | 'FORTIOS' | 'CISCO_IOSXE';
 
 export interface Citation {
   manual: string;
