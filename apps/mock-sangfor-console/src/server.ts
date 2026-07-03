@@ -1,7 +1,7 @@
 import http from 'node:http';
 import { createOpenStackMock } from './openstack.js';
 import { fortiOSPolicyHandler, fortiOSInterfaceHandler, fortiOSSystemStatsHandler, fortiOSNPUStatsHandler, fortiOSHASettingHandler, fortiOSIPSStatsHandler } from './fortios.js';
-import { ciscoInterfaceHandler, ciscoRoutingHandler } from './cisco-iosxe.js';
+import { ciscoInterfaceHandler, ciscoRoutingHandler, ciscoSystemStatsHandler, ciscoZonePolicyHandler, ciscoSNORTStatusHandler } from './cisco-iosxe.js';
 
 const port = Number(process.env.PORT ?? 3400);
 
@@ -51,6 +51,18 @@ export function createMockConsoleServer(): http.Server {
       }
       if (req.url === '/api/v1/cisco-iosxe/query-routing') {
         ciscoRoutingHandler(req, res);
+        return;
+      }
+      if (req.url === '/api/v1/cisco-iosxe/query-system-stats') {
+        ciscoSystemStatsHandler(req, res);
+        return;
+      }
+      if (req.url === '/api/v1/cisco-iosxe/query-zone-policy') {
+        ciscoZonePolicyHandler(req, res);
+        return;
+      }
+      if (req.url === '/api/v1/cisco-iosxe/query-snort-status') {
+        ciscoSNORTStatusHandler(req, res);
         return;
       }
     }

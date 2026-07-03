@@ -67,3 +67,62 @@ export function ciscoRoutingHandler(req: IncomingMessage, res: ServerResponse): 
   res.writeHead(200, { 'Content-Type': 'application/yang-data+json' });
   res.end(JSON.stringify(mockResponse));
 }
+
+export function ciscoSystemStatsHandler(req: IncomingMessage, res: ServerResponse): void {
+  // Mock /restconf/data/Cisco-IOS-XE-utilization:system response
+  const mockSystemStats = {
+    'Cisco-IOS-XE-utilization:system': {
+      'cpu-utilization': {
+        'cpu-core': [
+          { 'core-id': 0, 'cpu-utilization': 45 },
+          { 'core-id': 1, 'cpu-utilization': 52 },
+          { 'core-id': 2, 'cpu-utilization': 38 },
+          { 'core-id': 3, 'cpu-utilization': 61 },
+        ],
+      },
+    },
+    'Cisco-IOS-XE-memory:memory': {
+      'memory-statistics': {
+        total: 4294967296,  // 4GB in bytes
+        used: 2147483648,   // 2GB in bytes (~50%)
+      },
+    },
+  };
+  res.writeHead(200, { 'Content-Type': 'application/yang-data+json' });
+  res.end(JSON.stringify(mockSystemStats));
+}
+
+export function ciscoZonePolicyHandler(req: IncomingMessage, res: ServerResponse): void {
+  // Mock /restconf/data/Cisco-IOS-XE-zone-based-firewall:zone-pair response
+  const mockZonePolicies = {
+    'Cisco-IOS-XE-zone-based-firewall:zone-pair': [
+      {
+        source_zone: 'inside',
+        destination_zone: 'outside',
+        service_policy: 'Inspect_Outside',
+      },
+      {
+        source_zone: 'dmz',
+        destination_zone: 'outside',
+        service_policy: 'Allow_DMZ_Out',
+      },
+    ],
+  };
+  res.writeHead(200, { 'Content-Type': 'application/yang-data+json' });
+  res.end(JSON.stringify(mockZonePolicies));
+}
+
+export function ciscoSNORTStatusHandler(req: IncomingMessage, res: ServerResponse): void {
+  // Mock /restconf/data/Cisco-IOS-XE-snort:snort response
+  const mockSNORT = {
+    'Cisco-IOS-XE-snort:snort': {
+      'snort-config': {
+        'rule-database-version': '20250703',
+        enabled: true,
+        'threat-detection': true,
+      },
+    },
+  };
+  res.writeHead(200, { 'Content-Type': 'application/yang-data+json' });
+  res.end(JSON.stringify(mockSNORT));
+}
