@@ -337,4 +337,68 @@ describe('Tower API — devices/sweep/overview/health (T-API-2)', () => {
     expect(typeof r.body.nonce).toBe('string');
     expect((await call('POST', '/api/approvals/mint', { actionType: 'x' })).status).toBe(400);
   });
+
+  it('mint: 시크릿 미설정 시 500 fail-closed', async () => {
+    const bare = await startTower({ approvalSecret: '' });
+    try {
+      const r = await call('POST', '/api/approvals/mint', {
+        actionType: 'hci.create-volume', actionTarget: 'h:vol',
+        approvedBy: 'jmpark', changeTicketId: 'CHG-1', rollbackPlanId: 'RB-1',
+      }, urlOf(bare));
+      expect(r.status).toBe(500);
+      expect(String(r.body.error)).toMatch(/approval secret not configured/);
+    } finally {
+      await new Promise<void>((res) => bare.close(() => res()));
+    }
+  });
+
+  it('sweep: promisePool이 동시 실행을 3으로 제한한다', async () => {
+    let inFlight = 0;
+    let maxInFlight = 0;
+    const READONLY_TOOLS = Array.from({ length: 9 }, (_, i) => `stub.ro${i}`);
+    const countingBridge = http.createServer(async (req, res) => {
+      const respond = (status: number, body: unknown) => {
+        res.writeHead(status, { 'content-type': 'application/json' });
+        res.end(JSON.stringify(body));
+      };
+      if (req.method === 'GET' && req.url === '/health') return respond(200, { status: 'ok', mcp: 'connected' });
+      if (req.method === 'GET' && req.url === '/tools') {
+        return respond(200, { tools: READONLY_TOOLS.map((name) => ({
+          name, description: 'ro', inputSchema: { type: 'object', properties: {} },
+          annotations: { title: name, readOnlyHint: true, destructiveHint: false }, category: 'advisory',
+        })) });
+      }
+      if (req.method === 'POST' && req.url === '/tools/call') {
+        inFlight += 1;
+        maxInFlight = Math.max(maxInFlight, inFlight);
+        await new Promise((r) => setTimeout(r, 25));
+        inFlight -= 1;
+        return respond(200, { result: { content: [{ type: 'text', text: '{"ok":true}' }], structuredContent: { ok: true }, isError: false } });
+      }
+      respond(404, { error: 'not found' });
+    });
+    await new Promise<void>((r) => countingBridge.listen(0, '127.0.0.1', () => r()));
+    const cbUrl = `http://127.0.0.1:${(countingBridge.address() as AddressInfo).port}`;
+    const cRunsDir = mkdtempSync(join(tmpdir(), 'sweep-runs-'));
+    const cRegDir = mkdtempSync(join(tmpdir(), 'sweep-reg-'));
+    writeFileSync(join(cRegDir, 'vendors.json'), JSON.stringify([{
+      product: 'MANY_FW', label: 'Many', advisorTools: READONLY_TOOLS,
+      credentialFields: [], defaultArgs: {},
+    }]));
+    new Registry(cRegDir).createDevice({ name: 'm1', product: 'MANY_FW', host: 'http://127.0.0.1:9', tags: [] });
+    const cTower = createTowerServer({ bridgeUrl: cbUrl, runsDir: cRunsDir, registryDir: cRegDir, approvalSecret: 's', apiToken: 'test-token', mockConsoleUrl: 'http://127.0.0.1:1' });
+    await new Promise<void>((r) => cTower.listen(0, '127.0.0.1', () => r()));
+    try {
+      const r = await call('POST', '/api/sweep', {}, urlOf(cTower));
+      expect(r.status).toBe(200);
+      expect((r.body.runs as unknown[]).length).toBe(9);
+      expect(maxInFlight).toBeGreaterThan(1);   // 실제로 병렬 실행됨
+      expect(maxInFlight).toBeLessThanOrEqual(3); // 그러나 3을 넘지 않음
+    } finally {
+      await new Promise<void>((res) => cTower.close(() => res()));
+      await new Promise<void>((res) => countingBridge.close(() => res()));
+      rmSync(cRunsDir, { recursive: true, force: true });
+      rmSync(cRegDir, { recursive: true, force: true });
+    }
+  });
 });
