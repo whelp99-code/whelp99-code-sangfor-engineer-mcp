@@ -100,6 +100,13 @@ describe('AnalysisStore — append/fold/verdict·마스킹 (T-PB-2)', () => {
     expect(store.listByRun('pbrun_1').map((a) => a.id)).toContain(saved.id);
   });
 
+  it('maskSecrets: 비밀 키 필드는 저장 시 *** 마스킹 (§7.5)', () => {
+    const store = new AnalysisStore(dir);
+    const saved = store.append({ ...analysisInput({ id: undefined as unknown as string, createdAt: undefined as unknown as string }), token: 'shouldmask' } as any);
+    const retrieved = store.get(saved.id) as any;
+    expect(retrieved.token).toBe('***');
+  });
+
   it('setVerdict: improvements/proposals 항목 갱신은 새 스냅샷 append (fold last-wins), 범위 밖 400', () => {
     const store = new AnalysisStore(dir);
     const a = store.append(analysisInput({ id: undefined as unknown as string, createdAt: undefined as unknown as string }));
@@ -136,5 +143,20 @@ describe('AgentTaskStore — 큐 상태기계 (T-PB-2)', () => {
     const t2 = store.create({ kind: 'analyze', payload: { playbookRunId: 'pbrun_1' } });
     expect(store.cancel(t2.id).status).toBe('cancelled');
     expect(() => store.cancel(t2.id)).toThrow(expect.objectContaining({ status: 409 }));
+  });
+
+  it('maskSecrets: create payload의 비밀 키는 저장 시 *** 마스킹 (§7.5)', () => {
+    const store = new AgentTaskStore(dir);
+    const t = store.create({ kind: 'assemble', payload: { goal: 'x', token: 'shouldmask' } as any });
+    const retrieved = store.list('open')[0] as any;
+    expect(retrieved.payload.token).toBe('***');
+  });
+
+  it('maskSecrets: close result의 비밀 키는 저장 시 *** 마스킹 (§7.5)', () => {
+    const store = new AgentTaskStore(dir);
+    const t = store.create({ kind: 'assemble', payload: { goal: 'x' } });
+    const done = store.close(t.id, { playbookId: 'pb_1', secret: 'shouldmask' } as any);
+    const retrieved = store.list('done')[0] as any;
+    expect(retrieved.result.secret).toBe('***');
   });
 });
