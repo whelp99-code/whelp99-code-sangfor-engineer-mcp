@@ -1,3 +1,6 @@
+import { verifyExecutionApproval, type SignedApproval } from '../../../packages/sangfor-operator/src/approval.js';
+import { consumeApprovalNonce } from '../../../packages/sangfor-operator/src/nonce-store.js';
+
 type ToolListResult = {
   tools?: Array<{
     name?: unknown;
@@ -33,14 +36,22 @@ export interface ToolAuthDecision {
   error?: string;
 }
 
+export const BRIDGE_APPROVAL_ACTION_TYPE = 'bridge.tool-call';
+
 /**
  * Single source of truth for whether an incoming /tools/call is authorized.
  * Invariants (regression-pinned):
- *  - unknown/missing annotations  → refuse (fail-closed)
+ *  - unknown/missing annotations  → refuse (fail-closed), approval cannot bypass this
  *  - destructiveHint              → refuse ALWAYS, even with the whitelist off
- *  - write tool on a remote bind  → refuse unless allowRemoteWrite is explicit (redteam R3)
+ *  - write tool on a remote bind  → refuse unless allowRemoteWrite is explicit (redteam R3),
+ *                                   even with a valid approval
  *  - non-read-only ("write") tool → refuse unless the whitelist is explicitly disabled
  *  - read-only tool               → allow
+ * Signed-approval path (control tower):
+ *  - a SignedApproval bound to {type:'bridge.tool-call', target:<tool name>} that verifies
+ *    against the server-side secret permits write AND destructive tools for this one call.
+ *  - the nonce is consumed LAST, immediately before allow — a refused call must not burn
+ *    a single-use approval.
  */
 export function authorizeToolCall(params: {
   name: string;
@@ -48,16 +59,40 @@ export function authorizeToolCall(params: {
   enforceWhitelist: boolean;
   remoteBind?: boolean;        // bridge is bound beyond loopback
   allowRemoteWrite?: boolean;  // SANGFOR_ALLOW_REMOTE_WRITE === 'true'
+  approval?: SignedApproval;   // signed, action-bound, single-use (control tower)
+  approvalSecret?: string;     // SANGFOR_OPERATOR_APPROVAL_SECRET
 }): ToolAuthDecision {
-  const { name, toolListResult, enforceWhitelist, remoteBind = false, allowRemoteWrite = false } = params;
+  const {
+    name, toolListResult, enforceWhitelist,
+    remoteBind = false, allowRemoteWrite = false,
+    approval, approvalSecret,
+  } = params;
   const annotations = findToolAnnotations(toolListResult, name);
   if (!annotations) {
     return { allow: false, status: 403, error: `Tool annotations unavailable; refusing call: ${name}` };
   }
+  const isWrite = annotations.readOnlyHint !== true;
+  if (approval) {
+    const verdict = verifyExecutionApproval({
+      action: { type: BRIDGE_APPROVAL_ACTION_TYPE, target: name },
+      approval,
+      secret: approvalSecret,
+    });
+    if (!verdict.ok) {
+      return { allow: false, status: 403, error: `bridge approval rejected: ${verdict.reason}` };
+    }
+    if (isWrite && remoteBind && !allowRemoteWrite) {
+      return { allow: false, status: 403, error: `Write tool refused on a remote (non-loopback) bind: ${name}. Set SANGFOR_ALLOW_REMOTE_WRITE=true only for an authorized deployment.` };
+    }
+    const consumed = consumeApprovalNonce({ nonce: approval.nonce, expiresAt: approval.expiresAt });
+    if (!consumed.ok) {
+      return { allow: false, status: 403, error: `bridge approval rejected: ${consumed.reason}` };
+    }
+    return { allow: true };
+  }
   if (annotations.destructiveHint) {
     return { allow: false, status: 403, error: `Destructive tool refused by MCP annotations: ${name}` };
   }
-  const isWrite = annotations.readOnlyHint !== true;
   if (isWrite && remoteBind && !allowRemoteWrite) {
     return { allow: false, status: 403, error: `Write tool refused on a remote (non-loopback) bind: ${name}. Set SANGFOR_ALLOW_REMOTE_WRITE=true only for an authorized deployment.` };
   }

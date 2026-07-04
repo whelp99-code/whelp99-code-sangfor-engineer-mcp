@@ -15,6 +15,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { resolveBindHost, checkAuth, assertBindSafety, isLoopback } from "../../../packages/shared/src/index.js";
 import { authorizeToolCall } from "./tool-guard.js";
+import type { SignedApproval } from "../../../packages/sangfor-operator/src/approval.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(__dirname, "..", "..", "..");
@@ -161,6 +162,9 @@ const server = http.createServer(async (req, res) => {
       const body = await readJsonBody(req);
       const name = typeof body.name === "string" ? body.name : "";
       const args = body.arguments ?? body.args ?? {};
+      const approval = body.approval && typeof body.approval === "object"
+        ? (body.approval as SignedApproval)
+        : undefined;
 
       if (!name) {
         return json(res, { error: "name is required" }, 400);
@@ -174,6 +178,8 @@ const server = http.createServer(async (req, res) => {
         enforceWhitelist,
         remoteBind: REMOTE_BIND,
         allowRemoteWrite: ALLOW_REMOTE_WRITE,
+        approval,
+        approvalSecret: process.env.SANGFOR_OPERATOR_APPROVAL_SECRET,
       });
       if (!decision.allow) {
         return json(res, { error: decision.error }, decision.status ?? 403);
