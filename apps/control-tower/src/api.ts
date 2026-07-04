@@ -1,8 +1,12 @@
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import type { SignedApproval } from '../../../packages/sangfor-operator/src/approval.js';
-import { nowId } from '../../../packages/shared/src/index.js';
+import { nowId, resolveRepoData } from '../../../packages/shared/src/index.js';
 import { RunStore, maskSecrets, scrubSecretValues, type ListRunsOptions, type RunRecord, type RunStatus } from '../../../packages/sangfor-runs/src/index.js';
 import { BridgeClient, safetyOf, type BridgeTool } from './bridge-client.js';
 import { Registry, mergeDeviceArgs, applyMockCredentialFallback, RegistryValidationError, type Device, type VendorDescriptor } from './registry.js';
+import { PlaybookStore, AnalysisStore, AgentTaskStore, PlaybookValidationError, type Playbook, type PlaybookBlock, type PlaybookRevision, type PlaybookAnalysis, type AgentTask, type AnalysisVerdict } from './playbook-store.js';
+import { resolveTemplates, derivePlaybookRunStatus, renderReport, TemplateError, type PlaybookRunStatus } from './playbook-engine.js';
 import { mintBridgeApproval, mintApproval } from './approval-mint.js';
 
 export class ApiError extends Error {
@@ -18,6 +22,7 @@ export interface TowerOptions {
   registryDir?: string;
   approvalSecret?: string;
   mockConsoleUrl?: string;
+  playbookOutputDir?: string;   // 리포트 산출물 경로 (테스트 주입용, 기본 resolveRepoData('outputs/playbooks'))
 }
 
 export interface HealthEntry { ok: boolean; detail: string }
@@ -114,6 +119,10 @@ export function createApi(opts: TowerOptions = {}) {
   // 재시작으로 소실되면 해당 pending은 승인 시 400 — 마스킹본('***')을 실제 장비에
   // 보내는 사고를 막는다 (스펙 §6.2).
   const originalArgs = new Map<string, Record<string, unknown>>();
+  const playbooks = new PlaybookStore(opts.registryDir);
+  const analyses = new AnalysisStore(opts.runsDir);
+  const agentTasks = new AgentTaskStore(opts.registryDir);
+  const playbookOutputDir = opts.playbookOutputDir ?? resolveRepoData('outputs/playbooks');
 
   async function listBridgeTools(): Promise<BridgeTool[]> {
     try {
@@ -146,6 +155,115 @@ export function createApi(opts: TowerOptions = {}) {
   function stripResultJson(record: RunRecord): RunRecord {
     const { resultJson: _resultJson, ...rest } = record;
     return rest as RunRecord;
+  }
+
+  const PB_LIMIT = { sinceDays: Infinity, limit: Infinity } as const;
+  const blockRunsOf = (playbookRunId: string): RunRecord[] => store.listRuns({ playbookRunId, ...PB_LIMIT });
+  const latestBlockRun = (playbookRunId: string, blockId: string): RunRecord | undefined =>
+    blockRunsOf(playbookRunId).find((r) => r.blockId === blockId); // listRuns는 requestedAt 내림차순 → 최신
+
+  // 블록 args 해석: 템플릿 → deviceId 병합 → mock 폴백. write 블록의 실행용 인자를 만든다.
+  async function resolveBlockArgs(block: PlaybookBlock, playbookRunId: string, tool: BridgeTool): Promise<Record<string, unknown>> {
+    let args = resolveTemplates(block.args ?? {}, (bid) => latestBlockRun(playbookRunId, bid));
+    if (block.deviceId) {
+      const device = registry.devices().find((d) => d.id === block.deviceId);
+      if (!device) throw new ApiError(400, `unknown device: ${block.deviceId}`);
+      const vendor = registry.vendorFor(device.product);
+      if (!vendor) throw new ApiError(400, `no vendor descriptor for product: ${device.product}`);
+      args = applyMockCredentialFallback(mergeDeviceArgs(vendor, device, args), vendor, tool.inputSchema);
+    }
+    return args;
+  }
+
+  function makeTags(pb: Playbook, rev: number, playbookRunId: string, blockId: string) {
+    return { playbookId: pb.id, playbookRunId, playbookRev: rev, blockId };
+  }
+
+  // 한 tool 블록 실행. 반환: 'succeeded' | 'failed' | 'paused'(write pending).
+  async function runToolBlock(pb: Playbook, rev: number, playbookRunId: string, block: PlaybookBlock): Promise<'succeeded' | 'failed' | 'paused'> {
+    const tags = makeTags(pb, rev, playbookRunId, block.id);
+    const tools = await listBridgeTools();
+    const tool = tools.find((t) => t.name === block.toolId);
+    if (!tool) {
+      const rec = store.createRun({ toolId: block.toolId ?? 'unknown', toolSafety: 'read_only', args: block.args ?? {}, initialStatus: 'running', ...tags });
+      store.transition(rec.runId, { status: 'failed', error: `unknown tool: ${block.toolId}`, finishedAt: new Date().toISOString() });
+      return 'failed';
+    }
+    let args: Record<string, unknown>;
+    try {
+      args = await resolveBlockArgs(block, playbookRunId, tool);
+    } catch (error) {
+      const rec = store.createRun({ toolId: tool.name, toolSafety: safetyOf(tool), args: block.args ?? {}, initialStatus: 'running', ...tags });
+      const msg = error instanceof TemplateError ? error.message : error instanceof ApiError ? error.message : String(error);
+      store.transition(rec.runId, { status: 'failed', error: msg, finishedAt: new Date().toISOString() });
+      return 'failed';
+    }
+    const safety = safetyOf(tool);
+    if (safety === 'read_only') {
+      const rec = store.createRun({ toolId: tool.name, toolSafety: 'read_only', args, deviceId: block.deviceId, initialStatus: 'running', ...tags });
+      const final = await execute(rec.runId, tool.name, args);
+      return final.status === 'succeeded' ? 'succeeded' : 'failed';
+    }
+    const rec = store.createRun({ toolId: tool.name, toolSafety: safety, args, deviceId: block.deviceId, initialStatus: 'pending_approval', ...tags });
+    originalArgs.set(rec.runId, args); // 승인 시 실행용 (v1과 동일 규약)
+    return 'paused';
+  }
+
+  async function runReportBlock(pb: Playbook, rev: number, playbookRunId: string, block: PlaybookBlock): Promise<void> {
+    const priorRuns = blockRunsOf(playbookRunId); // report run 생성 전에 조회 → 자기 자신 제외
+    const tags = makeTags(pb, rev, playbookRunId, block.id);
+    const rec = store.createRun({ toolId: 'tower.report', toolSafety: 'read_only', args: {}, initialStatus: 'running', ...tags });
+    try {
+      const markdown = renderReport(pb, rev, playbookRunId, priorRuns);
+      mkdirSync(playbookOutputDir, { recursive: true });
+      const path = join(playbookOutputDir, `${playbookRunId}.md`);
+      writeFileSync(path, markdown);
+      store.transition(rec.runId, { status: 'succeeded', resultJson: { markdown, path }, resultSummary: markdown.split('\n')[0].slice(0, 200), finishedAt: new Date().toISOString() });
+    } catch (error) {
+      store.transition(rec.runId, { status: 'failed', error: error instanceof Error ? error.message : String(error), finishedAt: new Date().toISOString() });
+    }
+  }
+
+  // index부터 블록을 순차 실행. write pending 도달 시 반환(정지). stop-on-failure: 실패 후 tool은
+  // 건너뛰되 report는 항상 실행. resume을 위해 startIndex 이전 블록들의 실패를 재유도한다.
+  async function runBlocksFrom(pb: Playbook, rev: PlaybookRevision, playbookRunId: string, startIndex: number): Promise<void> {
+    const priorByBlock = new Map<string, RunRecord>();
+    for (const r of blockRunsOf(playbookRunId)) if (r.blockId) priorByBlock.set(r.blockId, r);
+    let failed = rev.blocks.slice(0, startIndex).some((b) => {
+      const st = priorByBlock.get(b.id)?.status;
+      return st === 'failed' || st === 'rejected';
+    });
+    for (let i = startIndex; i < rev.blocks.length; i++) {
+      const block = rev.blocks[i];
+      if (block.type === 'report') { await runReportBlock(pb, rev.rev, playbookRunId, block); continue; }
+      if (failed) continue; // 실패 후 tool 블록 건너뜀
+      const outcome = await runToolBlock(pb, rev.rev, playbookRunId, block);
+      if (outcome === 'paused') return; // write pending → 정지 (report는 승인 후 continueRun에서)
+      if (outcome === 'failed') failed = true;
+    }
+  }
+
+  function derivePlaybookRunState(pb: Playbook, rev: PlaybookRevision, playbookRunId: string) {
+    const derived = derivePlaybookRunStatus(rev, blockRunsOf(playbookRunId));
+    return { playbookRunId, playbookId: pb.id, rev: rev.rev, status: derived.status, blocks: derived.blocks };
+  }
+
+  async function continueFromApprove(playbookRunId: string): Promise<void> {
+    const runs = blockRunsOf(playbookRunId);
+    const anchor = runs[0];
+    if (!anchor?.playbookId || anchor.playbookRev === undefined) throw new ApiError(409, `재개 불가: ${playbookRunId} 태그 소실`);
+    const pb = playbooks.get(anchor.playbookId);
+    if (!pb) throw new ApiError(409, '재개 불가: 플레이북 없음');
+    const rev = pb.revisions.find((r) => r.rev === anchor.playbookRev);
+    if (!rev) throw new ApiError(409, '재개 불가: 리비전 없음');
+    const done = new Map<string, RunStatus>();
+    for (const r of runs) if (r.blockId) done.set(r.blockId, r.status);
+    let startIndex = rev.blocks.length;
+    for (let i = 0; i < rev.blocks.length; i++) {
+      const st = done.get(rev.blocks[i].id);
+      if (st === undefined || st === 'pending_approval' || st === 'running') { startIndex = i; break; }
+    }
+    if (startIndex < rev.blocks.length) await runBlocksFrom(pb, rev, playbookRunId, startIndex);
   }
 
   return {
@@ -204,6 +322,12 @@ export function createApi(opts: TowerOptions = {}) {
       });
       const final = await execute(runId, record.toolId, args, signed);
       originalArgs.delete(runId);
+      // 접점 #2 (스펙 §5.3): 플레이북 write run이면 후속 블록을 이어서 실행. 실패한 write도
+      // continueRun에 들어가되 엔진이 실패를 재유도해 tool은 건너뛰고 report만 실행한다(→ partial/failed).
+      if (record.playbookRunId) {
+        await continueFromApprove(record.playbookRunId);
+        return store.getRun(runId) ?? final; // 승인된 write run 레코드를 그대로 반환
+      }
       return final;
     },
 
@@ -351,6 +475,31 @@ export function createApi(opts: TowerOptions = {}) {
         pendingApprovals: store.pendingApprovals().map(stripResultJson),
         health: await this.health(),
       };
+    },
+
+    async executePlaybook(playbookId: string): Promise<{ playbookRunId: string; playbookId: string; rev: number; status: PlaybookRunStatus; blocks: Array<{ blockId: string; runId?: string; status?: RunStatus }> }> {
+      const pb = playbooks.get(playbookId);
+      if (!pb) throw new ApiError(404, `unknown playbook: ${playbookId}`);
+      const rev = playbooks.activeRevision(pb);
+      if (!rev) throw new ApiError(403, '승인된 리비전이 없습니다');
+      const playbookRunId = nowId('pbrun');
+      await runBlocksFrom(pb, rev, playbookRunId, 0);
+      return derivePlaybookRunState(pb, rev, playbookRunId);
+    },
+
+    async continuePlaybookRun(playbookRunId: string): Promise<void> {
+      return continueFromApprove(playbookRunId);
+    },
+
+    getPlaybookRun(playbookRunId: string): { playbookRunId: string; playbookId?: string; rev?: number; status: PlaybookRunStatus; blocks: Array<{ blockId: string; runId?: string; status?: RunStatus }>; analyses: PlaybookAnalysis[] } {
+      const runs = blockRunsOf(playbookRunId);
+      const anchor = runs[0];
+      if (!anchor?.playbookId || anchor.playbookRev === undefined) throw new ApiError(404, `unknown playbook run: ${playbookRunId}`);
+      const pb = playbooks.get(anchor.playbookId);
+      const rev = pb?.revisions.find((r) => r.rev === anchor.playbookRev);
+      if (!pb || !rev) throw new ApiError(404, `playbook/revision missing for run: ${playbookRunId}`);
+      const derived = derivePlaybookRunStatus(rev, runs);
+      return { playbookRunId, playbookId: pb.id, rev: rev.rev, status: derived.status, blocks: derived.blocks, analyses: analyses.listByRun(playbookRunId) };
     },
 
     // 스펙 §6.4: tool-args용 승인 수동 민팅 (HCI 등). 저장하지 않는다.
