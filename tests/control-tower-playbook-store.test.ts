@@ -3,6 +3,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { PlaybookStore, PlaybookValidationError, type PlaybookBlock } from '../apps/control-tower/src/playbook-store.js';
+import { AnalysisStore, AgentTaskStore, type PlaybookAnalysis } from '../apps/control-tower/src/playbook-store.js';
 
 const READ2: PlaybookBlock[] = [
   { id: 'b1', type: 'tool', toolId: 'sangfor.advisor_fortios_advanced', deviceId: 'dev_1' },
@@ -72,5 +73,68 @@ describe('PlaybookStore — CRUD·검증·상태기계 (T-PB-1)', () => {
     store.reviewRevision(pb.id, 1, { approve: true, reviewedBy: 'j' });
     const p2 = store.reviewRevision(pb.id, 2, { approve: true, reviewedBy: 'j' });
     expect(store.activeRevision(p2)!.rev).toBe(2);
+  });
+});
+
+function analysisInput(over: Partial<PlaybookAnalysis> = {}): PlaybookAnalysis {
+  return {
+    schemaVersion: 1, id: 'anl_seed', playbookId: 'pb_1', playbookRunId: 'pbrun_1',
+    summary: 'HA 미설정 2건', authoredBy: 'agent:claude', createdAt: '2026-07-04T00:00:00.000Z',
+    improvements: [{ observation: 'HA off', recommendation: 'HA 설정', evidenceRunId: 'run_x' }],
+    proposals: [{ action: 'HA 설정 플레이북', rationale: '가용성' }],
+    ...over,
+  };
+}
+
+describe('AnalysisStore — append/fold/verdict·마스킹 (T-PB-2)', () => {
+  let dir: string;
+  beforeEach(() => { dir = mkdtempSync(join(tmpdir(), 'anl-')); });
+  afterEach(() => { rmSync(dir, { recursive: true, force: true }); });
+
+  it('append는 id·createdAt를 발급하고 저장 전 maskSecrets, listByRun/get 조회', () => {
+    const store = new AnalysisStore(dir);
+    const saved = store.append(analysisInput({ id: undefined as unknown as string, createdAt: undefined as unknown as string, summary: 'token=abc123 노출', proposals: [{ action: 'x', rationale: 'y', linkedPlaybookId: undefined }] }));
+    expect(saved.id).toMatch(/^anl_/);
+    expect(saved.createdAt).toBeTruthy();
+    expect(store.get(saved.id)!.summary).toBe('token=abc123 노출'); // summary는 키 기반 마스킹 대상 아님 (자유 텍스트)
+    expect(store.listByRun('pbrun_1').map((a) => a.id)).toContain(saved.id);
+  });
+
+  it('setVerdict: improvements/proposals 항목 갱신은 새 스냅샷 append (fold last-wins), 범위 밖 400', () => {
+    const store = new AnalysisStore(dir);
+    const a = store.append(analysisInput({ id: undefined as unknown as string, createdAt: undefined as unknown as string }));
+    const v = store.setVerdict(a.id, 'improvements', 0, 'accepted', 'jmpark');
+    expect(v.improvements[0].verdict).toBe('accepted');
+    expect(v.improvements[0].reviewedBy).toBe('jmpark');
+    const v2 = store.setVerdict(a.id, 'proposals', 0, 'accepted', 'jmpark', 'pb_next');
+    expect(v2.proposals[0].linkedPlaybookId).toBe('pb_next');
+    // 재조회 시 최신 스냅샷 (fold)
+    expect(store.get(a.id)!.proposals[0].linkedPlaybookId).toBe('pb_next');
+    expect(() => store.setVerdict(a.id, 'improvements', 9, 'accepted', 'x')).toThrow(expect.objectContaining({ status: 400 }));
+    expect(() => store.setVerdict('anl_none', 'improvements', 0, 'accepted', 'x')).toThrow(expect.objectContaining({ status: 404 }));
+  });
+});
+
+describe('AgentTaskStore — 큐 상태기계 (T-PB-2)', () => {
+  let dir: string;
+  beforeEach(() => { dir = mkdtempSync(join(tmpdir(), 'atask-')); });
+  afterEach(() => { rmSync(dir, { recursive: true, force: true }); });
+
+  it('create(open) → close(done) / cancel, open 아니면 409, 저장 전 maskSecrets', () => {
+    const store = new AgentTaskStore(dir);
+    const t = store.create({ kind: 'assemble', payload: { goal: '전체분석', feedback: undefined } });
+    expect(t.id).toMatch(/^atask_/);
+    expect(t.status).toBe('open');
+    expect(store.list('open').map((x) => x.id)).toContain(t.id);
+    const done = store.close(t.id, { playbookId: 'pb_1', rev: 1 });
+    expect(done.status).toBe('done');
+    expect(done.result!.playbookId).toBe('pb_1');
+    expect(store.list('open')).toHaveLength(0);
+    // 이미 done → 재close 409
+    expect(() => store.close(t.id, {})).toThrow(expect.objectContaining({ status: 409 }));
+    // cancel은 open만
+    const t2 = store.create({ kind: 'analyze', payload: { playbookRunId: 'pbrun_1' } });
+    expect(store.cancel(t2.id).status).toBe('cancelled');
+    expect(() => store.cancel(t2.id)).toThrow(expect.objectContaining({ status: 409 }));
   });
 });

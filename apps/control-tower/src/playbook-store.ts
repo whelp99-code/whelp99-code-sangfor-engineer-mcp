@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { appendFileSync, mkdirSync, readFileSync, readdirSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { nowId, resolveRepoData } from '../../../packages/shared/src/index.js';
 import { maskSecrets } from '../../../packages/sangfor-runs/src/index.js';
@@ -184,6 +184,145 @@ export class PlaybookStore {
     mkdirSync(this.dir, { recursive: true });
     const tmp = `${this.path}.tmp`;
     writeFileSync(tmp, JSON.stringify(pbs, null, 2));
+    renameSync(tmp, this.path);
+  }
+}
+
+const ANALYSIS_FILE_RE = /^\d{4}-\d{2}-\d{2}\.jsonl$/;
+
+// RunStore와 같은 append-only 스냅샷 JSONL. id별 last-wins fold. verdict 갱신은
+// createdAt를 보존한 새 스냅샷을 같은 날짜 파일에 append (RunStore.transition과 동형).
+export class AnalysisStore {
+  private readonly dir: string;
+
+  constructor(dir?: string) {
+    const root = dir ?? resolveRepoData('data/runs', 'SANGFOR_RUNS_ROOT');
+    this.dir = join(root, 'analyses');
+  }
+
+  append(analysis: PlaybookAnalysis): PlaybookAnalysis {
+    const record: PlaybookAnalysis = maskSecrets({
+      ...analysis,
+      schemaVersion: 1,
+      id: analysis.id ?? nowId('anl'),
+      createdAt: analysis.createdAt ?? new Date().toISOString(),
+    });
+    mkdirSync(this.dir, { recursive: true });
+    appendFileSync(join(this.dir, `${record.createdAt.slice(0, 10)}.jsonl`), `${JSON.stringify(record)}\n`);
+    return record;
+  }
+
+  get(id: string): PlaybookAnalysis | undefined {
+    return this.foldAll().get(id);
+  }
+
+  listByRun(playbookRunId: string): PlaybookAnalysis[] {
+    return [...this.foldAll().values()]
+      .filter((a) => a.playbookRunId === playbookRunId)
+      .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+  }
+
+  setVerdict(
+    id: string, part: 'improvements' | 'proposals', index: number,
+    verdict: AnalysisVerdict, reviewedBy: string, linkedPlaybookId?: string,
+  ): PlaybookAnalysis {
+    const current = this.get(id);
+    if (!current) throw new PlaybookValidationError(`unknown analysis: ${id}`, 404);
+    const arr = current[part];
+    if (index < 0 || index >= arr.length) throw new PlaybookValidationError(`${part}[${index}] 범위 밖`, 400);
+    arr[index].verdict = verdict;
+    arr[index].reviewedBy = reviewedBy;
+    if (part === 'proposals' && linkedPlaybookId) (arr[index] as AnalysisProposal).linkedPlaybookId = linkedPlaybookId;
+    return this.append(current); // createdAt 보존 → 같은 날짜 파일, last-wins
+  }
+
+  private foldAll(): Map<string, PlaybookAnalysis> {
+    const out = new Map<string, PlaybookAnalysis>();
+    let files: string[];
+    try {
+      files = readdirSync(this.dir).filter((f) => ANALYSIS_FILE_RE.test(f)).sort();
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') return out;
+      throw error;
+    }
+    for (const file of files) {
+      const raw = readFileSync(join(this.dir, file), 'utf8');
+      for (const line of raw.split('\n')) {
+        if (!line.trim()) continue;
+        try {
+          const rec = JSON.parse(line) as PlaybookAnalysis;
+          if (rec && typeof rec.id === 'string') out.set(rec.id, rec);
+        } catch {
+          process.stderr.write(`[analyses] skipping unparseable line in ${file}\n`);
+        }
+      }
+    }
+    return out;
+  }
+}
+
+// registry 패턴: 전체 JSON, atomic write.
+export class AgentTaskStore {
+  private readonly dir: string;
+  private readonly path: string;
+
+  constructor(dir?: string) {
+    this.dir = dir ?? resolveRepoData('data/registry', 'SANGFOR_REGISTRY_ROOT');
+    this.path = join(this.dir, 'agent-tasks.json');
+  }
+
+  list(status?: AgentTask['status']): AgentTask[] {
+    const all = this.load();
+    return status ? all.filter((t) => t.status === status) : all;
+  }
+
+  create(input: { kind: AgentTaskKind; payload: AgentTask['payload'] }): AgentTask {
+    const task: AgentTask = {
+      id: nowId('atask'), kind: input.kind, payload: maskSecrets(input.payload ?? {}),
+      status: 'open', createdAt: new Date().toISOString(),
+    };
+    this.save([...this.load(), task]);
+    return task;
+  }
+
+  close(id: string, result: AgentTask['result']): AgentTask {
+    return this.transition(id, (t) => {
+      t.status = 'done';
+      t.result = maskSecrets(result ?? {});
+      t.closedAt = new Date().toISOString();
+    });
+  }
+
+  cancel(id: string): AgentTask {
+    return this.transition(id, (t) => {
+      t.status = 'cancelled';
+      t.closedAt = new Date().toISOString();
+    });
+  }
+
+  private transition(id: string, mutate: (t: AgentTask) => void): AgentTask {
+    const tasks = this.load();
+    const t = tasks.find((x) => x.id === id);
+    if (!t) throw new PlaybookValidationError(`unknown agent-task: ${id}`, 404);
+    if (t.status !== 'open') throw new PlaybookValidationError(`task가 open이 아닙니다: ${t.status}`, 409);
+    mutate(t);
+    this.save(tasks);
+    return t;
+  }
+
+  private load(): AgentTask[] {
+    try {
+      return JSON.parse(readFileSync(this.path, 'utf8')) as AgentTask[];
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') return [];
+      throw error;
+    }
+  }
+
+  private save(tasks: AgentTask[]): void {
+    mkdirSync(this.dir, { recursive: true });
+    const tmp = `${this.path}.tmp`;
+    writeFileSync(tmp, JSON.stringify(tasks, null, 2));
     renameSync(tmp, this.path);
   }
 }
