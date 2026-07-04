@@ -1,8 +1,12 @@
 import http from 'node:http';
 import { URL } from 'node:url';
-import { checkAuth } from '../../../packages/shared/src/index.js';
+import { checkAuth, resolveBindHost, assertBindSafety } from '../../../packages/shared/src/index.js';
 import type { RunStatus } from '../../../packages/sangfor-runs/src/index.js';
 import { createApi, ApiError, type TowerOptions } from './api.js';
+import { loadEnvFile } from '../../../packages/sangfor-collector/src/load-env.js';
+import { dashboardHtml } from './ui.js';
+
+loadEnvFile('.env');
 
 export interface TowerServerOptions extends TowerOptions {
   apiToken?: string;
@@ -37,6 +41,11 @@ export function createTowerServer(opts: TowerServerOptions = {}): http.Server {
     }
 
     try {
+      if (method === 'GET' && (path === '/' || path === '/index.html')) {
+        res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+        res.end(dashboardHtml());
+        return;
+      }
       if (method === 'GET' && path === '/api/overview') return json(res, await api.overview());
       if (method === 'GET' && path === '/api/tools') return json(res, await api.toolGroups());
       if (method === 'GET' && path === '/api/health') return json(res, await api.health());
@@ -113,5 +122,16 @@ export function createTowerServer(opts: TowerServerOptions = {}): http.Server {
       if (error instanceof ApiError) return json(res, { error: error.message }, error.status);
       return json(res, { error: error instanceof Error ? error.message : String(error) }, 500);
     }
+  });
+}
+
+// Auto-start only when run as a process (not when imported by tests).
+const port = Number(process.env.PORT ?? process.env.CONTROL_TOWER_PORT ?? 3700);
+if (process.env.MCP_NO_SERVE !== '1' && process.env.VITEST === undefined) {
+  const bindHost = resolveBindHost();
+  const apiToken = process.env.SANGFOR_API_TOKEN;
+  assertBindSafety(bindHost, apiToken); // fail closed: no public bind without a token
+  createTowerServer().listen(port, bindHost, () => {
+    console.log(`Sangfor Control Tower listening on http://${bindHost}:${port}${apiToken ? ' (token-gated)' : ''}`);
   });
 }

@@ -402,3 +402,17 @@ describe('Tower API — devices/sweep/overview/health (T-API-2)', () => {
     }
   });
 });
+
+describe('Tower UI 서빙', () => {
+  it('GET /는 무인증 HTML(한국어 레이블 포함), /api/*만 토큰 게이트', async () => {
+    const res = await fetch(`${towerUrl}/`);
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toMatch(/text\/html/);
+    const html = await res.text();
+    expect(html).toContain('Sangfor Control Tower');
+    expect(html).toContain('대시보드');
+    expect(html).toContain('도구 실행');
+    expect(html).toContain('실행 이력');
+    expect(html).toContain('장비 관리');
+  });
+});

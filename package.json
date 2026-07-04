@@ -12,6 +12,7 @@
     "dev:mock-console": "tsx apps/mock-sangfor-console/src/server.ts",
     "dev:operator-console": "tsx apps/operator-console/src/server.ts",
     "dev:web": "tsx apps/operator-console/src/server.ts",
+    "dev:control-tower": "tsx apps/control-tower/src/server.ts",
     "test": "vitest run --config vitest.config.ts",
     "lint": "tsc -p tsconfig.json --noEmit",
     "build": "tsc -p tsconfig.json",
