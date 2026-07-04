@@ -336,6 +336,16 @@ describe('Tower API — devices/sweep/overview/health (T-API-2)', () => {
     expect(typeof r.body.approvalToken).toBe('string');
     expect(typeof r.body.nonce).toBe('string');
     expect((await call('POST', '/api/approvals/mint', { actionType: 'x' })).status).toBe(400);
+
+    // TTL은 600초로 클램프된다 (과도한 장수명 승인 방지)
+    const now = Date.now();
+    const clamped = await call('POST', '/api/approvals/mint', {
+      actionType: 'hci.create-volume', actionTarget: 'h:v',
+      approvedBy: 'a', changeTicketId: 'c', rollbackPlanId: 'r', ttlSec: 99999,
+    });
+    const ttlMs = new Date(String(clamped.body.expiresAt)).getTime() - now;
+    expect(ttlMs).toBeLessThanOrEqual(600_000 + 5_000); // 600s + 여유
+    expect(ttlMs).toBeGreaterThan(590_000);
   });
 
   it('mint: 시크릿 미설정 시 500 fail-closed', async () => {

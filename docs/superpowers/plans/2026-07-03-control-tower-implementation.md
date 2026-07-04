@@ -491,6 +491,11 @@ export class RunStore {
     return record;
   }
 
+  // Persistence-layer masking covers only `args` and `resultJson` (keyed
+  // maskSecrets). The store CANNOT scrub `error`/`resultSummary`: it holds only
+  // already-masked args ('***'), so it cannot re-derive the real secret values.
+  // Callers that set `error` or `resultSummary` MUST value-scrub them first with
+  // scrubSecretValues(text, originalArgs) — see apps/control-tower/src/api.ts execute().
   transition(runId: string, patch: Partial<RunRecord> & { status: RunStatus }): RunRecord {
     const current = this.getRun(runId);
     if (!current) throw new Error(`unknown runId: ${runId}`);
@@ -2607,7 +2612,7 @@ async function promisePool<T, R>(items: T[], limit: number, fn: (item: T) => Pro
         approvedBy: String(input.approvedBy),
         changeTicketId: String(input.changeTicketId),
         rollbackPlanId: String(input.rollbackPlanId),
-        ttlSec: typeof input.ttlSec === 'number' ? input.ttlSec : undefined,
+        ttlSec: typeof input.ttlSec === 'number' && input.ttlSec > 0 ? Math.min(input.ttlSec, 600) : undefined,
       });
     },
 ```

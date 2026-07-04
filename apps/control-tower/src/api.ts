@@ -369,7 +369,7 @@ export function createApi(opts: TowerOptions = {}) {
         approvedBy: String(input.approvedBy),
         changeTicketId: String(input.changeTicketId),
         rollbackPlanId: String(input.rollbackPlanId),
-        ttlSec: typeof input.ttlSec === 'number' ? input.ttlSec : undefined,
+        ttlSec: typeof input.ttlSec === 'number' && input.ttlSec > 0 ? Math.min(input.ttlSec, 600) : undefined,
       });
     },
   };
