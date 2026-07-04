@@ -23,6 +23,10 @@ export interface RunRecord {
   sweepId?: string;
   approval?: { approvedBy: string; approvedAt: string; changeTicketId: string; rollbackPlanId: string };
   rejectedReason?: string;
+  playbookId?: string;
+  playbookRunId?: string;      // nowId('pbrun') — 한 플레이북 "실행"의 모든 블록 run이 공유
+  playbookRev?: number;        // 실행에 사용된 리비전 (유도 상태 계산 기준)
+  blockId?: string;            // 리비전 내 블록 id
 }
 
 export interface ListRunsOptions {
@@ -30,6 +34,7 @@ export interface ListRunsOptions {
   toolId?: string;
   deviceId?: string;
   sweepId?: string;
+  playbookRunId?: string;
   sinceDays?: number;
   limit?: number;
 }
@@ -66,6 +71,10 @@ export class RunStore {
     args: Record<string, unknown>;
     deviceId?: string;
     sweepId?: string;
+    playbookId?: string;
+    playbookRunId?: string;
+    playbookRev?: number;
+    blockId?: string;
     initialStatus: RunStatus;
   }): RunRecord {
     const record: RunRecord = {
@@ -79,6 +88,10 @@ export class RunStore {
     };
     if (input.deviceId) record.deviceId = input.deviceId;
     if (input.sweepId) record.sweepId = input.sweepId;
+    if (input.playbookId) record.playbookId = input.playbookId;
+    if (input.playbookRunId) record.playbookRunId = input.playbookRunId;
+    if (input.playbookRev !== undefined) record.playbookRev = input.playbookRev;
+    if (input.blockId) record.blockId = input.blockId;
     this.append(record);
     return record;
   }
@@ -130,7 +143,8 @@ export class RunStore {
       (!opts.status || r.status === opts.status) &&
       (!opts.toolId || r.toolId === opts.toolId) &&
       (!opts.deviceId || r.deviceId === opts.deviceId) &&
-      (!opts.sweepId || r.sweepId === opts.sweepId));
+      (!opts.sweepId || r.sweepId === opts.sweepId) &&
+      (!opts.playbookRunId || r.playbookRunId === opts.playbookRunId));
     filtered.sort((a, b) =>
       a.requestedAt < b.requestedAt ? 1 : a.requestedAt > b.requestedAt ? -1 : a.runId < b.runId ? 1 : -1);
     return filtered.slice(0, limit);

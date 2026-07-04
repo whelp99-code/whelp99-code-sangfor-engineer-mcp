@@ -168,6 +168,26 @@ describe('RunStore — 라이프사이클/영속/필터 (T-RUN-1)', () => {
     // 일반 listRuns는 여전히 윈도우/리밋 적용 (무회귀)
     expect(store.listRuns({ status: 'pending_approval' }).length).toBe(100);
   });
+
+  it('playbook 태그 왕복: 저장·조회·playbookRunId 필터 (하위호환)', () => {
+    const store = new RunStore(dir);
+    const a = store.createRun({
+      toolId: 't1', toolSafety: 'read_only', args: {},
+      initialStatus: 'running', playbookId: 'pb_1', playbookRunId: 'pbrun_1', playbookRev: 2, blockId: 'b1',
+    });
+    store.createRun({ toolId: 't2', toolSafety: 'read_only', args: {}, initialStatus: 'running' }); // 태그 없는 run
+    const fetched = store.getRun(a.runId)!;
+    expect(fetched.playbookId).toBe('pb_1');
+    expect(fetched.playbookRunId).toBe('pbrun_1');
+    expect(fetched.playbookRev).toBe(2);
+    expect(fetched.blockId).toBe('b1');
+    // playbookRunId 필터: 태그된 run만
+    const filtered = store.listRuns({ playbookRunId: 'pbrun_1' });
+    expect(filtered.map((r) => r.runId)).toEqual([a.runId]);
+    // 태그 미지정 run에는 필드가 붙지 않는다 (JSON 최소화)
+    const plain = store.listRuns({ toolId: 't2' })[0];
+    expect('playbookRunId' in plain).toBe(false);
+  });
 });
 
 describe('RunStore — 마스킹·용량 불변식 (T-RUN-2)', () => {
