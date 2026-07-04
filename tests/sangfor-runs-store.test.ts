@@ -149,6 +149,25 @@ describe('RunStore — 라이프사이클/영속/필터 (T-RUN-1)', () => {
     appendFileSync(join(dir, `${run.requestedAt.slice(0, 10)}.jsonl`), 'not-json\n');
     expect(store.listRuns().map((r) => r.runId)).toContain(run.runId);
   });
+
+  it('pendingApprovals는 14일 윈도우·100건 리밋을 무시하고 전체를 반환한다', () => {
+    const store = new RunStore(dir);
+    // 오래된(윈도우 밖) pending 하나를 과거 날짜 파일로 주입
+    const old: RunRecord = {
+      schemaVersion: 1, runId: 'run_oldpending', toolId: 't', toolSafety: 'write',
+      args: {}, status: 'pending_approval', requestedAt: '2020-01-01T00:00:00.000Z',
+    };
+    writeFileSync(join(dir, '2020-01-01.jsonl'), `${JSON.stringify(old)}\n`);
+    // 최신 pending 120건 (기본 limit 100 초과)
+    for (let i = 0; i < 120; i++) {
+      store.createRun({ toolId: 't', toolSafety: 'write', args: {}, initialStatus: 'pending_approval' });
+    }
+    const pending = store.pendingApprovals();
+    expect(pending.length).toBe(121);
+    expect(pending.some((r) => r.runId === 'run_oldpending')).toBe(true);
+    // 일반 listRuns는 여전히 윈도우/리밋 적용 (무회귀)
+    expect(store.listRuns({ status: 'pending_approval' }).length).toBe(100);
+  });
 });
 
 describe('RunStore — 마스킹·용량 불변식 (T-RUN-2)', () => {

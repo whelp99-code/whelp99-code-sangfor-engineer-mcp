@@ -520,10 +520,13 @@ export class RunStore {
   listRuns(opts: ListRunsOptions = {}): RunRecord[] {
     const sinceDays = opts.sinceDays ?? 14;
     const limit = opts.limit ?? 100;
-    const cutoff = new Date(Date.now() - sinceDays * 86_400_000).toISOString().slice(0, 10);
+    // sinceDays가 유한할 때만 날짜 컷오프. Infinity면 전체 파일 스캔(오버플로우 방지).
+    const cutoff = Number.isFinite(sinceDays)
+      ? new Date(Date.now() - sinceDays * 86_400_000).toISOString().slice(0, 10)
+      : null;
     const records: RunRecord[] = [];
     for (const file of this.listFiles()) {
-      if (file.slice(0, 10) < cutoff) continue;
+      if (cutoff !== null && file.slice(0, 10) < cutoff) continue;
       for (const record of this.foldFile(join(this.dir, file)).values()) records.push(record);
     }
     const filtered = records.filter((r) =>
@@ -537,7 +540,9 @@ export class RunStore {
   }
 
   pendingApprovals(): RunRecord[] {
-    return this.listRuns({ status: 'pending_approval' });
+    // A human-approval safety gate must show EVERY pending run, so scan all
+    // history with no window and no limit (pending count is normally small).
+    return this.listRuns({ status: 'pending_approval', sinceDays: Infinity, limit: Infinity });
   }
 
   private listFiles(): string[] {
