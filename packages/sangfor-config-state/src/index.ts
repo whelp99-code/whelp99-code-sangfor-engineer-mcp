@@ -39,3 +39,40 @@ export function mapEppPoolToConfigState(
     unmappedNote: 'keys without a captured endpoint are omitted on purpose; the evaluator must treat them as INDETERMINATE',
   };
 }
+
+const CC_KEYMAP: Array<{ key: string; endpoint: string; pick: (d: any) => unknown }> = [
+  { key: 'systemVersion', endpoint: 'POST /apps/secvisual/system/system_manage/get_system_info', pick: (d) => d?.system_version },
+  { key: 'timezone', endpoint: 'POST /apps/secvisual/system/system_manage/get_system_info', pick: (d) => d?.timezone },
+  { key: 'isVersionExpired', endpoint: 'POST /apps/secvisual/system/system_manage/get_system_info', pick: (d) => d?.is_version_expired },
+  { key: 'isCertExpired', endpoint: 'POST /apps/secvisual/system/system_manage/get_system_info', pick: (d) => d?.is_cert_expired },
+  { key: 'virusLibExists', endpoint: 'POST /apps/secvisual/system/system_manage/get_system_info', pick: (d) => d?.lib_info?.is_virus_lib_exist },
+  { key: 'clusterMasterOffline', endpoint: 'POST /api/v1/clusters/master', pick: (d) => d?.offline },
+  { key: 'clusterModeEnabled', endpoint: 'POST /api/v1/clusters/status/mgr', pick: (d) => d?.mode },
+  { key: 'linkWorkOrderEnabled', endpoint: 'POST /apps/secvisual/link_work_order/Link_work_order/on_config_list', pick: (d) => d?.enable },
+  { key: 'linkWorkOrderPort', endpoint: 'POST /apps/secvisual/link_work_order/Link_work_order/on_config_list', pick: (d) => d?.port },
+  { key: 'alarmTuningConfigured', endpoint: 'POST /apps/secvisual/alarm/alarm_policy/on_list', pick: (d) => Array.isArray(d) && d.length > 0 },
+  { key: 'scheduledReportConfigured', endpoint: 'POST /apps/secvisual/home/home/get_report_tag', pick: (d) => d?.reports != null },
+  { key: 'alertChannelConfigured', endpoint: 'POST /apps/secvisual/alarm/alarm_policy/on_list', pick: (d) => Array.isArray(d) && d.some((p: any) => p.mail_on || p.sms_on || (Array.isArray(p.mail_to) && p.mail_to.length > 0)) },
+];
+
+export function mapCcPoolToConfigState(
+  pool: Record<string, any>,
+  opts: { collectedAt?: string; collector?: string } = {},
+): { product: 'CC'; observed: Record<string, ObservedFactJson>; endpointsCaptured: number; mappedKeys: string[]; unmappedNote: string } {
+  const collectedAt = opts.collectedAt ?? new Date().toISOString();
+  const collector = opts.collector ?? 'live-xhr-pool';
+  const observed: Record<string, ObservedFactJson> = {};
+  for (const { key, endpoint, pick } of CC_KEYMAP) {
+    if (!(endpoint in pool)) continue; // uncaptured → omitted
+    const value = pick(pool[endpoint]);
+    if (value === undefined) continue;
+    observed[key] = { value, source: { endpoint, collectedAt, collector } };
+  }
+  return {
+    product: 'CC',
+    observed,
+    endpointsCaptured: Object.keys(pool).length,
+    mappedKeys: Object.keys(observed),
+    unmappedNote: 'keys without a captured endpoint are omitted on purpose; the evaluator must treat them as INDETERMINATE',
+  };
+}

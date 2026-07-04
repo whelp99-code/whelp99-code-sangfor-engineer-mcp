@@ -14,6 +14,7 @@ import { isSafeNavLabel } from '../packages/sangfor-collector/src/safe-nav.js';
 const PRODUCT = (process.env.PRODUCT ?? 'EPP').toUpperCase();
 const CFG: Record<string, any> = {
   EPP: { url: 'https://10.80.1.106', user: 'admin', pass: 'Itac123!@#', port: 9340, captchaSel: 'img[src*="randcode"]', userSel: '#user, input[name="user"]', passSel: '#password, input[type="password"]', apiRe: /\/api\//, menuSel: 'li.ix-menu-item' },
+  CC: { url: 'https://10.80.1.107', user: 'admin', pass: 'Itac123!@#', port: 9341, captchaSel: 'img.uedc-ppkg-login_captcha, img[src*="captcha"]', userSel: 'input[name="name"]', passSel: 'input[name="password"]', apiRe: /\/api\/|\/uedc\/|\/apps\//, menuSel: '.top-nav-menu__item, .top-nav-menu__sub__item' },
   IAG: { url: 'https://10.80.1.108', user: 'admin', pass: 'Itac123#@!', port: 9342, captchaSel: 'img[src*="captcha"], img[src*="randcode"]', userSel: '#user, input[name="user"], input[name="username"]', passSel: '#password, input[type="password"]', apiRe: /\/(api|php|rest|cgi)/, menuSel: 'li.ix-menu-item' },
 };
 const c = CFG[PRODUCT];
@@ -42,42 +43,59 @@ async function main() {
   });
 
   // ── login ──
-  console.error(`[${PRODUCT}] goto ${c.url}`);
-  await page.goto(c.url, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
-  await sl(5000);
+  let loggedIn = !/login/i.test(page.url()) && page.url().includes('10.80.1.');
+  if (!loggedIn) {
+    console.error(`[${PRODUCT}] goto ${c.url}`);
+    await page.goto(c.url, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+    await sl(5000);
+    loggedIn = !/login/i.test(page.url()) && page.url().includes('10.80.1.');
+  }
 
-  // capture captcha FIRST (before filling fields, to avoid triggering a reload)
-  let captchaCode = '';
-  const captcha = page.locator(c.captchaSel).first();
-  if (await captcha.isVisible({ timeout: 3000 }).catch(() => false)) {
-    const box = await captcha.boundingBox();
-    if (box) {
-      await page.screenshot({ path: CAPTCHA_PNG, clip: { x: Math.max(0, box.x - 4), y: Math.max(0, box.y - 4), width: box.width + 8, height: box.height + 8 } });
+  if (!loggedIn) {
+    // capture captcha FIRST (before filling fields, to avoid triggering a reload)
+    let captchaCode = '';
+    const captcha = page.locator(c.captchaSel).first();
+    if (await captcha.isVisible({ timeout: 3000 }).catch(() => false)) {
       console.error(`[${PRODUCT}] CAPTCHA_READY: ${CAPTCHA_PNG} — waiting for ${CODE_FILE}`);
+      await captcha.screenshot({ path: CAPTCHA_PNG }).catch(async () => {
+        await page.screenshot({ path: CAPTCHA_PNG });
+      });
       const deadline = Date.now() + 180000; let code = '';
       while (Date.now() < deadline) { if (existsSync(CODE_FILE)) { code = readFileSync(CODE_FILE, 'utf8').trim(); if (code) break; } await sl(2000); }
       captchaCode = code;
     }
+
+    // fill user, password, captcha together AFTER capturing captcha
+    await page.locator(c.userSel).first().fill(c.user).catch(() => {});
+    await page.locator(c.passSel).first().fill(c.pass).catch(() => {});
+    if (captchaCode) {
+      for (const s of ['input[name="captcha"]', 'input[name="verify_code"]', 'input[name="code"]', 'input[placeholder*="code" i]']) {
+        const el = page.locator(s).first(); if (await el.count().catch(() => 0)) { await el.fill(captchaCode).catch(() => {}); break; }
+      }
+    }
+    // check any visible unchecked agreement checkbox (required by some consoles, e.g. IAG/CC)
+    for (const s of ['.uedc-ppkg-login_product-footer-right-wrap', '.uedc-ppkg-register_policy-wrap', 'input[type="checkbox"]']) {
+      const el = page.locator(s).first();
+      if (await el.count().catch(() => 0)) {
+        if (s === '.uedc-ppkg-login_product-footer-right-wrap') {
+          await el.click({ position: { x: 10, y: 10 }, timeout: 2000 }).catch(() => {});
+        } else if (s === 'input[type="checkbox"]') {
+          if (!(await el.isChecked().catch(() => true))) {
+            await el.check({ timeout: 2000 }).catch(() => {});
+          }
+        } else {
+          await el.click({ timeout: 2000 }).catch(() => {});
+        }
+        await sl(500);
+      }
+    }
+    for (const s of ['button:has-text("Log In")', 'button:has-text("Login")', 'input#button', 'button[type="submit"]', 'input[type="submit"]']) {
+      const el = page.locator(s).first(); if (await el.count().catch(() => 0)) { await el.click({ timeout: 5000 }).catch(() => {}); break; }
+    }
+    await sl(6000);
+    loggedIn = !/login/i.test(page.url()) && page.url().includes('10.80.1.');
   }
 
-  // fill user, password, captcha together AFTER capturing captcha
-  await page.locator(c.userSel).first().fill(c.user).catch(() => {});
-  await page.locator(c.passSel).first().fill(c.pass).catch(() => {});
-  if (captchaCode) {
-    for (const s of ['input[name="captcha"]', 'input[name="verify_code"]', 'input[name="code"]', 'input[placeholder*="code" i]']) {
-      const el = page.locator(s).first(); if (await el.count().catch(() => 0)) { await el.fill(captchaCode).catch(() => {}); break; }
-    }
-  }
-  // check any visible unchecked agreement checkbox (required by some consoles, e.g. IAG)
-  try {
-    const cb = page.locator('input[type="checkbox"]').first();
-    if (await cb.count().catch(() => 0) && !(await cb.isChecked().catch(() => true))) await cb.check({ timeout: 2000 }).catch(() => {});
-  } catch { /* ignore */ }
-  for (const s of ['button:has-text("Log In")', 'button:has-text("Login")', 'input#button', 'button[type="submit"]', 'input[type="submit"]']) {
-    const el = page.locator(s).first(); if (await el.count().catch(() => 0)) { await el.click({ timeout: 5000 }).catch(() => {}); break; }
-  }
-  await sl(6000);
-  const loggedIn = !/login/i.test(page.url());
   console.error(`[${PRODUCT}] loggedIn=${loggedIn} url=${page.url()}`);
   if (!loggedIn) { console.error(`[${PRODUCT}] LOGIN_FAIL`); await browser.close(); return; }
   await page.screenshot({ path: `${DIR}/${PRODUCT}_home.png` }).catch(() => {});
@@ -86,28 +104,74 @@ async function main() {
   const MENU_SEL: string = c.menuSel ?? 'li.ix-menu-item';
   const dumpLabels = async (): Promise<string[]> => page.evaluate((sel) => {
     const els = [...document.querySelectorAll(sel)] as HTMLElement[];
-    const visible = els.filter((e) => e.offsetParent !== null);
+    const visible = els.filter((e) => {
+      const style = window.getComputedStyle(e);
+      return e.offsetWidth > 0 && e.offsetHeight > 0 && style.display !== 'none' && style.visibility !== 'hidden';
+    });
     return [...new Set(visible.map((e) => (e.innerText || e.textContent || '').trim().split('\n')[0])
       .filter((t) => t && t.length > 1 && t.length < 28 && !/^\d+$/.test(t)))];
   }, MENU_SEL);
-  await page.goto(page.url(), { waitUntil: 'domcontentloaded' }).catch(() => {});
-  await sl(6000);
+  const waitSel = MENU_SEL.split(',')[0].trim();
+  console.error(`[${PRODUCT}] waiting for menu elements to appear: ${waitSel}`);
+  await page.waitForSelector(waitSel, { state: 'visible', timeout: 30000 }).catch((e) => {
+    console.error(`[${PRODUCT}] warning: menu selector did not appear in 30s: ${e.message}`);
+  });
   const seen = new Set<string>();
-  for (let pass = 0; pass < 3; pass++) {
-    const labels = await dumpLabels();
-    for (const label of labels) {
-      if (seen.has(label)) continue; seen.add(label);
-      if (!isSafeNavLabel(label)) { console.error(`[${PRODUCT}] SKIP unsafe label: "${label}"`); continue; }
-      try {
-        await page.evaluate(({ text, sel }) => {
-          const els = [...document.querySelectorAll(sel)] as HTMLElement[];
-          const el = els.find((e) => (e.innerText || e.textContent || '').trim().split('\n')[0] === text);
-          if (el) (el as HTMLElement).click();
-        }, { text: label, sel: MENU_SEL });
-        await sl(1500);
-      } catch {}
+  if (PRODUCT === 'CC') {
+    const mainTabs = ['Home', 'Response', 'Detection', 'Assets', 'Reports'];
+    for (const tab of mainTabs) {
+      console.error(`[CC] Opening tab: ${tab}`);
+      const tabEl = page.locator('.top-nav-menu__item').filter({ hasText: tab }).first();
+      await tabEl.click().catch(() => {});
+      await sl(1000);
+
+      // Dump all visible submenu labels
+      const subLabels = await page.evaluate(() => {
+        const els = Array.from(document.querySelectorAll('.top-nav-menu__sub__item')) as HTMLElement[];
+        const visible = els.filter(e => e.offsetWidth > 0 && e.offsetHeight > 0);
+        return [...new Set(visible.map(e => e.textContent?.trim() || '').filter(t => t.length > 1))];
+      });
+
+      console.error(`[CC] Tab "${tab}" has submenus:`, subLabels);
+
+      for (const sub of subLabels) {
+        const fullLabel = `${tab} > ${sub}`;
+        if (seen.has(fullLabel)) continue;
+        seen.add(fullLabel);
+
+        if (!isSafeNavLabel(sub)) {
+          console.error(`[CC] SKIP unsafe submenu: "${sub}"`);
+          continue;
+        }
+        console.error(`[CC] Visiting submenu: "${sub}"`);
+        
+        // Re-open the tab dropdown if it closed
+        await tabEl.click().catch(() => {});
+        await sl(500);
+
+        // Click the submenu item
+        const subEl = page.locator('.top-nav-menu__sub__item').filter({ hasText: sub }).first();
+        await subEl.click().catch(() => {});
+        await sl(2500);
+      }
     }
-    console.error(`[${PRODUCT}] pass ${pass}: ${seen.size} labels visited, pool=${Object.keys(pool).length} apis`);
+  } else {
+    for (let pass = 0; pass < 3; pass++) {
+      const labels = await dumpLabels();
+      for (const label of labels) {
+        if (seen.has(label)) continue; seen.add(label);
+        if (!isSafeNavLabel(label)) { console.error(`[${PRODUCT}] SKIP unsafe label: "${label}"`); continue; }
+        try {
+          await page.evaluate(({ text, sel }) => {
+            const els = [...document.querySelectorAll(sel)] as HTMLElement[];
+            const el = els.find((e) => (e.innerText || e.textContent || '').trim().split('\n')[0] === text);
+            if (el) (el as HTMLElement).click();
+          }, { text: label, sel: MENU_SEL });
+          await sl(1500);
+        } catch {}
+      }
+      console.error(`[${PRODUCT}] pass ${pass}: ${seen.size} labels visited, pool=${Object.keys(pool).length} apis`);
+    }
   }
 
   writeFileSync(OUT, JSON.stringify(pool, null, 2));

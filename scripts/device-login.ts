@@ -13,7 +13,7 @@ import { ensureChromeRunning, takeScreenshot, getPageSnapshot } from '../package
 const PRODUCT = (process.env.PRODUCT ?? 'EPP').toUpperCase();
 const CFG: Record<string, { url: string; user: string; pass: string; port: number; captchaSel: string; userSel: string; passSel: string }> = {
   EPP: { url: 'https://10.80.1.106', user: 'admin', pass: process.env.EPP_PASS ?? 'Itac123!@#', port: 9340, captchaSel: 'img[src*="randcode"]', userSel: '#user, input[name="user"], input[name="username"]', passSel: '#password, input[type="password"]' },
-  CC:  { url: 'https://10.80.1.107', user: 'admin', pass: process.env.CC_PASS ?? 'Itac123!@#', port: 9341, captchaSel: 'img[src*="req_captcha"], img[src*="captcha"]', userSel: 'input[name="username"], input[name="user"], #username', passSel: 'input[type="password"]' },
+  CC:  { url: 'https://10.80.1.107', user: 'admin', pass: process.env.CC_PASS ?? 'Itac123!@#', port: 9341, captchaSel: 'img.uedc-ppkg-login_captcha, img[src*="captcha"]', userSel: 'input[name="name"], input[name="username"], input[name="user"], #username', passSel: 'input[type="password"]' },
 };
 const c = CFG[PRODUCT];
 if (!c) { console.error('unknown product', PRODUCT); process.exit(1); }
@@ -50,20 +50,41 @@ async function main() {
 
   console.error(`[${PRODUCT}] goto ${c.url}`);
   await page.goto(c.url, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
-  await sl(5000);
+  await sl(15000);
   await takeScreenshot(page, `${DIR}/${PRODUCT}_01_login.png`);
+
+  // click EULA agreement if visible
+  for (const s of ['.uedc-ppkg-login_product-footer-right-wrap', '.uedc-ppkg-register_policy-wrap', 'input[type="checkbox"]']) {
+    const el = page.locator(s).first();
+    if (await el.count().catch(() => 0)) {
+      if (s === '.uedc-ppkg-login_product-footer-right-wrap') {
+        console.error(`[${PRODUCT}] clicking agreement selector at offset (checkbox): ${s}`);
+        await el.click({ position: { x: 10, y: 10 }, timeout: 2000 }).catch(() => {});
+      } else {
+        console.error(`[${PRODUCT}] clicking agreement selector: ${s}`);
+        await el.click({ timeout: 2000 }).catch(() => {});
+      }
+      await sl(500);
+    }
+  }
 
   // fill credentials WITHOUT reloading the page (reload regenerates captcha)
   await page.locator(c.userSel).first().fill(c.user).catch(() => {});
   await page.locator(c.passSel).first().fill(c.pass).catch(() => {});
-  await sl(500);
+  await sl(1000);
 
   const captcha = page.locator(c.captchaSel).first();
-  const hasCaptcha = await captcha.isVisible({ timeout: 3000 }).catch(() => false);
+  const hasCaptcha = await captcha.isVisible({ timeout: 5000 }).catch(() => false);
   if (hasCaptcha) {
-    const box = await captcha.boundingBox();
-    if (box) {
-      await page.screenshot({ path: CAPTCHA_PNG, clip: { x: Math.max(0, box.x - 4), y: Math.max(0, box.y - 4), width: box.width + 8, height: box.height + 8 } });
+    let box = await captcha.boundingBox();
+    for (let attempt = 0; attempt < 10 && (!box || box.width === 0 || box.height === 0); attempt++) {
+      await sl(1500);
+      box = await captcha.boundingBox();
+    }
+    if (box && box.width > 0 && box.height > 0) {
+      await captcha.screenshot({ path: CAPTCHA_PNG }).catch(async () => {
+        await page.screenshot({ path: CAPTCHA_PNG });
+      });
       console.error(`[${PRODUCT}] CAPTCHA_READY: ${CAPTCHA_PNG} — waiting for ${CODE_FILE}`);
       const code = await waitForCode();
       if (!code) { console.error(`[${PRODUCT}] no captcha code provided in time`); await browser.close(); return; }

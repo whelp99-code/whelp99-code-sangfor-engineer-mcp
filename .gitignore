@@ -27,3 +27,7 @@ data/evidence/change-runs/
 # Control Tower runtime data (vendors.json 시드는 커밋 대상 — devices/이력만 로컬)
 data/runs/
 data/registry/devices.json
+
+# Local-only debug/spike scripts (kept on disk, not committed)
+scripts/debug-cc.ts
+scripts/test-fortios.ts

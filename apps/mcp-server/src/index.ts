@@ -43,7 +43,7 @@ import { createPmStore } from '../../../packages/sangfor-pm/src/index.js';
 import { checkVersionRequirement, loadVersionRequirements } from '../../../packages/sangfor-version/src/index.js';
 import { generateIntegrationGuide, listIntegrationTypes } from '../../../packages/sangfor-integration/src/index.js';
 import { resolveRepoData, isLoopback, nowId, normalizeProduct } from '../../../packages/shared/src/index.js';
-import { mapEppPoolToConfigState } from '../../../packages/sangfor-config-state/src/index.js';
+import { mapEppPoolToConfigState, mapCcPoolToConfigState } from '../../../packages/sangfor-config-state/src/index.js';
 import { fortios_policy_baseline, fortios_system_health_baseline, fortios_policy_audit_baseline } from '../../../packages/fortios-spec/src/index.js';
 import { mapFortiOSConfigState, mapFortiOSSystemHealth, mapFortiOSPolicyAudit } from '../../../packages/fortios-client/src/index.js';
 import { cisco_interface_baseline, cisco_system_health_baseline, cisco_policy_audit_baseline } from '../../../packages/cisco-spec/src/index.js';
@@ -699,11 +699,14 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
     inputSchema: { type: 'object', properties: { product: { type: 'string' }, version: { type: 'string' }, poolPath: { type: 'string' }, docxPath: { type: 'string' }, live: { type: 'boolean' } }, required: ['product', 'version', 'poolPath'] },
     handler: (args: { product: string; version: string; poolPath: string; docxPath?: string; live?: boolean }) => {
       if (args.live) return { error: 'live capture is not available from this tool: it needs VPN + an interactive browser session. Run scripts/device-collect.ts per docs/DEVICE_DIAGNOSIS_RUNBOOK.md, then pass the pool file here.' };
-      if (normalizeProduct(args.product) !== 'ENDPOINT_SECURE') return { error: `no pool mapper for ${args.product} yet (EPP only). CC/IAG mappers land with the M3 campaign — fabricating one without captured data is forbidden.` };
+      const norm = normalizeProduct(args.product);
+      if (norm !== 'ENDPOINT_SECURE' && norm !== 'CYBER_COMMAND') {
+        return { error: `no pool mapper for ${args.product} yet (EPP and CC only). IAG mappers land with the M3 campaign — fabricating one without captured data is forbidden.` };
+      }
       const pool = JSON.parse(readFileSync(args.poolPath, 'utf8'));
-      const mapped = mapEppPoolToConfigState(pool);
-      const spec = loadSpec('EPP', args.version);
-      if (!spec) return { error: `no IntendedSpec for EPP ${args.version}. Coverage: ${JSON.stringify(listSpecCoverage())}` };
+      const mapped = norm === 'ENDPOINT_SECURE' ? mapEppPoolToConfigState(pool) : mapCcPoolToConfigState(pool);
+      const spec = loadSpec(norm, args.version);
+      if (!spec) return { error: `no IntendedSpec for ${norm} ${args.version}. Coverage: ${JSON.stringify(listSpecCoverage())}` };
       const result = evaluateSpec(spec, mapped.observed);
       const report = renderAdvisoryReport(spec, result);
       const docx = args.docxPath ? renderAdvisoryReportDocx(spec, result, args.docxPath) : undefined;

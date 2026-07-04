@@ -1,0 +1,104 @@
+{
+  "product": "CYBER_COMMAND",
+  "version": "3.0.98",
+  "collectedFrom": "10.80.1.107 live console XHR (read-only)",
+  "endpoints": 37,
+  "observed": {
+    "systemVersion": {
+      "value": "3.0.98C",
+      "source": {
+        "endpoint": "POST /apps/secvisual/system/system_manage/get_system_info",
+        "collectedAt": "2026-07-03T13:05:28.649Z",
+        "collector": "live-xhr"
+      }
+    },
+    "timezone": {
+      "value": "America/Chicago",
+      "source": {
+        "endpoint": "POST /apps/secvisual/system/system_manage/get_system_info",
+        "collectedAt": "2026-07-03T13:05:28.649Z",
+        "collector": "live-xhr"
+      }
+    },
+    "isVersionExpired": {
+      "value": false,
+      "source": {
+        "endpoint": "POST /apps/secvisual/system/system_manage/get_system_info",
+        "collectedAt": "2026-07-03T13:05:28.649Z",
+        "collector": "live-xhr"
+      }
+    },
+    "isCertExpired": {
+      "value": false,
+      "source": {
+        "endpoint": "POST /apps/secvisual/system/system_manage/get_system_info",
+        "collectedAt": "2026-07-03T13:05:28.649Z",
+        "collector": "live-xhr"
+      }
+    },
+    "virusLibExists": {
+      "value": true,
+      "source": {
+        "endpoint": "POST /apps/secvisual/system/system_manage/get_system_info",
+        "collectedAt": "2026-07-03T13:05:28.649Z",
+        "collector": "live-xhr"
+      }
+    },
+    "clusterMasterOffline": {
+      "value": false,
+      "source": {
+        "endpoint": "POST /api/v1/clusters/master",
+        "collectedAt": "2026-07-03T13:05:28.649Z",
+        "collector": "live-xhr"
+      }
+    },
+    "clusterModeEnabled": {
+      "value": false,
+      "source": {
+        "endpoint": "POST /api/v1/clusters/status/mgr",
+        "collectedAt": "2026-07-03T13:05:28.649Z",
+        "collector": "live-xhr"
+      }
+    },
+    "linkWorkOrderEnabled": {
+      "value": false,
+      "source": {
+        "endpoint": "POST /apps/secvisual/link_work_order/Link_work_order/on_config_list",
+        "collectedAt": "2026-07-03T13:05:28.649Z",
+        "collector": "live-xhr"
+      }
+    },
+    "linkWorkOrderPort": {
+      "value": 82,
+      "source": {
+        "endpoint": "POST /apps/secvisual/link_work_order/Link_work_order/on_config_list",
+        "collectedAt": "2026-07-03T13:05:28.649Z",
+        "collector": "live-xhr"
+      }
+    },
+    "alarmTuningConfigured": {
+      "value": true,
+      "source": {
+        "endpoint": "POST /apps/secvisual/alarm/alarm_policy/on_list",
+        "collectedAt": "2026-07-03T13:05:28.649Z",
+        "collector": "live-xhr"
+      }
+    },
+    "scheduledReportConfigured": {
+      "value": true,
+      "source": {
+        "endpoint": "POST /apps/secvisual/home/home/get_report_tag",
+        "collectedAt": "2026-07-03T13:05:28.649Z",
+        "collector": "live-xhr"
+      }
+    },
+    "alertChannelConfigured": {
+      "value": false,
+      "source": {
+        "endpoint": "POST /apps/secvisual/alarm/alarm_policy/on_list",
+        "collectedAt": "2026-07-03T13:05:28.649Z",
+        "collector": "live-xhr"
+      }
+    }
+  }
+}
