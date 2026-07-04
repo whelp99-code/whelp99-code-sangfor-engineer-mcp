@@ -93,7 +93,7 @@ export class Registry {
     const devices = this.devices();
     const index = devices.findIndex((d) => d.id === id);
     if (index === -1) throw new RegistryValidationError(`unknown device: ${id}`);
-    if (patch.product && !this.vendorFor(patch.product)) {
+    if (patch.product !== undefined && !this.vendorFor(patch.product)) {
       throw new RegistryValidationError(`unknown product (vendors.json에 없음): ${patch.product}`);
     }
     const updated: Device = {

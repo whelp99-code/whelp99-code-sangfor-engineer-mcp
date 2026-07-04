@@ -977,6 +977,7 @@ describe('Registry — 로드/시드/CRUD (T-REG-1)', () => {
     expect(() => reg.createDevice({ name: 'x', product: 'NOPE', host: 'h' })).toThrow(RegistryValidationError);
     const dev = reg.createDevice({ name: 'x', product: 'FORTIOS', host: 'h' });
     expect(() => reg.updateDevice(dev.id, { product: 'NOPE' })).toThrow(/unknown product/);
+    expect(() => reg.updateDevice(dev.id, { product: '' })).toThrow(/unknown product/);
     expect(() => reg.updateDevice('dev_none', { name: 'y' })).toThrow(/unknown device/);
     expect(() => reg.deleteDevice('dev_none')).toThrow(/unknown device/);
     expect(() => reg.createDevice({ name: '', product: 'FORTIOS', host: 'h' })).toThrow(/name is required/);
@@ -1173,7 +1174,7 @@ export class Registry {
     const devices = this.devices();
     const index = devices.findIndex((d) => d.id === id);
     if (index === -1) throw new RegistryValidationError(`unknown device: ${id}`);
-    if (patch.product && !this.vendorFor(patch.product)) {
+    if (patch.product !== undefined && !this.vendorFor(patch.product)) {
       throw new RegistryValidationError(`unknown product (vendors.json에 없음): ${patch.product}`);
     }
     const updated: Device = {
