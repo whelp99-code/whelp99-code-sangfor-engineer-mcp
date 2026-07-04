@@ -175,18 +175,28 @@ describe('RunStore — 라이프사이클/영속/필터 (T-RUN-1)', () => {
       toolId: 't1', toolSafety: 'read_only', args: {},
       initialStatus: 'running', playbookId: 'pb_1', playbookRunId: 'pbrun_1', playbookRev: 2, blockId: 'b1',
     });
+    // playbookRev: 0이 false로 취급되지 않고 (undefined 가드 증명)
+    const b = store.createRun({
+      toolId: 't1', toolSafety: 'read_only', args: {},
+      initialStatus: 'running', playbookId: 'pb_2', playbookRunId: 'pbrun_zero', playbookRev: 0, blockId: 'b2',
+    });
     store.createRun({ toolId: 't2', toolSafety: 'read_only', args: {}, initialStatus: 'running' }); // 태그 없는 run
     const fetched = store.getRun(a.runId)!;
     expect(fetched.playbookId).toBe('pb_1');
     expect(fetched.playbookRunId).toBe('pbrun_1');
     expect(fetched.playbookRev).toBe(2);
     expect(fetched.blockId).toBe('b1');
+    // playbookRev: 0이 라운드트립된다 (0 rev는 drop되지 않음)
+    const fetchedZero = store.getRun(b.runId)!;
+    expect(fetchedZero.playbookRev).toBe(0);
     // playbookRunId 필터: 태그된 run만
     const filtered = store.listRuns({ playbookRunId: 'pbrun_1' });
     expect(filtered.map((r) => r.runId)).toEqual([a.runId]);
     // 태그 미지정 run에는 필드가 붙지 않는다 (JSON 최소화)
     const plain = store.listRuns({ toolId: 't2' })[0];
-    expect('playbookRunId' in plain).toBe(false);
+    for (const k of ['playbookId', 'playbookRunId', 'playbookRev', 'blockId']) {
+      expect(k in plain).toBe(false);
+    }
   });
 });
 
