@@ -2,6 +2,7 @@ import http from 'node:http';
 import { createOpenStackMock } from './openstack.js';
 import { fortiOSPolicyHandler, fortiOSInterfaceHandler, fortiOSSystemStatsHandler, fortiOSNPUStatsHandler, fortiOSHASettingHandler, fortiOSIPSStatsHandler } from './fortios.js';
 import { ciscoInterfaceHandler, ciscoRoutingHandler, ciscoSystemStatsHandler, ciscoZonePolicyHandler, ciscoSNORTStatusHandler } from './cisco-iosxe.js';
+import { VENDOR_PATH_RESPONSES } from './vendor-paths.js';
 
 const port = Number(process.env.PORT ?? 3400);
 
@@ -65,6 +66,12 @@ export function createMockConsoleServer(): http.Server {
         ciscoSNORTStatusHandler(req, res);
         return;
       }
+    }
+    // Vendor-native advisor paths (additive aliases; existing routes unchanged)
+    if (req.url && Object.prototype.hasOwnProperty.call(VENDOR_PATH_RESPONSES, req.url)) {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(VENDOR_PATH_RESPONSES[req.url]));
+      return;
     }
     if (await openstack.handle(req, res)) return;
     const url = req.url ?? '/';
