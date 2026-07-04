@@ -32,18 +32,25 @@ describe('mock console — vendor-native advisor paths', () => {
     const result: any = await getToolHandler('sangfor.advisor_fortios_advanced')!({ host: base, username: 'mock', password: 'mock' });
     expect(result.error).toBeUndefined();
     expect(result.evaluations).toHaveLength(2);
+    // 비공허성: 실제 벤더 데이터가 매핑되어야 관측 항목이 생긴다 (수정 전엔 0 — HTML fallback)
+    expect(result.evaluations[0].coverage.observedTotal).toBeGreaterThan(0);
+    expect(result.evaluations[1].coverage.observedTotal).toBeGreaterThan(0);
   });
 
   it('advisor_cisco_iosxe: RESTCONF interfaces 경로 서빙 → evaluation 산출', async () => {
     const result: any = await getToolHandler('sangfor.advisor_cisco_iosxe')!({ host: base, username: 'mock', password: 'mock' });
     expect(result.error).toBeUndefined();
     expect(result.evaluation).toBeDefined();
+    expect(result.evaluation.coverage.observedTotal).toBeGreaterThan(0);
   });
 
   it('advisor_cisco_iosxe_advanced: 7개 RESTCONF 경로 전부 서빙 → evaluations 2개', async () => {
     const result: any = await getToolHandler('sangfor.advisor_cisco_iosxe_advanced')!({ host: base, username: 'mock', password: 'mock' });
     expect(result.error).toBeUndefined();
     expect(result.evaluations).toHaveLength(2);
+    // 비공허성: 실제 벤더 데이터가 매핑되어야 관측 항목이 생긴다 (수정 전엔 0 — HTML fallback)
+    expect(result.evaluations[0].coverage.observedTotal).toBeGreaterThan(0);
+    expect(result.evaluations[1].coverage.observedTotal).toBeGreaterThan(0);
   });
 
   it('hci_health_report: 기존 /openstack 라우트로 summary 산출 (수정 없이)', async () => {
