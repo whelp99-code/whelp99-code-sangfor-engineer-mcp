@@ -1,5 +1,5 @@
 import type { SignedApproval } from '../../../packages/sangfor-operator/src/approval.js';
-import { RunStore, type ListRunsOptions, type RunRecord } from '../../../packages/sangfor-runs/src/index.js';
+import { RunStore, maskSecrets, type ListRunsOptions, type RunRecord } from '../../../packages/sangfor-runs/src/index.js';
 import { BridgeClient, safetyOf, type BridgeTool } from './bridge-client.js';
 import { Registry, mergeDeviceArgs, applyMockCredentialFallback } from './registry.js';
 import { mintBridgeApproval } from './approval-mint.js';
@@ -90,7 +90,7 @@ export function createApi(opts: TowerOptions = {}) {
     const durationMs = Date.now() - started;
     if (call.ok) {
       return store.transition(runId, {
-        status: 'succeeded', resultJson: call.data, resultSummary: summarize(call.data), durationMs, finishedAt,
+        status: 'succeeded', resultJson: call.data, resultSummary: summarize(maskSecrets(call.data)), durationMs, finishedAt,
       });
     }
     return store.transition(runId, {

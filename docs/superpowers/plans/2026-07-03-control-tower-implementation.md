@@ -1871,6 +1871,8 @@ describe('Tower API — 승인 플로우 (T-API-1)', () => {
     expect(final.status).toBe('succeeded');
     expect(final.approval).toMatchObject({ approvedBy: 'jmpark', changeTicketId: `run:${pending.runId}`, rollbackPlanId: 'n/a-read-back-verify' });
     expect(JSON.stringify(final)).not.toMatch(/approvalToken|nonce/); // 토큰·nonce 무저장
+    expect(String(final.resultSummary)).toContain('***');      // 요약도 마스킹본 기준
+    expect(String(final.resultSummary)).not.toContain('sec');  // 비밀값 요약 유출 금지
     expect(lastCall!.name).toBe('stub.write');
     expect(lastCall!.arguments.password).toBe('sec'); // 원본 args로 실행 (마스킹본 아님)
     expect(lastCall!.approval).toMatchObject({ approvedBy: 'jmpark' });
@@ -1934,7 +1936,7 @@ Expected: FAIL — `server.js`/`api.js` 미존재
 
 ```ts
 import type { SignedApproval } from '../../../packages/sangfor-operator/src/approval.js';
-import { RunStore, type ListRunsOptions, type RunRecord } from '../../../packages/sangfor-runs/src/index.js';
+import { RunStore, maskSecrets, type ListRunsOptions, type RunRecord } from '../../../packages/sangfor-runs/src/index.js';
 import { BridgeClient, safetyOf, type BridgeTool } from './bridge-client.js';
 import { Registry, mergeDeviceArgs, applyMockCredentialFallback } from './registry.js';
 import { mintBridgeApproval } from './approval-mint.js';
@@ -2025,7 +2027,7 @@ export function createApi(opts: TowerOptions = {}) {
     const durationMs = Date.now() - started;
     if (call.ok) {
       return store.transition(runId, {
-        status: 'succeeded', resultJson: call.data, resultSummary: summarize(call.data), durationMs, finishedAt,
+        status: 'succeeded', resultJson: call.data, resultSummary: summarize(maskSecrets(call.data)), durationMs, finishedAt,
       });
     }
     return store.transition(runId, {
