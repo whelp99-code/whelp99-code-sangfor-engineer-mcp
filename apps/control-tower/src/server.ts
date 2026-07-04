@@ -37,6 +37,37 @@ export function createTowerServer(opts: TowerServerOptions = {}): http.Server {
     }
 
     try {
+      if (method === 'GET' && path === '/api/overview') return json(res, await api.overview());
+      if (method === 'GET' && path === '/api/tools') return json(res, await api.toolGroups());
+      if (method === 'GET' && path === '/api/health') return json(res, await api.health());
+      if (method === 'GET' && path === '/api/devices') return json(res, api.listDevices());
+      if (method === 'POST' && path === '/api/devices') {
+        const b = await readJsonBody(req);
+        return json(res, api.createDevice({
+          name: String(b.name ?? ''),
+          product: String(b.product ?? ''),
+          host: String(b.host ?? ''),
+          tags: Array.isArray(b.tags) ? b.tags.map(String) : [],
+          credentialEnv: b.credentialEnv && typeof b.credentialEnv === 'object'
+            ? (b.credentialEnv as Record<string, string>) : undefined,
+        }));
+      }
+      const deviceMatch = path.match(/^\/api\/devices\/([^/]+)$/);
+      if (method === 'PUT' && deviceMatch) {
+        const b = await readJsonBody(req);
+        return json(res, api.updateDevice(deviceMatch[1], b as Record<string, never>));
+      }
+      if (method === 'DELETE' && deviceMatch) return json(res, api.deleteDevice(deviceMatch[1]));
+      if (method === 'POST' && path === '/api/sweep') {
+        const b = await readJsonBody(req);
+        return json(res, await api.sweep({
+          deviceIds: Array.isArray(b.deviceIds) ? b.deviceIds.map(String) : undefined,
+        }));
+      }
+      if (method === 'POST' && path === '/api/approvals/mint') {
+        const b = await readJsonBody(req);
+        return json(res, api.mint(b as Parameters<typeof api.mint>[0]));
+      }
       if (method === 'POST' && path === '/api/runs') {
         const b = await readJsonBody(req);
         return json(res, await api.createRun({
