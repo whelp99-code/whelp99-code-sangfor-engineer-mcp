@@ -24,3 +24,6 @@ data/sources/*storage-state*.json
 
 # HCI change audit ledgers (runtime)
 data/evidence/change-runs/
+# Control Tower runtime data (vendors.json 시드는 커밋 대상 — devices/이력만 로컬)
+data/runs/
+data/registry/devices.json
