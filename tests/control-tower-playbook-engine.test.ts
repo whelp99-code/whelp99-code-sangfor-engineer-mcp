@@ -67,6 +67,19 @@ describe('derivePlaybookRunStatus (T-PB-3)', () => {
       { blockId: 'r1', runId: undefined, status: undefined },
     ]);
   });
+  it('실행 중 블록 있음 → running (failed 있어도 우선)', () => {
+    const runs = [run({ blockId: 'b1', status: 'running' })];
+    expect(derivePlaybookRunStatus(R, runs).status).toBe('running');
+    // running이 failed보다 먼저 체크되는지 검증
+    const runsWithFailed = [run({ blockId: 'b1', status: 'failed' }), run({ blockId: 'b2', status: 'running' })];
+    expect(derivePlaybookRunStatus(R, runsWithFailed).status).toBe('running');
+  });
+  it('거절 + report 미실행 → failed; report 성공 → partial', () => {
+    const runs = [run({ blockId: 'b1', status: 'rejected' })];
+    expect(derivePlaybookRunStatus(R, runs).status).toBe('failed');
+    const runsWithReportSucceeded = [run({ blockId: 'b1', status: 'rejected' }), run({ blockId: 'r1', status: 'succeeded' })];
+    expect(derivePlaybookRunStatus(R, runsWithReportSucceeded).status).toBe('partial');
+  });
 });
 
 describe('renderReport (T-PB-3)', () => {
