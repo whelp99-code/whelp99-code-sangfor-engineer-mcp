@@ -94,6 +94,7 @@ export function createTowerServer(opts: TowerServerOptions = {}): http.Server {
             toolId: url.searchParams.get('toolId') ?? undefined,
             deviceId: url.searchParams.get('deviceId') ?? undefined,
             sweepId: url.searchParams.get('sweepId') ?? undefined,
+            playbookRunId: url.searchParams.get('playbookRunId') ?? undefined,
             sinceDays: num(url.searchParams.get('sinceDays')),
             limit: num(url.searchParams.get('limit')),
           }),

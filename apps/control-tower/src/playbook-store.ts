@@ -229,7 +229,7 @@ export class AnalysisStore {
     const current = this.get(id);
     if (!current) throw new PlaybookValidationError(`unknown analysis: ${id}`, 404);
     const arr = current[part];
-    if (index < 0 || index >= arr.length) throw new PlaybookValidationError(`${part}[${index}] 범위 밖`, 400);
+    if (!Number.isInteger(index) || index < 0 || index >= arr.length) throw new PlaybookValidationError(`${part}[${index}] 범위 밖`, 400);
     arr[index].verdict = verdict;
     arr[index].reviewedBy = reviewedBy;
     if (part === 'proposals' && linkedPlaybookId) (arr[index] as AnalysisProposal).linkedPlaybookId = linkedPlaybookId;

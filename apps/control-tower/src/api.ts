@@ -484,15 +484,17 @@ export function createApi(opts: TowerOptions = {}) {
     },
 
     listPlaybooks(): { playbooks: Array<Playbook & { activeRev?: number; lastRun?: { playbookRunId: string; status: PlaybookRunStatus } }> } {
+      const allRuns = store.listRuns({ ...PB_LIMIT });
       return {
         playbooks: playbooks.list().map((pb) => {
           const active = playbooks.activeRevision(pb);
           // 최근 실행: 이 플레이북 태그가 붙은 가장 최신 블록 run의 playbookRunId로 유도
-          const latest = store.listRuns({ ...PB_LIMIT }).find((r) => r.playbookId === pb.id && r.playbookRunId);
+          const latest = allRuns.find((r) => r.playbookId === pb.id && r.playbookRunId);
           let lastRun: { playbookRunId: string; status: PlaybookRunStatus } | undefined;
           if (latest?.playbookRunId && active) {
             const rev = pb.revisions.find((r) => r.rev === latest.playbookRev) ?? active;
-            lastRun = { playbookRunId: latest.playbookRunId, status: derivePlaybookRunStatus(rev, blockRunsOf(latest.playbookRunId)).status };
+            const blockRuns = allRuns.filter((r) => r.playbookRunId === latest.playbookRunId);
+            lastRun = { playbookRunId: latest.playbookRunId, status: derivePlaybookRunStatus(rev, blockRuns).status };
           }
           return { ...pb, activeRev: active?.rev, lastRun };
         }),

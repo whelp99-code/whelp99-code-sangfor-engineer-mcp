@@ -81,9 +81,15 @@ describe('Playbook API — 조립·검증·실행 (T-PB-5)', () => {
     expect(detail.body.status).toBe('succeeded');
     expect((detail.body.blocks as unknown[]).length).toBe(2);
     expect(detail.body.analyses).toEqual([]);
-    // 블록 run은 일반 이력에도 playbookRunId 필터로 보인다
+    // 블록 run은 일반 이력에도 playbookRunId 필터로 보인다 — 필터가 실제로 걸러내는지
+    // 증명하려면 플레이북과 무관한 run이 섞여 있어야 한다.
+    await call('POST', '/api/runs', { toolId: 'p.read', args: { host: 'z' } });
     const listed = await call('GET', `/api/runs?playbookRunId=${pbrunId}`);
-    expect((listed.body.runs as unknown[]).length).toBe(2);
+    const listedRuns = listed.body.runs as Array<{ playbookRunId?: string }>;
+    expect(listedRuns.length).toBe(2);
+    expect(listedRuns.every((r) => r.playbookRunId === pbrunId)).toBe(true);
+    const bogus = await call('GET', `/api/runs?playbookRunId=pbrun_bogus`);
+    expect((bogus.body.runs as unknown[]).length).toBe(0);
   });
 
   it('리비전 diff용 데이터 형태: revisions 배열에 blocks·status·rejectReason', async () => {
@@ -135,6 +141,9 @@ describe('Playbook API — 조립·검증·실행 (T-PB-5)', () => {
     expect((await call('GET', `/api/playbook-runs/${pbrunId}`)).body.analyses).toHaveLength(1);
     // 범위 밖 verdict → 400
     expect((await call('POST', `/api/analyses/${anlId}/verdict`, { part: 'improvements', index: 9, verdict: 'accepted', reviewedBy: 'x' })).status).toBe(400);
+    // index 누락/비숫자 → NaN이 되어도 500이 아니라 400 (Number(undefined)/Number('abc') === NaN)
+    expect((await call('POST', `/api/analyses/${anlId}/verdict`, { part: 'improvements', verdict: 'accepted', reviewedBy: 'x' })).status).toBe(400);
+    expect((await call('POST', `/api/analyses/${anlId}/verdict`, { part: 'improvements', index: 'abc', verdict: 'accepted', reviewedBy: 'x' })).status).toBe(400);
   });
 
   it('GET /api/playbooks 목록: activeRev + lastRun 유도상태', async () => {
