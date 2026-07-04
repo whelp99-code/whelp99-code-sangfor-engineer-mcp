@@ -58,7 +58,7 @@ function startStubBridge(): Promise<void> {
       }
       const payload = lastCall!.name === 'stub.read'
         ? { evaluation: { specId: 's', ok: true, items: [], summary: { pass: 3, fail: 0, indeterminate: 0 }, coverage: {} } }
-        : { created: true, echo: lastCall!.arguments };
+        : { created: true, echo: lastCall!.arguments, note: 'ran with password ' + String((lastCall!.arguments as Record<string, unknown>).password ?? '') };
       return respond(200, { result: { content: [{ type: 'text', text: JSON.stringify(payload) }], structuredContent: payload, isError: false } });
     }
     respond(404, { error: 'not found' });
@@ -175,7 +175,7 @@ describe('Tower API — 읽기전용 즉시 실행 (T-API-1)', () => {
 
 describe('Tower API — 승인 플로우 (T-API-1)', () => {
   it('write → pending_approval(실행 안 함) → approve → 민팅·실행·succeeded + approval 메타', async () => {
-    const created = await call('POST', '/api/runs', { toolId: 'stub.write', args: { customer: 'acme', password: 'sec' } });
+    const created = await call('POST', '/api/runs', { toolId: 'stub.write', args: { customer: 'acme', password: 'hunter2' } });
     const pending = created.body as unknown as RunRecord;
     expect(pending.status).toBe('pending_approval');
     expect(lastCall).toBeNull(); // 아직 bridge 호출 없음
@@ -187,9 +187,9 @@ describe('Tower API — 승인 플로우 (T-API-1)', () => {
     expect(final.approval).toMatchObject({ approvedBy: 'jmpark', changeTicketId: `run:${pending.runId}`, rollbackPlanId: 'n/a-read-back-verify' });
     expect(JSON.stringify(final)).not.toMatch(/approvalToken|nonce/); // 토큰·nonce 무저장
     expect(String(final.resultSummary)).toContain('***');      // 요약도 마스킹본 기준
-    expect(String(final.resultSummary)).not.toContain('sec');  // 비밀값 요약 유출 금지
+    expect(String(final.resultSummary)).not.toContain('hunter2');  // 비밀값 요약 유출 금지
     expect(lastCall!.name).toBe('stub.write');
-    expect(lastCall!.arguments.password).toBe('sec'); // 원본 args로 실행 (마스킹본 아님)
+    expect(lastCall!.arguments.password).toBe('hunter2'); // 원본 args로 실행 (마스킹본 아님)
     expect(lastCall!.approval).toMatchObject({ approvedBy: 'jmpark' });
     expect(typeof lastCall!.approval!.approvalToken).toBe('string');
 

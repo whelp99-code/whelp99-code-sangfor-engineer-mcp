@@ -49,6 +49,11 @@ describe('maskSecrets — @sangfor/runs 복제본 (T-RUN-2)', () => {
     expect(scrubSecretValues('auth failed for admin with password hunter2 (token tok123)', args))
       .toBe('auth failed for admin with password *** (token ***)');
     expect(scrubSecretValues('no secrets here', args)).toBe('no secrets here');
+    // 접두사 겹침: 긴 비밀값을 먼저 치환해야 파편 누출('***defg')이 없다
+    const overlapping = { password: 'abcd', nested: { apiToken: 'abcdefg' } };
+    expect(scrubSecretValues('x abcdefg y abcd z', overlapping)).toBe('x *** y *** z');
+    // 4자 미만 비밀값은 스크럽하지 않는다 — 'p'가 'pass=3'을 오염시키는 사고 방지
+    expect(scrubSecretValues('ok=true pass=3 (p)', { password: 'p' })).toBe('ok=true pass=3 (p)');
   });
 });
 

@@ -194,7 +194,9 @@ export function maskSecrets<T>(value: T): T {
 
 // Key-based masking cannot scrub secrets already embedded in free text (error
 // messages, logs). Collect secret string values from `source` (same key regex,
-// recursive) and blank every occurrence of them in `text`.
+// recursive) and blank every occurrence of them in `text`. 4자 미만 값은 스크럽하지
+// 않는다 — 실자격증명이 아닐 가능성이 높고, 과잉 치환이 무관한 텍스트를 오염시킨다
+// (키 기반 마스킹은 여전히 적용됨).
 export function scrubSecretValues(text: string, source: unknown): string {
   const secrets: string[] = [];
   const collect = (value: unknown): void => {
@@ -204,12 +206,13 @@ export function scrubSecretValues(text: string, source: unknown): string {
     }
     if (value !== null && typeof value === 'object') {
       for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
-        if (SECRET_KEY_RE.test(k) && typeof v === 'string' && v.length > 0) secrets.push(v);
+        if (SECRET_KEY_RE.test(k) && typeof v === 'string' && v.length >= 4) secrets.push(v);
         else collect(v);
       }
     }
   };
   collect(source);
+  secrets.sort((a, b) => b.length - a.length); // 짧은 값이 긴 값을 파편화('***defg')하지 않게
   let out = text;
   for (const secret of secrets) out = out.split(secret).join('***');
   return out;
@@ -1768,7 +1771,7 @@ function startStubBridge(): Promise<void> {
       }
       const payload = lastCall!.name === 'stub.read'
         ? { evaluation: { specId: 's', ok: true, items: [], summary: { pass: 3, fail: 0, indeterminate: 0 }, coverage: {} } }
-        : { created: true, echo: lastCall!.arguments };
+        : { created: true, echo: lastCall!.arguments, note: 'ran with password ' + String((lastCall!.arguments as Record<string, unknown>).password ?? '') };
       return respond(200, { result: { content: [{ type: 'text', text: JSON.stringify(payload) }], structuredContent: payload, isError: false } });
     }
     respond(404, { error: 'not found' });
@@ -1856,11 +1859,13 @@ describe('Tower API — 읽기전용 즉시 실행 (T-API-1)', () => {
     expect((await call('GET', '/api/runs/run_none')).status).toBe(404);
   });
 
-  it('isError 도구 → failed + error 기록', async () => {
-    const r = await call('POST', '/api/runs', { toolId: 'stub.fail', args: {} });
+  it('isError 도구 → failed + error 기록 (비밀값 스크럽)', async () => {
+    const r = await call('POST', '/api/runs', { toolId: 'stub.fail', args: { password: 'boom' } });
     const run = r.body as unknown as RunRecord;
     expect(run.status).toBe('failed');
-    expect(run.error).toBe('stub tool exploded');
+    expect(String(run.error)).toContain('stub tool exploded');
+    expect(String(run.error)).toContain('***');
+    expect(String(run.error)).not.toContain('boom');
   });
 
   it('deviceId 지정 시 §5.4 병합 규칙으로 인자 구성 (사용자입력 > mock 폴백)', async () => {
@@ -1883,7 +1888,7 @@ describe('Tower API — 읽기전용 즉시 실행 (T-API-1)', () => {
 
 describe('Tower API — 승인 플로우 (T-API-1)', () => {
   it('write → pending_approval(실행 안 함) → approve → 민팅·실행·succeeded + approval 메타', async () => {
-    const created = await call('POST', '/api/runs', { toolId: 'stub.write', args: { customer: 'acme', password: 'sec' } });
+    const created = await call('POST', '/api/runs', { toolId: 'stub.write', args: { customer: 'acme', password: 'hunter2' } });
     const pending = created.body as unknown as RunRecord;
     expect(pending.status).toBe('pending_approval');
     expect(lastCall).toBeNull(); // 아직 bridge 호출 없음
@@ -1895,9 +1900,9 @@ describe('Tower API — 승인 플로우 (T-API-1)', () => {
     expect(final.approval).toMatchObject({ approvedBy: 'jmpark', changeTicketId: `run:${pending.runId}`, rollbackPlanId: 'n/a-read-back-verify' });
     expect(JSON.stringify(final)).not.toMatch(/approvalToken|nonce/); // 토큰·nonce 무저장
     expect(String(final.resultSummary)).toContain('***');      // 요약도 마스킹본 기준
-    expect(String(final.resultSummary)).not.toContain('sec');  // 비밀값 요약 유출 금지
+    expect(String(final.resultSummary)).not.toContain('hunter2');  // 비밀값 요약 유출 금지
     expect(lastCall!.name).toBe('stub.write');
-    expect(lastCall!.arguments.password).toBe('sec'); // 원본 args로 실행 (마스킹본 아님)
+    expect(lastCall!.arguments.password).toBe('hunter2'); // 원본 args로 실행 (마스킹본 아님)
     expect(lastCall!.approval).toMatchObject({ approvedBy: 'jmpark' });
     expect(typeof lastCall!.approval!.approvalToken).toBe('string');
 
@@ -2050,7 +2055,7 @@ export function createApi(opts: TowerOptions = {}) {
     const durationMs = Date.now() - started;
     if (call.ok) {
       return store.transition(runId, {
-        status: 'succeeded', resultJson: call.data, resultSummary: summarize(maskSecrets(call.data)), durationMs, finishedAt,
+        status: 'succeeded', resultJson: call.data, resultSummary: scrubSecretValues(summarize(maskSecrets(call.data)), args), durationMs, finishedAt,
       });
     }
     return store.transition(runId, {

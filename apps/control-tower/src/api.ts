@@ -90,7 +90,7 @@ export function createApi(opts: TowerOptions = {}) {
     const durationMs = Date.now() - started;
     if (call.ok) {
       return store.transition(runId, {
-        status: 'succeeded', resultJson: call.data, resultSummary: summarize(maskSecrets(call.data)), durationMs, finishedAt,
+        status: 'succeeded', resultJson: call.data, resultSummary: scrubSecretValues(summarize(maskSecrets(call.data)), args), durationMs, finishedAt,
       });
     }
     return store.transition(runId, {

@@ -17,7 +17,9 @@ export function maskSecrets<T>(value: T): T {
 
 // Key-based masking cannot scrub secrets already embedded in free text (error
 // messages, logs). Collect secret string values from `source` (same key regex,
-// recursive) and blank every occurrence of them in `text`.
+// recursive) and blank every occurrence of them in `text`. 4자 미만 값은 스크럽하지
+// 않는다 — 실자격증명이 아닐 가능성이 높고, 과잉 치환이 무관한 텍스트를 오염시킨다
+// (키 기반 마스킹은 여전히 적용됨).
 export function scrubSecretValues(text: string, source: unknown): string {
   const secrets: string[] = [];
   const collect = (value: unknown): void => {
@@ -27,12 +29,13 @@ export function scrubSecretValues(text: string, source: unknown): string {
     }
     if (value !== null && typeof value === 'object') {
       for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
-        if (SECRET_KEY_RE.test(k) && typeof v === 'string' && v.length > 0) secrets.push(v);
+        if (SECRET_KEY_RE.test(k) && typeof v === 'string' && v.length >= 4) secrets.push(v);
         else collect(v);
       }
     }
   };
   collect(source);
+  secrets.sort((a, b) => b.length - a.length); // 짧은 값이 긴 값을 파편화('***defg')하지 않게
   let out = text;
   for (const secret of secrets) out = out.split(secret).join('***');
   return out;
