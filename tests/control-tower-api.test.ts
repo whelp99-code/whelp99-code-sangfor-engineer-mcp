@@ -54,7 +54,7 @@ function startStubBridge(): Promise<void> {
         return respond(403, { error: 'Tool annotations unavailable; refusing call: ' + lastCall!.name });
       }
       if (lastCall!.name === 'stub.fail') {
-        return respond(200, { result: { content: [{ type: 'text', text: 'stub tool exploded' }], isError: true } });
+        return respond(200, { result: { content: [{ type: 'text', text: 'stub tool exploded: ' + JSON.stringify(lastCall!.arguments) }], isError: true } });
       }
       const payload = lastCall!.name === 'stub.read'
         ? { evaluation: { specId: 's', ok: true, items: [], summary: { pass: 3, fail: 0, indeterminate: 0 }, coverage: {} } }
@@ -147,10 +147,12 @@ describe('Tower API — 읽기전용 즉시 실행 (T-API-1)', () => {
   });
 
   it('isError 도구 → failed + error 기록', async () => {
-    const r = await call('POST', '/api/runs', { toolId: 'stub.fail', args: {} });
+    const r = await call('POST', '/api/runs', { toolId: 'stub.fail', args: { password: 'boom' } });
     const run = r.body as unknown as RunRecord;
     expect(run.status).toBe('failed');
-    expect(run.error).toBe('stub tool exploded');
+    expect(String(run.error)).toContain('stub tool exploded');
+    expect(String(run.error)).toContain('***');
+    expect(String(run.error)).not.toContain('boom');
   });
 
   it('deviceId 지정 시 §5.4 병합 규칙으로 인자 구성 (사용자입력 > mock 폴백)', async () => {

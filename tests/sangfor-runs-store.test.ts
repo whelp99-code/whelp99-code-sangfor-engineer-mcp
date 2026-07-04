@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach, afterEach } from 'vitest';
-import { maskSecrets } from '@sangfor/runs';
+import { maskSecrets, scrubSecretValues } from '@sangfor/runs';
 import { maskSecrets as hciMaskSecrets } from '@sangfor/hci-client';
 import { appendFileSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -42,6 +42,13 @@ describe('maskSecrets — @sangfor/runs 복제본 (T-RUN-2)', () => {
 
   it('behaves identically to the hci-client original (regex 계약 동기화 고정)', () => {
     expect(maskSecrets(fixture)).toEqual(hciMaskSecrets(fixture));
+  });
+
+  it('scrubSecretValues masks secret VALUES embedded in free text (error messages)', () => {
+    const args = { username: 'admin', password: 'hunter2', nested: { apiToken: 'tok123' } };
+    expect(scrubSecretValues('auth failed for admin with password hunter2 (token tok123)', args))
+      .toBe('auth failed for admin with password *** (token ***)');
+    expect(scrubSecretValues('no secrets here', args)).toBe('no secrets here');
   });
 });
 

@@ -191,6 +191,29 @@ export function maskSecrets<T>(value: T): T {
   }
   return value;
 }
+
+// Key-based masking cannot scrub secrets already embedded in free text (error
+// messages, logs). Collect secret string values from `source` (same key regex,
+// recursive) and blank every occurrence of them in `text`.
+export function scrubSecretValues(text: string, source: unknown): string {
+  const secrets: string[] = [];
+  const collect = (value: unknown): void => {
+    if (Array.isArray(value)) {
+      value.forEach(collect);
+      return;
+    }
+    if (value !== null && typeof value === 'object') {
+      for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+        if (SECRET_KEY_RE.test(k) && typeof v === 'string' && v.length > 0) secrets.push(v);
+        else collect(v);
+      }
+    }
+  };
+  collect(source);
+  let out = text;
+  for (const secret of secrets) out = out.split(secret).join('***');
+  return out;
+}
 ```
 
 - [ ] **Step 6: 테스트 통과 확인**
@@ -1741,7 +1764,7 @@ function startStubBridge(): Promise<void> {
         return respond(403, { error: 'Tool annotations unavailable; refusing call: ' + lastCall!.name });
       }
       if (lastCall!.name === 'stub.fail') {
-        return respond(200, { result: { content: [{ type: 'text', text: 'stub tool exploded' }], isError: true } });
+        return respond(200, { result: { content: [{ type: 'text', text: 'stub tool exploded: ' + JSON.stringify(lastCall!.arguments) }], isError: true } });
       }
       const payload = lastCall!.name === 'stub.read'
         ? { evaluation: { specId: 's', ok: true, items: [], summary: { pass: 3, fail: 0, indeterminate: 0 }, coverage: {} } }
@@ -2031,7 +2054,7 @@ export function createApi(opts: TowerOptions = {}) {
       });
     }
     return store.transition(runId, {
-      status: 'failed', error: call.errorText ?? 'unknown bridge error', durationMs, finishedAt,
+      status: 'failed', error: scrubSecretValues(call.errorText ?? 'unknown bridge error', args), durationMs, finishedAt,
     });
   }
 

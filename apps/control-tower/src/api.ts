@@ -1,5 +1,5 @@
 import type { SignedApproval } from '../../../packages/sangfor-operator/src/approval.js';
-import { RunStore, maskSecrets, type ListRunsOptions, type RunRecord } from '../../../packages/sangfor-runs/src/index.js';
+import { RunStore, maskSecrets, scrubSecretValues, type ListRunsOptions, type RunRecord } from '../../../packages/sangfor-runs/src/index.js';
 import { BridgeClient, safetyOf, type BridgeTool } from './bridge-client.js';
 import { Registry, mergeDeviceArgs, applyMockCredentialFallback } from './registry.js';
 import { mintBridgeApproval } from './approval-mint.js';
@@ -94,7 +94,7 @@ export function createApi(opts: TowerOptions = {}) {
       });
     }
     return store.transition(runId, {
-      status: 'failed', error: call.errorText ?? 'unknown bridge error', durationMs, finishedAt,
+      status: 'failed', error: scrubSecretValues(call.errorText ?? 'unknown bridge error', args), durationMs, finishedAt,
     });
   }
 
