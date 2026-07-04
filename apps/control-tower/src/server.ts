@@ -2,6 +2,7 @@ import http from 'node:http';
 import { URL } from 'node:url';
 import { checkAuth, resolveBindHost, assertBindSafety } from '../../../packages/shared/src/index.js';
 import type { RunStatus } from '../../../packages/sangfor-runs/src/index.js';
+import type { PlaybookBlock, AgentTask } from './playbook-store.js';
 import { createApi, ApiError, type TowerOptions } from './api.js';
 import { loadEnvFile } from '../../../packages/sangfor-collector/src/load-env.js';
 import { dashboardHtml } from './ui.js';
@@ -98,6 +99,77 @@ export function createTowerServer(opts: TowerServerOptions = {}): http.Server {
           }),
         });
       }
+      // ── 플레이북 라우트 (§5.4) ──
+      if (method === 'GET' && path === '/api/playbooks') return json(res, api.listPlaybooks());
+      if (method === 'POST' && path === '/api/playbooks') {
+        const b = await readJsonBody(req);
+        return json(res, api.createPlaybook({
+          name: String(b.name ?? ''), goal: String(b.goal ?? ''), authoredBy: String(b.authoredBy ?? ''),
+          note: typeof b.note === 'string' ? b.note : undefined,
+          blocks: Array.isArray(b.blocks) ? (b.blocks as PlaybookBlock[]) : [],
+        }));
+      }
+      const pbRevApprove = path.match(/^\/api\/playbooks\/([^/]+)\/revisions\/(\d+)\/approve$/);
+      if (method === 'POST' && pbRevApprove) {
+        const b = await readJsonBody(req);
+        return json(res, api.reviewPlaybookRevision(pbRevApprove[1], Number(pbRevApprove[2]), { approve: true, reviewedBy: String(b.reviewedBy ?? '') }));
+      }
+      const pbRevReject = path.match(/^\/api\/playbooks\/([^/]+)\/revisions\/(\d+)\/reject$/);
+      if (method === 'POST' && pbRevReject) {
+        const b = await readJsonBody(req);
+        return json(res, api.reviewPlaybookRevision(pbRevReject[1], Number(pbRevReject[2]), { approve: false, reviewedBy: String(b.reviewedBy ?? ''), rejectReason: typeof b.reason === 'string' ? b.reason : undefined }));
+      }
+      const pbRevisions = path.match(/^\/api\/playbooks\/([^/]+)\/revisions$/);
+      if (method === 'POST' && pbRevisions) {
+        const b = await readJsonBody(req);
+        return json(res, api.addPlaybookRevision(pbRevisions[1], {
+          authoredBy: String(b.authoredBy ?? ''), note: typeof b.note === 'string' ? b.note : undefined,
+          blocks: Array.isArray(b.blocks) ? (b.blocks as PlaybookBlock[]) : [],
+        }));
+      }
+      const pbExecute = path.match(/^\/api\/playbooks\/([^/]+)\/execute$/);
+      if (method === 'POST' && pbExecute) return json(res, await api.executePlaybook(pbExecute[1]));
+      const pbGet = path.match(/^\/api\/playbooks\/([^/]+)$/);
+      if (method === 'GET' && pbGet) return json(res, api.getPlaybook(pbGet[1]));
+
+      const pbRunAnalysis = path.match(/^\/api\/playbook-runs\/([^/]+)\/analysis$/);
+      if (method === 'POST' && pbRunAnalysis) {
+        const b = await readJsonBody(req);
+        return json(res, api.submitAnalysis(pbRunAnalysis[1], {
+          playbookId: String(b.playbookId ?? ''), playbookRunId: pbRunAnalysis[1],
+          summary: String(b.summary ?? ''), authoredBy: String(b.authoredBy ?? ''),
+          improvements: Array.isArray(b.improvements) ? (b.improvements as never[]) : [],
+          proposals: Array.isArray(b.proposals) ? (b.proposals as never[]) : [],
+        }));
+      }
+      const pbRunGet = path.match(/^\/api\/playbook-runs\/([^/]+)$/);
+      if (method === 'GET' && pbRunGet) return json(res, api.getPlaybookRun(pbRunGet[1]));
+
+      const anlVerdict = path.match(/^\/api\/analyses\/([^/]+)\/verdict$/);
+      if (method === 'POST' && anlVerdict) {
+        const b = await readJsonBody(req);
+        return json(res, api.setAnalysisVerdict(anlVerdict[1], {
+          part: b.part === 'proposals' ? 'proposals' : 'improvements',
+          index: Number(b.index), verdict: b.verdict === 'dismissed' ? 'dismissed' : 'accepted',
+          reviewedBy: String(b.reviewedBy ?? ''), linkedPlaybookId: typeof b.linkedPlaybookId === 'string' ? b.linkedPlaybookId : undefined,
+        }));
+      }
+
+      if (method === 'GET' && path === '/api/agent-tasks') {
+        const status = url.searchParams.get('status');
+        return json(res, api.listAgentTasks(status ? (status as AgentTask['status']) : undefined));
+      }
+      if (method === 'POST' && path === '/api/agent-tasks') {
+        const b = await readJsonBody(req);
+        return json(res, api.createAgentTask({ kind: b.kind as AgentTask['kind'], payload: (b.payload && typeof b.payload === 'object' ? b.payload : {}) as AgentTask['payload'] }));
+      }
+      const ataskPatch = path.match(/^\/api\/agent-tasks\/([^/]+)$/);
+      if (method === 'PATCH' && ataskPatch) {
+        const b = await readJsonBody(req);
+        if (b.cancel === true) return json(res, api.cancelAgentTask(ataskPatch[1]));
+        return json(res, api.closeAgentTask(ataskPatch[1], (b.result && typeof b.result === 'object' ? b.result : {}) as AgentTask['result']));
+      }
+
       const approveMatch = path.match(/^\/api\/runs\/([^/]+)\/approve$/);
       if (method === 'POST' && approveMatch) {
         const b = await readJsonBody(req);

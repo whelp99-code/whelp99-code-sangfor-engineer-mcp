@@ -248,6 +248,12 @@ export function createApi(opts: TowerOptions = {}) {
     return { playbookRunId, playbookId: pb.id, rev: rev.rev, status: derived.status, blocks: derived.blocks };
   }
 
+  function asApiError(error: unknown): ApiError {
+    if (error instanceof PlaybookValidationError) return new ApiError(error.status, error.message);
+    if (error instanceof ApiError) return error;
+    return new ApiError(500, error instanceof Error ? error.message : String(error));
+  }
+
   async function continueFromApprove(playbookRunId: string): Promise<void> {
     const runs = blockRunsOf(playbookRunId);
     const anchor = runs[0];
@@ -475,6 +481,72 @@ export function createApi(opts: TowerOptions = {}) {
         pendingApprovals: store.pendingApprovals().map(stripResultJson),
         health: await this.health(),
       };
+    },
+
+    listPlaybooks(): { playbooks: Array<Playbook & { activeRev?: number; lastRun?: { playbookRunId: string; status: PlaybookRunStatus } }> } {
+      return {
+        playbooks: playbooks.list().map((pb) => {
+          const active = playbooks.activeRevision(pb);
+          // 최근 실행: 이 플레이북 태그가 붙은 가장 최신 블록 run의 playbookRunId로 유도
+          const latest = store.listRuns({ ...PB_LIMIT }).find((r) => r.playbookId === pb.id && r.playbookRunId);
+          let lastRun: { playbookRunId: string; status: PlaybookRunStatus } | undefined;
+          if (latest?.playbookRunId && active) {
+            const rev = pb.revisions.find((r) => r.rev === latest.playbookRev) ?? active;
+            lastRun = { playbookRunId: latest.playbookRunId, status: derivePlaybookRunStatus(rev, blockRunsOf(latest.playbookRunId)).status };
+          }
+          return { ...pb, activeRev: active?.rev, lastRun };
+        }),
+      };
+    },
+
+    createPlaybook(input: { name: string; goal: string; blocks: PlaybookBlock[]; authoredBy: string; note?: string }): Playbook {
+      try { return playbooks.create(input); }
+      catch (error) { throw asApiError(error); }
+    },
+
+    getPlaybook(id: string): Playbook {
+      const pb = playbooks.get(id);
+      if (!pb) throw new ApiError(404, `unknown playbook: ${id}`);
+      return pb;
+    },
+
+    addPlaybookRevision(id: string, input: { blocks: PlaybookBlock[]; authoredBy: string; note?: string }): Playbook {
+      try { return playbooks.addRevision(id, input); }
+      catch (error) { throw asApiError(error); }
+    },
+
+    reviewPlaybookRevision(id: string, rev: number, verdict: { approve: boolean; reviewedBy: string; rejectReason?: string }): Playbook {
+      try { return playbooks.reviewRevision(id, rev, verdict); }
+      catch (error) { throw asApiError(error); }
+    },
+
+    submitAnalysis(playbookRunId: string, input: Omit<PlaybookAnalysis, 'id' | 'createdAt' | 'schemaVersion'>): PlaybookAnalysis {
+      // 존재하는 실행인지 확인 (정보 격리: 임의 playbookRunId로 분석 주입 방지)
+      this.getPlaybookRun(playbookRunId);
+      return analyses.append({ ...input, playbookRunId, schemaVersion: 1 } as PlaybookAnalysis);
+    },
+
+    setAnalysisVerdict(id: string, input: { part: 'improvements' | 'proposals'; index: number; verdict: AnalysisVerdict; reviewedBy: string; linkedPlaybookId?: string }): PlaybookAnalysis {
+      try { return analyses.setVerdict(id, input.part, input.index, input.verdict, input.reviewedBy, input.linkedPlaybookId); }
+      catch (error) { throw asApiError(error); }
+    },
+
+    listAgentTasks(status?: AgentTask['status']): { tasks: AgentTask[] } {
+      return { tasks: agentTasks.list(status) };
+    },
+
+    createAgentTask(input: { kind: AgentTask['kind']; payload: AgentTask['payload'] }): AgentTask {
+      return agentTasks.create(input);
+    },
+
+    closeAgentTask(id: string, result: AgentTask['result']): AgentTask {
+      try { return agentTasks.close(id, result); }
+      catch (error) { throw asApiError(error); }
+    },
+
+    cancelAgentTask(id: string): AgentTask {
+      try { return agentTasks.cancel(id); }
+      catch (error) { throw asApiError(error); }
     },
 
     async executePlaybook(playbookId: string): Promise<{ playbookRunId: string; playbookId: string; rev: number; status: PlaybookRunStatus; blocks: Array<{ blockId: string; runId?: string; status?: RunStatus }> }> {
