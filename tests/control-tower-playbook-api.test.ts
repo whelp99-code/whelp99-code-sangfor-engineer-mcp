@@ -157,3 +157,52 @@ describe('Playbook API — 조립·검증·실행 (T-PB-5)', () => {
     expect(row.lastRun!.status).toBe('succeeded');
   });
 });
+
+const WRITE_REPORT = [
+  { id: 'b1', type: 'tool', toolId: 'p.read', args: { host: 'h' } },
+  { id: 'b2', type: 'tool', toolId: 'p.write', args: { customer: 'acme' } },
+  { id: 'r1', type: 'report' },
+];
+
+describe('Playbook API — 재개·재시작 (T-PB-6)', () => {
+  async function seedRunToWaiting(): Promise<{ pbId: string; pbrunId: string; pendingRunId: string }> {
+    const created = await call('POST', '/api/playbooks', { name: 'x', goal: 'g', authoredBy: 'a', blocks: WRITE_REPORT });
+    const pbId = String((created.body as { id: string }).id);
+    await call('POST', `/api/playbooks/${pbId}/revisions/1/approve`, { reviewedBy: 'j' });
+    const run = await call('POST', `/api/playbooks/${pbId}/execute`, {});
+    expect(run.body.status).toBe('waiting_approval');
+    const pbrunId = String(run.body.playbookRunId);
+    const blocks = (await call('GET', `/api/playbook-runs/${pbrunId}`)).body.blocks as Array<{ blockId: string; runId?: string }>;
+    const pendingRunId = String(blocks.find((x) => x.blockId === 'b2')!.runId);
+    return { pbId, pbrunId, pendingRunId };
+  }
+
+  it('write 승인 → continueRun으로 report까지 → succeeded', async () => {
+    const { pbrunId, pendingRunId } = await seedRunToWaiting();
+    const approved = await call('POST', `/api/runs/${pendingRunId}/approve`, { approvedBy: 'jmpark' });
+    expect(approved.status).toBe(200);
+    expect((await call('GET', `/api/playbook-runs/${pbrunId}`)).body.status).toBe('succeeded');
+  });
+
+  it('타워 재시작(새 서버 인스턴스) 후 승인 → 재해석 폴백으로 성공', async () => {
+    const { pbrunId, pendingRunId } = await seedRunToWaiting();
+    // 타워만 재시작 (같은 dirs, 새 createApi → originalArgs 맵 비어있음)
+    await new Promise<void>((r) => tower.close(() => r()));
+    tower = await startTower();
+    const restarted = urlOf(tower);
+    const approved = await call('POST', `/api/runs/${pendingRunId}/approve`, { approvedBy: 'jmpark' }, restarted);
+    expect(approved.status).toBe(200); // 400 아님 — 재해석 성공
+    expect((await call('GET', `/api/playbook-runs/${pbrunId}`, undefined, restarted)).body.status).toBe('succeeded');
+  });
+
+  it('playbookRunId 없는 pending의 재시작 후 승인은 여전히 400 (v1 무회귀)', async () => {
+    // 단일 도구 write (플레이북 아님)
+    const created = await call('POST', '/api/runs', { toolId: 'p.write', args: { customer: 'acme' } });
+    const runId = String((created.body as { runId: string }).runId);
+    await new Promise<void>((r) => tower.close(() => r()));
+    tower = await startTower();
+    const r = await call('POST', `/api/runs/${runId}/approve`, { approvedBy: 'x' }, urlOf(tower));
+    expect(r.status).toBe(400);
+    expect(String(r.body.error)).toMatch(/원본 인자 소실/);
+  });
+});

@@ -272,6 +272,22 @@ export function createApi(opts: TowerOptions = {}) {
     if (startIndex < rev.blocks.length) await runBlocksFrom(pb, rev, playbookRunId, startIndex);
   }
 
+  // 접점 #1: 타워 재시작으로 originalArgs가 소실된 playbook write run의 args를
+  // 리비전 블록 + 영속 결과에서 결정적으로 복원. 영속본이 불변이라 승인자가 본 것과 동일.
+  async function reinterpretBlockArgs(record: RunRecord): Promise<Record<string, unknown>> {
+    if (!record.playbookRunId || !record.playbookId || record.playbookRev === undefined || !record.blockId) {
+      throw new ApiError(400, '원본 인자 소실 — 재요청 필요');
+    }
+    const pb = playbooks.get(record.playbookId);
+    const rev = pb?.revisions.find((r) => r.rev === record.playbookRev);
+    const block = rev?.blocks.find((b) => b.id === record.blockId);
+    if (!pb || !rev || !block) throw new ApiError(409, '재해석 실패: 플레이북/리비전/블록 소실');
+    const tools = await listBridgeTools();
+    const tool = tools.find((t) => t.name === record.toolId);
+    if (!tool) throw new ApiError(409, `재해석 실패: unknown tool ${record.toolId}`);
+    return resolveBlockArgs(block, record.playbookRunId, tool);
+  }
+
   return {
     async createRun(input: { toolId: string; args?: Record<string, unknown>; deviceId?: string }): Promise<RunRecord> {
       if (!input.toolId) throw new ApiError(400, 'toolId is required');
@@ -315,8 +331,11 @@ export function createApi(opts: TowerOptions = {}) {
       if (record.status !== 'pending_approval') throw new ApiError(409, `run is not pending_approval: ${record.status}`);
       if (!input.approvedBy?.trim()) throw new ApiError(400, 'approvedBy is required');
       if (!approvalSecret) throw new ApiError(500, 'approval secret not configured');
-      const args = originalArgs.get(runId);
-      if (!args) throw new ApiError(400, '원본 인자 소실 — 재요청 필요');
+      let args = originalArgs.get(runId);
+      if (!args) {
+        // playbook write run은 재해석 폴백. 단일 도구 run은 기존대로 400 (마스킹본 실행 방지 · 무회귀).
+        args = await reinterpretBlockArgs(record);
+      }
       const changeTicketId = input.changeTicketId?.trim() || `run:${runId}`;
       const rollbackPlanId = input.rollbackPlanId?.trim() || 'n/a-read-back-verify';
       const signed = mintBridgeApproval(record.toolId, {
