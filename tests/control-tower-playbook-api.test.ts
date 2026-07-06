@@ -215,4 +215,13 @@ describe('Playbook UI 서빙', () => {
     expect(html).toContain('AI 조립 요청');
     expect(html).toContain('loadPlaybooks');
   });
+
+  it('서빙된 클라이언트 <script>가 문법 오류 없이 파싱된다 (템플릿 이스케이프 회귀 방지)', async () => {
+    // dashboardHtml의 백틱 템플릿 안에서 \' 는 '로 렌더되어 onclick 핸들러를 깨뜨린 적이 있다.
+    // 문자열 검사만으로는 못 잡으므로 렌더된 스크립트를 실제 파싱해 문법을 강제한다(실행 X).
+    const html = await (await fetch(`${towerUrl}/`)).text();
+    const script = html.match(/<script>([\s\S]*?)<\/script>/)?.[1];
+    expect(script, 'no <script> block').toBeTruthy();
+    expect(() => new Function(script as string)).not.toThrow();
+  });
 });
