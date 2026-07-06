@@ -32,6 +32,9 @@ data/registry/devices.json
 scripts/debug-cc.ts
 scripts/test-fortios.ts
 
+# Playbook report outputs (runtime — 로컬 산출물)
+outputs/playbooks/
+
 # deepinit harness: plan artifacts are local working notes (not committed).
 # Permanent, reviewed decisions live in docs/design-docs/ (committed).
 docs/plans/

@@ -10,6 +10,7 @@ process.env.MCP_NO_SERVE = '1';
 
 import { authorizeToolCall } from '../apps/http-bridge/src/tool-guard.js';
 import { createApi } from '../apps/control-tower/src/api.js';
+import { PlaybookStore } from '../apps/control-tower/src/playbook-store.js';
 import { SEED_VENDORS } from '../apps/control-tower/src/registry.js';
 
 const SECRET = 'itest-secret';
@@ -149,5 +150,75 @@ describe('T-INT-2 — 시드 advisorTools가 실제 MCP에 존재하고 전부 r
         }
       }
     }
+  });
+});
+
+// ─── T-PB-7: 협업 루프 1바퀴 (조립→승인→실행→일시정지→승인→재개→분석→채택) ───
+const PB7_TOOLS = { tools: [
+  { name: 'e.read', description: 'r', inputSchema: { type: 'object', properties: { host: { type: 'string' } } }, annotations: { title: 'r', readOnlyHint: true, destructiveHint: false }, category: 'advisory' },
+  { name: 'e.write', description: 'w', inputSchema: { type: 'object', properties: { customer: { type: 'string' } }, required: ['customer'] }, annotations: { title: 'w', readOnlyHint: false, destructiveHint: false }, category: 'pm' },
+] };
+
+describe('T-PB-7 — 플레이북 협업 루프 1바퀴', () => {
+  let bridge7: http.Server; let url7: string; let dir7: string; let out7: string;
+  beforeAll(async () => {
+    bridge7 = http.createServer(async (req, res) => {
+      const send = (s: number, b: unknown) => { res.writeHead(s, { 'content-type': 'application/json' }); res.end(JSON.stringify(b)); };
+      if (req.method === 'GET' && req.url === '/health') return send(200, { status: 'ok', mcp: 'connected' });
+      if (req.method === 'GET' && req.url === '/tools') return send(200, PB7_TOOLS);
+      if (req.method === 'POST' && req.url === '/tools/call') {
+        const chunks: Buffer[] = []; for await (const c of req) chunks.push(c as Buffer);
+        const body = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+        const payload = body.name === 'e.read'
+          ? { evaluation: { specId: 's', ok: false, summary: { pass: 1, fail: 1 }, coverage: {}, items: [{ id: 'i1', label: 'HA', verdict: 'FAIL', category: 'missing', observed: 'off', expected: 'on', reason: 'HA 비활성' }] } }
+          : { created: true };
+        return send(200, { result: { content: [{ type: 'text', text: JSON.stringify(payload) }], structuredContent: payload, isError: false } });
+      }
+      send(404, { error: 'nf' });
+    });
+    await new Promise<void>((r) => bridge7.listen(0, '127.0.0.1', () => { url7 = `http://127.0.0.1:${(bridge7.address() as AddressInfo).port}`; r(); }));
+    dir7 = mkdtempSync(join(tmpdir(), 'pb7-'));
+    out7 = mkdtempSync(join(tmpdir(), 'pb7-out-'));
+  });
+  afterAll(async () => {
+    await new Promise<void>((r) => bridge7.close(() => r()));
+    rmSync(dir7, { recursive: true, force: true }); rmSync(out7, { recursive: true, force: true });
+  });
+
+  it('read 2 + write 1 + report → 일시정지 → 승인 → 재개 → report md → 분석 제출 → 채택', async () => {
+    const api = createApi({ bridgeUrl: url7, runsDir: join(dir7, 'runs'), registryDir: join(dir7, 'reg'), playbookOutputDir: out7, approvalSecret: 'sec', mockConsoleUrl: 'http://127.0.0.1:1' });
+    // 조립(draft) — 에이전트 대행
+    const store = new PlaybookStore(join(dir7, 'reg'));
+    const pb = store.create({ name: '자문 루프', goal: '전체분석→보고서→개선안', authoredBy: 'agent:claude', blocks: [
+      { id: 'b1', type: 'tool', toolId: 'e.read', args: { host: 'h1' } },
+      { id: 'b2', type: 'tool', toolId: 'e.read', args: { host: 'h2' } },
+      { id: 'b3', type: 'tool', toolId: 'e.write', args: { customer: 'acme' } },
+      { id: 'r1', type: 'report' },
+    ] });
+    // 승인
+    store.reviewRevision(pb.id, 1, { approve: true, reviewedBy: 'jmpark' });
+    // 실행 → write에서 일시정지
+    const started = await api.executePlaybook(pb.id);
+    expect(started.status).toBe('waiting_approval');
+    // 승인 → 재개 → report까지
+    const pending = api.listRuns({ playbookRunId: started.playbookRunId }).find((r) => r.blockId === 'b3')!;
+    await api.approveRun(pending.runId, { approvedBy: 'jmpark' });
+    const done = api.getPlaybookRun(started.playbookRunId);
+    expect(done.status).toBe('succeeded');
+    // report md 생성 확인
+    const reportRun = api.listRuns({ playbookRunId: started.playbookRunId }).find((r) => r.toolId === 'tower.report')!;
+    expect(reportRun.status).toBe('succeeded');
+    // 분석 제출 → 채택(제안에 linkedPlaybookId)
+    const anl = api.submitAnalysis(started.playbookRunId, {
+      playbookId: pb.id, playbookRunId: started.playbookRunId, summary: 'HA 미설정 관측',
+      authoredBy: 'agent:claude',
+      improvements: [{ observation: 'HA off', recommendation: 'HA 설정' }],
+      proposals: [{ action: 'HA 설정 플레이북', rationale: '가용성' }],
+    });
+    const v = api.setAnalysisVerdict(anl.id, { part: 'proposals', index: 0, verdict: 'accepted', reviewedBy: 'jmpark', linkedPlaybookId: 'pb_followup' });
+    expect(v.proposals[0].verdict).toBe('accepted');
+    expect(v.proposals[0].linkedPlaybookId).toBe('pb_followup');
+    // 분석이 실행 상세에 붙는다
+    expect(api.getPlaybookRun(started.playbookRunId).analyses).toHaveLength(1);
   });
 });
