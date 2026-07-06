@@ -226,12 +226,12 @@ export function dashboardHtml(): string {
         return '<div style="margin:6px 0"><strong>' + esc(d.name) + '</strong> <span class="meta">' + esc(d.productLabel) + ' · ' + esc(d.host) + '</span><br/>' + badge + '</div>';
       }).join('');
       $('w-recent').innerHTML = o.recentRuns.length === 0 ? '실행 이력 없음' : '<table><tbody>' + o.recentRuns.map(function (r) {
-        return '<tr class="clickable" onclick="showRun(\'' + esc(r.runId) + '\')"><td>' + when(r.requestedAt) + '</td><td>' + esc(r.toolId) + '</td><td>' + statusHtml(r.status) + '</td><td>' + (r.durationMs == null ? '-' : r.durationMs + 'ms') + '</td></tr>';
+        return '<tr class="clickable" onclick="showRun(\\'' + esc(r.runId) + '\\')"><td>' + when(r.requestedAt) + '</td><td>' + esc(r.toolId) + '</td><td>' + statusHtml(r.status) + '</td><td>' + (r.durationMs == null ? '-' : r.durationMs + 'ms') + '</td></tr>';
       }).join('') + '</tbody></table>';
       $('w-pending').innerHTML = o.pendingApprovals.length === 0 ? '대기 없음' : o.pendingApprovals.map(function (r) {
         return '<div style="margin:6px 0"><strong>' + esc(r.toolId) + '</strong> <span class="meta">' + when(r.requestedAt) + '</span><br/><span class="meta">' + esc(JSON.stringify(r.args)).slice(0, 120) + '</span><br/>'
-          + '<button class="small" onclick="approveRun(\'' + esc(r.runId) + '\')">승인</button>'
-          + '<button class="small" onclick="rejectRun(\'' + esc(r.runId) + '\')">거부</button></div>';
+          + '<button class="small" onclick="approveRun(\\'' + esc(r.runId) + '\\')">승인</button>'
+          + '<button class="small" onclick="rejectRun(\\'' + esc(r.runId) + '\\')">거부</button></div>';
       }).join('');
       var order = ['bridge', 'mcp', 'mockConsole', 'store', 'rag'];
       $('w-health').innerHTML = order.map(function (k) {
@@ -263,14 +263,14 @@ export function dashboardHtml(): string {
       toolGroups = results[0].groups;
       deviceCache = results[1];
       $('tool-tabs').innerHTML = Object.keys(toolGroups).sort().map(function (cat) {
-        return '<button class="small" onclick="showCategory(\'' + esc(cat) + '\')">' + esc(cat) + ' (' + toolGroups[cat].length + ')</button>';
+        return '<button class="small" onclick="showCategory(\\'' + esc(cat) + '\\')">' + esc(cat) + ' (' + toolGroups[cat].length + ')</button>';
       }).join('');
     }).catch(fail);
   };
   window.showCategory = function (cat) {
     $('tool-list').innerHTML = toolGroups[cat].map(function (t) {
       var safety = t.annotations.destructiveHint ? 'destructive' : (t.annotations.readOnlyHint ? 'read_only' : 'write');
-      return '<div class="tool-item">' + safetyHtml(safety) + ' <a href="#" onclick="selectTool(\'' + esc(cat) + '\',\'' + esc(t.name) + '\');return false" style="color:var(--accent)">' + esc(t.name) + '</a><br/><span class="meta">' + esc(t.description).slice(0, 140) + '</span></div>';
+      return '<div class="tool-item">' + safetyHtml(safety) + ' <a href="#" onclick="selectTool(\\'' + esc(cat) + '\\',\\'' + esc(t.name) + '\\');return false" style="color:var(--accent)">' + esc(t.name) + '</a><br/><span class="meta">' + esc(t.description).slice(0, 140) + '</span></div>';
     }).join('');
   };
   window.selectTool = function (cat, name) {
@@ -364,7 +364,7 @@ export function dashboardHtml(): string {
     if ($('rf-since').value) q.push('sinceDays=' + encodeURIComponent($('rf-since').value));
     req('GET', '/api/runs' + (q.length ? '?' + q.join('&') : '')).then(function (data) {
       document.querySelector('#runs-table tbody').innerHTML = data.runs.map(function (r) {
-        return '<tr class="clickable" onclick="showRun(\'' + esc(r.runId) + '\')">'
+        return '<tr class="clickable" onclick="showRun(\\'' + esc(r.runId) + '\\')">'
           + '<td>' + when(r.requestedAt) + '</td><td>' + esc(r.toolId) + '</td>'
           + '<td>' + safetyHtml(r.toolSafety) + '</td><td>' + statusHtml(r.status) + '</td>'
           + '<td>' + (r.durationMs == null ? '-' : r.durationMs + 'ms') + '</td>'
@@ -389,8 +389,8 @@ export function dashboardHtml(): string {
       }).join('');
       document.querySelector('#devices-table tbody').innerHTML = data.devices.map(function (d) {
         return '<tr><td>' + esc(d.name) + '</td><td>' + esc(d.product) + '</td><td>' + esc(d.host) + '</td><td class="meta">' + esc(d.tags.join(', ')) + '</td>'
-          + '<td><button class="small" onclick="editDevice(\'' + esc(d.id) + '\')">수정</button>'
-          + '<button class="small" onclick="removeDevice(\'' + esc(d.id) + '\')">삭제</button></td></tr>';
+          + '<td><button class="small" onclick="editDevice(\\'' + esc(d.id) + '\\')">수정</button>'
+          + '<button class="small" onclick="removeDevice(\\'' + esc(d.id) + '\\')">삭제</button></td></tr>';
       }).join('');
     }).catch(fail);
   };
@@ -445,11 +445,11 @@ export function dashboardHtml(): string {
       document.querySelector('#pb-table tbody').innerHTML = pbs.map(function (p) {
         pbCache[p.id] = p;
         var last = p.lastRun ? statusHtml(p.lastRun.status) : '<span class="meta">-</span>';
-        return '<tr class="clickable" onclick="showPlaybook(\'' + esc(p.id) + '\')"><td>' + esc(p.name) + '</td><td class="meta">' + esc(p.goal).slice(0, 40) + '</td><td>' + (p.activeRev == null ? '-' : 'rev ' + p.activeRev) + '</td><td>' + last + '</td></tr>';
+        return '<tr class="clickable" onclick="showPlaybook(\\'' + esc(p.id) + '\\')"><td>' + esc(p.name) + '</td><td class="meta">' + esc(p.goal).slice(0, 40) + '</td><td>' + (p.activeRev == null ? '-' : 'rev ' + p.activeRev) + '</td><td>' + last + '</td></tr>';
       }).join('');
       var tasks = res[1].tasks || [];
       $('pb-tasks').innerHTML = tasks.length === 0 ? '없음' : tasks.map(function (t) {
-        return '<div style="margin:4px 0"><strong>' + esc(t.kind) + '</strong> <span class="meta">' + esc(JSON.stringify(t.payload)).slice(0, 80) + '</span> <button class="small" onclick="cancelTask(\'' + esc(t.id) + '\')">취소</button></div>';
+        return '<div style="margin:4px 0"><strong>' + esc(t.kind) + '</strong> <span class="meta">' + esc(JSON.stringify(t.payload)).slice(0, 80) + '</span> <button class="small" onclick="cancelTask(\\'' + esc(t.id) + '\\')">취소</button></div>';
       }).join('');
     }).catch(fail);
   };
@@ -469,8 +469,8 @@ export function dashboardHtml(): string {
       for (var i = pb.revisions.length - 1; i >= 0; i--) { if (pb.revisions[i].status === 'approved') { active = pb.revisions[i].rev; break; } }
       var html = '<div class="meta">' + esc(pb.goal) + '</div>';
       html += pb.revisions.map(function (r) { return renderRevision(pb.id, r, active); }).join('');
-      html += '<div style="margin-top:10px"><button class="primary" ' + (active == null ? 'disabled' : '') + ' onclick="executePlaybook(\'' + esc(pb.id) + '\')">실행</button>';
-      html += '<button class="small" onclick="requestRevise(\'' + esc(pb.id) + '\')" style="margin-left:8px">AI 수정 요청</button></div>';
+      html += '<div style="margin-top:10px"><button class="primary" ' + (active == null ? 'disabled' : '') + ' onclick="executePlaybook(\\'' + esc(pb.id) + '\\')">실행</button>';
+      html += '<button class="small" onclick="requestRevise(\\'' + esc(pb.id) + '\\')" style="margin-left:8px">AI 수정 요청</button></div>';
       html += '<div id="pb-run" style="margin-top:12px"></div>';
       $('pb-detail').innerHTML = html;
     }).catch(fail);
@@ -486,8 +486,8 @@ export function dashboardHtml(): string {
     if (r.note) s += '<div class="meta">note: ' + esc(r.note) + '</div>';
     if (r.rejectReason) s += '<div class="hl-bad">반려사유: ' + esc(r.rejectReason) + '</div>';
     if (r.status === 'draft') {
-      s += '<button class="small" onclick="reviewRev(\'' + esc(pbId) + '\',' + r.rev + ',true)">승인</button>';
-      s += '<button class="small" onclick="reviewRev(\'' + esc(pbId) + '\',' + r.rev + ',false)">반려</button>';
+      s += '<button class="small" onclick="reviewRev(\\'' + esc(pbId) + '\\',' + r.rev + ',true)">승인</button>';
+      s += '<button class="small" onclick="reviewRev(\\'' + esc(pbId) + '\\',' + r.rev + ',false)">반려</button>';
     }
     return s + '</div>';
   }
@@ -507,10 +507,10 @@ export function dashboardHtml(): string {
       var h = '<div class="card" style="padding:10px"><div>실행 <span class="' + (color[run.status] || '') + '">' + esc(run.status) + '</span> <span class="meta">' + esc(pbrunId) + '</span></div>';
       h += '<div>' + run.blocks.map(function (b) {
         var st = b.status || '대기';
-        var btn = b.status === 'pending_approval' ? ' <button class="small" onclick="approveBlock(\'' + esc(b.runId) + '\',\'' + esc(pbrunId) + '\')">승인</button><button class="small" onclick="rejectBlock(\'' + esc(b.runId) + '\',\'' + esc(pbrunId) + '\')">거부</button>' : '';
+        var btn = b.status === 'pending_approval' ? ' <button class="small" onclick="approveBlock(\\'' + esc(b.runId) + '\\',\\'' + esc(pbrunId) + '\\')">승인</button><button class="small" onclick="rejectBlock(\\'' + esc(b.runId) + '\\',\\'' + esc(pbrunId) + '\\')">거부</button>' : '';
         return '<div class="meta">' + esc(b.blockId) + ': ' + statusHtml(st) + btn + '</div>';
       }).join('') + '</div>';
-      h += '<button class="small" onclick="requestAnalyze(\'' + esc(pbrunId) + '\')">AI 분석 요청</button>';
+      h += '<button class="small" onclick="requestAnalyze(\\'' + esc(pbrunId) + '\\')">AI 분석 요청</button>';
       h += (run.analyses || []).map(function (a) { return renderAnalysis(a); }).join('');
       $('pb-run').innerHTML = h + '</div>';
     }).catch(fail);
@@ -531,7 +531,7 @@ export function dashboardHtml(): string {
   }
   function verdictRow(anlId, part, index, label, verdict) {
     var done = verdict ? ' <span class="meta">(' + esc(verdict) + ')</span>' : '';
-    var btns = verdict ? '' : '<button class="small" onclick="setVerdict(\'' + esc(anlId) + '\',\'' + part + '\',' + index + ',true)">채택</button><button class="small" onclick="setVerdict(\'' + esc(anlId) + '\',\'' + part + '\',' + index + ',false)">기각</button>';
+    var btns = verdict ? '' : '<button class="small" onclick="setVerdict(\\'' + esc(anlId) + '\\',\\'' + part + '\\',' + index + ',true)">채택</button><button class="small" onclick="setVerdict(\\'' + esc(anlId) + '\\',\\'' + part + '\\',' + index + ',false)">기각</button>';
     return '<div class="meta" style="margin:3px 0">[' + part + '] ' + esc(label) + done + ' ' + btns + '</div>';
   }
   window.setVerdict = function (anlId, part, index, accept) {
