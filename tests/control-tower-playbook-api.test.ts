@@ -206,3 +206,13 @@ describe('Playbook API — 재개·재시작 (T-PB-6)', () => {
     expect(String(r.body.error)).toMatch(/원본 인자 소실/);
   });
 });
+
+describe('Playbook UI 서빙', () => {
+  it('GET /는 플레이북 네비·패널 레이블을 포함한다', async () => {
+    const res = await fetch(`${towerUrl}/`);
+    const html = await res.text();
+    expect(html).toContain('플레이북');
+    expect(html).toContain('AI 조립 요청');
+    expect(html).toContain('loadPlaybooks');
+  });
+});

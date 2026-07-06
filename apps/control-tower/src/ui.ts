@@ -72,6 +72,7 @@ export function dashboardHtml(): string {
       <button data-panel="tools">도구 실행</button>
       <button data-panel="runs">실행 이력</button>
       <button data-panel="devices">장비 관리</button>
+      <button data-panel="playbooks">플레이북</button>
       <a class="ext" href="http://localhost:3502" target="_blank">운영콘솔 :3502 ↗</a>
       <a class="ext" href="http://localhost:3400" target="_blank">Mock콘솔 :3400 ↗</a>
     </nav>
@@ -134,6 +135,22 @@ export function dashboardHtml(): string {
           </div>
         </div>
       </div>
+
+      <div id="playbooks" class="panel">
+        <div class="row2">
+          <div class="card">
+            <h3>플레이북 목록</h3>
+            <button class="primary" onclick="requestAssemble()">AI 조립 요청</button>
+            <table id="pb-table" style="margin-top:10px"><thead><tr><th>이름</th><th>목표</th><th>활성rev</th><th>최근실행</th></tr></thead><tbody></tbody></table>
+            <h3 style="margin-top:16px">에이전트 작업 큐 (open)</h3>
+            <div id="pb-tasks" class="meta">로딩…</div>
+          </div>
+          <div class="card">
+            <h3 id="pb-detail-title">플레이북 선택 대기</h3>
+            <div id="pb-detail" class="meta">좌측에서 선택하세요.</div>
+          </div>
+        </div>
+      </div>
     </section>
   </main>
 
@@ -189,6 +206,7 @@ export function dashboardHtml(): string {
       if (btn.dataset.panel === 'tools') loadTools();
       if (btn.dataset.panel === 'runs') loadRuns();
       if (btn.dataset.panel === 'devices') loadDevices();
+      if (btn.dataset.panel === 'playbooks') loadPlaybooks();
     });
   });
   $('api-token').value = localStorage.getItem(TOKEN_KEY) || '';
@@ -416,6 +434,122 @@ export function dashboardHtml(): string {
       $('rf-sweep').value = data.sweepId;
       document.querySelector('#nav button[data-panel="runs"]').click();
     }).catch(function (e) { $('btn-sweep').disabled = false; fail(e); });
+  };
+
+  // ── 플레이북 ──
+  var pbCache = {};
+  window.loadPlaybooks = function () {
+    Promise.all([req('GET', '/api/playbooks'), req('GET', '/api/agent-tasks?status=open')]).then(function (res) {
+      var pbs = res[0].playbooks || [];
+      pbCache = {};
+      document.querySelector('#pb-table tbody').innerHTML = pbs.map(function (p) {
+        pbCache[p.id] = p;
+        var last = p.lastRun ? statusHtml(p.lastRun.status) : '<span class="meta">-</span>';
+        return '<tr class="clickable" onclick="showPlaybook(\'' + esc(p.id) + '\')"><td>' + esc(p.name) + '</td><td class="meta">' + esc(p.goal).slice(0, 40) + '</td><td>' + (p.activeRev == null ? '-' : 'rev ' + p.activeRev) + '</td><td>' + last + '</td></tr>';
+      }).join('');
+      var tasks = res[1].tasks || [];
+      $('pb-tasks').innerHTML = tasks.length === 0 ? '없음' : tasks.map(function (t) {
+        return '<div style="margin:4px 0"><strong>' + esc(t.kind) + '</strong> <span class="meta">' + esc(JSON.stringify(t.payload)).slice(0, 80) + '</span> <button class="small" onclick="cancelTask(\'' + esc(t.id) + '\')">취소</button></div>';
+      }).join('');
+    }).catch(fail);
+  };
+  window.requestAssemble = function () {
+    var goal = prompt('조립 목표 (goal)');
+    if (!goal) return;
+    req('POST', '/api/agent-tasks', { kind: 'assemble', payload: { goal: goal } })
+      .then(function () { alert('AI 조립 요청을 큐에 등록했습니다. 에이전트가 draft를 제출하면 목록에 나타납니다.'); loadPlaybooks(); }).catch(fail);
+  };
+  window.cancelTask = function (id) {
+    req('PATCH', '/api/agent-tasks/' + id, { cancel: true }).then(loadPlaybooks).catch(fail);
+  };
+  window.showPlaybook = function (id) {
+    req('GET', '/api/playbooks/' + id).then(function (pb) {
+      $('pb-detail-title').textContent = pb.name;
+      var active = null;
+      for (var i = pb.revisions.length - 1; i >= 0; i--) { if (pb.revisions[i].status === 'approved') { active = pb.revisions[i].rev; break; } }
+      var html = '<div class="meta">' + esc(pb.goal) + '</div>';
+      html += pb.revisions.map(function (r) { return renderRevision(pb.id, r, active); }).join('');
+      html += '<div style="margin-top:10px"><button class="primary" ' + (active == null ? 'disabled' : '') + ' onclick="executePlaybook(\'' + esc(pb.id) + '\')">실행</button>';
+      html += '<button class="small" onclick="requestRevise(\'' + esc(pb.id) + '\')" style="margin-left:8px">AI 수정 요청</button></div>';
+      html += '<div id="pb-run" style="margin-top:12px"></div>';
+      $('pb-detail').innerHTML = html;
+    }).catch(fail);
+  };
+  function renderRevision(pbId, r, activeRev) {
+    var badge = r.status === 'approved' ? '<span class="hl-ok">승인 rev ' + r.rev + '</span>'
+      : r.status === 'rejected' ? '<span class="hl-bad">반려 rev ' + r.rev + '</span>'
+      : '<span class="st-pending_approval">draft rev ' + r.rev + '</span>';
+    var s = '<div class="card" style="margin:8px 0;padding:10px"><div>' + badge + (r.rev === activeRev ? ' <span class="badge sf-read_only">활성</span>' : '') + '</div>';
+    s += '<div class="meta">' + (r.blocks || []).map(function (b) {
+      return b.type === 'report' ? '📄 ' + esc(b.title || 'report') : '🔧 ' + esc(b.title || b.toolId) + (b.deviceId ? ' @' + esc(b.deviceId) : '');
+    }).join(' → ') + '</div>';
+    if (r.note) s += '<div class="meta">note: ' + esc(r.note) + '</div>';
+    if (r.rejectReason) s += '<div class="hl-bad">반려사유: ' + esc(r.rejectReason) + '</div>';
+    if (r.status === 'draft') {
+      s += '<button class="small" onclick="reviewRev(\'' + esc(pbId) + '\',' + r.rev + ',true)">승인</button>';
+      s += '<button class="small" onclick="reviewRev(\'' + esc(pbId) + '\',' + r.rev + ',false)">반려</button>';
+    }
+    return s + '</div>';
+  }
+  window.reviewRev = function (pbId, rev, approve) {
+    var by = prompt('검토자 ID (reviewedBy)'); if (!by) return;
+    var body = { reviewedBy: by };
+    var path = '/api/playbooks/' + pbId + '/revisions/' + rev + (approve ? '/approve' : '/reject');
+    if (!approve) { var reason = prompt('반려 사유'); if (!reason) return; body.reason = reason; }
+    req('POST', path, body).then(function () { showPlaybook(pbId); loadPlaybooks(); }).catch(fail);
+  };
+  window.executePlaybook = function (pbId) {
+    req('POST', '/api/playbooks/' + pbId + '/execute', {}).then(function (run) { renderRun(run.playbookRunId); }).catch(fail);
+  };
+  window.renderRun = function (pbrunId) {
+    req('GET', '/api/playbook-runs/' + pbrunId).then(function (run) {
+      var color = { succeeded: 'hl-ok', failed: 'hl-bad', partial: 'st-pending_approval', waiting_approval: 'st-pending_approval', running: 'st-running' };
+      var h = '<div class="card" style="padding:10px"><div>실행 <span class="' + (color[run.status] || '') + '">' + esc(run.status) + '</span> <span class="meta">' + esc(pbrunId) + '</span></div>';
+      h += '<div>' + run.blocks.map(function (b) {
+        var st = b.status || '대기';
+        var btn = b.status === 'pending_approval' ? ' <button class="small" onclick="approveBlock(\'' + esc(b.runId) + '\',\'' + esc(pbrunId) + '\')">승인</button><button class="small" onclick="rejectBlock(\'' + esc(b.runId) + '\',\'' + esc(pbrunId) + '\')">거부</button>' : '';
+        return '<div class="meta">' + esc(b.blockId) + ': ' + statusHtml(st) + btn + '</div>';
+      }).join('') + '</div>';
+      h += '<button class="small" onclick="requestAnalyze(\'' + esc(pbrunId) + '\')">AI 분석 요청</button>';
+      h += (run.analyses || []).map(function (a) { return renderAnalysis(a); }).join('');
+      $('pb-run').innerHTML = h + '</div>';
+    }).catch(fail);
+  };
+  window.approveBlock = function (runId, pbrunId) {
+    var by = prompt('승인자 (approvedBy)'); if (!by) return;
+    req('POST', '/api/runs/' + runId + '/approve', { approvedBy: by }).then(function () { renderRun(pbrunId); }).catch(fail);
+  };
+  window.rejectBlock = function (runId, pbrunId) {
+    var reason = prompt('거부 사유'); if (!reason) return;
+    req('POST', '/api/runs/' + runId + '/reject', { reason: reason }).then(function () { renderRun(pbrunId); }).catch(fail);
+  };
+  function renderAnalysis(a) {
+    var s = '<div class="card" style="margin-top:8px;padding:10px"><div><strong>분석</strong> <span class="meta">' + esc(a.summary) + '</span></div>';
+    s += (a.improvements || []).map(function (im, i) { return verdictRow(a.id, 'improvements', i, im.recommendation, im.verdict); }).join('');
+    s += (a.proposals || []).map(function (pr, i) { return verdictRow(a.id, 'proposals', i, pr.action, pr.verdict); }).join('');
+    return s + '</div>';
+  }
+  function verdictRow(anlId, part, index, label, verdict) {
+    var done = verdict ? ' <span class="meta">(' + esc(verdict) + ')</span>' : '';
+    var btns = verdict ? '' : '<button class="small" onclick="setVerdict(\'' + esc(anlId) + '\',\'' + part + '\',' + index + ',true)">채택</button><button class="small" onclick="setVerdict(\'' + esc(anlId) + '\',\'' + part + '\',' + index + ',false)">기각</button>';
+    return '<div class="meta" style="margin:3px 0">[' + part + '] ' + esc(label) + done + ' ' + btns + '</div>';
+  }
+  window.setVerdict = function (anlId, part, index, accept) {
+    var by = prompt('검토자'); if (!by) return;
+    var body = { part: part, index: index, verdict: accept ? 'accepted' : 'dismissed', reviewedBy: by };
+    if (accept && part === 'proposals') { var link = prompt('연결할 후속 플레이북 id (선택)'); if (link) body.linkedPlaybookId = link; }
+    req('POST', '/api/analyses/' + anlId + '/verdict', body).then(function (a) {
+      var pbrunId = a.playbookRunId; renderRun(pbrunId);
+    }).catch(fail);
+  };
+  window.requestRevise = function (pbId) {
+    var fb = prompt('수정 피드백 (feedback)'); if (!fb) return;
+    req('POST', '/api/agent-tasks', { kind: 'revise', payload: { playbookId: pbId, feedback: fb } })
+      .then(function () { alert('AI 수정 요청을 등록했습니다.'); loadPlaybooks(); }).catch(fail);
+  };
+  window.requestAnalyze = function (pbrunId) {
+    req('POST', '/api/agent-tasks', { kind: 'analyze', payload: { playbookRunId: pbrunId } })
+      .then(function () { alert('AI 분석 요청을 등록했습니다. 에이전트가 분석을 제출하면 이 화면에 나타납니다.'); }).catch(fail);
   };
 
   loadOverview();
