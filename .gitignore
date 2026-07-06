@@ -31,3 +31,11 @@ data/registry/devices.json
 # Local-only debug/spike scripts (kept on disk, not committed)
 scripts/debug-cc.ts
 scripts/test-fortios.ts
+
+# deepinit harness: plan artifacts are local working notes (not committed).
+# Permanent, reviewed decisions live in docs/design-docs/ (committed).
+docs/plans/
+# but keep the generated harness docs — the bare `generated/` rule above would
+# otherwise also ignore docs/generated/.
+!docs/generated/
+!docs/generated/**
