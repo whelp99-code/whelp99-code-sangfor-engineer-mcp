@@ -1,10 +1,26 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, beforeEach, afterEach } from 'vitest';
+import { mkdtempSync as mkdtempLl, rmSync as rmLl } from 'node:fs';
+import { tmpdir as tmpdirLl } from 'node:os';
+import { join as joinLl } from 'node:path';
 import { analyzeProject, generateConfigPlan, validateConfigPlan } from '../packages/sangfor-planner/src/index.js';
 import { requiresApprovalForText } from '../packages/sangfor-approval/src/index.js';
 import { startOperatorSession, executeConsoleAction } from '../packages/sangfor-operator/src/index.js';
 import { submitFeedback, extractLesson } from '../packages/sangfor-feedback/src/index.js';
 import { proposeWikiUpdate, applyWikiUpdate, approveWikiUpdate } from '../packages/sangfor-wiki/src/index.js';
 import { runPlannerEval } from '../packages/sangfor-evals/src/index.js';
+
+const savedLlEnv = { ...process.env };
+let llRoot: string;
+beforeEach(() => {
+  llRoot = mkdtempLl(joinLl(tmpdirLl(), 'planner-ll-'));
+  process.env.SANGFOR_FEEDBACK_ROOT = joinLl(llRoot, 'feedback');
+  process.env.SANGFOR_EVALS_ROOT = joinLl(llRoot, 'evals');
+  process.env.SANGFOR_WIKI_ROOT = joinLl(llRoot, 'wiki');
+});
+afterEach(() => {
+  process.env = { ...savedLlEnv };
+  rmLl(llRoot, { recursive: true, force: true });
+});
 
 describe('Sangfor Engineer MCP MVP', () => {
   it('detects HCI project and missing inputs', () => {

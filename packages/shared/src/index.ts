@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs';
+import { existsSync, appendFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash, timingSafeEqual } from 'node:crypto';
@@ -251,4 +251,31 @@ export function normalizeProduct(input?: string): ProductCode {
 
 export function nowId(prefix: string): string {
   return `${prefix}_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`;
+}
+
+export function appendJsonl<T extends { id: string }>(path: string, record: T): void {
+  mkdirSync(dirname(path), { recursive: true });
+  appendFileSync(path, `${JSON.stringify(record)}\n`);
+}
+
+export function foldJsonlById<T extends { id: string }>(path: string): Map<string, T> {
+  const byId = new Map<string, T>();
+  let raw: string;
+  try {
+    raw = readFileSync(path, 'utf8');
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return byId;
+    throw error;
+  }
+  for (const line of raw.split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    try {
+      const record = JSON.parse(trimmed) as T;
+      byId.set(record.id, record);
+    } catch {
+      continue;
+    }
+  }
+  return byId;
 }

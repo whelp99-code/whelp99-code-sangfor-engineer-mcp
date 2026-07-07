@@ -1,4 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 import { proposeWikiUpdate, approveWikiUpdate } from '../packages/sangfor-wiki/src/index.js';
 
 function propose() {
@@ -7,11 +10,15 @@ function propose() {
 
 describe('approveWikiUpdate — approval requires a valid token (redteam H3)', () => {
   const saved = { ...process.env };
+  let wikiRoot: string;
   beforeEach(() => {
+    wikiRoot = mkdtempSync(join(tmpdir(), 'wiki-'));
+    process.env.SANGFOR_WIKI_ROOT = wikiRoot;
     delete process.env.SANGFOR_WIKI_APPROVAL_TOKEN;
   });
   afterEach(() => {
     process.env = { ...saved };
+    rmSync(wikiRoot, { recursive: true, force: true });
   });
 
   it('fails closed when no approval token is configured', () => {

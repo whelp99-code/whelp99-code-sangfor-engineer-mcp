@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { KnowledgeChunk, normalizeProduct, nowId } from '@sangfor/shared';
+import { KnowledgeChunk, normalizeProduct, nowId, resolveRepoData, appendJsonl, foldJsonlById } from '@sangfor/shared';
 
 const WIKI_CHUNKS: KnowledgeChunk[] = [
   {
@@ -159,7 +159,9 @@ export class GitHubWikiGitAdapter implements WikiAdapter {
   }
 }
 
-const proposals = new Map<string, WikiUpdateProposal>();
+const proposalsFile = () => join(resolveRepoData('data/wiki', 'SANGFOR_WIKI_ROOT'), 'proposals.jsonl');
+const getProposal = (id: string) => foldJsonlById<WikiUpdateProposal>(proposalsFile()).get(id);
+const saveProposal = (proposal: WikiUpdateProposal) => appendJsonl(proposalsFile(), proposal);
 
 export function listSeedWiki(): KnowledgeChunk[] {
   return [...WIKI_CHUNKS];
@@ -192,7 +194,7 @@ export function proposeWikiUpdate(input: { lessonTitle: string; lessonBody: stri
     status: 'pending',
     adapter: input.adapter ?? 'memory'
   };
-  proposals.set(id, proposal);
+  saveProposal(proposal);
   return proposal;
 }
 
@@ -201,7 +203,7 @@ export function approveWikiUpdate(
   decision: 'approved' | 'rejected',
   opts: { reviewer?: string; token?: string } = {},
 ): WikiUpdateProposal {
-  const proposal = proposals.get(proposalId);
+  const proposal = getProposal(proposalId);
   if (!proposal) throw new Error(`Unknown proposal: ${proposalId}`);
   // Approving unlocks a write into the knowledge base, so it must present a valid
   // token (redteam H3: previously anyone could approve any proposal). Rejection
@@ -219,11 +221,12 @@ export function approveWikiUpdate(
   }
   proposal.status = decision;
   proposal.reviewer = opts.reviewer ?? 'manual-reviewer';
+  saveProposal(proposal);
   return proposal;
 }
 
 export async function applyWikiUpdateWithAdapter(proposalId: string, adapter: WikiAdapter): Promise<WikiUpdateProposal & { writeResult: unknown }> {
-  const proposal = proposals.get(proposalId);
+  const proposal = getProposal(proposalId);
   if (!proposal) throw new Error(`Unknown proposal: ${proposalId}`);
   if (proposal.status !== 'approved') throw new Error('Wiki update is blocked until approval is granted.');
   const current = await adapter.readPage(proposal.targetPage);
@@ -232,14 +235,16 @@ export async function applyWikiUpdateWithAdapter(proposalId: string, adapter: Wi
   const next = `${current}${separator}${proposal.afterText}`;
   const writeResult = await adapter.writePage(proposal.targetPage, next, `docs: ${proposal.title}`);
   proposal.status = 'applied';
+  saveProposal(proposal);
   return { ...proposal, writeResult };
 }
 
 export function applyWikiUpdate(proposalId: string): WikiUpdateProposal {
-  const proposal = proposals.get(proposalId);
+  const proposal = getProposal(proposalId);
   if (!proposal) throw new Error(`Unknown proposal: ${proposalId}`);
   if (proposal.status !== 'approved') throw new Error('Wiki update is blocked until approval is granted.');
   proposal.status = 'applied';
+  saveProposal(proposal);
   return proposal;
 }
 

@@ -28,6 +28,11 @@ data/evidence/change-runs/
 data/runs/
 data/registry/devices.json
 
+# Learning-loop runtime stores (feedback/lessons, eval cases, wiki proposals)
+data/feedback/
+data/evals/
+data/wiki/
+
 # Local-only debug/spike scripts (kept on disk, not committed)
 scripts/debug-cc.ts
 scripts/test-fortios.ts

@@ -1,4 +1,5 @@
-import { nowId, normalizeProduct } from '@sangfor/shared';
+import { nowId, normalizeProduct, resolveRepoData, appendJsonl, foldJsonlById } from '@sangfor/shared';
+import { join } from 'node:path';
 
 export interface FeedbackEvent {
   id: string;
@@ -22,17 +23,18 @@ export interface LessonLearned {
   approvalStatus: 'pending_review' | 'approved' | 'rejected';
 }
 
-const feedback = new Map<string, FeedbackEvent>();
-const lessons = new Map<string, LessonLearned>();
+const dir = () => resolveRepoData('data/feedback', 'SANGFOR_FEEDBACK_ROOT');
+const feedbackFile = () => join(dir(), 'feedback.jsonl');
+const lessonsFile = () => join(dir(), 'lessons.jsonl');
 
 export function submitFeedback(input: Omit<FeedbackEvent, 'id' | 'status'>): FeedbackEvent {
   const event: FeedbackEvent = { ...input, product: normalizeProduct(input.product).toString(), id: nowId('feedback'), status: 'new' };
-  feedback.set(event.id, event);
+  appendJsonl(feedbackFile(), event);
   return event;
 }
 
 export function extractLesson(feedbackId: string): LessonLearned {
-  const event = feedback.get(feedbackId);
+  const event = foldJsonlById<FeedbackEvent>(feedbackFile()).get(feedbackId);
   if (!event) throw new Error(`Unknown feedback: ${feedbackId}`);
   const lesson: LessonLearned = {
     id: nowId('lesson'),
@@ -45,11 +47,11 @@ export function extractLesson(feedbackId: string): LessonLearned {
     antiPattern: 'Do not promote unreviewed feedback directly into configuration plan.',
     approvalStatus: 'pending_review'
   };
-  lessons.set(lesson.id, lesson);
-  event.status = 'lesson_extracted';
+  appendJsonl(lessonsFile(), lesson);
+  appendJsonl(feedbackFile(), { ...event, status: 'lesson_extracted' });
   return lesson;
 }
 
 export function listLessons(): LessonLearned[] {
-  return [...lessons.values()];
+  return [...foldJsonlById<LessonLearned>(lessonsFile()).values()];
 }
