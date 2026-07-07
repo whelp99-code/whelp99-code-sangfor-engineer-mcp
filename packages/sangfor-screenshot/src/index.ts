@@ -44,7 +44,7 @@ interface ProductConfig {
 
 const PRODUCT_CONFIGS: Record<string, ProductConfig> = {
   EPP: {
-    defaultUrl: 'https://10.80.1.106',
+    defaultUrl: process.env.SANGFOR_EPP_URL ?? 'https://192.0.2.10',
     defaultUsername: 'admin',
     defaultPassword: process.env.SANGFOR_EPP_PASSWORD ?? 'sangfor',
     cdpPort: 9333,
@@ -61,9 +61,9 @@ const PRODUCT_CONFIGS: Record<string, ProductConfig> = {
     ],
   },
   IAG: {
-    defaultUrl: 'https://10.80.1.108',
+    defaultUrl: process.env.SANGFOR_IAG_URL ?? 'https://192.0.2.11',
     defaultUsername: 'admin',
-    defaultPassword: 'sangfor',
+    defaultPassword: process.env.SANGFOR_IAG_PASSWORD ?? 'sangfor',
     cdpPort: 9334,
     menus: [
       { menu: 'Dashboard' },
@@ -78,7 +78,7 @@ const PRODUCT_CONFIGS: Record<string, ProductConfig> = {
     ],
   },
   CC: {
-    defaultUrl: 'https://10.80.1.107',
+    defaultUrl: process.env.SANGFOR_CC_URL ?? 'https://192.0.2.12',
     defaultUsername: 'admin',
     defaultPassword: process.env.SANGFOR_CC_PASSWORD ?? 'sangfor',
     cdpPort: 9335,
