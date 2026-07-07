@@ -66,6 +66,8 @@
 ### M1 (2026-07) — 실장비 read-only 진단 완성 + 부채 정리
 **목표:** EPP/CC/IAG 판정불가를 자동수집으로 최대한 줄이고, 자문 진단 파이프라인을 재현가능·안전하게 굳힌다. 수집 스크립트의 시크릿을 제거한다.
 
+> **동생 에이전트용 태스크 단위 실행 명세는 [`2026-07-08-m1-execution-tasks.md`](2026-07-08-m1-execution-tasks.md)** (Files/Interfaces/TDD스텝/명령/수용기준, 레퍼런스 구현=커밋 `1371a72`). T-M1-EPP는 이미 완료. 아래 T1.x는 그 문서의 카드로 상세 분해됨.
+
 - **T1.1 심화 캡처 재개 (Task 2 이어받기).** 중단된 소싱 리포트를 재개 — EPP 판정불가 10개(`securityBaselineRuleCount`, `malwareScanScheduleEnabled`, `vulnDefUpdateAvailable`, `darMonitoringActive`, `endpointIsolationConfigured`, `agentAutoUpdateEnabled`, `quarantineConfigured`, `edrBehaviorMonitoringEnabled`, `deviceControlConfigured`, `exclusionListManaged`)와 CC 5개(`ntpSynced`, `activeEventSources`, `alertChannelConfigured`, `alarmTuningConfigured`, `syslogForwardingConfigured`)가 어느 API 응답의 어느 JSON 경로에 있는지 확정. 미노출은 정직히 "not-machine-exposed". **수용:** 각 항목당 [엔드포인트+JSON경로+실관측값] or [not-machine-exposed] 결론. (read-only, 저렴한 모델 위임)
 - **T1.2 safe-nav 정제 (안전 스파인 — 메인 루프 직접).** `packages/sangfor-collector/src/safe-nav.ts`의 denylist가 액션 **버튼**(save/apply/isolate/생성)은 계속 막되, config **뷰 페이지 라벨**(Isolation/Device Control 등)로의 네비게이션은 허용하도록 분리. **불변식:** 뷰 열람은 허용, mutation 버튼 클릭은 여전히 금지. 리팩터 뒤 refusal 테스트로 "Save/Apply/Enable 버튼은 여전히 거부" 증명.
 - **T1.3 매퍼 확장.** T1.1이 찾은 필드를 `mapEppPoolToConfigState`/`mapCcPoolToConfigState`(`@sangfor/config-state`)에 추가해 새 observedKey 추출. 없는 값은 매핑하지 않음(INDETERMINATE 유지). `tests/config-state.test.ts`에 fixture 기반 케이스 추가.
