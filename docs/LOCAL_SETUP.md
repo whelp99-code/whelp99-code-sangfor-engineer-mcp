@@ -117,7 +117,7 @@ cp .cursor/mcp.json.example .cursor/mcp.json
 브라우저에서 Sangfor Engineer 기능을 사용합니다. MCP stdio 서버(`dev:mcp`)는 Cursor 등 다른 클라이언트용으로 그대로 둡니다.
 
 ```bash
-pnpm run dev:web          # http://localhost:3500 (alias: dev:operator-console)
+pnpm run dev:web          # http://localhost:3502 (alias: dev:operator-console)
 pnpm run dev:mock-console # http://localhost:3400 (선택, mock HCI)
 pnpm run seed:demo
 ```
@@ -215,7 +215,7 @@ pnpm run rag:reembed
 | `pnpm run login:one:safari` | Safari ONE/KB 토큰 → `.env` |
 | `pnpm run login:kb:chrome` | Chrome에서 KB 열고 `library_token` 캡처 |
 | `pnpm run learn:finalize` | 검증·완료 리포트 |
-| `pnpm run dev:web` | 웹 UI (Operator Console, :3500) |
+| `pnpm run dev:web` | 웹 UI (Operator Console, :3502) |
 | `pnpm run dev:mcp` | MCP stdio 서버 |
 
 ## 9. 문제 해결
