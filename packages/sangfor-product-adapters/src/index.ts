@@ -578,7 +578,14 @@ export async function dryRunProductChange(input: { plan: ProductChangePlan | Exc
   };
 }
 
-export async function applyApprovedProductChange(input: { plan: ProductChangePlan; approval?: ApprovalPayload; environment?: 'lab' | 'poc' | 'customer' | 'production'; sessionId?: string }) {
+export type ProductChangeExecutor = (context: {
+  plan: ProductChangePlan;
+  approval?: ApprovalPayload;
+  environment?: 'lab' | 'poc' | 'customer' | 'production';
+  sessionId?: string;
+}) => Promise<{ mutationPerformed: boolean; details?: unknown }>;
+
+export async function applyApprovedProductChange(input: { plan: ProductChangePlan; approval?: ApprovalPayload; environment?: 'lab' | 'poc' | 'customer' | 'production'; sessionId?: string; executor?: ProductChangeExecutor }) {
   const missingApproval = missingApprovalFields(input.approval);
   const highRiskTasks = input.plan.tasks.filter(task => task.approvalRequired || requiresApprovalForText(`${task.requirement} ${task.capabilityId}`).required);
   if (highRiskTasks.length > 0 && missingApproval.length > 0) {
@@ -616,15 +623,24 @@ export async function applyApprovedProductChange(input: { plan: ProductChangePla
       action: { type: 'screenshot', target: 'product-change-plan', dryRun: true }
     })
     : undefined;
+  // Every gate above has passed. A real mutation happens ONLY through an explicitly
+  // attached executor; with none (the default) nothing is mutated, so the safe
+  // default is unchanged and real execution stays opt-in behind the same gates.
+  const executed = input.executor
+    ? await input.executor({ plan: input.plan, approval: input.approval, environment: input.environment, sessionId: input.sessionId })
+    : undefined;
   return {
     id: nowId('apply'),
     ok: true,
     approvalRequired: highRiskTasks.length > 0,
-    mutationPerformed: false,
-    reason: 'Execution gate passed. Real executor is not attached in this package yet; no mutation was performed.',
+    mutationPerformed: executed?.mutationPerformed ?? false,
+    reason: executed
+      ? 'Execution gate passed; applied through the attached executor.'
+      : 'Execution gate passed. No executor attached; no mutation was performed.',
     approvedBy: input.approval?.approvedBy,
     changeTicketId: input.approval?.changeTicketId,
-    operatorEvidence
+    operatorEvidence,
+    executorDetails: executed?.details
   };
 }
 
