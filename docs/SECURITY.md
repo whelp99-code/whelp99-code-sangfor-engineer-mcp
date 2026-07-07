@@ -42,7 +42,7 @@ Defense-in-depth for the REST surface:
 
 ## Knowledge/data trust
 - RAG runs local-first; cloud embeddings/rerank need `SANGFOR_ALLOW_CLOUD_RAG`; customer-trust docs excluded from results unless `SANGFOR_ALLOW_CLOUD_RAG_CUSTOMER=1`.
-- Wiki writes are review-gated: proposal → `approveWikiUpdate` (timing-safe match on `SANGFOR_WIKI_APPROVAL_TOKEN`, fail-closed if unset) → apply.
+- Wiki writes are review-gated: proposal → `approveWikiUpdate` (action-bound HMAC over the `proposalId`, keyed by `SANGFOR_WIKI_APPROVAL_SECRET`, timing-safe verify, fail-closed if unset) → apply.
 
 ## Rules for agents working here
 - **Never weaken a gate to make a test pass.** The refusal *is* the feature; dedicated tests assert it (`operator-execution-gate`, `operator-nonce-store`, `verifier-apply-gate`, `http-bridge-approval-guard`, `operator-console-auth`).
@@ -51,4 +51,4 @@ Defense-in-depth for the REST surface:
 - When in doubt, **refuse and surface** rather than proceed.
 
 ## Security env vars (gates & secrets)
-`SANGFOR_ALLOW_REAL_EXECUTION`, `SANGFOR_ALLOW_PRODUCTION_EXECUTION`, `SANGFOR_OPERATOR_APPROVAL_SECRET`, `SANGFOR_ALLOW_REMOTE_WRITE`, `SANGFOR_API_TOKEN`, `SANGFOR_NONCE_STORE_PATH`, `SANGFOR_CHANGE_LEDGER_SECRET`, `SANGFOR_PM_CHAIN_SECRET`, `SANGFOR_WIKI_APPROVAL_TOKEN`, `SANGFOR_ALLOW_CLOUD_RAG`, `SANGFOR_ALLOW_CLOUD_RAG_CUSTOMER`. See `.env.example` for the full set.
+`SANGFOR_ALLOW_REAL_EXECUTION`, `SANGFOR_ALLOW_PRODUCTION_EXECUTION`, `SANGFOR_OPERATOR_APPROVAL_SECRET`, `SANGFOR_ALLOW_REMOTE_WRITE`, `SANGFOR_API_TOKEN`, `SANGFOR_NONCE_STORE_PATH`, `SANGFOR_CHANGE_LEDGER_SECRET`, `SANGFOR_PM_CHAIN_SECRET`, `SANGFOR_WIKI_APPROVAL_SECRET`, `SANGFOR_ALLOW_CLOUD_RAG`, `SANGFOR_ALLOW_CLOUD_RAG_CUSTOMER`. See `.env.example` for the full set.

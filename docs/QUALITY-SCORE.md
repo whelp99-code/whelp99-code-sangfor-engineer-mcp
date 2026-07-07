@@ -10,7 +10,7 @@ Per-domain quality grades from the harness-bootstrap review (2026-07-04). Grades
 | HTTP exposure (`shared` bind safety, `http-bridge` tool-guard) | **A−** | Fail-closed bind, annotation-based authz, guard tests. | — |
 | Run/evidence ledgers (`runs`, `evidence`, `pm`) | **B+** | Append-only, masked, hash-chained. | — |
 | Knowledge/RAG (`rag`, `knowledge`, `collector`) | **B** | Local-first with hash fallback, dedupe, provider tests. | Retrieval quality depends on provider; O(n) scan won't scale (debt #5). |
-| Learning loop (`feedback`, `evals`, `wiki`, `finetune`) | **C+** | Correct flow, review-gated, PII/secret scrubbing. | Feedback/lessons/eval/proposal state is in-memory, lost on restart (debt #2). |
+| Learning loop (`feedback`, `evals`, `wiki`, `finetune`) | **C+** | Correct flow, review-gated, PII/secret scrubbing. | Feedback/lessons/eval/proposal state is now persisted as file-based JSONL (debt #2 resolved). |
 | Planning/advisory (`planner`, `verifier`, `product-adapters`, `evidence`) | **B** | Cited, risk-classified, verifier never mutates. | `applyApprovedProductChange` inert (debt #1). |
 | Apps (`mcp-server`, `control-tower`, `operator-console`, `bridge`, `mock`) | **B** | Thin adapters, playbook engine tested, e2e coverage. | Control-tower paused-approval args non-durable (debt #2). |
 | Docs/config hygiene | **B−** | Rich docs, `.env.example` complete. | Legacy docs drift (e.g. stale `:3500`) — debt #6. |

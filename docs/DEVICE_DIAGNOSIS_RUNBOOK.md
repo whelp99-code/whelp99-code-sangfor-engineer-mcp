@@ -43,7 +43,7 @@
 
 ## 4. Spec 시드 (제품 매뉴얼 근거)
 
-`data/specs/{PRODUCT}/{version}/*.json` — SpecItem: `{observedKey, op, expected, severity(must|recommended), source(매뉴얼 인용)}`. 매뉴얼은 support.sangfor.com에서 수집(→`docs/PROPOSAL_ADDENDUM_A...`, memory). 현재: EPP 6.0.4(6), IAG 13.0.120(5).
+`data/specs/{PRODUCT}/{version}/*.json` — SpecItem: `{observedKey, op, expected, severity(must|recommended), source(매뉴얼 인용)}`. 매뉴얼은 support.sangfor.com에서 수집(→`docs/PROPOSAL_ADDENDUM_A...`, memory). 현재: EPP 6.0.4(14), IAG 13.0.120(5).
 
 ## 산출물 예시 (2026-07-01 실장비)
 
@@ -54,4 +54,4 @@
 
 - IAG deep config: aside로 Audit/Auth/802.1X 페이지 개별 네비→판정불가 해소.
 - EPP 멀웨어 스케줄: Defense 정책 페이지 심화 네비.
-- device-collect + aside를 단일 MCP 도구(`sangfor.collect_device_config`)로 통합(현재는 스크립트 + evaluate_config 도구).
+- `sangfor.collect_device_config`(`apps/mcp-server/src/index.ts`)로 EPP/CC 풀→ConfigState→evaluate 통합 완료. 남은 갭: IAG(ExtJS) 풀 매퍼 미지원 — deep config는 여전히 aside 네비게이션 필요.

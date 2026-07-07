@@ -24,13 +24,13 @@ Query FortiOS firewall policies and generate a self-assessment report.
 
 **Output:** Evaluation against policy-baseline spec (policy count, SSL inspection, threat logging, WAN interface count).
 
-**Example (mock):**
+**Example (mock, via http-bridge):**
 ```bash
-curl -X POST http://localhost:9000/mcp/call_tool \
+curl -X POST http://127.0.0.1:3600/tools/call \
   -H 'Content-Type: application/json' \
   -d '{
-    "tool": "advisor_fortios",
-    "input": {
+    "name": "sangfor.advisor_fortios",
+    "arguments": {
       "host": "10.0.1.1",
       "username": "admin",
       "password": "fortinet",
@@ -51,13 +51,13 @@ Query Cisco IOS-XE router/switch and generate a self-assessment report.
 
 **Output:** Evaluation against interface-baseline spec (interface count, loopback count, static routes, OSPF status).
 
-**Example (mock):**
+**Example (mock, via http-bridge):**
 ```bash
-curl -X POST http://localhost:9000/mcp/call_tool \
+curl -X POST http://127.0.0.1:3600/tools/call \
   -H 'Content-Type: application/json' \
   -d '{
-    "tool": "advisor_cisco_iosxe",
-    "input": {
+    "name": "sangfor.advisor_cisco_iosxe",
+    "arguments": {
       "host": "10.0.1.254",
       "username": "admin",
       "password": "cisco",
@@ -88,9 +88,9 @@ npm test -- fortios
 npm test -- cisco
 
 # Run mock server (for manual testing)
-npm run dev
-curl http://localhost:3001/api/v1/fortios/query-policy
-curl http://localhost:3001/api/v1/cisco-iosxe/query-interfaces
+npm run dev:mock-console
+curl http://localhost:3400/api/v1/fortios/query-policy
+curl http://localhost:3400/api/v1/cisco-iosxe/query-interfaces
 ```
 
 ## Adding a New Vendor

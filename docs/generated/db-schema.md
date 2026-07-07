@@ -12,7 +12,7 @@
 | `SangforManual` | `product`, `version?`, `title`, `sourceType`, `sourceUrl?`, `filePath?`, `trustLevel` (default `needs_review`) | Ingested manual metadata. |
 | `SangforProject` | `customerName`, `product`, `projectType`, `status` (default `draft`) | Engagement/project record. |
 | `SangforConfigPlan` | `projectId?`, `product`, `planTitle`, `planJson` (Json), `riskLevel`, `status` | Persisted planner output (`persistConfigPlan`). |
-| `SangforFeedbackEvent` | `product`, `feedbackType`, `severity`, `feedbackText`, `sourceRole`, `status` (default `new`) | Feedback capture (`persistFeedbackEvent`); in-app source is currently in-memory. |
+| `SangforFeedbackEvent` | `product`, `feedbackType`, `severity`, `feedbackText`, `sourceRole`, `status` (default `new`) | Feedback capture (`persistFeedbackEvent`); in-app source (`@sangfor/sangfor-feedback`) is now persisted as file-based JSONL, not in-memory. |
 | `SangforWikiUpdateProposal` | `targetPage`, `title`, `beforeText`, `afterText`, `status` (default `pending`) | Review-gated wiki proposal. |
 | `SangforRagDocument` | `productCode`, `version?`, `title`, `sourceType`, `filePath`, `contentHash @unique`, → `chunks` | Mirror of a `data/rag/index.json` document (`upsertRagDocumentMeta`). |
 | `SangforRagChunk` | `documentId` → `SangforRagDocument`, `productCode`, `section?`, `chunkText`, `vector Json?`, `contentHash @unique` | Vectors stored as JSON; **no pgvector** — search is the in-process cosine scan over the local index. |
