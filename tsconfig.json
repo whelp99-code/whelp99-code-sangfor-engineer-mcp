@@ -117,6 +117,7 @@
     "apps/**/*.ts",
     "packages/**/*.ts",
     "tests/**/*.ts",
+    "tests-ui/**/*.ts",
     "scripts/**/*.ts"
   ],
   "exclude": [
