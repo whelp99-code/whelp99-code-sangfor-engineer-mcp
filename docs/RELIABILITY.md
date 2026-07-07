@@ -21,7 +21,9 @@ Reliability here means: a change either **provably** happened (verified by read-
 - **Concurrency guard**: `@sangfor/pm` `DeviceLock` prevents two engagements from operating the same device concurrently. Control-tower sweeps cap concurrency (3) and force-fail any non-read-only tool in a sweep.
 
 ## Known reliability gaps
-Tracked in [plans/work/tech-debt-tracker.md](plans/work/tech-debt-tracker.md): in-memory feedback/eval/wiki/proposal state and control-tower paused-block args are lost on restart (a restart mid-approval makes that approval unrecoverable — which is *safe* but degrades operability). Persist these to survive restarts.
+Learning-loop state (feedback/lessons, eval cases, wiki proposals) is now persisted to file-backed JSONL (`@sangfor/shared` `appendJsonl`/`foldJsonlById`, env-overridable roots), so it survives a restart.
+
+Control-tower **paused-block original args are intentionally not persisted**: writing an un-masked arg to disk would violate mask-before-persist. A playbook write-block recovers after a tower restart by re-deriving its args from the immutable revision + persisted results (`reinterpretBlockArgs`); a **single-tool** paused write has no such source, so its approval is deliberately unrecoverable after a restart (`approveRun` returns 400) — safe by design, not a bug to "fix" by persisting secrets.
 
 ## Operational runbooks (existing)
 - [DEVICE_DIAGNOSIS_RUNBOOK.md](DEVICE_DIAGNOSIS_RUNBOOK.md), [M4_HCI_API_SPIKE_RUNBOOK.md](M4_HCI_API_SPIKE_RUNBOOK.md), [LOCAL_SETUP.md](LOCAL_SETUP.md).
