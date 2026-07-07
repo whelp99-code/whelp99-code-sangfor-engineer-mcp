@@ -14,6 +14,26 @@ describe('mapEppPoolToConfigState', () => {
     expect(r.observed.assetInventoryClassifiedCount.value).toBe(5);
   });
 
+  it('maps deep-capture config endpoints (device control, auto-update, quarantine, EDR behavior, exclusions)', () => {
+    const deepPool = {
+      'POST /api/edrgoweb/v1/control/queryctrlapppolicy': { totalCount: 2 },
+      'POST /launch.php?opr=get_upgrade_state': { download_enable: false },
+      'POST /launch.php?opr=list_policy_safe_area': { safe_area: { isolate_area: { quar_max_size: 1000 } } },
+      'POST /launch.php?opr=list_policy_extortion_protection': { safe_fasten: { ransom_killer: { enable: 1 } } },
+      'POST /launch.php?opr=list_policy_trust_path': { trust_list: { powershell_whitecmd: {} } },
+    };
+    const r = mapEppPoolToConfigState(deepPool, { collector: 'test' });
+    expect(r.observed.deviceControlConfigured.value).toBe(true);
+    expect(r.observed.deviceControlConfigured.source.endpoint).toBe('POST /api/edrgoweb/v1/control/queryctrlapppolicy');
+    expect(r.observed.agentAutoUpdateEnabled.value).toBe(false);
+    expect(r.observed.agentAutoUpdateEnabled.source.endpoint).toBe('POST /launch.php?opr=get_upgrade_state');
+    expect(r.observed.quarantineConfigured.value).toBe(true);
+    expect(r.observed.edrBehaviorMonitoringEnabled.value).toBe(true);
+    expect(r.observed.exclusionListManaged.value).toBe(true);
+    expect(r.observed).not.toHaveProperty('malwareScanScheduleEnabled');
+    expect(r.observed).not.toHaveProperty('endpointIsolationConfigured');
+  });
+
   it('omits keys whose endpoint was not captured (never fabricates)', () => {
     const r = mapEppPoolToConfigState(pool);
     expect(r.observed).not.toHaveProperty('darMonitoringActive');   // endpoint not captured

@@ -1,11 +1,12 @@
 /** Map captured EPP API pool → ConfigState → evaluate against EPP spec → Korean report.
  *  Mapping now lives in @sangfor/config-state (mapEppPoolToConfigState); this script
  *  only does file I/O and rendering so the same logic is reachable from the MCP tool. */
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { loadSpec, evaluateSpec, renderAdvisoryReport } from '../packages/sangfor-spec/src/index.js';
 import { mapEppPoolToConfigState } from '../packages/sangfor-config-state/src/index.js';
 
-const pool = JSON.parse(readFileSync('/tmp/dev-captcha/EPP_pool.json', 'utf8'));
+const readPool = (p: string) => (existsSync(p) ? JSON.parse(readFileSync(p, 'utf8')) : {});
+const pool = { ...readPool('/tmp/dev-captcha/EPP_pool.json'), ...readPool('/tmp/dev-captcha/EPP_deep_pool.json') };
 const mapped = mapEppPoolToConfigState(pool, { collector: 'live-xhr' });
 
 mkdirSync('outputs/diagnosis', { recursive: true });

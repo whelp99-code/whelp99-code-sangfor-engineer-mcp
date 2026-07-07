@@ -6,7 +6,7 @@ export interface ObservedFactJson { value: unknown; source: { endpoint: string; 
 
 const EPP_PREFIX = 'POST /api/edrgoweb/v1/';
 
-const EPP_KEYMAP: Array<{ key: string; endpoint: string; pick: (d: any) => unknown }> = [
+const EPP_KEYMAP: Array<{ key: string; endpoint?: string; full?: string; pick: (d: any) => unknown }> = [
   { key: 'patchIsLatest', endpoint: 'patch/statistics', pick: (d) => d?.isLatest },
   { key: 'vulnDefUpdateAvailable', endpoint: 'vulner/list/version', pick: (d) => d?.update },
   { key: 'vulnerabilityCount', endpoint: 'vulner/list/homepageVulner', pick: (d) => d?.vulnerCount },
@@ -15,6 +15,11 @@ const EPP_KEYMAP: Array<{ key: string; endpoint: string; pick: (d: any) => unkno
   { key: 'maliciousDomainDetectionActive', endpoint: 'domain_detect/get_domain_info', pick: (d) => (typeof d?.isDetected === 'boolean' ? d.isDetected : undefined) },
   { key: 'assetInventoryClassifiedCount', endpoint: 'asset/inventory/classify', pick: (d) => (Array.isArray(d) ? d.length : undefined) },
   { key: 'darMonitoringActive', endpoint: 'cnapp/professional/dar/webapi/interval/status', pick: (d) => (d?.interval != null) },
+  { key: 'deviceControlConfigured', endpoint: 'control/queryctrlapppolicy', pick: (d) => ((d?.totalCount ?? 0) > 0) },
+  { key: 'agentAutoUpdateEnabled', full: 'POST /launch.php?opr=get_upgrade_state', pick: (d) => (typeof d?.download_enable === 'boolean' ? d.download_enable : undefined) },
+  { key: 'quarantineConfigured', full: 'POST /launch.php?opr=list_policy_safe_area', pick: (d) => (d?.safe_area?.isolate_area != null) },
+  { key: 'edrBehaviorMonitoringEnabled', full: 'POST /launch.php?opr=list_policy_extortion_protection', pick: (d) => (d?.safe_fasten?.ransom_killer?.enable === 1) },
+  { key: 'exclusionListManaged', full: 'POST /launch.php?opr=list_policy_trust_path', pick: (d) => (d?.trust_list != null && Object.keys(d.trust_list).length > 0) },
 ];
 
 export function mapEppPoolToConfigState(
@@ -24,8 +29,8 @@ export function mapEppPoolToConfigState(
   const collectedAt = opts.collectedAt ?? new Date().toISOString();
   const collector = opts.collector ?? 'live-xhr-pool';
   const observed: Record<string, ObservedFactJson> = {};
-  for (const { key, endpoint, pick } of EPP_KEYMAP) {
-    const full = `${EPP_PREFIX}${endpoint}`;
+  for (const { key, endpoint, full: fullEndpoint, pick } of EPP_KEYMAP) {
+    const full = fullEndpoint ?? `${EPP_PREFIX}${endpoint}`;
     if (!(full in pool)) continue; // uncaptured → omitted → INDETERMINATE downstream
     const value = pick(pool[full]);
     if (value === undefined) continue;

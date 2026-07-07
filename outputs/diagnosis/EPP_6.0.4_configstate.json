@@ -2,13 +2,21 @@
   "product": "EPP",
   "version": "6.0.4",
   "collectedFrom": "10.80.1.106 live console XHR (read-only)",
-  "endpoints": 12,
+  "endpoints": 65,
   "observed": {
     "patchIsLatest": {
       "value": true,
       "source": {
         "endpoint": "POST /api/edrgoweb/v1/patch/statistics",
-        "collectedAt": "2026-07-07T10:16:21.392Z",
+        "collectedAt": "2026-07-07T23:33:47.446Z",
+        "collector": "live-xhr"
+      }
+    },
+    "vulnDefUpdateAvailable": {
+      "value": false,
+      "source": {
+        "endpoint": "POST /api/edrgoweb/v1/vulner/list/version",
+        "collectedAt": "2026-07-07T23:33:47.446Z",
         "collector": "live-xhr"
       }
     },
@@ -16,7 +24,15 @@
       "value": 0,
       "source": {
         "endpoint": "POST /api/edrgoweb/v1/vulner/list/homepageVulner",
-        "collectedAt": "2026-07-07T10:16:21.392Z",
+        "collectedAt": "2026-07-07T23:33:47.446Z",
+        "collector": "live-xhr"
+      }
+    },
+    "securityBaselineRuleCount": {
+      "value": 1,
+      "source": {
+        "endpoint": "POST /api/edrgoweb/v1/baseline/getRule",
+        "collectedAt": "2026-07-07T23:33:47.446Z",
         "collector": "live-xhr"
       }
     },
@@ -24,7 +40,7 @@
       "value": 35,
       "source": {
         "endpoint": "POST /api/edrgoweb/v1/domain_detect/get_domain_info",
-        "collectedAt": "2026-07-07T10:16:21.392Z",
+        "collectedAt": "2026-07-07T23:33:47.446Z",
         "collector": "live-xhr"
       }
     },
@@ -32,7 +48,7 @@
       "value": true,
       "source": {
         "endpoint": "POST /api/edrgoweb/v1/domain_detect/get_domain_info",
-        "collectedAt": "2026-07-07T10:16:21.392Z",
+        "collectedAt": "2026-07-07T23:33:47.446Z",
         "collector": "live-xhr"
       }
     },
@@ -40,7 +56,55 @@
       "value": 5,
       "source": {
         "endpoint": "POST /api/edrgoweb/v1/asset/inventory/classify",
-        "collectedAt": "2026-07-07T10:16:21.392Z",
+        "collectedAt": "2026-07-07T23:33:47.446Z",
+        "collector": "live-xhr"
+      }
+    },
+    "darMonitoringActive": {
+      "value": true,
+      "source": {
+        "endpoint": "POST /api/edrgoweb/v1/cnapp/professional/dar/webapi/interval/status",
+        "collectedAt": "2026-07-07T23:33:47.446Z",
+        "collector": "live-xhr"
+      }
+    },
+    "deviceControlConfigured": {
+      "value": false,
+      "source": {
+        "endpoint": "POST /api/edrgoweb/v1/control/queryctrlapppolicy",
+        "collectedAt": "2026-07-07T23:33:47.446Z",
+        "collector": "live-xhr"
+      }
+    },
+    "agentAutoUpdateEnabled": {
+      "value": false,
+      "source": {
+        "endpoint": "POST /launch.php?opr=get_upgrade_state",
+        "collectedAt": "2026-07-07T23:33:47.446Z",
+        "collector": "live-xhr"
+      }
+    },
+    "quarantineConfigured": {
+      "value": true,
+      "source": {
+        "endpoint": "POST /launch.php?opr=list_policy_safe_area",
+        "collectedAt": "2026-07-07T23:33:47.446Z",
+        "collector": "live-xhr"
+      }
+    },
+    "edrBehaviorMonitoringEnabled": {
+      "value": true,
+      "source": {
+        "endpoint": "POST /launch.php?opr=list_policy_extortion_protection",
+        "collectedAt": "2026-07-07T23:33:47.446Z",
+        "collector": "live-xhr"
+      }
+    },
+    "exclusionListManaged": {
+      "value": true,
+      "source": {
+        "endpoint": "POST /launch.php?opr=list_policy_trust_path",
+        "collectedAt": "2026-07-07T23:33:47.446Z",
         "collector": "live-xhr"
       }
     }
