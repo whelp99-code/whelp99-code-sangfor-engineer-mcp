@@ -2,13 +2,47 @@
   "product": "EPP",
   "version": "6.0.4",
   "collectedFrom": "10.80.1.106 live console XHR (read-only)",
-  "endpoints": 20,
+  "endpoints": 12,
   "observed": {
-    "patchIsLatest": true,
-    "vulnDefUpdateAvailable": false,
-    "vulnerabilityCount": 0,
-    "securityBaselineRuleCount": 1,
-    "maliciousDomainBlockCount": 35,
-    "darMonitoringActive": true
+    "patchIsLatest": {
+      "value": true,
+      "source": {
+        "endpoint": "POST /api/edrgoweb/v1/patch/statistics",
+        "collectedAt": "2026-07-07T10:16:21.392Z",
+        "collector": "live-xhr"
+      }
+    },
+    "vulnerabilityCount": {
+      "value": 0,
+      "source": {
+        "endpoint": "POST /api/edrgoweb/v1/vulner/list/homepageVulner",
+        "collectedAt": "2026-07-07T10:16:21.392Z",
+        "collector": "live-xhr"
+      }
+    },
+    "maliciousDomainBlockCount": {
+      "value": 35,
+      "source": {
+        "endpoint": "POST /api/edrgoweb/v1/domain_detect/get_domain_info",
+        "collectedAt": "2026-07-07T10:16:21.392Z",
+        "collector": "live-xhr"
+      }
+    },
+    "maliciousDomainDetectionActive": {
+      "value": true,
+      "source": {
+        "endpoint": "POST /api/edrgoweb/v1/domain_detect/get_domain_info",
+        "collectedAt": "2026-07-07T10:16:21.392Z",
+        "collector": "live-xhr"
+      }
+    },
+    "assetInventoryClassifiedCount": {
+      "value": 5,
+      "source": {
+        "endpoint": "POST /api/edrgoweb/v1/asset/inventory/classify",
+        "collectedAt": "2026-07-07T10:16:21.392Z",
+        "collector": "live-xhr"
+      }
+    }
   }
 }

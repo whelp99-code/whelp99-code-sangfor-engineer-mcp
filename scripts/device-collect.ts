@@ -13,9 +13,9 @@ import { isSafeNavLabel } from '../packages/sangfor-collector/src/safe-nav.js';
 
 const PRODUCT = (process.env.PRODUCT ?? 'EPP').toUpperCase();
 const CFG: Record<string, any> = {
-  EPP: { url: 'https://10.80.1.106', user: 'admin', pass: 'Itac123!@#', port: 9340, captchaSel: 'img[src*="randcode"]', userSel: '#user, input[name="user"]', passSel: '#password, input[type="password"]', apiRe: /\/api\//, menuSel: 'li.ix-menu-item' },
-  CC: { url: 'https://10.80.1.107', user: 'admin', pass: 'Itac123!@#', port: 9341, captchaSel: 'img.uedc-ppkg-login_captcha, img[src*="captcha"]', userSel: 'input[name="name"]', passSel: 'input[name="password"]', apiRe: /\/api\/|\/uedc\/|\/apps\//, menuSel: '.top-nav-menu__item, .top-nav-menu__sub__item' },
-  IAG: { url: 'https://10.80.1.108', user: 'admin', pass: 'Itac123#@!', port: 9342, captchaSel: 'img[src*="captcha"], img[src*="randcode"]', userSel: '#user, input[name="user"], input[name="username"]', passSel: '#password, input[type="password"]', apiRe: /\/(api|php|rest|cgi)/, menuSel: 'li.ix-menu-item' },
+  EPP: { url: process.env.SANGFOR_EPP_URL ?? 'https://10.80.1.106', user: 'admin', pass: process.env.SANGFOR_EPP_PASSWORD ?? 'Itac123!@#', port: 9340, captchaSel: 'img[src*="randcode"]', userSel: '#user, input[name="user"]', passSel: '#password, input[type="password"]', apiRe: /\/api\//, menuSel: 'li.ix-menu-item' },
+  CC: { url: process.env.SANGFOR_CC_URL ?? 'https://10.80.1.107', user: 'admin', pass: process.env.SANGFOR_CC_PASSWORD ?? 'Itac123!@#', port: 9341, captchaSel: 'img.uedc-ppkg-login_captcha, img[src*="captcha"]', userSel: 'input[name="name"]', passSel: 'input[name="password"]', apiRe: /\/api\/|\/uedc\/|\/apps\//, menuSel: '.top-nav-menu__item, .top-nav-menu__sub__item' },
+  IAG: { url: process.env.SANGFOR_IAG_URL ?? 'https://10.80.1.108', user: 'admin', pass: process.env.SANGFOR_IAG_PASSWORD ?? 'Itac123#@!', port: 9342, captchaSel: 'img[src*="captcha"], img[src*="randcode"]', userSel: '#user, input[name="user"], input[name="username"]', passSel: '#password, input[type="password"]', apiRe: /\/(api|php|rest|cgi)/, menuSel: 'li.ix-menu-item' },
 };
 const c = CFG[PRODUCT];
 if (!c) { console.error('unknown product', PRODUCT); process.exit(1); }
