@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { submitFeedback, extractLesson, listLessons } from '../packages/sangfor-feedback/src/index.js';
 import { createEvalCaseFromFeedback, runPlannerEval } from '../packages/sangfor-evals/src/index.js';
-import { proposeWikiUpdate, approveWikiUpdate, applyWikiUpdate } from '../packages/sangfor-wiki/src/index.js';
+import { proposeWikiUpdate, approveWikiUpdate, applyWikiUpdate, mintWikiApproval } from '../packages/sangfor-wiki/src/index.js';
 import { generateConfigPlan } from '../packages/sangfor-planner/src/index.js';
 
 describe('Learning-loop state survives restart (tech-debt #2)', () => {
@@ -34,9 +34,9 @@ describe('Learning-loop state survives restart (tech-debt #2)', () => {
   });
 
   it('wiki proposal + approval persist so a later apply sees the approved status', () => {
-    process.env.SANGFOR_WIKI_APPROVAL_TOKEN = 'tok';
+    process.env.SANGFOR_WIKI_APPROVAL_SECRET = 'tok';
     const p = proposeWikiUpdate({ lessonTitle: 'L', lessonBody: 'B' });
-    approveWikiUpdate(p.id, 'approved', { token: 'tok' });
+    approveWikiUpdate(p.id, 'approved', { token: mintWikiApproval(p.id) });
     expect(applyWikiUpdate(p.id).status).toBe('applied');
   });
 });

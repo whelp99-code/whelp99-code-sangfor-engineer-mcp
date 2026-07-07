@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { createHash, timingSafeEqual } from 'node:crypto';
+import { createHmac, timingSafeEqual } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { KnowledgeChunk, normalizeProduct, nowId, resolveRepoData, appendJsonl, foldJsonlById } from '@sangfor/shared';
@@ -198,6 +198,16 @@ export function proposeWikiUpdate(input: { lessonTitle: string; lessonBody: stri
   return proposal;
 }
 
+function wikiApprovalMac(secret: string, proposalId: string): Buffer {
+  return createHmac('sha256', secret).update(proposalId).digest();
+}
+
+export function mintWikiApproval(proposalId: string): string {
+  const secret = process.env.SANGFOR_WIKI_APPROVAL_SECRET;
+  if (!secret) throw new Error('Wiki approval blocked: SANGFOR_WIKI_APPROVAL_SECRET is not configured (fail-closed).');
+  return wikiApprovalMac(secret, proposalId).toString('hex');
+}
+
 export function approveWikiUpdate(
   proposalId: string,
   decision: 'approved' | 'rejected',
@@ -205,18 +215,18 @@ export function approveWikiUpdate(
 ): WikiUpdateProposal {
   const proposal = getProposal(proposalId);
   if (!proposal) throw new Error(`Unknown proposal: ${proposalId}`);
-  // Approving unlocks a write into the knowledge base, so it must present a valid
-  // token (redteam H3: previously anyone could approve any proposal). Rejection
-  // is always safe and needs no token. Fail-closed when no token is configured.
+  // Approving unlocks a KB write, so the token must be an action-bound HMAC over
+  // this exact proposalId (redteam H3) — a token minted for one proposal cannot
+  // approve another. Rejection is always safe. Fail-closed when no secret is set.
   if (decision === 'approved') {
-    const expected = process.env.SANGFOR_WIKI_APPROVAL_TOKEN;
-    if (!expected) {
-      throw new Error('Wiki approval blocked: SANGFOR_WIKI_APPROVAL_TOKEN is not configured (fail-closed).');
+    const secret = process.env.SANGFOR_WIKI_APPROVAL_SECRET;
+    if (!secret) {
+      throw new Error('Wiki approval blocked: SANGFOR_WIKI_APPROVAL_SECRET is not configured (fail-closed).');
     }
-    const provided = opts.token ?? '';
-    const h = (s: string) => createHash('sha256').update(s).digest();
-    if (!timingSafeEqual(h(provided), h(expected))) {
-      throw new Error('Wiki approval token mismatch.');
+    const expected = wikiApprovalMac(secret, proposalId);
+    const provided = Buffer.from(opts.token ?? '', 'hex');
+    if (provided.length !== expected.length || !timingSafeEqual(provided, expected)) {
+      throw new Error('Wiki approval token is not a valid HMAC for this proposal.');
     }
   }
   proposal.status = decision;

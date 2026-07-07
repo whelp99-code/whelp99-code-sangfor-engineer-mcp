@@ -6,7 +6,7 @@ import { analyzeProject, generateConfigPlan, validateConfigPlan } from '../packa
 import { requiresApprovalForText } from '../packages/sangfor-approval/src/index.js';
 import { startOperatorSession, executeConsoleAction } from '../packages/sangfor-operator/src/index.js';
 import { submitFeedback, extractLesson } from '../packages/sangfor-feedback/src/index.js';
-import { proposeWikiUpdate, applyWikiUpdate, approveWikiUpdate } from '../packages/sangfor-wiki/src/index.js';
+import { proposeWikiUpdate, applyWikiUpdate, approveWikiUpdate, mintWikiApproval } from '../packages/sangfor-wiki/src/index.js';
 import { runPlannerEval } from '../packages/sangfor-evals/src/index.js';
 
 const savedLlEnv = { ...process.env };
@@ -57,8 +57,8 @@ describe('Sangfor Engineer MCP MVP', () => {
   it('blocks wiki apply before approval', () => {
     const p = proposeWikiUpdate({ lessonTitle: 'Test lesson', lessonBody: 'Body' });
     expect(() => applyWikiUpdate(p.id)).toThrow();
-    process.env.SANGFOR_WIKI_APPROVAL_TOKEN = 'test-wiki-token';
-    approveWikiUpdate(p.id, 'approved', { token: 'test-wiki-token' });
+    process.env.SANGFOR_WIKI_APPROVAL_SECRET = 'test-wiki-secret';
+    approveWikiUpdate(p.id, 'approved', { token: mintWikiApproval(p.id) });
     expect(applyWikiUpdate(p.id).status).toBe('applied');
   });
 
@@ -91,8 +91,8 @@ describe('Included real integration surfaces', () => {
   it('writes approved proposal to an Obsidian vault path', async () => {
     const vaultPath = mkdtempSync(join(tmpdir(), 'obsidian-'));
     const p = proposeWikiUpdate({ lessonTitle: 'HCI rollback lesson', lessonBody: 'Always keep rollback window.', targetPage: 'Sangfor/HCI/Lessons.md', adapter: 'obsidian' });
-    process.env.SANGFOR_WIKI_APPROVAL_TOKEN = 'test-wiki-token';
-    approveWikiUpdate(p.id, 'approved', { token: 'test-wiki-token' });
+    process.env.SANGFOR_WIKI_APPROVAL_SECRET = 'test-wiki-secret';
+    approveWikiUpdate(p.id, 'approved', { token: mintWikiApproval(p.id) });
     await applyObsidianWikiUpdate({ proposalId: p.id, vaultPath });
     const notePath = join(vaultPath, 'Sangfor/HCI/Lessons.md');
     expect(existsSync(notePath)).toBe(true);
