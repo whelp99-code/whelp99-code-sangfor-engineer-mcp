@@ -6,6 +6,8 @@
 
 **영구선(불변):** AI는 조언·준비·미리보기·검증만. 사람이 되돌릴 수 없는 손과 서명을 소유한다. 자율 비가역 변경·무인 프로덕션 write·자율 롤백은 설계상 범위 밖.
 
+> **계획 강화(정직한 '아니오'→'맞습니다'):** [`2026-07-08-plan-hardening-no-to-yes.md`](2026-07-08-plan-hardening-no-to-yes.md) — 리뷰에서 "아니오"였던 부분(M2~M6 미분해·cinder/VPN 의존·IAG 미노출·false-PASS 리스크)을 T-H1~H7 신규 태스크로 "맞습니다"로 전환하는 설계. mock-cinder 완전 e2e·오프라인 캡처 번들·IAG DOM 수집·no-fabrication 게이트·Adjustment Point 카드 표준 포함.
+
 ---
 
 ## 1. 현재 상태 스냅샷 (2026-07-08 기준, 코드 근거)
