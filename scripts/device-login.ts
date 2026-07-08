@@ -10,10 +10,12 @@ import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { chromium, type Page } from 'playwright';
 import { ensureChromeRunning, takeScreenshot, getPageSnapshot } from '../packages/sangfor-chrome/src/index.js';
 
+const reqPass = (k: string): string => { const v = process.env[k]; if (!v) { console.error(`missing env: ${k}`); process.exit(1); } return v; };
+
 const PRODUCT = (process.env.PRODUCT ?? 'EPP').toUpperCase();
 const CFG: Record<string, { url: string; user: string; pass: string; port: number; captchaSel: string; userSel: string; passSel: string }> = {
-  EPP: { url: 'https://10.80.1.106', user: 'admin', pass: process.env.EPP_PASS ?? 'Itac123!@#', port: 9340, captchaSel: 'img[src*="randcode"]', userSel: '#user, input[name="user"], input[name="username"]', passSel: '#password, input[type="password"]' },
-  CC:  { url: 'https://10.80.1.107', user: 'admin', pass: process.env.CC_PASS ?? 'Itac123!@#', port: 9341, captchaSel: 'img.uedc-ppkg-login_captcha, img[src*="captcha"]', userSel: 'input[name="name"], input[name="username"], input[name="user"], #username', passSel: 'input[type="password"]' },
+  EPP: { url: 'https://10.80.1.106', user: 'admin', pass: reqPass('EPP_PASS'), port: 9340, captchaSel: 'img[src*="randcode"]', userSel: '#user, input[name="user"], input[name="username"]', passSel: '#password, input[type="password"]' },
+  CC:  { url: 'https://10.80.1.107', user: 'admin', pass: reqPass('CC_PASS'), port: 9341, captchaSel: 'img.uedc-ppkg-login_captcha, img[src*="captcha"]', userSel: 'input[name="name"], input[name="username"], input[name="user"], #username', passSel: 'input[type="password"]' },
 };
 const c = CFG[PRODUCT];
 if (!c) { console.error('unknown product', PRODUCT); process.exit(1); }

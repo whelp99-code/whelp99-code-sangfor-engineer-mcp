@@ -10,6 +10,8 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { chromium, type Page } from 'playwright';
 import { ensureChromeRunning } from '../packages/sangfor-chrome/src/index.js';
 
+const reqPass = (k: string): string => { const v = process.env[k]; if (!v) { console.error(`missing env: ${k}`); process.exit(1); } return v; };
+
 const DIR = '/tmp/dev-captcha';
 const OUT = `${DIR}/EPP_pool.json`;
 const CAP = `${DIR}/EPP.png`;
@@ -46,7 +48,7 @@ async function main() {
     let code = ''; const dl = Date.now() + 180000;
     while (Date.now() < dl) { if (existsSync(CODE)) { code = readFileSync(CODE, 'utf8').trim(); if (code) break; } await sl(2000); }
     await page.locator('#user').fill('admin').catch(() => {});
-    await page.locator('#password').fill('Itac123!@#').catch(() => {});
+    await page.locator('#password').fill(reqPass('SANGFOR_EPP_PASSWORD')).catch(() => {});
     await page.locator('#code').fill(code).catch(() => {});
     await page.locator('#button').click({ timeout: 5000 }).catch(() => {});
   }

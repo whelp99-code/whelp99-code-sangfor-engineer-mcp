@@ -5,12 +5,14 @@ import { chromium, type Page } from 'playwright';
 import { mkdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
+const reqPass = (k: string): string => { const v = process.env[k]; if (!v) { console.error(`missing env: ${k}`); process.exit(1); } return v; };
+
 const CDP_URL = 'http://127.0.0.1:9333';
 const OUT_DIR = '/Users/jmpark/Documents/Playground/whelp99-code-sangfor-engineer-mcp/outputs/final_images';
 const D = {
-  epp: { url: 'https://10.80.1.106', user: 'admin', pass: 'Itac123!@#' },
-  iag: { url: 'https://10.80.1.108', user: 'admin', pass: 'Itac123#@!' },
-  cc:  { url: 'https://10.80.1.107', user: 'admin', pass: 'Itac123!@#' },
+  epp: { url: 'https://10.80.1.106', user: 'admin', pass: reqPass('SANGFOR_EPP_PASSWORD') },
+  iag: { url: 'https://10.80.1.108', user: 'admin', pass: reqPass('SANGFOR_IAG_PASSWORD') },
+  cc:  { url: 'https://10.80.1.107', user: 'admin', pass: reqPass('SANGFOR_CC_PASSWORD') },
 };
 const sl = (ms: number) => new Promise(r => setTimeout(r, ms));
 

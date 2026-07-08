@@ -47,3 +47,6 @@ docs/plans/
 # otherwise also ignore docs/generated/.
 !docs/generated/
 !docs/generated/**
+
+# fable-dispatch execution artifacts (local)
+artifacts/

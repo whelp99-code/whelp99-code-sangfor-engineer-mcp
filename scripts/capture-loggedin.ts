@@ -5,6 +5,8 @@ import { chromium, type Page } from 'playwright';
 import { mkdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
+const reqPass = (k: string): string => { const v = process.env[k]; if (!v) { console.error(`missing env: ${k}`); process.exit(1); } return v; };
+
 const CDP_URL = 'http://127.0.0.1:9333';
 const OUT = '/Users/jmpark/Documents/Playground/whelp99-code-sangfor-engineer-mcp/outputs/final_images';
 const sl = (ms: number) => new Promise(r => setTimeout(r, ms));
@@ -94,7 +96,7 @@ async function main() {
           if (/login|로그인/i.test(t)) { (btns[i] as HTMLElement).click(); return; }
         }
         if (btns[0]) (btns[0] as HTMLElement).click();
-      }, { user: 'admin', pass: 'Itac123#@!' });
+      }, { user: 'admin', pass: reqPass('SANGFOR_IAG_PASSWORD') });
       await sl(8000);
       console.log(`  URL: ${iag.url()}`);
     }

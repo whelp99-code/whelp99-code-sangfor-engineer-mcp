@@ -6,6 +6,8 @@ import { chromium, type Page } from 'playwright';
 import { ensureChromeRunning } from '../packages/sangfor-chrome/src/index.js';
 import { isSafeNavLabel } from '../packages/sangfor-collector/src/safe-nav.js';
 
+const reqPass = (k: string): string => { const v = process.env[k]; if (!v) { console.error(`missing env: ${k}`); process.exit(1); } return v; };
+
 const DIR = '/tmp/dev-captcha';
 mkdirSync(DIR, { recursive: true });
 const CAP = `${DIR}/EPP.png`; const CODE = `${DIR}/EPP.code`;
@@ -32,7 +34,7 @@ async function main() {
       let code = ''; const dl = Date.now() + 180000;
       while (Date.now() < dl) { if (existsSync(CODE)) { code = readFileSync(CODE, 'utf8').trim(); if (code) break; } await sl(2000); }
       await page.locator('#user').fill('admin').catch(() => {});
-      await page.locator('#password').fill('Itac123!@#').catch(() => {});
+      await page.locator('#password').fill(reqPass('SANGFOR_EPP_PASSWORD')).catch(() => {});
       await page.locator('#code').fill(code).catch(() => {});
       const cb = page.locator('input[type="checkbox"]').first();
       if (await cb.count().catch(() => 0) && !(await cb.isChecked().catch(() => true))) await cb.check({ timeout: 2000 }).catch(() => {});
