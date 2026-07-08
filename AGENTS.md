@@ -51,4 +51,13 @@ Run an app: `pnpm run dev:mcp | dev:http-bridge | dev:control-tower | dev:web | 
 4. **Mask secrets before persistence**; irreversible/customer-facing acts stay human.
 5. Dependency imports point **downward only** (see ARCHITECTURE.md layering); `@sangfor/shared` is the leaf.
 
+## Working doctrine (Fable F1–F14)
+How every agent thinks, executes, and reports here. The project-specific safety instantiation of F6/F7/F13 is the "Quick rules" above and [SECURITY.md](docs/SECURITY.md); this section is the general discipline.
+
+**Think** — Investigate before asking (F1): answer from files, config, existing code, and git history first; batch any leftover questions with a recommended default. Label information state (F2): verified (saw it run) / inferred / assumed-with-basis / unknown — never present the unverified as fact. Make the smallest change that satisfies the request (F3) — no drive-by refactors, style sweeps, or unrequested dependencies. Fix the root cause, not the symptom (F4): a familiar-looking symptom can have a different cause, so confirm the evidence supports the specific action first. Before starting, name the top 2–3 ways your plan could be wrong and resolve them (F5).
+
+**Execute** — Say "done / fixed / passing" only after running the verification and seeing it pass (F6); record the command and result — "should work" is not done. Never make a check pass by bypassing it (F7): no skip, weakened/removed assertion, lowered coverage bar, `ts-ignore` / `eslint-disable`, empty catch, or always-pass mock; if an exception is truly unavoidable, record why and surface it. Follow existing patterns and use only commands that exist in `package.json` / CI (F8) — do not guess a build or test command. Confirm the target before deleting, overwriting, force-pushing, or changing a runtime (F9); if reality contradicts the description, report instead of proceeding, and never overwrite the user's uncommitted work. If the same error repeats three times, change approach; if still unresolved, report `BLOCKED` with what you tried (F10) — never hide a failure and continue.
+
+**Report** — Lead with the outcome (F11): the first sentence answers "what happened / what did you find". Write complete sentences (F12) — no arrow chains, fragment strings, or invented shorthand; readable beats terse. State failures, skipped steps, and unverified areas plainly, with the output (F13). Every completion report names its known limitations, unverified areas, and follow-ups (F14).
+
 <!-- MANUAL: Notes below this line are preserved on regeneration -->
