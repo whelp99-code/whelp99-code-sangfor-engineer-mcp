@@ -111,6 +111,8 @@
 **M4 수용 기준:** 주기 점검 무인 동작(사람 sign-off 게이트 유지); 대체율 자동갱신 검증; 대체율 ≥36%.
 
 ### M5 (2026-11) — 벤더 폭 + PM 워크플로 e2e
+
+> **후보 기능 백로그 30개:** [`2026-07-08-feature-backlog.md`](2026-07-08-feature-backlog.md) — 자문깊이/fleet/게이트드write/지식/리포트/신뢰/UX 7카테고리. M2·M5에서 대체율 기여순으로 1~3개씩 zero-context 카드로 승격. write성은 가역+게이트+사람서명 3조건 필수, 자율 비가역은 영구 제외.
 - **T5.1 벤더 확대.** read-only 자문 깊이 우선(원칙#2). 신규 제품 = spec + client mapper 추가(engine 불변), field-verify.
 - **T5.2 PM 워크플로 관통.** engagement → 요구분석 → plan → 승인 → apply(가역 write) → verify → 리포트를 실장비로 e2e. playbook으로 정형화.
 - **T5.3 field-verified playbook 라이브러리.** 흔한 현장 절차(자문+단일 가역 write)를 검증된 playbook으로 축적.
