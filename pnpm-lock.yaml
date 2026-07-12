@@ -40,6 +40,8 @@ importers:
         specifier: ^4.1.8
         version: 4.1.8(@types/node@22.19.19)(vite@8.0.16(@types/node@22.19.19)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.4))
 
+  apps/control-tower: {}
+
   apps/mcp-server: {}
 
   apps/mock-sangfor-console: {}
@@ -205,6 +207,12 @@ importers:
         version: link:../shared
 
   packages/sangfor-rca: {}
+
+  packages/sangfor-runs:
+    dependencies:
+      '@sangfor/shared':
+        specifier: workspace:*
+        version: link:../shared
 
   packages/sangfor-safety: {}
 
