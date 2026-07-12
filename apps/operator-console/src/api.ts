@@ -7,7 +7,7 @@ import { listCapabilitySafety, loadMaturityPolicy } from '../../../packages/sang
 import { analyzeProject, generateConfigPlanAsync } from '../../../packages/sangfor-planner/src/index.js';
 import { listSeedManuals, searchManuals } from '../../../packages/sangfor-knowledge/src/index.js';
 import { listSeedWiki, searchWiki } from '../../../packages/sangfor-wiki/src/index.js';
-import { ragSearch, exportRagIndexSummary, getEmbeddingProvider, resetEmbeddingProviderCache } from '../../../packages/sangfor-rag/src/index.js';
+import { ragSearch, exportRagIndexSummary, getEmbeddingProvider, resetEmbeddingProviderCache, type RagSearchHit } from '../../../packages/sangfor-rag/src/index.js';
 import { createMimoRerankFromEnv, resolveMimoBaseUrl, resolveMimoBillingMode } from '../../../packages/sangfor-rag/src/mimo-rerank-provider.js';
 import { isMimoViaLitellm, resolveLitellmBaseUrl, resolveLitellmEmbeddingModel } from '../../../packages/sangfor-rag/src/litellm-config.js';
 import { probeEmbeddingsEndpoint } from '../../../packages/sangfor-rag/src/openai-embeddings-client.js';
@@ -51,15 +51,31 @@ export async function postGenerateConfigPlan(body: Record<string, unknown>) {
   return dbId ? { ...plan, persistedId: dbId } : plan;
 }
 
+export function toPublicHit(hit: RagSearchHit) {
+  return {
+    id: hit.id,
+    product: hit.product,
+    version: hit.version,
+    title: hit.title,
+    section: hit.section,
+    text: hit.text,
+    trustLevel: hit.trustLevel,
+    score: hit.score,
+    rerankScore: hit.rerankScore,
+    source: hit.filePath
+  };
+}
+
 export async function postRagSearch(body: { query?: string; product?: string; version?: string; limit?: number }) {
   if (!body.query?.trim()) throw new Error('query is required');
-  return ragSearch({
+  const results = await ragSearch({
     query: body.query,
     product: body.product,
     version: body.version,
     limit: body.limit ?? 10,
     indexPath: RAG_INDEX
   });
+  return { query: body.query, results: results.map(toPublicHit) };
 }
 
 export async function postDiscoverConsole(body: Record<string, unknown>) {
