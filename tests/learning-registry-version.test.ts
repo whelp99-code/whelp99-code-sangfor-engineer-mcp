@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
+import { mkdirSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import {
   computeProductRegistryDigest,
+  isFirmwareTruthEligible,
   resolveInjectedAdapterProductCode,
+  resolveVerifiedFirmwareIdentity,
+  transitionFirmwareTruthStatus,
   type AdapterProductCode,
 } from '../packages/sangfor-learning-strategy/src/index.js';
 import {
@@ -11,6 +17,15 @@ import {
   resolveProductAdapterStrict,
   type ProductRegistryView,
 } from '../packages/sangfor-product-adapters/src/index.js';
+import {
+  canonicalizeFingerprintDescriptors,
+  fingerprintFromDescriptors,
+  loadFirmwareTruthRecords,
+  parseFirmwareTruthRecord,
+  sameFirmwareIdentity,
+  toFirmwareIdentity,
+  type FirmwareTruthRecord,
+} from '../packages/sangfor-version/src/index.js';
 
 describe('PR-001A1 ADAPTERS-derived registry', () => {
   it('preserves the legacy four-product surface and fallback aliases', () => {
@@ -119,6 +134,135 @@ describe('PR-001A1 ADAPTERS-derived registry', () => {
     expect(computeProductRegistryDigest([{ ...base, observerEligible: false }])).not.toBe(computeProductRegistryDigest([base]));
     expect(computeProductRegistryDigest([{ ...base, defaultSpecMapping: null }])).not.toBe(computeProductRegistryDigest([base]));
     expect(computeProductRegistryDigest([{ ...base, specMappingByVariant: {} }])).not.toBe(computeProductRegistryDigest([base]));
+  });
+
+  it('keeps package edges explicit and prevents learning/version from importing product adapters', () => {
+    const manifest = JSON.parse(readFileSync(new URL('../packages/sangfor-product-adapters/package.json', import.meta.url), 'utf8')) as {
+      dependencies?: Record<string, string>;
+    };
+    expect(manifest.dependencies).toMatchObject({
+      '@sangfor/approval': 'workspace:*',
+      '@sangfor/operator': 'workspace:*',
+      '@sangfor/shared': 'workspace:*',
+      '@sangfor/learning-strategy': 'workspace:*',
+    });
+    const productSource = readFileSync(new URL('../packages/sangfor-product-adapters/src/index.ts', import.meta.url), 'utf8');
+    expect(productSource).toContain("import type {");
+    expect(productSource).toContain("from '@sangfor/learning-strategy';");
+    expect(readFileSync(new URL('../packages/sangfor-learning-strategy/src/index.ts', import.meta.url), 'utf8'))
+      .not.toContain('@sangfor/product-adapters');
+    expect(readFileSync(new URL('../packages/sangfor-version/src/index.ts', import.meta.url), 'utf8'))
+      .not.toContain('@sangfor/product-adapters');
+  });
+
+  it('loads conflict seeds without making CC versions eligible for Spec input', () => {
+    const records = loadFirmwareTruthRecords();
+    const cc = records.filter((record) => record.adapterProduct === 'NDR');
+    expect(cc.map((record) => record.versionRaw)).toEqual(['3.0.98', '3.0.98C']);
+    expect(cc.every((record) => record.status === 'conflict')).toBe(true);
+    expect(cc.every((record) => !isFirmwareTruthEligible(record))).toBe(true);
+  });
+
+  it('strictly parses truth records, fingerprints allowlisted descriptors, and preserves identity equality', () => {
+    const record = parseFirmwareTruthRecord({
+      id: 'iag-13.0.120-candidate',
+      vendor: 'SANGFOR',
+      adapterProduct: 'IAG',
+      productVariant: null,
+      versionRaw: '13.0.120',
+      versionFamily: '13.0',
+      revision: 'R1',
+      buildId: 'build-7',
+      hotfix: 'HF-2',
+      uiFingerprint: 'a'.repeat(64),
+      apiFingerprint: 'b'.repeat(64),
+      status: 'candidate',
+      observedAt: '2026-07-23T00:00:00.000Z',
+      evidenceFile: 'evidence.json',
+      specVersion: '13.0.120',
+      specApplicability: 'unreviewed',
+      source: 'test fixture',
+    });
+    expect(record.versionRaw).toBe('13.0.120');
+    expect(() => parseFirmwareTruthRecord({ ...record, unexpected: true })).toThrow('INVALID_FIRMWARE_TRUTH');
+    expect(() => parseFirmwareTruthRecord({ ...record, vendor: 'UNKNOWN' })).toThrow('INVALID_FIRMWARE_TRUTH');
+    expect(() => parseFirmwareTruthRecord({ ...record, status: 'published' })).toThrow('INVALID_FIRMWARE_TRUTH');
+    expect(() => parseFirmwareTruthRecord({ ...record, specApplicability: 'approved' })).toThrow('INVALID_FIRMWARE_TRUTH');
+    expect(() => parseFirmwareTruthRecord({ ...record, observedAt: 'not-a-timestamp' })).toThrow('INVALID_FIRMWARE_TRUTH');
+    expect(() => parseFirmwareTruthRecord({ ...record, observedAt: '2026-02-30T10:41:30.863Z' })).toThrow('INVALID_FIRMWARE_TRUTH');
+    expect(() => parseFirmwareTruthRecord({ ...record, uiFingerprint: 'not-a-hash' })).toThrow('INVALID_FIRMWARE_TRUTH');
+    expect(() => parseFirmwareTruthRecord({ ...record, productVariant: '' })).toThrow('INVALID_FIRMWARE_TRUTH');
+    expect(() => parseFirmwareTruthRecord({ ...record, evidenceFile: '/etc/hosts' })).toThrow('INVALID_FIRMWARE_TRUTH');
+    expect(() => parseFirmwareTruthRecord({ ...record, evidenceFile: '../evidence.json' })).toThrow('INVALID_FIRMWARE_TRUTH');
+    expect(() => parseFirmwareTruthRecord({ ...record, evidenceFile: null })).not.toThrow();
+    expect(() => parseFirmwareTruthRecord({ ...record, status: 'verified', specApplicability: 'verified', evidenceFile: null })).toThrow('INVALID_FIRMWARE_TRUTH');
+    expect(() => parseFirmwareTruthRecord({ ...record, source: undefined })).toThrow('INVALID_FIRMWARE_TRUTH');
+    expect(sameFirmwareIdentity(record, { ...record, id: 'iag-13.0.120-other' })).toBe(true);
+    expect(sameFirmwareIdentity(record, { ...record, versionRaw: '13.0.120R1' })).toBe(false);
+    expect(sameFirmwareIdentity(record, { ...record, revision: 'R2' })).toBe(false);
+    expect(sameFirmwareIdentity(record, { ...record, buildId: 'build-8' })).toBe(false);
+    expect(sameFirmwareIdentity(record, { ...record, hotfix: 'HF-3' })).toBe(false);
+    expect(sameFirmwareIdentity(record, { ...record, uiFingerprint: 'c'.repeat(64) })).toBe(false);
+    expect(sameFirmwareIdentity(record, { ...record, apiFingerprint: 'd'.repeat(64) })).toBe(false);
+
+    const descriptor = {
+      buildId: 'build-7',
+      assetManifestId: 'assets-1',
+      framework: { name: 'vue', version: '3.5.0' },
+      routeSignature: ['dashboard', 'system'],
+      apiSchemaSignature: 'api-schema',
+      hostname: '10.0.0.1',
+      token: 'must-not-be-included',
+      observedAt: '2026-07-23T00:00:00.000Z',
+    };
+    const canonical = canonicalizeFingerprintDescriptors(descriptor);
+    expect(canonical).toContain('build-7');
+    expect(canonical).not.toContain('10.0.0.1');
+    expect(canonical).not.toContain('must-not-be-included');
+    expect(fingerprintFromDescriptors(descriptor)).toMatch(/^[a-f0-9]{64}$/);
+  });
+
+  it('allows only forward truth-state transitions and requires confined regular evidence for verified eligibility', () => {
+    const root = join(tmpdir(), `learning-version-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+    const outsideRoot = `${root}-outside`;
+    mkdirSync(root, { recursive: true });
+    writeFileSync(join(root, 'evidence.json'), '{"ok":true}\n');
+    mkdirSync(join(root, 'directory'), { recursive: true });
+    mkdirSync(outsideRoot, { recursive: true });
+    writeFileSync(join(outsideRoot, 'outside.json'), '{"outside":true}\n');
+    symlinkSync(join(outsideRoot, 'outside.json'), join(root, 'symlink.json'));
+    const candidate: FirmwareTruthRecord = parseFirmwareTruthRecord({
+      id: 'fixture-candidate',
+      vendor: 'FORTINET',
+      adapterProduct: 'FORTIOS',
+      productVariant: null,
+      versionRaw: '8.0.0',
+      versionFamily: '8.0',
+      revision: null,
+      buildId: 'forti-build',
+      hotfix: null,
+      uiFingerprint: null,
+      apiFingerprint: null,
+      status: 'candidate',
+      observedAt: '2026-07-23T00:00:00.000Z',
+      evidenceFile: 'evidence.json',
+      specVersion: '8.0.0',
+      specApplicability: 'unreviewed',
+      source: 'test fixture',
+    });
+    const conflict = transitionFirmwareTruthStatus(candidate, 'conflict');
+    expect(() => transitionFirmwareTruthStatus(conflict, 'candidate')).toThrow('INVALID_VERSION_TRUTH_TRANSITION');
+    const superseded = transitionFirmwareTruthStatus(conflict, 'superseded');
+    expect(() => transitionFirmwareTruthStatus(superseded, 'verified')).toThrow('INVALID_VERSION_TRUTH_TRANSITION');
+
+    const verified = transitionFirmwareTruthStatus(candidate, 'verified', { specApplicability: 'verified' });
+    expect(isFirmwareTruthEligible(verified)).toBe(false);
+    expect(isFirmwareTruthEligible(verified, { evidenceRoot: root })).toBe(true);
+    for (const evidenceFile of ['', '/etc/hosts', 'C:\\outside.json', '../evidence.json', 'foo/../../evidence.json', 'missing.json', 'directory', 'symlink.json']) {
+      expect(isFirmwareTruthEligible({ ...verified, evidenceFile }, { evidenceRoot: root })).toBe(false);
+    }
+    expect(toFirmwareIdentity(verified)).toMatchObject({ adapterProduct: 'FORTIOS', buildId: 'forti-build', specVersion: '8.0.0' });
+    expect(resolveVerifiedFirmwareIdentity(verified, getProductRegistrySnapshot(), { evidenceRoot: root }).adapterProduct).toBe('FORTIOS');
   });
 });
 
