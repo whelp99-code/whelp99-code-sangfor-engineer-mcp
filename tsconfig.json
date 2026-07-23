@@ -59,6 +59,9 @@
       "@sangfor/product-adapters": [
         "packages/sangfor-product-adapters/src/index.ts"
       ],
+      "@sangfor/learning-strategy": [
+        "packages/sangfor-learning-strategy/src/index.ts"
+      ],
       "@sangfor/store": [
         "packages/sangfor-store/src/index.ts"
       ],

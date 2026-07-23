@@ -14,6 +14,47 @@ export interface VersionRequirement {
   sourceUrl?: string;
 }
 
+export type FirmwareTruthStatus = 'candidate' | 'conflict' | 'verified' | 'superseded';
+export type FirmwareTruthVendor = 'SANGFOR' | 'FORTINET' | 'CISCO';
+export type SpecApplicability = 'unreviewed' | 'verified';
+
+export interface FirmwareTruthRecord {
+  id: string;
+  vendor: FirmwareTruthVendor;
+  adapterProduct: string;
+  productVariant: string | null;
+  versionRaw: string;
+  versionFamily: string;
+  revision: string | null;
+  buildId: string | null;
+  hotfix: string | null;
+  uiFingerprint: string | null;
+  apiFingerprint: string | null;
+  status: FirmwareTruthStatus;
+  observedAt: string | null;
+  evidenceFile: string | null;
+  specVersion: string | null;
+  specApplicability: SpecApplicability;
+  source: string;
+}
+
+export type FirmwareIdentity = Pick<
+  FirmwareTruthRecord,
+  | 'id' | 'vendor' | 'adapterProduct' | 'versionRaw' | 'versionFamily'
+  | 'productVariant' | 'revision' | 'buildId' | 'hotfix'
+  | 'uiFingerprint' | 'apiFingerprint' | 'specVersion' | 'specApplicability'
+>;
+
+export class FirmwareTruthError extends Error {
+  readonly code: 'INVALID_FIRMWARE_TRUTH' | 'INVALID_VERSION_TRUTH_TRANSITION';
+
+  constructor(code: FirmwareTruthError['code'], message: string) {
+    super(`${code}: ${message}`);
+    this.name = 'FirmwareTruthError';
+    this.code = code;
+  }
+}
+
 export interface VersionCheck {
   device: string;
   currentVersion: string;

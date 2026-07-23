@@ -146,6 +146,12 @@ importers:
         specifier: workspace:*
         version: link:../shared
 
+  packages/sangfor-learning-strategy:
+    dependencies:
+      '@sangfor/version':
+        specifier: workspace:*
+        version: link:../sangfor-version
+
   packages/sangfor-operator:
     dependencies:
       '@sangfor/approval':
@@ -196,6 +202,15 @@ importers:
 
   packages/sangfor-product-adapters:
     dependencies:
+      '@sangfor/approval':
+        specifier: workspace:*
+        version: link:../sangfor-approval
+      '@sangfor/learning-strategy':
+        specifier: workspace:*
+        version: link:../sangfor-learning-strategy
+      '@sangfor/operator':
+        specifier: workspace:*
+        version: link:../sangfor-operator
       '@sangfor/shared':
         specifier: workspace:*
         version: link:../shared
