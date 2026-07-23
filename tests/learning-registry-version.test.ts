@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -27,6 +28,26 @@ import {
   toFirmwareIdentity,
   type FirmwareTruthRecord,
 } from '../packages/sangfor-version/src/index.js';
+
+function stableTestJson(value: unknown): string {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map((item) => stableTestJson(item)).join(',')}]`;
+  const record = value as Record<string, unknown>;
+  return `{${Object.keys(record).sort().map((key) => `${JSON.stringify(key)}:${stableTestJson(record[key])}`).join(',')}}`;
+}
+
+function digestWithEmptyAdapterProduct(entries: ProductRegistryView['entries']): string {
+  const canonicalEntries = entries.map((entry) => ({
+    adapterProduct: entry.adapterProduct.trim().toUpperCase().replace(/[\s-]+/g, '_'),
+    vendor: entry.vendor,
+    aliases: [...entry.aliases].sort(),
+    observerOnlyAliases: [...entry.observerOnlyAliases].sort(),
+    observerEligible: entry.observerEligible,
+    defaultSpecMapping: entry.defaultSpecMapping,
+    specMappingByVariant: Object.fromEntries(Object.entries(entry.specMappingByVariant).sort(([left], [right]) => left < right ? -1 : left > right ? 1 : 0)),
+  })).sort((left, right) => left.adapterProduct < right.adapterProduct ? -1 : left.adapterProduct > right.adapterProduct ? 1 : 0);
+  return createHash('sha256').update(stableTestJson({ schemaVersion: 1, entries: canonicalEntries })).digest('hex');
+}
 
 describe('PR-001A1 ADAPTERS-derived registry', () => {
   it('preserves the legacy four-product surface and fallback aliases', () => {
@@ -135,6 +156,11 @@ describe('PR-001A1 ADAPTERS-derived registry', () => {
     expect(() => resolveProductAdapterStrict('IAG', { snapshot: malformed, registryDigest: '1'.repeat(64) })).toThrow('INVALID_REGISTRY');
     expect(() => resolveInjectedAdapterProductCode(null as unknown as ProductRegistryView, 'IAG')).toThrow('INVALID_REGISTRY');
     expect(() => resolveInjectedAdapterProductCode(malformed, 'IAG')).toThrow('INVALID_REGISTRY');
+    const emptyProduct = structuredClone(getProductRegistrySnapshot()) as ProductRegistryView;
+    emptyProduct.entries.find((entry) => entry.adapterProduct === 'IAG')!.adapterProduct = '' as AdapterProductCode;
+    emptyProduct.registryDigest = digestWithEmptyAdapterProduct(emptyProduct.entries);
+    expect(() => resolveProductAdapterStrict('IAG', { snapshot: emptyProduct })).toThrow('INVALID_REGISTRY');
+    expect(() => resolveInjectedAdapterProductCode(emptyProduct, 'IAG')).toThrow('INVALID_REGISTRY');
   });
 
   it('canonicalizes and deduplicates product, alias, mapping, and accepted-code fields', () => {
@@ -292,6 +318,32 @@ describe('PR-001A1 ADAPTERS-derived registry', () => {
     expect((canonicalValue.framework as Record<string, unknown>).version).toMatch(/^[a-f0-9]{64}$/);
     expect(canonicalValue.buildId).not.toBe(canonicalValue.assetManifestId);
     expect(canonicalizeFingerprintDescriptors(reordered)).toBe(canonical);
+    const hashDashboard = canonicalizeFingerprintDescriptors({
+      routeSignature: ['https://host-a/index.html#/dashboard?token=alpha&customer=acme#secondary'],
+    });
+    const hashDashboardOtherOrigin = canonicalizeFingerprintDescriptors({
+      routeSignature: ['https://host-b/index.html#/dashboard?token=beta&customer=other#different'],
+    });
+    const hashSystem = canonicalizeFingerprintDescriptors({
+      routeSignature: ['https://host-a/index.html#/system?token=alpha&customer=acme#secondary'],
+    });
+    expect(hashDashboardOtherOrigin).toBe(hashDashboard);
+    expect(hashSystem).not.toBe(hashDashboard);
+    for (const route of ['#/dashboard', '/#/dashboard', '#!/dashboard', 'index.html#/dashboard']) {
+      expect(canonicalizeFingerprintDescriptors({ routeSignature: [route] })).toBe(hashDashboard);
+    }
+    for (const secret of ['host-a', 'host-b', 'alpha', 'beta', 'acme', 'other', 'secondary', 'different']) {
+      expect(hashDashboard).not.toContain(secret);
+    }
+    expect(canonicalizeFingerprintDescriptors({ routeSignature: ['/customers/:customerId'] }))
+      .toBe(canonicalizeFingerprintDescriptors({ routeSignature: ['/customers/{customerId}'] }));
+    for (const route of [
+      '/customers/acme', '/token/alpha', '/users/admin', '/devices/SERIAL123',
+      '/reports/123', '/reports/550e8400-e29b-41d4-a716-446655440000',
+      '/reports/abcdefabcdefabcdef', '/reports/192.168.1.1', '/reports/admin@example.com',
+    ]) {
+      expect(() => canonicalizeFingerprintDescriptors({ routeSignature: [route] })).toThrow('INVALID_FIRMWARE_TRUTH');
+    }
     const nestedFrameworkVersion = canonicalizeFingerprintDescriptors({
       buildId: 'build-7',
       framework: { name: 'vue', version: '3.5.0' },

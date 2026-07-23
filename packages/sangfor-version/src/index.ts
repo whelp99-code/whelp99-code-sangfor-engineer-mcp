@@ -342,6 +342,11 @@ const MAX_FINGERPRINT_VALUE_LENGTH = 256;
 const MAX_FINGERPRINT_ROUTE_ITEMS = 64;
 const MAX_FINGERPRINT_ROUTE_TOTAL_LENGTH = 4096;
 const MAX_FINGERPRINT_ROUTE_INPUT_LENGTH = 4096;
+const SENSITIVE_ROUTE_COLLECTIONS = new Set([
+  'account', 'accounts', 'apikey', 'api-key', 'client', 'clients', 'customer', 'customers',
+  'device', 'devices', 'key', 'keys', 'license', 'licenses', 'secret', 'secrets', 'serial',
+  'serials', 'session', 'sessions', 'tenant', 'tenants', 'token', 'tokens', 'user', 'users',
+]);
 
 function compareCodePoints(left: string, right: string): number {
   const leftPoints = [...left];
@@ -398,6 +403,47 @@ function routeInputString(value: unknown, field: string): string {
   return normalized;
 }
 
+function hashRouterPath(value: string): string | null {
+  let hashPath = value.startsWith('#') ? value.slice(1) : value;
+  if (hashPath.startsWith('!')) hashPath = hashPath.slice(1);
+  if (!hashPath.startsWith('/')) return null;
+  const queryOrFragment = hashPath.search(/[?#]/u);
+  return queryOrFragment === -1 ? hashPath : hashPath.slice(0, queryOrFragment);
+}
+
+function canonicalRouteSegments(path: string, field: string): string[] {
+  if (path.startsWith('//')) invalidTruth(`${field} contains an invalid hash route path.`);
+  if (path.startsWith('/')) path = path.slice(1);
+  if (path.endsWith('/')) path = path.slice(0, -1);
+  if (path.length === 0 || [...path].length > MAX_FINGERPRINT_VALUE_LENGTH || path.includes('//')) {
+    invalidTruth(`${field} has an empty, oversized, or malformed route path.`);
+  }
+  const rawSegments = path.split('/');
+  const templateSegment = /^(?::([A-Za-z][A-Za-z\d._~-]*)|\{([A-Za-z][A-Za-z\d._~-]*)\})$/u;
+  const staticSegment = /^[A-Za-z][A-Za-z\d._~-]*$/u;
+  const dynamicSegment = [
+    /^\d+$/u,
+    /^(?:\d{1,3}\.){3}\d{1,3}$/u,
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu,
+    /^[0-9a-f]{16,}$/iu,
+    /^[^/\s@]+@[^/\s@]+\.[^/\s@]+$/u,
+  ];
+  const isTemplate = (segment: string): boolean => templateSegment.test(segment);
+  const canonicalSegments = rawSegments.map((segment) => {
+    if (isTemplate(segment)) return ':id';
+    if (!staticSegment.test(segment) || dynamicSegment.some((pattern) => pattern.test(segment))) {
+      invalidTruth(`${field} contains a raw dynamic route segment.`);
+    }
+    return segment;
+  });
+  for (let index = 0; index < rawSegments.length - 1; index += 1) {
+    if (SENSITIVE_ROUTE_COLLECTIONS.has(rawSegments[index]!.toLowerCase()) && !isTemplate(rawSegments[index + 1]!)) {
+      invalidTruth(`${field} requires an explicit placeholder after a sensitive route segment.`);
+    }
+  }
+  return canonicalSegments;
+}
+
 function canonicalRoutePath(value: unknown, field: string): string {
   const route = routeInputString(value, field);
   let path = route;
@@ -412,26 +458,22 @@ function canonicalRoutePath(value: unknown, field: string): string {
       invalidTruth(`${field} must use http or https.`);
     }
     if (parsed.username || parsed.password) invalidTruth(`${field} must not contain URL userinfo.`);
-    path = parsed.pathname;
+    path = hashRouterPath(parsed.hash) ?? parsed.pathname;
   } else if (route.includes('://')) {
     invalidTruth(`${field} is not a valid absolute URL.`);
   } else {
-    const queryOrHash = route.search(/[?#]/u);
-    path = queryOrHash === -1 ? route : route.slice(0, queryOrHash);
+    const hashIndex = route.indexOf('#');
+    const hashPath = hashIndex === -1 ? null : hashRouterPath(route.slice(hashIndex));
+    if (hashPath !== null) {
+      path = hashPath;
+    } else {
+      const queryOrHash = route.search(/[?#]/u);
+      path = queryOrHash === -1 ? route : route.slice(0, queryOrHash);
+    }
   }
 
   path = path.normalize('NFKC').trim().replace(/\s+/gu, ' ');
-  if (path.startsWith('/')) path = path.slice(1);
-  if (path.endsWith('/')) path = path.slice(0, -1);
-  if (path.length === 0 || [...path].length > MAX_FINGERPRINT_VALUE_LENGTH || path.includes('//')) {
-    invalidTruth(`${field} has an empty, oversized, or malformed route path.`);
-  }
-  const segments = path.split('/');
-  const routeSegment = /^(?:[A-Za-z][A-Za-z\d._~-]*|:[A-Za-z][A-Za-z\d._~-]*|\{[A-Za-z][A-Za-z\d._~-]*\})$/u;
-  if (segments.some((segment) => !routeSegment.test(segment))) {
-    invalidTruth(`${field} contains a route segment outside the bounded route grammar.`);
-  }
-  return segments.join('/');
+  return canonicalRouteSegments(path, field).join('/');
 }
 
 function canonicalRouteSignature(value: unknown): string[] | null {

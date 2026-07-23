@@ -464,6 +464,7 @@ function canonicalRegistryEntry(entry: ProductRegistryEntry): ProductRegistryEnt
     throw new Error('INVALID_REGISTRY: identity fields are invalid.');
   }
   if (typeof entry.observerEligible !== 'boolean'
+    || normalizeIdentityCode(entry.adapterProduct) === ''
     || entry.aliases.some((alias) => normalizeIdentityAlias(alias) === '')
     || entry.observerOnlyAliases.some((alias) => normalizeIdentityAlias(alias) === '')
     || Object.keys(entry.specMappingByVariant).some((variant) => normalizeIdentityCode(variant) === '')) {
