@@ -1,7 +1,16 @@
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { requiresApprovalForText } from '@sangfor/approval';
 import { executeLiveConsoleAction, readLiveConsoleState } from '@sangfor/operator';
 import { ProductCode, RiskLevel, normalizeProduct, nowId } from '@sangfor/shared';
+import type {
+  AdapterProductCode,
+  ProductRegistryEntry,
+  ProductRegistryView,
+  SpecProductMapping,
+} from '@sangfor/learning-strategy';
+
+export type { AdapterProductCode, ProductRegistryEntry, ProductRegistryView, SpecProductMapping } from '@sangfor/learning-strategy';
 
 export { buildSettingGuideDocx, buildOperationsGuideDocx, buildComprehensiveSettingGuideDocx, buildComprehensiveOperationsGuideDocx, type DocxBuilderInput, type DocxBuilderResult } from './docx-builder.js';
 
@@ -226,7 +235,7 @@ const NDR_API_ENDPOINTS = [
 
 const DEFAULT_EVIDENCE_NEEDS = ['current setting screenshot', 'audit/checklist row reference', 'before/after comparison candidate'];
 
-const ADAPTERS: Record<AutomationProductCode, ProductAdapter> = {
+const LEGACY_ADAPTERS: Record<AutomationProductCode, ProductAdapter> = {
   HCI_SCP: {
     product: 'HCI_SCP',
     aliases: ['hci_scp', 'hci/scp', 'scp', 'hci', 'acloud', 'sangfor cloud platform'],
@@ -324,6 +333,307 @@ const ADAPTERS: Record<AutomationProductCode, ProductAdapter> = {
   }
 };
 
+export type ObserverAdapterProductCode = AutomationProductCode | 'FORTIOS' | 'IOSXE';
+
+export interface AdapterIdentity<C extends ObserverAdapterProductCode = ObserverAdapterProductCode> {
+  adapterProduct: C;
+  vendor: 'SANGFOR' | 'FORTINET' | 'CISCO';
+  aliases: string[];
+  observerOnlyAliases: string[];
+  observerEligible: boolean;
+  defaultSpecMapping: SpecProductMapping | null;
+  specMappingByVariant: Record<string, SpecProductMapping>;
+}
+
+export interface AdapterRegistryEntry<C extends ObserverAdapterProductCode = ObserverAdapterProductCode> {
+  identity: AdapterIdentity<C>;
+  legacyAdapter: C extends AutomationProductCode ? ProductAdapter : null;
+}
+
+export type AdapterRegistry = Record<ObserverAdapterProductCode, AdapterRegistryEntry>;
+
+function specMapping(lookupCode: string, acceptedReturnedCodes: string[]): SpecProductMapping {
+  return { lookupCode, acceptedReturnedCodes: acceptedReturnedCodes as [string, ...string[]] };
+}
+
+function identity<C extends ObserverAdapterProductCode>(
+  adapterProduct: C,
+  vendor: AdapterIdentity<C>['vendor'],
+  aliases: string[],
+  observerOnlyAliases: string[],
+  defaultSpecMapping: SpecProductMapping | null,
+  specMappingByVariant: Record<string, SpecProductMapping> = {},
+): AdapterIdentity<C> {
+  return {
+    adapterProduct,
+    vendor,
+    aliases,
+    observerOnlyAliases,
+    observerEligible: true,
+    defaultSpecMapping,
+    specMappingByVariant,
+  };
+}
+
+/**
+ * The only product identity source. Legacy APIs below intentionally consume
+ * LEGACY_ADAPTERS, so adding observer-only identities cannot change them.
+ */
+export const ADAPTERS: AdapterRegistry = Object.freeze({
+  HCI_SCP: {
+    identity: identity('HCI_SCP', 'SANGFOR', [...LEGACY_ADAPTERS.HCI_SCP.aliases], [], specMapping('HCI_SCP', ['HCI_SCP', 'HCI'])),
+    legacyAdapter: LEGACY_ADAPTERS.HCI_SCP,
+  },
+  IAG: {
+    identity: identity('IAG', 'SANGFOR', [...LEGACY_ADAPTERS.IAG.aliases], [], specMapping('IAG', ['IAG'])),
+    legacyAdapter: LEGACY_ADAPTERS.IAG,
+  },
+  ENDPOINT_SECURE: {
+    identity: identity('ENDPOINT_SECURE', 'SANGFOR', [...LEGACY_ADAPTERS.ENDPOINT_SECURE.aliases, 'A-Sec'], ['A-Sec'], specMapping('ENDPOINT_SECURE', ['ENDPOINT_SECURE'])),
+    legacyAdapter: LEGACY_ADAPTERS.ENDPOINT_SECURE,
+  },
+  NDR: {
+    identity: identity('NDR', 'SANGFOR', [...LEGACY_ADAPTERS.NDR.aliases, 'CC', 'Athena XDR'], ['CC', 'Athena XDR'], null, {
+      CYBER_COMMAND: specMapping('CYBER_COMMAND', ['CYBER_COMMAND']),
+      ATHENA_XDR: specMapping('XDR', ['XDR']),
+    }),
+    legacyAdapter: LEGACY_ADAPTERS.NDR,
+  },
+  FORTIOS: {
+    identity: identity('FORTIOS', 'FORTINET', ['FortiOS', 'FortiGate'], ['FortiOS', 'FortiGate'], specMapping('FORTIOS', ['FORTIOS'])),
+    legacyAdapter: null,
+  },
+  IOSXE: {
+    identity: identity('IOSXE', 'CISCO', ['IOS XE', 'Cisco IOSXE'], ['IOS XE', 'Cisco IOSXE'], specMapping('CISCO_IOSXE', ['CISCO_IOSXE'])),
+    legacyAdapter: null,
+  },
+} as AdapterRegistry);
+
+function normalizeIdentityAlias(value: string): string {
+  return value.trim().toLowerCase().replace(/[\s-]+/g, '_');
+}
+
+function normalizeIdentityCode(value: string): string {
+  return value.trim().toUpperCase().replace(/[\s-]+/g, '_');
+}
+
+function stableRegistryJson(value: unknown): string {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map((item) => stableRegistryJson(item)).join(',')}]`;
+  const record = value as Record<string, unknown>;
+  return `{${Object.keys(record).sort().map((key) => `${JSON.stringify(key)}:${stableRegistryJson(record[key])}`).join(',')}}`;
+}
+
+function canonicalSpecMapping(mapping: SpecProductMapping | null): SpecProductMapping | null {
+  if (mapping === null) return null;
+  if (!mapping || typeof mapping.lookupCode !== 'string' || !Array.isArray(mapping.acceptedReturnedCodes)
+    || mapping.lookupCode.trim() === '' || mapping.acceptedReturnedCodes.some((code) => typeof code !== 'string' || code.trim() === '')) {
+    throw new Error('INVALID_REGISTRY: Spec mapping has invalid fields.');
+  }
+  const accepted = [...new Set(mapping.acceptedReturnedCodes.map((code) => normalizeIdentityCode(code)))].sort();
+  if (accepted.length === 0 || normalizeIdentityCode(mapping.lookupCode) === '') {
+    throw new Error('INVALID_REGISTRY: Spec mapping must have a lookup code and accepted return code.');
+  }
+  return {
+    lookupCode: normalizeIdentityCode(mapping.lookupCode),
+    acceptedReturnedCodes: accepted as [string, ...string[]],
+  };
+}
+
+function canonicalRegistryEntry(entry: ProductRegistryEntry): ProductRegistryEntry {
+  if (!entry || typeof entry.adapterProduct !== 'string' || !['SANGFOR', 'FORTINET', 'CISCO'].includes(entry.vendor)
+    || !Array.isArray(entry.aliases) || !Array.isArray(entry.observerOnlyAliases)
+    || entry.aliases.some((alias) => typeof alias !== 'string')
+    || entry.observerOnlyAliases.some((alias) => typeof alias !== 'string')
+    || !entry.specMappingByVariant || typeof entry.specMappingByVariant !== 'object'
+    || Array.isArray(entry.specMappingByVariant)
+    || Object.values(entry.specMappingByVariant).some((mapping) => !mapping || typeof mapping !== 'object')) {
+    throw new Error('INVALID_REGISTRY: identity fields are invalid.');
+  }
+  if (typeof entry.observerEligible !== 'boolean'
+    || entry.aliases.some((alias) => normalizeIdentityAlias(alias) === '')
+    || entry.observerOnlyAliases.some((alias) => normalizeIdentityAlias(alias) === '')
+    || Object.keys(entry.specMappingByVariant).some((variant) => normalizeIdentityCode(variant) === '')) {
+    throw new Error('INVALID_REGISTRY: identity fields are invalid.');
+  }
+  const aliases = [...new Set(entry.aliases.map((alias) => normalizeIdentityAlias(alias)))].sort();
+  const observerOnlyAliases = [...new Set(entry.observerOnlyAliases.map((alias) => normalizeIdentityAlias(alias)))].sort();
+  const specMappingByVariant = Object.fromEntries(
+    Object.keys(entry.specMappingByVariant)
+      .map((rawVariant) => ({ variant: normalizeIdentityCode(rawVariant), mapping: entry.specMappingByVariant[rawVariant]! }))
+      .sort((a, b) => a.variant.localeCompare(b.variant))
+      .map(({ variant, mapping }) => [variant, canonicalSpecMapping(mapping)])
+  ) as Record<string, SpecProductMapping>;
+  return {
+    adapterProduct: normalizeIdentityCode(entry.adapterProduct) as AdapterProductCode,
+    vendor: entry.vendor,
+    aliases,
+    observerOnlyAliases,
+    observerEligible: entry.observerEligible,
+    defaultSpecMapping: canonicalSpecMapping(entry.defaultSpecMapping),
+    specMappingByVariant,
+  };
+}
+
+function productRegistryDigest(entries: readonly ProductRegistryEntry[]): string {
+  const canonicalEntries = entries
+    .map(canonicalRegistryEntry)
+    .sort((a, b) => a.adapterProduct.localeCompare(b.adapterProduct))
+    .map((entry) => ({
+      adapterProduct: entry.adapterProduct,
+      vendor: entry.vendor,
+      aliases: entry.aliases,
+      observerOnlyAliases: entry.observerOnlyAliases,
+      observerEligible: entry.observerEligible,
+      defaultSpecMapping: entry.defaultSpecMapping,
+      specMappingByVariant: entry.specMappingByVariant,
+    }));
+  return createHash('sha256').update(stableRegistryJson({ schemaVersion: 1, entries: canonicalEntries })).digest('hex');
+}
+
+function deepFreeze<T>(value: T, seen = new WeakSet<object>()): T {
+  if (!value || typeof value !== 'object' || seen.has(value as object)) return value;
+  seen.add(value as object);
+  for (const child of Object.values(value as Record<string, unknown>)) deepFreeze(child, seen);
+  return Object.freeze(value);
+}
+
+function cloneSpecMapping(mapping: SpecProductMapping | null): SpecProductMapping | null {
+  return mapping === null ? null : {
+    lookupCode: mapping.lookupCode,
+    acceptedReturnedCodes: [...mapping.acceptedReturnedCodes] as [string, ...string[]],
+  };
+}
+
+function assertLegacyIdentityInvariant(entry: AdapterRegistryEntry): void {
+  const identityAliases = new Set(entry.identity.aliases.map(normalizeIdentityAlias));
+  const legacyAliases = new Set(entry.legacyAdapter?.aliases.map(normalizeIdentityAlias) ?? []);
+  if ([...legacyAliases].some((alias) => !identityAliases.has(alias))) {
+    throw new Error(`INVALID_REGISTRY: ${entry.identity.adapterProduct} legacy alias is absent from identity aliases.`);
+  }
+  const expectedObserverOnly = [...identityAliases].filter((alias) => !legacyAliases.has(alias)).sort();
+  const actualObserverOnly = [...new Set(entry.identity.observerOnlyAliases.map(normalizeIdentityAlias))].sort();
+  if (JSON.stringify(expectedObserverOnly) !== JSON.stringify(actualObserverOnly)) {
+    throw new Error(`INVALID_REGISTRY: ${entry.identity.adapterProduct} observerOnlyAliases is not the exact legacy difference.`);
+  }
+}
+
+export function getProductRegistrySnapshot(): ProductRegistryView {
+  const entries = (Object.keys(ADAPTERS) as ObserverAdapterProductCode[]).map((adapterProduct) => {
+    const entry = ADAPTERS[adapterProduct];
+    assertLegacyIdentityInvariant(entry);
+    return canonicalRegistryEntry({
+      adapterProduct: entry.identity.adapterProduct as AdapterProductCode,
+      vendor: entry.identity.vendor,
+      aliases: entry.identity.aliases,
+      observerOnlyAliases: entry.identity.observerOnlyAliases,
+      observerEligible: entry.identity.observerEligible,
+      defaultSpecMapping: entry.identity.defaultSpecMapping,
+      specMappingByVariant: entry.identity.specMappingByVariant,
+    });
+  });
+  const view = {
+    schemaVersion: 1 as const,
+    registryDigest: productRegistryDigest(entries),
+    entries,
+  } satisfies ProductRegistryView;
+  return deepFreeze(view);
+}
+
+export interface StrictProductResolveRequest {
+  product?: string;
+  input?: string;
+  adapterProduct?: string;
+  productVariant?: string | null;
+  registryDigest?: string;
+  registry?: ProductRegistryView;
+  snapshot?: ProductRegistryView;
+}
+
+export interface StrictProductResolveOptions {
+  snapshot?: ProductRegistryView;
+  registryDigest?: string;
+  productVariant?: string | null;
+}
+
+function strictInput(input: string | StrictProductResolveRequest): StrictProductResolveRequest {
+  if (typeof input === 'string') return { product: input };
+  if (!input || typeof input !== 'object' || Array.isArray(input)) {
+    throw new Error('UNSUPPORTED_PRODUCT: strict identity request must be an object or string.');
+  }
+  return input;
+}
+
+function validateStrictSnapshot(snapshot: ProductRegistryView): void {
+  if (!snapshot || snapshot.schemaVersion !== 1 || !/^[a-f0-9]{64}$/.test(snapshot.registryDigest)
+    || !Array.isArray(snapshot.entries) || snapshot.entries.length === 0) {
+    throw new Error('INVALID_REGISTRY: snapshot shape is invalid.');
+  }
+  const products = new Set<string>();
+  for (const entry of snapshot.entries) {
+    const canonical = canonicalRegistryEntry(entry);
+    if (products.has(canonical.adapterProduct)) throw new Error('INVALID_REGISTRY: duplicate adapter product.');
+    products.add(canonical.adapterProduct);
+    if (canonical.observerOnlyAliases.some((alias) => !canonical.aliases.includes(alias))) {
+      throw new Error('INVALID_REGISTRY: observer-only alias is not in aliases.');
+    }
+  }
+  if (productRegistryDigest(snapshot.entries) !== snapshot.registryDigest) {
+    throw new Error('REGISTRY_DRIFT: snapshot digest does not match identity data.');
+  }
+}
+
+export function resolveProductAdapterStrict(
+  input: string | StrictProductResolveRequest,
+  options: StrictProductResolveOptions = {},
+): AdapterIdentity {
+  const request = strictInput(input);
+  const snapshot = request.registry ?? request.snapshot ?? options.snapshot ?? getProductRegistrySnapshot();
+  const expectedDigest = request.registryDigest ?? options.registryDigest;
+  if (expectedDigest && expectedDigest !== snapshot.registryDigest) throw new Error('REGISTRY_DRIFT: expected registry digest differs.');
+  validateStrictSnapshot(snapshot);
+  const product = request.product ?? request.input ?? request.adapterProduct;
+  if (product !== undefined && typeof product !== 'string') {
+    throw new Error('UNSUPPORTED_PRODUCT: strict identity product must be a string.');
+  }
+  const normalized = product === undefined ? '' : normalizeIdentityAlias(product);
+  const matches = snapshot.entries.filter((entry) => (
+    normalizeIdentityAlias(entry.adapterProduct) === normalized || entry.aliases.includes(normalized)
+  ));
+  if (matches.length === 0) throw new Error(`UNSUPPORTED_PRODUCT: no strict identity matches ${String(product)}.`);
+  if (matches.length > 1) throw new Error(`AMBIGUOUS_PRODUCT: multiple strict identities match ${String(product)}.`);
+  const match = matches[0]!;
+  if (!match.observerEligible) throw new Error(`UNSUPPORTED_PRODUCT: ${match.adapterProduct} is not observer eligible.`);
+  const variant = request.productVariant ?? options.productVariant;
+  if (variant !== undefined && variant !== null && typeof variant !== 'string') {
+    throw new Error('SPEC_IDENTITY_MISMATCH: product variant must be a string.');
+  }
+  if (variant !== undefined && variant !== null) {
+    const normalizedVariant = normalizeIdentityCode(variant);
+    if (!Object.prototype.hasOwnProperty.call(match.specMappingByVariant, normalizedVariant)) {
+      throw new Error(`SPEC_IDENTITY_MISMATCH: ${match.adapterProduct} has no mapping for ${normalizedVariant}.`);
+    }
+  }
+  return {
+    adapterProduct: match.adapterProduct as ObserverAdapterProductCode,
+    vendor: match.vendor,
+    aliases: [...match.aliases],
+    observerOnlyAliases: [...match.observerOnlyAliases],
+    observerEligible: match.observerEligible,
+    defaultSpecMapping: cloneSpecMapping(match.defaultSpecMapping),
+    specMappingByVariant: Object.fromEntries(Object.entries(match.specMappingByVariant).map(([key, mapping]) => [key, cloneSpecMapping(mapping)!])),
+  };
+}
+
+export function getProductAdapterRegistryEntryStrict(
+  input: string | StrictProductResolveRequest,
+  options: StrictProductResolveOptions = {},
+): AdapterRegistryEntry {
+  const identity = resolveProductAdapterStrict(input, options);
+  const entry = ADAPTERS[identity.adapterProduct];
+  return entry ?? { identity, legacyAdapter: null };
+}
+
 function capability(
   id: string,
   title: string,
@@ -341,7 +651,7 @@ export function normalizeAutomationProduct(input?: string): AutomationProductCod
   const raw = (input ?? '').trim();
   const normalized = raw.toLowerCase().replace(/[\s-]+/g, '_');
   if (!raw) return 'HCI_SCP';
-  for (const adapter of Object.values(ADAPTERS)) {
+  for (const adapter of Object.values(LEGACY_ADAPTERS)) {
     if (adapter.product.toLowerCase() === normalized) return adapter.product;
     if (adapter.aliases.some(alias => normalized === alias.toLowerCase().replace(/[\s-]+/g, '_'))) return adapter.product;
   }
@@ -353,11 +663,11 @@ export function normalizeAutomationProduct(input?: string): AutomationProductCod
 }
 
 export function getProductAdapter(product?: string): ProductAdapter {
-  return ADAPTERS[normalizeAutomationProduct(product)];
+  return LEGACY_ADAPTERS[normalizeAutomationProduct(product)];
 }
 
 export function listProductAdapters(): ProductAdapter[] {
-  return Object.values(ADAPTERS);
+  return Object.values(LEGACY_ADAPTERS);
 }
 
 export function discoverProductConsole(input: ProductAutomationInput) {
