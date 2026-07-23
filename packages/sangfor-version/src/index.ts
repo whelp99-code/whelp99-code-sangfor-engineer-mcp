@@ -337,29 +337,109 @@ export function transitionFirmwareTruthStatus(
   return parseFirmwareTruthRecord({ ...current, ...patch, id: current.id, status: nextStatus });
 }
 
-function stableFingerprintJson(value: unknown): string {
-  if (value === null || typeof value !== 'object') return JSON.stringify(value);
-  if (Array.isArray(value)) {
-    const values = [...new Set(value.map((item) => stableFingerprintJson(item)))].sort();
-    return `[${values.join(',')}]`;
+const MAX_FINGERPRINT_VALUE_LENGTH = 256;
+const MAX_FINGERPRINT_ROUTE_ITEMS = 64;
+const MAX_FINGERPRINT_ROUTE_TOTAL_LENGTH = 4096;
+
+function compareCodePoints(left: string, right: string): number {
+  const leftPoints = [...left];
+  const rightPoints = [...right];
+  const length = Math.max(leftPoints.length, rightPoints.length);
+  for (let index = 0; index < length; index += 1) {
+    const leftCode = leftPoints[index]?.codePointAt(0) ?? -1;
+    const rightCode = rightPoints[index]?.codePointAt(0) ?? -1;
+    if (leftCode < rightCode) return -1;
+    if (leftCode > rightCode) return 1;
   }
-  const record = value as Record<string, unknown>;
-  return `{${Object.keys(record).sort().map((key) => `${JSON.stringify(key)}:${stableFingerprintJson(record[key])}`).join(',')}}`;
+  return 0;
 }
 
-/** Retain only stable, non-sensitive fingerprint descriptors before hashing. */
+function stableFingerprintJson(value: unknown): string {
+  if (value === null || value === undefined) return 'null';
+  if (typeof value !== 'object') return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map((item) => stableFingerprintJson(item)).join(',')}]`;
+  const record = value as Record<string, unknown>;
+  return `{${Object.keys(record).sort(compareCodePoints).map((key) => `${JSON.stringify(key)}:${stableFingerprintJson(record[key])}`).join(',')}}`;
+}
+
+function boundedFingerprintString(value: unknown, field: string): string | null {
+  if (value === undefined || value === null) return null;
+  if (typeof value !== 'string') invalidTruth(`${field} must be a bounded string or null.`);
+  const normalized = value.normalize('NFKC').trim().replace(/\s+/gu, ' ');
+  if (normalized.length === 0 || [...normalized].length > MAX_FINGERPRINT_VALUE_LENGTH) {
+    invalidTruth(`${field} is empty or exceeds the fingerprint size limit.`);
+  }
+  return normalized;
+}
+
+function fingerprintDigest(domain: string, value: string): string {
+  return createHash('sha256').update(`${domain}\0${value}`, 'utf8').digest('hex');
+}
+
+function canonicalFramework(value: unknown): { name: string | null; version: string | null } | null {
+  if (value === undefined || value === null) return null;
+  if (typeof value !== 'object' || Array.isArray(value)) invalidTruth('framework must be an object or null.');
+  const framework = value as Record<string, unknown>;
+  const name = boundedFingerprintString(framework.name, 'framework.name');
+  const version = boundedFingerprintString(framework.version, 'framework.version');
+  if (name === null && version === null) invalidTruth('framework has no usable name or version.');
+  return { name, version };
+}
+
+function canonicalRouteSignature(value: unknown): string[] | null {
+  if (value === undefined || value === null) return null;
+  if (!Array.isArray(value)) invalidTruth('routeSignature must be an array of bounded strings or null.');
+  if (value.length > MAX_FINGERPRINT_ROUTE_ITEMS) invalidTruth('routeSignature exceeds the item limit.');
+  let totalLength = 0;
+  const routes = value.map((route, index) => {
+    const normalized = boundedFingerprintString(route, `routeSignature[${index}]`);
+    if (normalized === null) invalidTruth(`routeSignature[${index}] must be a string.`);
+    totalLength += [...normalized].length;
+    if (totalLength > MAX_FINGERPRINT_ROUTE_TOTAL_LENGTH) invalidTruth('routeSignature exceeds the total size limit.');
+    return normalized;
+  });
+  const uniqueRoutes = [...new Set(routes)];
+  return uniqueRoutes.length === 0 ? null : uniqueRoutes.sort(compareCodePoints);
+}
+
+/** Retain only bounded allowlisted descriptors and represent opaque values by domain-separated digests. */
 export function canonicalizeFingerprintDescriptors(input: unknown): string {
-  const source = input && typeof input === 'object' && !Array.isArray(input)
-    ? input as Record<string, unknown>
-    : {};
+  if (!input || typeof input !== 'object' || Array.isArray(input)) {
+    invalidTruth('fingerprint descriptors must be a non-null object.');
+  }
+  const source = input as Record<string, unknown>;
+  const apiSchemaSignature = boundedFingerprintString(source.apiSchemaSignature, 'apiSchemaSignature');
+  const assetManifestId = boundedFingerprintString(source.assetManifestId, 'assetManifestId');
+  const buildId = boundedFingerprintString(source.buildId, 'buildId');
+  const rawBuildId = boundedFingerprintString(source.rawBuildId, 'rawBuildId');
+  if (buildId !== null && rawBuildId !== null && buildId !== rawBuildId) {
+    invalidTruth('buildId and rawBuildId disagree.');
+  }
+  const framework = canonicalFramework(source.framework);
+  const frameworkVersion = boundedFingerprintString(source.frameworkVersion, 'frameworkVersion');
+  const routeSignature = canonicalRouteSignature(source.routeSignature);
+  const effectiveBuildId = buildId ?? rawBuildId;
   const descriptor = {
-    apiSchemaSignature: source.apiSchemaSignature ?? null,
-    assetManifestId: source.assetManifestId ?? null,
-    buildId: source.buildId ?? source.rawBuildId ?? null,
-    framework: source.framework ?? null,
-    frameworkVersion: source.frameworkVersion ?? null,
-    routeSignature: source.routeSignature ?? null,
+    apiSchemaSignature: apiSchemaSignature === null ? null : fingerprintDigest('apiSchemaSignature', apiSchemaSignature),
+    assetManifestId: assetManifestId === null ? null : fingerprintDigest('assetManifestId', assetManifestId),
+    buildId: effectiveBuildId === null ? null : fingerprintDigest('buildId', effectiveBuildId),
+    framework: framework === null ? null : {
+      name: framework.name === null ? null : fingerprintDigest('framework.name', framework.name),
+      version: framework.version === null ? null : fingerprintDigest('framework.version', framework.version),
+    },
+    frameworkVersion: frameworkVersion === null ? null : fingerprintDigest('frameworkVersion', frameworkVersion),
+    routeSignature: routeSignature === null ? null : fingerprintDigest('routeSignature', stableFingerprintJson(routeSignature)),
   };
+  const usableFieldCount = [
+    descriptor.apiSchemaSignature,
+    descriptor.assetManifestId,
+    descriptor.buildId,
+    descriptor.framework?.name,
+    descriptor.framework?.version,
+    descriptor.frameworkVersion,
+    descriptor.routeSignature,
+  ].filter((value) => value !== null && value !== undefined).length;
+  if (usableFieldCount === 0) invalidTruth('fingerprint descriptors contain no usable safe fields.');
   return stableFingerprintJson(descriptor);
 }
 

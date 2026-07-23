@@ -379,7 +379,7 @@ function identity<C extends ObserverAdapterProductCode>(
  * The only product identity source. Legacy APIs below intentionally consume
  * LEGACY_ADAPTERS, so adding observer-only identities cannot change them.
  */
-export const ADAPTERS: AdapterRegistry = Object.freeze({
+const ADAPTERS: AdapterRegistry = Object.freeze({
   HCI_SCP: {
     identity: identity('HCI_SCP', 'SANGFOR', [...LEGACY_ADAPTERS.HCI_SCP.aliases], [], specMapping('HCI_SCP', ['HCI_SCP', 'HCI'])),
     legacyAdapter: LEGACY_ADAPTERS.HCI_SCP,
@@ -417,11 +417,24 @@ function normalizeIdentityCode(value: string): string {
   return value.trim().toUpperCase().replace(/[\s-]+/g, '_');
 }
 
+function compareCodePoints(left: string, right: string): number {
+  const leftPoints = [...left];
+  const rightPoints = [...right];
+  const length = Math.max(leftPoints.length, rightPoints.length);
+  for (let index = 0; index < length; index += 1) {
+    const leftCode = leftPoints[index]?.codePointAt(0) ?? -1;
+    const rightCode = rightPoints[index]?.codePointAt(0) ?? -1;
+    if (leftCode < rightCode) return -1;
+    if (leftCode > rightCode) return 1;
+  }
+  return 0;
+}
+
 function stableRegistryJson(value: unknown): string {
   if (value === null || typeof value !== 'object') return JSON.stringify(value);
   if (Array.isArray(value)) return `[${value.map((item) => stableRegistryJson(item)).join(',')}]`;
   const record = value as Record<string, unknown>;
-  return `{${Object.keys(record).sort().map((key) => `${JSON.stringify(key)}:${stableRegistryJson(record[key])}`).join(',')}}`;
+  return `{${Object.keys(record).sort(compareCodePoints).map((key) => `${JSON.stringify(key)}:${stableRegistryJson(record[key])}`).join(',')}}`;
 }
 
 function canonicalSpecMapping(mapping: SpecProductMapping | null): SpecProductMapping | null {
@@ -430,7 +443,7 @@ function canonicalSpecMapping(mapping: SpecProductMapping | null): SpecProductMa
     || mapping.lookupCode.trim() === '' || mapping.acceptedReturnedCodes.some((code) => typeof code !== 'string' || code.trim() === '')) {
     throw new Error('INVALID_REGISTRY: Spec mapping has invalid fields.');
   }
-  const accepted = [...new Set(mapping.acceptedReturnedCodes.map((code) => normalizeIdentityCode(code)))].sort();
+  const accepted = [...new Set(mapping.acceptedReturnedCodes.map((code) => normalizeIdentityCode(code)))].sort(compareCodePoints);
   if (accepted.length === 0 || normalizeIdentityCode(mapping.lookupCode) === '') {
     throw new Error('INVALID_REGISTRY: Spec mapping must have a lookup code and accepted return code.');
   }
@@ -456,12 +469,16 @@ function canonicalRegistryEntry(entry: ProductRegistryEntry): ProductRegistryEnt
     || Object.keys(entry.specMappingByVariant).some((variant) => normalizeIdentityCode(variant) === '')) {
     throw new Error('INVALID_REGISTRY: identity fields are invalid.');
   }
-  const aliases = [...new Set(entry.aliases.map((alias) => normalizeIdentityAlias(alias)))].sort();
-  const observerOnlyAliases = [...new Set(entry.observerOnlyAliases.map((alias) => normalizeIdentityAlias(alias)))].sort();
+  const aliases = [...new Set(entry.aliases.map((alias) => normalizeIdentityAlias(alias)))].sort(compareCodePoints);
+  const observerOnlyAliases = [...new Set(entry.observerOnlyAliases.map((alias) => normalizeIdentityAlias(alias)))].sort(compareCodePoints);
+  const variantEntries = Object.keys(entry.specMappingByVariant)
+    .map((rawVariant) => ({ variant: normalizeIdentityCode(rawVariant), mapping: entry.specMappingByVariant[rawVariant]! }));
+  if (new Set(variantEntries.map(({ variant }) => variant)).size !== variantEntries.length) {
+    throw new Error('INVALID_REGISTRY: variant keys collide after canonical normalization.');
+  }
   const specMappingByVariant = Object.fromEntries(
-    Object.keys(entry.specMappingByVariant)
-      .map((rawVariant) => ({ variant: normalizeIdentityCode(rawVariant), mapping: entry.specMappingByVariant[rawVariant]! }))
-      .sort((a, b) => a.variant.localeCompare(b.variant))
+    variantEntries
+      .sort((a, b) => compareCodePoints(a.variant, b.variant))
       .map(({ variant, mapping }) => [variant, canonicalSpecMapping(mapping)])
   ) as Record<string, SpecProductMapping>;
   return {
@@ -478,7 +495,7 @@ function canonicalRegistryEntry(entry: ProductRegistryEntry): ProductRegistryEnt
 function productRegistryDigest(entries: readonly ProductRegistryEntry[]): string {
   const canonicalEntries = entries
     .map(canonicalRegistryEntry)
-    .sort((a, b) => a.adapterProduct.localeCompare(b.adapterProduct))
+    .sort((a, b) => compareCodePoints(a.adapterProduct, b.adapterProduct))
     .map((entry) => ({
       adapterProduct: entry.adapterProduct,
       vendor: entry.vendor,
@@ -511,8 +528,8 @@ function assertLegacyIdentityInvariant(entry: AdapterRegistryEntry): void {
   if ([...legacyAliases].some((alias) => !identityAliases.has(alias))) {
     throw new Error(`INVALID_REGISTRY: ${entry.identity.adapterProduct} legacy alias is absent from identity aliases.`);
   }
-  const expectedObserverOnly = [...identityAliases].filter((alias) => !legacyAliases.has(alias)).sort();
-  const actualObserverOnly = [...new Set(entry.identity.observerOnlyAliases.map(normalizeIdentityAlias))].sort();
+  const expectedObserverOnly = [...identityAliases].filter((alias) => !legacyAliases.has(alias)).sort(compareCodePoints);
+  const actualObserverOnly = [...new Set(entry.identity.observerOnlyAliases.map(normalizeIdentityAlias))].sort(compareCodePoints);
   if (JSON.stringify(expectedObserverOnly) !== JSON.stringify(actualObserverOnly)) {
     throw new Error(`INVALID_REGISTRY: ${entry.identity.adapterProduct} observerOnlyAliases is not the exact legacy difference.`);
   }
@@ -565,7 +582,8 @@ function strictInput(input: string | StrictProductResolveRequest): StrictProduct
 }
 
 function validateStrictSnapshot(snapshot: ProductRegistryView): void {
-  if (!snapshot || snapshot.schemaVersion !== 1 || !/^[a-f0-9]{64}$/.test(snapshot.registryDigest)
+  if (!snapshot || typeof snapshot !== 'object' || Array.isArray(snapshot) || snapshot.schemaVersion !== 1
+    || typeof snapshot.registryDigest !== 'string' || !/^[a-f0-9]{64}$/.test(snapshot.registryDigest)
     || !Array.isArray(snapshot.entries) || snapshot.entries.length === 0) {
     throw new Error('INVALID_REGISTRY: snapshot shape is invalid.');
   }
@@ -588,10 +606,15 @@ export function resolveProductAdapterStrict(
   options: StrictProductResolveOptions = {},
 ): AdapterIdentity {
   const request = strictInput(input);
+  if (!options || typeof options !== 'object' || Array.isArray(options)) {
+    throw new Error('INVALID_REGISTRY: strict resolver options must be an object.');
+  }
   const snapshot = request.registry ?? request.snapshot ?? options.snapshot ?? getProductRegistrySnapshot();
-  const expectedDigest = request.registryDigest ?? options.registryDigest;
-  if (expectedDigest && expectedDigest !== snapshot.registryDigest) throw new Error('REGISTRY_DRIFT: expected registry digest differs.');
   validateStrictSnapshot(snapshot);
+  const expectedDigest = request.registryDigest ?? options.registryDigest;
+  if (expectedDigest !== undefined && (typeof expectedDigest !== 'string' || expectedDigest !== snapshot.registryDigest)) {
+    throw new Error('REGISTRY_DRIFT: expected registry digest differs.');
+  }
   const product = request.product ?? request.input ?? request.adapterProduct;
   if (product !== undefined && typeof product !== 'string') {
     throw new Error('UNSUPPORTED_PRODUCT: strict identity product must be a string.');
@@ -623,15 +646,6 @@ export function resolveProductAdapterStrict(
     defaultSpecMapping: cloneSpecMapping(match.defaultSpecMapping),
     specMappingByVariant: Object.fromEntries(Object.entries(match.specMappingByVariant).map(([key, mapping]) => [key, cloneSpecMapping(mapping)!])),
   };
-}
-
-export function getProductAdapterRegistryEntryStrict(
-  input: string | StrictProductResolveRequest,
-  options: StrictProductResolveOptions = {},
-): AdapterRegistryEntry {
-  const identity = resolveProductAdapterStrict(input, options);
-  const entry = ADAPTERS[identity.adapterProduct];
-  return entry ?? { identity, legacyAdapter: null };
 }
 
 function capability(

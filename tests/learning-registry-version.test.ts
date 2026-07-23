@@ -17,6 +17,7 @@ import {
   resolveProductAdapterStrict,
   type ProductRegistryView,
 } from '../packages/sangfor-product-adapters/src/index.js';
+import * as productAdapterRuntime from '../packages/sangfor-product-adapters/src/index.js';
 import {
   canonicalizeFingerprintDescriptors,
   fingerprintFromDescriptors,
@@ -67,11 +68,15 @@ describe('PR-001A1 ADAPTERS-derived registry', () => {
     expect(Object.isFrozen(first)).toBe(true);
     expect(Object.isFrozen(first.entries)).toBe(true);
     expect(Object.isFrozen(first.entries[0]?.aliases)).toBe(true);
+    expect(productAdapterRuntime).not.toHaveProperty('ADAPTERS');
+    expect(productAdapterRuntime).not.toHaveProperty('getProductAdapterRegistryEntryStrict');
     const copy = structuredClone(first) as ProductRegistryView;
     copy.entries[0]!.aliases.push('mutation');
     expect(first.registryDigest).toBe(second.registryDigest);
+    expect(getProductRegistrySnapshot().registryDigest).toBe(first.registryDigest);
     expect(first.entries[0]!.aliases).not.toContain('mutation');
     expect(() => first.entries[0]!.aliases.push('blocked')).toThrow();
+    expect(Object.isFrozen(listProductAdapters()[0])).toBe(false);
   });
 
   it('keeps legacy aliases as a subset and observer-only aliases as the exact difference', () => {
@@ -108,6 +113,10 @@ describe('PR-001A1 ADAPTERS-derived registry', () => {
     const drifted = structuredClone(getProductRegistrySnapshot()) as ProductRegistryView;
     drifted.registryDigest = '0'.repeat(64);
     expect(() => resolveProductAdapterStrict('IAG', { snapshot: drifted })).toThrow('REGISTRY_DRIFT');
+    const malformed = { schemaVersion: 1, registryDigest: '0'.repeat(64), entries: null } as unknown as ProductRegistryView;
+    expect(() => resolveProductAdapterStrict('IAG', { snapshot: malformed, registryDigest: '1'.repeat(64) })).toThrow('INVALID_REGISTRY');
+    expect(() => resolveInjectedAdapterProductCode(null as unknown as ProductRegistryView, 'IAG')).toThrow('INVALID_REGISTRY');
+    expect(() => resolveInjectedAdapterProductCode(malformed, 'IAG')).toThrow('INVALID_REGISTRY');
   });
 
   it('canonicalizes and deduplicates product, alias, mapping, and accepted-code fields', () => {
@@ -134,6 +143,20 @@ describe('PR-001A1 ADAPTERS-derived registry', () => {
     expect(computeProductRegistryDigest([{ ...base, observerEligible: false }])).not.toBe(computeProductRegistryDigest([base]));
     expect(computeProductRegistryDigest([{ ...base, defaultSpecMapping: null }])).not.toBe(computeProductRegistryDigest([base]));
     expect(computeProductRegistryDigest([{ ...base, specMappingByVariant: {} }])).not.toBe(computeProductRegistryDigest([base]));
+    expect(() => computeProductRegistryDigest([{
+      ...base,
+      specMappingByVariant: {
+        'foo-bar': base.specMappingByVariant['variant one']!,
+        'FOO BAR': base.specMappingByVariant['variant one']!,
+      },
+    }])).toThrow('INVALID_REGISTRY');
+    const productCollision = structuredClone(getProductRegistrySnapshot()) as ProductRegistryView;
+    const iag = productCollision.entries.find((entry) => entry.adapterProduct === 'IAG')!;
+    iag.specMappingByVariant = {
+      'foo-bar': { lookupCode: 'IAG', acceptedReturnedCodes: ['IAG'] },
+      'FOO BAR': { lookupCode: 'IAG', acceptedReturnedCodes: ['IAG'] },
+    };
+    expect(() => resolveProductAdapterStrict('IAG', { snapshot: productCollision })).toThrow('INVALID_REGISTRY');
   });
 
   it('keeps package edges explicit and prevents learning/version from importing product adapters', () => {
@@ -212,14 +235,63 @@ describe('PR-001A1 ADAPTERS-derived registry', () => {
       routeSignature: ['dashboard', 'system'],
       apiSchemaSignature: 'api-schema',
       hostname: '10.0.0.1',
+      origin: 'https://device.example.test',
+      serial: 'SERIAL-123',
+      license: 'LICENSE-123',
+      customer: 'customer-123',
+      user: 'admin',
       token: 'must-not-be-included',
       observedAt: '2026-07-23T00:00:00.000Z',
     };
+    const reordered = {
+      routeSignature: [' system ', 'dashboard', 'dashboard'],
+      framework: { ignored: 'nested-secret', version: '3.5.0', name: 'vue', token: 'nested-token' },
+      rawBuildId: 'build-7',
+      apiSchemaSignature: 'api-schema',
+      assetManifestId: 'assets-1',
+      time: '2026-07-23T00:00:00.000Z',
+    };
     const canonical = canonicalizeFingerprintDescriptors(descriptor);
-    expect(canonical).toContain('build-7');
-    expect(canonical).not.toContain('10.0.0.1');
-    expect(canonical).not.toContain('must-not-be-included');
-    expect(fingerprintFromDescriptors(descriptor)).toMatch(/^[a-f0-9]{64}$/);
+    const canonicalValue = JSON.parse(canonical) as Record<string, unknown>;
+    expect(canonical).not.toContain('build-7');
+    expect(canonical).not.toContain('assets-1');
+    expect(canonical).not.toContain('api-schema');
+    expect(canonical).not.toContain('dashboard');
+    expect(canonical).not.toContain('system');
+    for (const secret of ['10.0.0.1', 'https://device.example.test', 'SERIAL-123', 'LICENSE-123', 'customer-123', 'admin', 'must-not-be-included']) {
+      expect(canonical).not.toContain(secret);
+    }
+    expect(canonicalValue.buildId).toMatch(/^[a-f0-9]{64}$/);
+    expect(canonicalValue.assetManifestId).toMatch(/^[a-f0-9]{64}$/);
+    expect(canonicalValue.apiSchemaSignature).toMatch(/^[a-f0-9]{64}$/);
+    expect(canonicalValue.routeSignature).toMatch(/^[a-f0-9]{64}$/);
+    expect(Object.keys(canonicalValue.framework as Record<string, unknown>)).toEqual(['name', 'version']);
+    expect((canonicalValue.framework as Record<string, unknown>).name).toMatch(/^[a-f0-9]{64}$/);
+    expect((canonicalValue.framework as Record<string, unknown>).version).toMatch(/^[a-f0-9]{64}$/);
+    expect(canonicalValue.buildId).not.toBe(canonicalValue.assetManifestId);
+    expect(canonicalizeFingerprintDescriptors(reordered)).toBe(canonical);
+    const fingerprint = fingerprintFromDescriptors(descriptor);
+    expect(fingerprint).toMatch(/^[a-f0-9]{64}$/);
+    for (const secret of ['build-7', 'assets-1', 'api-schema', 'dashboard', 'system', '10.0.0.1', 'SERIAL-123', 'LICENSE-123', 'customer-123', 'admin', 'must-not-be-included']) {
+      expect(fingerprint).not.toContain(secret);
+    }
+    expect(fingerprintFromDescriptors(reordered)).toBe(fingerprint);
+    expect(() => canonicalizeFingerprintDescriptors({})).toThrow('INVALID_FIRMWARE_TRUTH');
+    expect(() => canonicalizeFingerprintDescriptors(null)).toThrow('INVALID_FIRMWARE_TRUTH');
+    expect(() => canonicalizeFingerprintDescriptors([])).toThrow('INVALID_FIRMWARE_TRUTH');
+    expect(() => canonicalizeFingerprintDescriptors({ hostname: '10.0.0.1', token: 'only-secret' })).toThrow('INVALID_FIRMWARE_TRUTH');
+    expect(() => canonicalizeFingerprintDescriptors({ buildId: 123 })).toThrow('INVALID_FIRMWARE_TRUTH');
+    expect(() => canonicalizeFingerprintDescriptors({ framework: 'vue' })).toThrow('INVALID_FIRMWARE_TRUTH');
+    expect(() => canonicalizeFingerprintDescriptors({ routeSignature: ['ok', 7] })).toThrow('INVALID_FIRMWARE_TRUTH');
+    expect(() => canonicalizeFingerprintDescriptors({ routeSignature: [] })).toThrow('INVALID_FIRMWARE_TRUTH');
+    expect(() => canonicalizeFingerprintDescriptors({ buildId: 'x'.repeat(257) })).toThrow('INVALID_FIRMWARE_TRUTH');
+    expect(() => canonicalizeFingerprintDescriptors({ routeSignature: Array.from({ length: 65 }, () => 'route') })).toThrow('INVALID_FIRMWARE_TRUTH');
+    const cyclic: Record<string, unknown> = {};
+    cyclic.self = cyclic;
+    expect(() => canonicalizeFingerprintDescriptors(cyclic)).toThrow('INVALID_FIRMWARE_TRUTH');
+    const cyclicRoutes: unknown[] = [];
+    cyclicRoutes.push(cyclicRoutes);
+    expect(() => canonicalizeFingerprintDescriptors({ routeSignature: cyclicRoutes })).toThrow('INVALID_FIRMWARE_TRUTH');
   });
 
   it('allows only forward truth-state transitions and requires confined regular evidence for verified eligibility', () => {
@@ -263,6 +335,8 @@ describe('PR-001A1 ADAPTERS-derived registry', () => {
     }
     expect(toFirmwareIdentity(verified)).toMatchObject({ adapterProduct: 'FORTIOS', buildId: 'forti-build', specVersion: '8.0.0' });
     expect(resolveVerifiedFirmwareIdentity(verified, getProductRegistrySnapshot(), { evidenceRoot: root }).adapterProduct).toBe('FORTIOS');
+    expect(() => resolveVerifiedFirmwareIdentity(null as unknown as FirmwareTruthRecord, getProductRegistrySnapshot(), { evidenceRoot: root })).toThrow('INVALID_FIRMWARE_TRUTH');
+    expect(() => resolveVerifiedFirmwareIdentity({ status: 'conflict' } as unknown as FirmwareTruthRecord, getProductRegistrySnapshot(), { evidenceRoot: root })).toThrow('INVALID_FIRMWARE_TRUTH');
   });
 });
 

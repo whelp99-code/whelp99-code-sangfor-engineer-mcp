@@ -1,5 +1,6 @@
 import {
   isFirmwareTruthEligible,
+  parseFirmwareTruthRecord,
   toFirmwareIdentity,
   type EvidenceRootOptions,
   type FirmwareTruthRecord,
@@ -47,20 +48,21 @@ export function resolveVerifiedFirmwareIdentity(
   registry: ProductRegistryView,
   options: VerifiedFirmwareIdentityOptions,
 ): ResolvedFirmwareIdentity {
-  if (record.status === 'conflict') {
+  const parsed = parseFirmwareTruthRecord(record);
+  if (parsed.status === 'conflict') {
     throw new Error('VERSION_CONFLICT: conflicted firmware truth is not eligible.');
   }
-  if (record.status !== 'verified' || !isFirmwareTruthEligible(record, options)) {
+  if (parsed.status !== 'verified' || !isFirmwareTruthEligible(parsed, options)) {
     throw new Error('VERSION_TRUTH_UNAVAILABLE: verified firmware evidence is not confined and eligible.');
   }
-  const adapterProduct: AdapterProductCode = resolveInjectedAdapterProductCode(registry, record.adapterProduct, {
+  const adapterProduct: AdapterProductCode = resolveInjectedAdapterProductCode(registry, parsed.adapterProduct, {
     expectedRegistryDigest: options.expectedRegistryDigest,
-    productVariant: record.productVariant,
+    productVariant: parsed.productVariant,
   });
-  if (normalizeRegistryCode(adapterProduct) !== normalizeRegistryCode(record.adapterProduct)) {
+  if (normalizeRegistryCode(adapterProduct) !== normalizeRegistryCode(parsed.adapterProduct)) {
     throw new Error('REGISTRY_DRIFT: firmware truth product does not match the injected registry.');
   }
-  return { ...toFirmwareIdentity(record), adapterProduct };
+  return { ...toFirmwareIdentity(parsed), adapterProduct };
 }
 
 export const resolveExactFirmwareIdentity = resolveVerifiedFirmwareIdentity;

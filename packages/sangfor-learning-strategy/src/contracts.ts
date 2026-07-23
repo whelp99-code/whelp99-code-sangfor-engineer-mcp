@@ -59,11 +59,24 @@ export function normalizeRegistryCode(value: string): string {
   return String(value).trim().toUpperCase().replace(/[\s-]+/g, '_');
 }
 
+function compareCodePoints(left: string, right: string): number {
+  const leftPoints = [...left];
+  const rightPoints = [...right];
+  const length = Math.max(leftPoints.length, rightPoints.length);
+  for (let index = 0; index < length; index += 1) {
+    const leftCode = leftPoints[index]?.codePointAt(0) ?? -1;
+    const rightCode = rightPoints[index]?.codePointAt(0) ?? -1;
+    if (leftCode < rightCode) return -1;
+    if (leftCode > rightCode) return 1;
+  }
+  return 0;
+}
+
 function stableJson(value: unknown): string {
   if (value === null || typeof value !== 'object') return JSON.stringify(value);
   if (Array.isArray(value)) return `[${value.map((item) => stableJson(item)).join(',')}]`;
   const record = value as Record<string, unknown>;
-  return `{${Object.keys(record).sort().map((key) => `${JSON.stringify(key)}:${stableJson(record[key])}`).join(',')}}`;
+  return `{${Object.keys(record).sort(compareCodePoints).map((key) => `${JSON.stringify(key)}:${stableJson(record[key])}`).join(',')}}`;
 }
 
 function normalizedMapping(mapping: SpecProductMapping | null): SpecProductMapping | null {
@@ -74,7 +87,7 @@ function normalizedMapping(mapping: SpecProductMapping | null): SpecProductMappi
   if (mapping.lookupCode.trim() === '' || mapping.acceptedReturnedCodes.some((value) => typeof value !== 'string' || value.trim() === '')) {
     throw new ProductRegistryError('INVALID_REGISTRY', 'Spec mapping contains an empty or non-string code.');
   }
-  const accepted = [...new Set(mapping.acceptedReturnedCodes.map((value) => normalizeRegistryCode(value)))].sort();
+  const accepted = [...new Set(mapping.acceptedReturnedCodes.map((value) => normalizeRegistryCode(value)))].sort(compareCodePoints);
   if (!mapping.lookupCode || accepted.length === 0) {
     throw new ProductRegistryError('INVALID_REGISTRY', 'Spec mapping must have a lookup code and accepted return code.');
   }
@@ -105,18 +118,22 @@ function normalizedEntry(entry: ProductRegistryEntry): ProductRegistryEntry {
   if (typeof entry.observerEligible !== 'boolean') {
     throw new ProductRegistryError('INVALID_REGISTRY', 'Registry identity has an invalid observer eligibility flag.');
   }
-  const aliases = [...new Set(entry.aliases.map((value) => normalizeRegistryAlias(value)).filter(Boolean))].sort();
-  const observerOnlyAliases = [...new Set(entry.observerOnlyAliases.map((value) => normalizeRegistryAlias(value)).filter(Boolean))].sort();
+  const aliases = [...new Set(entry.aliases.map((value) => normalizeRegistryAlias(value)).filter(Boolean))].sort(compareCodePoints);
+  const observerOnlyAliases = [...new Set(entry.observerOnlyAliases.map((value) => normalizeRegistryAlias(value)).filter(Boolean))].sort(compareCodePoints);
   if (Object.values(entry.specMappingByVariant).some((mapping) => !mapping || typeof mapping !== 'object')) {
     throw new ProductRegistryError('INVALID_REGISTRY', 'Variant Spec mapping must be an object.');
   }
   if (Object.keys(entry.specMappingByVariant).some((rawKey) => normalizeRegistryCode(rawKey) === '')) {
     throw new ProductRegistryError('INVALID_REGISTRY', 'Variant Spec mapping has an empty key.');
   }
+  const variantEntries = Object.keys(entry.specMappingByVariant)
+    .map((rawKey) => ({ key: normalizeRegistryCode(rawKey), mapping: entry.specMappingByVariant[rawKey]! }));
+  if (new Set(variantEntries.map(({ key }) => key)).size !== variantEntries.length) {
+    throw new ProductRegistryError('INVALID_REGISTRY', 'Variant keys collide after canonical normalization.');
+  }
   const variants = Object.fromEntries(
-    Object.keys(entry.specMappingByVariant)
-      .map((rawKey) => ({ key: normalizeRegistryCode(rawKey), mapping: entry.specMappingByVariant[rawKey]! }))
-      .sort((a, b) => a.key.localeCompare(b.key))
+    variantEntries
+      .sort((a, b) => compareCodePoints(a.key, b.key))
       .map(({ key, mapping }) => [key, normalizedMapping(mapping)])
   ) as Record<string, SpecProductMapping>;
   const adapterProduct = normalizeRegistryCode(entry.adapterProduct);
@@ -148,7 +165,7 @@ function normalizedEntry(entry: ProductRegistryEntry): ProductRegistryEntry {
 export function computeProductRegistryDigest(entries: readonly ProductRegistryEntry[]): string {
   const canonicalEntries = entries
     .map((entry) => normalizedEntry(entry))
-    .sort((a, b) => a.adapterProduct.localeCompare(b.adapterProduct))
+    .sort((a, b) => compareCodePoints(a.adapterProduct, b.adapterProduct))
     .map((entry) => ({
       adapterProduct: entry.adapterProduct,
       vendor: entry.vendor,
@@ -173,7 +190,8 @@ export function createProductRegistryView(entries: readonly ProductRegistryEntry
 }
 
 export function validateProductRegistryView(view: ProductRegistryView): ProductRegistryView {
-  if (!view || typeof view !== 'object' || view.schemaVersion !== 1 || !/^[a-f0-9]{64}$/.test(view.registryDigest)) {
+  if (!view || typeof view !== 'object' || Array.isArray(view) || view.schemaVersion !== 1
+    || typeof view.registryDigest !== 'string' || !/^[a-f0-9]{64}$/.test(view.registryDigest)) {
     throw new ProductRegistryError('INVALID_REGISTRY', 'Registry view schema or digest is invalid.');
   }
   if (!Array.isArray(view.entries) || view.entries.length === 0) {
@@ -196,11 +214,15 @@ export function resolveInjectedAdapterProductCode(
   product: string,
   options: InjectedRegistryResolveOptions = {},
 ): AdapterProductCode {
+  validateProductRegistryView(view);
+  if (!options || typeof options !== 'object' || Array.isArray(options)) {
+    throw new ProductRegistryError('INVALID_REGISTRY', 'Resolver options must be an object.');
+  }
   if (typeof product !== 'string') throw new ProductRegistryError('UNSUPPORTED_PRODUCT', 'Product identity must be a string.');
-  if (options.expectedRegistryDigest && options.expectedRegistryDigest !== view.registryDigest) {
+  if (options.expectedRegistryDigest !== undefined
+    && (typeof options.expectedRegistryDigest !== 'string' || options.expectedRegistryDigest !== view.registryDigest)) {
     throw new ProductRegistryError('REGISTRY_DRIFT', 'Injected registry digest differs from the expected digest.');
   }
-  validateProductRegistryView(view);
   const normalized = normalizeRegistryAlias(product);
   const matches = view.entries.filter((entry) => (
     normalizeRegistryAlias(entry.adapterProduct) === normalized || entry.aliases.includes(normalized)
