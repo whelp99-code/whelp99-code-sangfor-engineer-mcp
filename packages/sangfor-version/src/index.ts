@@ -7,6 +7,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { lstatSync, realpathSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { isAbsolute, join, relative, resolve, sep, win32 } from 'node:path';
+import { URL } from 'node:url';
 
 export interface VersionRequirement {
   device: string;
@@ -340,6 +341,7 @@ export function transitionFirmwareTruthStatus(
 const MAX_FINGERPRINT_VALUE_LENGTH = 256;
 const MAX_FINGERPRINT_ROUTE_ITEMS = 64;
 const MAX_FINGERPRINT_ROUTE_TOTAL_LENGTH = 4096;
+const MAX_FINGERPRINT_ROUTE_INPUT_LENGTH = 4096;
 
 function compareCodePoints(left: string, right: string): number {
   const leftPoints = [...left];
@@ -386,14 +388,59 @@ function canonicalFramework(value: unknown): { name: string | null; version: str
   return { name, version };
 }
 
+function routeInputString(value: unknown, field: string): string {
+  if (typeof value !== 'string') invalidTruth(`${field} must be a bounded route string.`);
+  const normalized = value.normalize('NFKC').trim().replace(/\s+/gu, ' ');
+  if (normalized.length === 0 || [...normalized].length > MAX_FINGERPRINT_ROUTE_INPUT_LENGTH
+    || [...normalized].some((character) => /\p{Cc}/u.test(character))) {
+    invalidTruth(`${field} is empty, contains control characters, or exceeds the route size limit.`);
+  }
+  return normalized;
+}
+
+function canonicalRoutePath(value: unknown, field: string): string {
+  const route = routeInputString(value, field);
+  let path = route;
+  if (/^[A-Za-z][A-Za-z\d+.-]*:\/\//u.test(route) || route.startsWith('//')) {
+    let parsed: URL;
+    try {
+      parsed = new URL(route.startsWith('//') ? `https:${route}` : route);
+    } catch {
+      invalidTruth(`${field} is not a valid absolute URL.`);
+    }
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      invalidTruth(`${field} must use http or https.`);
+    }
+    if (parsed.username || parsed.password) invalidTruth(`${field} must not contain URL userinfo.`);
+    path = parsed.pathname;
+  } else if (route.includes('://')) {
+    invalidTruth(`${field} is not a valid absolute URL.`);
+  } else {
+    const queryOrHash = route.search(/[?#]/u);
+    path = queryOrHash === -1 ? route : route.slice(0, queryOrHash);
+  }
+
+  path = path.normalize('NFKC').trim().replace(/\s+/gu, ' ');
+  if (path.startsWith('/')) path = path.slice(1);
+  if (path.endsWith('/')) path = path.slice(0, -1);
+  if (path.length === 0 || [...path].length > MAX_FINGERPRINT_VALUE_LENGTH || path.includes('//')) {
+    invalidTruth(`${field} has an empty, oversized, or malformed route path.`);
+  }
+  const segments = path.split('/');
+  const routeSegment = /^(?:[A-Za-z][A-Za-z\d._~-]*|:[A-Za-z][A-Za-z\d._~-]*|\{[A-Za-z][A-Za-z\d._~-]*\})$/u;
+  if (segments.some((segment) => !routeSegment.test(segment))) {
+    invalidTruth(`${field} contains a route segment outside the bounded route grammar.`);
+  }
+  return segments.join('/');
+}
+
 function canonicalRouteSignature(value: unknown): string[] | null {
   if (value === undefined || value === null) return null;
   if (!Array.isArray(value)) invalidTruth('routeSignature must be an array of bounded strings or null.');
   if (value.length > MAX_FINGERPRINT_ROUTE_ITEMS) invalidTruth('routeSignature exceeds the item limit.');
   let totalLength = 0;
   const routes = value.map((route, index) => {
-    const normalized = boundedFingerprintString(route, `routeSignature[${index}]`);
-    if (normalized === null) invalidTruth(`routeSignature[${index}] must be a string.`);
+    const normalized = canonicalRoutePath(route, `routeSignature[${index}]`);
     totalLength += [...normalized].length;
     if (totalLength > MAX_FINGERPRINT_ROUTE_TOTAL_LENGTH) invalidTruth('routeSignature exceeds the total size limit.');
     return normalized;
@@ -417,17 +464,20 @@ export function canonicalizeFingerprintDescriptors(input: unknown): string {
   }
   const framework = canonicalFramework(source.framework);
   const frameworkVersion = boundedFingerprintString(source.frameworkVersion, 'frameworkVersion');
+  if (framework !== null && framework.version !== null && frameworkVersion !== null && framework.version !== frameworkVersion) {
+    invalidTruth('framework.version and frameworkVersion disagree.');
+  }
+  const effectiveFrameworkVersion = framework?.version ?? frameworkVersion;
   const routeSignature = canonicalRouteSignature(source.routeSignature);
   const effectiveBuildId = buildId ?? rawBuildId;
   const descriptor = {
     apiSchemaSignature: apiSchemaSignature === null ? null : fingerprintDigest('apiSchemaSignature', apiSchemaSignature),
     assetManifestId: assetManifestId === null ? null : fingerprintDigest('assetManifestId', assetManifestId),
     buildId: effectiveBuildId === null ? null : fingerprintDigest('buildId', effectiveBuildId),
-    framework: framework === null ? null : {
-      name: framework.name === null ? null : fingerprintDigest('framework.name', framework.name),
-      version: framework.version === null ? null : fingerprintDigest('framework.version', framework.version),
+    framework: framework === null && effectiveFrameworkVersion === null ? null : {
+      name: framework?.name === null || framework?.name === undefined ? null : fingerprintDigest('framework.name', framework.name),
+      version: effectiveFrameworkVersion === null ? null : fingerprintDigest('framework.version', effectiveFrameworkVersion),
     },
-    frameworkVersion: frameworkVersion === null ? null : fingerprintDigest('frameworkVersion', frameworkVersion),
     routeSignature: routeSignature === null ? null : fingerprintDigest('routeSignature', stableFingerprintJson(routeSignature)),
   };
   const usableFieldCount = [
@@ -436,7 +486,6 @@ export function canonicalizeFingerprintDescriptors(input: unknown): string {
     descriptor.buildId,
     descriptor.framework?.name,
     descriptor.framework?.version,
-    descriptor.frameworkVersion,
     descriptor.routeSignature,
   ].filter((value) => value !== null && value !== undefined).length;
   if (usableFieldCount === 0) invalidTruth('fingerprint descriptors contain no usable safe fields.');

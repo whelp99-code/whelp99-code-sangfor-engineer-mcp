@@ -522,6 +522,20 @@ function cloneSpecMapping(mapping: SpecProductMapping | null): SpecProductMappin
   };
 }
 
+function cloneAdapterIdentity(identity: AdapterIdentity): AdapterIdentity {
+  return {
+    adapterProduct: identity.adapterProduct,
+    vendor: identity.vendor,
+    aliases: [...identity.aliases],
+    observerOnlyAliases: [...identity.observerOnlyAliases],
+    observerEligible: identity.observerEligible,
+    defaultSpecMapping: cloneSpecMapping(identity.defaultSpecMapping),
+    specMappingByVariant: Object.fromEntries(
+      Object.entries(identity.specMappingByVariant).map(([key, mapping]) => [key, cloneSpecMapping(mapping)!]),
+    ),
+  };
+}
+
 function assertLegacyIdentityInvariant(entry: AdapterRegistryEntry): void {
   const identityAliases = new Set(entry.identity.aliases.map(normalizeIdentityAlias));
   const legacyAliases = new Set(entry.legacyAdapter?.aliases.map(normalizeIdentityAlias) ?? []);
@@ -535,18 +549,29 @@ function assertLegacyIdentityInvariant(entry: AdapterRegistryEntry): void {
   }
 }
 
-export function getProductRegistrySnapshot(): ProductRegistryView {
-  const entries = (Object.keys(ADAPTERS) as ObserverAdapterProductCode[]).map((adapterProduct) => {
-    const entry = ADAPTERS[adapterProduct];
+/*
+ * Validate the public legacy relationship once, then retain only a defensive
+ * canonical identity seed. Snapshot construction must not read the mutable
+ * legacy singleton again.
+ */
+const ADAPTER_IDENTITY_SEED = deepFreeze(
+  Object.fromEntries(Object.entries(ADAPTERS).map(([adapterProduct, entry]) => {
     assertLegacyIdentityInvariant(entry);
+    return [adapterProduct, cloneAdapterIdentity(entry.identity)];
+  })),
+) as Readonly<Record<ObserverAdapterProductCode, AdapterIdentity>>;
+
+export function getProductRegistrySnapshot(): ProductRegistryView {
+  const entries = (Object.keys(ADAPTER_IDENTITY_SEED) as ObserverAdapterProductCode[]).map((adapterProduct) => {
+    const identity = ADAPTER_IDENTITY_SEED[adapterProduct];
     return canonicalRegistryEntry({
-      adapterProduct: entry.identity.adapterProduct as AdapterProductCode,
-      vendor: entry.identity.vendor,
-      aliases: entry.identity.aliases,
-      observerOnlyAliases: entry.identity.observerOnlyAliases,
-      observerEligible: entry.identity.observerEligible,
-      defaultSpecMapping: entry.identity.defaultSpecMapping,
-      specMappingByVariant: entry.identity.specMappingByVariant,
+      adapterProduct: identity.adapterProduct as AdapterProductCode,
+      vendor: identity.vendor,
+      aliases: identity.aliases,
+      observerOnlyAliases: identity.observerOnlyAliases,
+      observerEligible: identity.observerEligible,
+      defaultSpecMapping: identity.defaultSpecMapping,
+      specMappingByVariant: identity.specMappingByVariant,
     });
   });
   const view = {
@@ -581,15 +606,15 @@ function strictInput(input: string | StrictProductResolveRequest): StrictProduct
   return input;
 }
 
-function validateStrictSnapshot(snapshot: ProductRegistryView): void {
+function validateStrictSnapshot(snapshot: ProductRegistryView): ProductRegistryEntry[] {
   if (!snapshot || typeof snapshot !== 'object' || Array.isArray(snapshot) || snapshot.schemaVersion !== 1
     || typeof snapshot.registryDigest !== 'string' || !/^[a-f0-9]{64}$/.test(snapshot.registryDigest)
     || !Array.isArray(snapshot.entries) || snapshot.entries.length === 0) {
     throw new Error('INVALID_REGISTRY: snapshot shape is invalid.');
   }
   const products = new Set<string>();
-  for (const entry of snapshot.entries) {
-    const canonical = canonicalRegistryEntry(entry);
+  const canonicalEntries = snapshot.entries.map((entry) => canonicalRegistryEntry(entry));
+  for (const canonical of canonicalEntries) {
     if (products.has(canonical.adapterProduct)) throw new Error('INVALID_REGISTRY: duplicate adapter product.');
     products.add(canonical.adapterProduct);
     if (canonical.observerOnlyAliases.some((alias) => !canonical.aliases.includes(alias))) {
@@ -599,6 +624,7 @@ function validateStrictSnapshot(snapshot: ProductRegistryView): void {
   if (productRegistryDigest(snapshot.entries) !== snapshot.registryDigest) {
     throw new Error('REGISTRY_DRIFT: snapshot digest does not match identity data.');
   }
+  return canonicalEntries.sort((left, right) => compareCodePoints(left.adapterProduct, right.adapterProduct));
 }
 
 export function resolveProductAdapterStrict(
@@ -610,7 +636,7 @@ export function resolveProductAdapterStrict(
     throw new Error('INVALID_REGISTRY: strict resolver options must be an object.');
   }
   const snapshot = request.registry ?? request.snapshot ?? options.snapshot ?? getProductRegistrySnapshot();
-  validateStrictSnapshot(snapshot);
+  const canonicalEntries = validateStrictSnapshot(snapshot);
   const expectedDigest = request.registryDigest ?? options.registryDigest;
   if (expectedDigest !== undefined && (typeof expectedDigest !== 'string' || expectedDigest !== snapshot.registryDigest)) {
     throw new Error('REGISTRY_DRIFT: expected registry digest differs.');
@@ -620,7 +646,7 @@ export function resolveProductAdapterStrict(
     throw new Error('UNSUPPORTED_PRODUCT: strict identity product must be a string.');
   }
   const normalized = product === undefined ? '' : normalizeIdentityAlias(product);
-  const matches = snapshot.entries.filter((entry) => (
+  const matches = canonicalEntries.filter((entry) => (
     normalizeIdentityAlias(entry.adapterProduct) === normalized || entry.aliases.includes(normalized)
   ));
   if (matches.length === 0) throw new Error(`UNSUPPORTED_PRODUCT: no strict identity matches ${String(product)}.`);

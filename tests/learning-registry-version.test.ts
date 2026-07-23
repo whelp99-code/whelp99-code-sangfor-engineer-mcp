@@ -77,6 +77,18 @@ describe('PR-001A1 ADAPTERS-derived registry', () => {
     expect(first.entries[0]!.aliases).not.toContain('mutation');
     expect(() => first.entries[0]!.aliases.push('blocked')).toThrow();
     expect(Object.isFrozen(listProductAdapters()[0])).toBe(false);
+    const legacyIag = listProductAdapters().find((adapter) => adapter.product === 'IAG')!;
+    const originalLegacyAliases = [...legacyIag.aliases];
+    legacyIag.aliases.push('temporary legacy alias');
+    try {
+      expect(legacyIag.aliases).toContain('temporary legacy alias');
+      const duringLegacyMutation = getProductRegistrySnapshot();
+      expect(duringLegacyMutation).toEqual(first);
+      expect(resolveProductAdapterStrict('IAG').adapterProduct).toBe('IAG');
+    } finally {
+      legacyIag.aliases.splice(0, legacyIag.aliases.length, ...originalLegacyAliases);
+    }
+    expect(legacyIag.aliases).toEqual(originalLegacyAliases);
   });
 
   it('keeps legacy aliases as a subset and observer-only aliases as the exact difference', () => {
@@ -107,9 +119,15 @@ describe('PR-001A1 ADAPTERS-derived registry', () => {
   it('fails closed for unknown, ambiguous, and drifted registry inputs', () => {
     expect(() => resolveProductAdapterStrict('not-a-product')).toThrow('UNSUPPORTED_PRODUCT');
     const ambiguous = structuredClone(getProductRegistrySnapshot()) as ProductRegistryView;
-    ambiguous.entries[0]!.aliases.push('iag');
+    ambiguous.entries[0]!.aliases.push('IAG');
     ambiguous.registryDigest = computeProductRegistryDigest(ambiguous.entries);
     expect(() => resolveProductAdapterStrict('iag', { snapshot: ambiguous })).toThrow('AMBIGUOUS_PRODUCT');
+    expect(() => resolveInjectedAdapterProductCode(ambiguous, 'iag')).toThrow('AMBIGUOUS_PRODUCT');
+    const lowerProduct = structuredClone(getProductRegistrySnapshot()) as ProductRegistryView;
+    lowerProduct.entries.find((entry) => entry.adapterProduct === 'IAG')!.adapterProduct = 'iag' as AdapterProductCode;
+    lowerProduct.registryDigest = computeProductRegistryDigest(lowerProduct.entries);
+    expect(resolveProductAdapterStrict('iag', { snapshot: lowerProduct }).adapterProduct).toBe('IAG');
+    expect(resolveInjectedAdapterProductCode(lowerProduct, 'iag')).toBe('IAG');
     const drifted = structuredClone(getProductRegistrySnapshot()) as ProductRegistryView;
     drifted.registryDigest = '0'.repeat(64);
     expect(() => resolveProductAdapterStrict('IAG', { snapshot: drifted })).toThrow('REGISTRY_DRIFT');
@@ -157,6 +175,9 @@ describe('PR-001A1 ADAPTERS-derived registry', () => {
       'FOO BAR': { lookupCode: 'IAG', acceptedReturnedCodes: ['IAG'] },
     };
     expect(() => resolveProductAdapterStrict('IAG', { snapshot: productCollision })).toThrow('INVALID_REGISTRY');
+    expect(() => resolveInjectedAdapterProductCode(getProductRegistrySnapshot(), 'NDR', {
+      productVariant: ['CYBER_COMMAND'] as unknown as string,
+    })).toThrow('SPEC_IDENTITY_MISMATCH');
   });
 
   it('keeps package edges explicit and prevents learning/version from importing product adapters', () => {
@@ -232,7 +253,7 @@ describe('PR-001A1 ADAPTERS-derived registry', () => {
       buildId: 'build-7',
       assetManifestId: 'assets-1',
       framework: { name: 'vue', version: '3.5.0' },
-      routeSignature: ['dashboard', 'system'],
+      routeSignature: ['https://host-a/dashboard?token=alpha&customer=acme#x', 'system'],
       apiSchemaSignature: 'api-schema',
       hostname: '10.0.0.1',
       origin: 'https://device.example.test',
@@ -244,8 +265,9 @@ describe('PR-001A1 ADAPTERS-derived registry', () => {
       observedAt: '2026-07-23T00:00:00.000Z',
     };
     const reordered = {
-      routeSignature: [' system ', 'dashboard', 'dashboard'],
+      routeSignature: ['https://host-b/dashboard?token=beta&customer=other#different', ' system '],
       framework: { ignored: 'nested-secret', version: '3.5.0', name: 'vue', token: 'nested-token' },
+      frameworkVersion: '3.5.0',
       rawBuildId: 'build-7',
       apiSchemaSignature: 'api-schema',
       assetManifestId: 'assets-1',
@@ -258,7 +280,7 @@ describe('PR-001A1 ADAPTERS-derived registry', () => {
     expect(canonical).not.toContain('api-schema');
     expect(canonical).not.toContain('dashboard');
     expect(canonical).not.toContain('system');
-    for (const secret of ['10.0.0.1', 'https://device.example.test', 'SERIAL-123', 'LICENSE-123', 'customer-123', 'admin', 'must-not-be-included']) {
+    for (const secret of ['10.0.0.1', 'https://device.example.test', 'host-a', 'host-b', 'alpha', 'beta', 'acme', 'other', 'SERIAL-123', 'LICENSE-123', 'customer-123', 'admin', 'must-not-be-included']) {
       expect(canonical).not.toContain(secret);
     }
     expect(canonicalValue.buildId).toMatch(/^[a-f0-9]{64}$/);
@@ -270,9 +292,26 @@ describe('PR-001A1 ADAPTERS-derived registry', () => {
     expect((canonicalValue.framework as Record<string, unknown>).version).toMatch(/^[a-f0-9]{64}$/);
     expect(canonicalValue.buildId).not.toBe(canonicalValue.assetManifestId);
     expect(canonicalizeFingerprintDescriptors(reordered)).toBe(canonical);
+    const nestedFrameworkVersion = canonicalizeFingerprintDescriptors({
+      buildId: 'build-7',
+      framework: { name: 'vue', version: '3.5.0' },
+    });
+    const topLevelFrameworkVersion = canonicalizeFingerprintDescriptors({
+      buildId: 'build-7',
+      framework: { name: 'vue' },
+      frameworkVersion: '3.5.0',
+    });
+    expect(topLevelFrameworkVersion).toBe(nestedFrameworkVersion);
+    expect(fingerprintFromDescriptors({ buildId: 'build-7', framework: { name: 'vue', version: '3.5.0' } }))
+      .toBe(fingerprintFromDescriptors({ buildId: 'build-7', framework: { name: 'vue' }, frameworkVersion: '3.5.0' }));
+    expect(() => canonicalizeFingerprintDescriptors({
+      buildId: 'build-7',
+      framework: { name: 'vue', version: '3.5.0' },
+      frameworkVersion: '3.5.1',
+    })).toThrow('INVALID_FIRMWARE_TRUTH');
     const fingerprint = fingerprintFromDescriptors(descriptor);
     expect(fingerprint).toMatch(/^[a-f0-9]{64}$/);
-    for (const secret of ['build-7', 'assets-1', 'api-schema', 'dashboard', 'system', '10.0.0.1', 'SERIAL-123', 'LICENSE-123', 'customer-123', 'admin', 'must-not-be-included']) {
+    for (const secret of ['build-7', 'assets-1', 'api-schema', 'dashboard', 'system', '10.0.0.1', 'host-a', 'host-b', 'alpha', 'beta', 'acme', 'other', 'SERIAL-123', 'LICENSE-123', 'customer-123', 'admin', 'must-not-be-included']) {
       expect(fingerprint).not.toContain(secret);
     }
     expect(fingerprintFromDescriptors(reordered)).toBe(fingerprint);
@@ -284,6 +323,10 @@ describe('PR-001A1 ADAPTERS-derived registry', () => {
     expect(() => canonicalizeFingerprintDescriptors({ framework: 'vue' })).toThrow('INVALID_FIRMWARE_TRUTH');
     expect(() => canonicalizeFingerprintDescriptors({ routeSignature: ['ok', 7] })).toThrow('INVALID_FIRMWARE_TRUTH');
     expect(() => canonicalizeFingerprintDescriptors({ routeSignature: [] })).toThrow('INVALID_FIRMWARE_TRUTH');
+    expect(() => canonicalizeFingerprintDescriptors({ routeSignature: ['https://user:pass@host-a/dashboard'] })).toThrow('INVALID_FIRMWARE_TRUTH');
+    expect(() => canonicalizeFingerprintDescriptors({ routeSignature: ['https://[invalid/dashboard'] })).toThrow('INVALID_FIRMWARE_TRUTH');
+    expect(() => canonicalizeFingerprintDescriptors({ routeSignature: ['https://host-a/%ZZ'] })).toThrow('INVALID_FIRMWARE_TRUTH');
+    expect(() => canonicalizeFingerprintDescriptors({ routeSignature: ['dashboard\u0000'] })).toThrow('INVALID_FIRMWARE_TRUTH');
     expect(() => canonicalizeFingerprintDescriptors({ buildId: 'x'.repeat(257) })).toThrow('INVALID_FIRMWARE_TRUTH');
     expect(() => canonicalizeFingerprintDescriptors({ routeSignature: Array.from({ length: 65 }, () => 'route') })).toThrow('INVALID_FIRMWARE_TRUTH');
     const cyclic: Record<string, unknown> = {};

@@ -206,7 +206,11 @@ export function validateProductRegistryView(view: ProductRegistryView): ProductR
   if (expectedDigest !== view.registryDigest) {
     throw new ProductRegistryError('REGISTRY_DRIFT', 'Registry digest does not match canonical identity data.');
   }
-  return view;
+  return deepFreeze({
+    schemaVersion: 1,
+    registryDigest: view.registryDigest,
+    entries: normalizedEntries.sort((left, right) => compareCodePoints(left.adapterProduct, right.adapterProduct)),
+  });
 }
 
 export function resolveInjectedAdapterProductCode(
@@ -214,7 +218,7 @@ export function resolveInjectedAdapterProductCode(
   product: string,
   options: InjectedRegistryResolveOptions = {},
 ): AdapterProductCode {
-  validateProductRegistryView(view);
+  const canonicalView = validateProductRegistryView(view);
   if (!options || typeof options !== 'object' || Array.isArray(options)) {
     throw new ProductRegistryError('INVALID_REGISTRY', 'Resolver options must be an object.');
   }
@@ -223,8 +227,11 @@ export function resolveInjectedAdapterProductCode(
     && (typeof options.expectedRegistryDigest !== 'string' || options.expectedRegistryDigest !== view.registryDigest)) {
     throw new ProductRegistryError('REGISTRY_DRIFT', 'Injected registry digest differs from the expected digest.');
   }
+  if (options.productVariant !== undefined && options.productVariant !== null && typeof options.productVariant !== 'string') {
+    throw new ProductRegistryError('SPEC_IDENTITY_MISMATCH', 'Product variant must be a string or null.');
+  }
   const normalized = normalizeRegistryAlias(product);
-  const matches = view.entries.filter((entry) => (
+  const matches = canonicalView.entries.filter((entry) => (
     normalizeRegistryAlias(entry.adapterProduct) === normalized || entry.aliases.includes(normalized)
   ));
   if (matches.length === 0) throw new ProductRegistryError('UNSUPPORTED_PRODUCT', `No identity matches ${String(product)}.`);
