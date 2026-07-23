@@ -367,6 +367,9 @@ describe('PR-001A1 ADAPTERS-derived registry', () => {
       .toBe(canonicalizeFingerprintDescriptors({ routeSignature: ['/policy/{customerId}'] }));
     expect(canonicalizeFingerprintDescriptors({ routeSignature: ['/policy/:customerId'] }))
       .not.toBe(canonicalizeFingerprintDescriptors({ routeSignature: ['/policy/:userId'] }));
+    for (const route of ['/policy/:acme', '/policy/{other}', '/policy/:eyJhbGciOiJIUzI1NiJ9']) {
+      expect(() => canonicalizeFingerprintDescriptors({ routeSignature: [route] })).toThrow('INVALID_FIRMWARE_TRUTH');
+    }
     expect(canonicalizeFingerprintDescriptors({ routeSignature: ['#/POLICY/ANTIMALWARE'] }))
       .toBe(canonicalizeFingerprintDescriptors({ routeSignature: ['#/policy/antiMalware'] }));
     const actualRepositoryRoutes = [

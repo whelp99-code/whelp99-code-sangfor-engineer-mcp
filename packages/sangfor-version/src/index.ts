@@ -348,6 +348,10 @@ const SAFE_FINGERPRINT_ROUTE_SEGMENTS = new Set([
   'onlineactivities', 'accesspolicy', 'authentication', 'endpointcompliance', 'logs',
   'internetaccess', 'detection', 'threats', 'response',
 ]);
+const SAFE_FINGERPRINT_ROUTE_PARAMETERS = new Set([
+  'id', 'productid', 'policyid', 'ruleid', 'eventid', 'taskid', 'reportid', 'customerid',
+  'userid', 'deviceid', 'year', 'month', 'day', 'version', 'variant',
+]);
 const FINGERPRINT_ROUTE_ROOT = '__root__';
 
 function compareCodePoints(left: string, right: string): number {
@@ -427,7 +431,13 @@ function canonicalRouteSegments(path: string, field: string): string[] {
   const canonicalSegments = rawSegments.map((rawSegment) => {
     const segment = rawSegment.normalize('NFKC');
     const template = templateSegment.exec(segment);
-    if (template) return `:${(template[1] ?? template[2]!).toLowerCase()}`;
+    if (template) {
+      const parameter = (template[1] ?? template[2]!).normalize('NFKC').toLowerCase();
+      if (!SAFE_FINGERPRINT_ROUTE_PARAMETERS.has(parameter)) {
+        invalidTruth(`${field} contains a route parameter outside the approved structural allowlist.`);
+      }
+      return `:${parameter}`;
+    }
     if (!staticSegment.test(segment)) {
       invalidTruth(`${field} contains a route segment outside the approved static route grammar.`);
     }
