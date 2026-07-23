@@ -1081,6 +1081,18 @@ U-02, U-03, U-04, U-09가 미해결이어도 PR-001~004의 synthetic·local 기�
 - **검증 안전성:** 현재 dirty checkout의 `pnpm test`가 사용자 PPTX를 재생성한 사고를 기록하고, 전체 실행 게이트를 clean implementation worktree로 한정했다.
 - **다음 작업:** plan machine check와 diff 검사 후 계획서만 커밋하고 같은 Claude 세션에 재검토를 요청한다.
 
+### CHECKPOINT — 2026-07-24 PR-001A 완료
+
+- **Baseline:** `3d09d02` (`docs(plan): record independent approval`)
+- **Current:** `b844937` (`fix(learning): close route and nested registry access gaps`)
+- **REQ 상태:** REQ-01과 REQ-02의 synthetic/local 코드 계약을 `PASS`로 전환한다. M2 실장비 재실측과 production verified seed 승격은 계속 `PENDING`이다.
+- **구현 결과:** ADAPTERS 파생 identity snapshot·strict resolver·digest, legacy API 불변 계약, version truth 확장, evidence confinement, domain-separated firmware fingerprint, CC conflict seed를 구현했다.
+- **변경 예산:** 10개 카드 모두 변경 파일 12개 이하, 신규 파일 8개 이하, production 추가 500줄 이하를 충족한다. 승인된 코드 트리를 유지하면서 최초 대형 커밋을 `06b8e9e`와 `88cb89c`로 분리했다.
+- **검증:** focused Vitest 5 files/29 tests, lint, build, full Vitest 74 files passed·1 skipped/451 tests passed·2 skipped, `smoke:mcp` 77 tools, `git diff --check`가 통과했다.
+- **독립 검토:** Ultra 적대적 코드·예산 재검토 결과 **CRITICAL 0 / HIGH 0 / MEDIUM 0 — APPROVE**다.
+- **격리 안전성:** 전체 테스트가 task-owned clean worktree에서 재생성한 PPTX만 targeted restore했으며, 원본 checkout의 사용자 PPTX와 live output은 수정하지 않았다. 별도 개발 worktree의 전체 회귀에서 `127.0.0.1:3001` 일시 점유로 1회 실패했으나 즉시 포트가 해제된 뒤 동일 명령이 451 tests로 통과했고, 최종 통합 worktree 검증은 첫 실행에 통과했다.
+- **다음 작업:** PR-001B shared approval primitive를 실행하되 execution approval public contract·환경변수·payload·gate 순서·오류 의미를 동결한다.
+
 ## 10. 검토 기록
 
 - 원안 적대적 검토: 최종 CRITICAL 0 / HIGH 0
