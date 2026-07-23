@@ -1130,3 +1130,14 @@ U-02, U-03, U-04, U-09가 미해결이어도 PR-001~004의 synthetic·local 기�
 | M5-02 로드맵 §9 결정 5번 누락 | 실장비 write 시점별 사람 승인을 U-09로 추가하고 본 read-only 계획에는 영향이 없지만 M3 write를 계속 차단하도록 했다. |
 | M5-03 비정본 L4 계층 명칭 | `L4`를 제거하고 ARCHITECTURE.md의 L0~L3 밖에 있는 번호 없는 Apps/MCP transport 조립 표면으로 교정했다. |
 | INCIDENT-01 dirty checkout 검증 부작용 | Claude의 `pnpm test`가 기존 사용자 PPTX를 재생성했음을 기록하고 전체 test/build/smoke를 clean task-owned implementation worktree에서만 실행하도록 고정했다. |
+
+- 독립 Claude 재검토 6차 (`task_c8358297ae4b`, 기준 커밋 `11c59e9`): **CRITICAL 0 / HIGH 0 / MEDIUM 0 — APPROVE**
+
+| 검증 항목 | 판정 |
+|---|---|
+| H5-01 alias 계약과 legacy 동결 | `observerOnlyAliases` 차집합·legacy 부분집합·`CC`/`Athena XDR`/`A-Sec` 회귀 계약이 현재 코드 동작과 일치해 CLOSED |
+| M5-01 T-H2 구현 ownership | PR-004의 collector·device writer·진단 reader·observer writer·round-trip·카드 동기화 책임이 완결되어 CLOSED |
+| M5-02 로드맵 결정 5번 | U-09 fail-closed 기본값과 M3 write 차단 범위가 로드맵과 일치해 CLOSED |
+| M5-03 계층 명칭 | canonical L0~L3 밖의 번호 없는 Apps/MCP surface로 교정되어 CLOSED |
+| 검증 안전성 | test/build/smoke 없이 read-only machine check만 실행했고 사용자 PPTX와 live output이 검증 전후 보존됨 |
+| 신규 적대적 탐색 | 새 CRITICAL/HIGH/MEDIUM 없음; 구현 시 PR-004 Change Budget의 sub-PR 분할 규칙을 준수할 것 |
