@@ -189,6 +189,22 @@ describe('PR-001A1 ADAPTERS-derived registry', () => {
       snapshot: trustedSnapshot,
       unknown: true,
     } as StrictProductResolveOptions & { unknown: boolean })).toThrow('INVALID_REGISTRY');
+    const inheritedRequest = Object.create({
+      product: 'IAG',
+      registry: trustedSnapshot,
+      registryDigest: trustedSnapshot.registryDigest,
+      productVariant: 'ATHENA_XDR',
+    }) as StrictProductResolveRequest;
+    expect(() => resolveProductAdapterStrict(inheritedRequest)).toThrow('INVALID_REGISTRY');
+    const inheritedOptions = Object.create({
+      snapshot: trustedSnapshot,
+      registryDigest: trustedSnapshot.registryDigest,
+      productVariant: 'ATHENA_XDR',
+    }) as StrictProductResolveOptions;
+    expect(() => resolveProductAdapterStrict('CC', inheritedOptions)).toThrow('INVALID_REGISTRY');
+    const accessorRequest = Object.create(null) as StrictProductResolveRequest;
+    Object.defineProperty(accessorRequest, 'product', { enumerable: true, get: () => 'IAG' });
+    expect(() => resolveProductAdapterStrict(accessorRequest)).toThrow('INVALID_REGISTRY');
   });
 
   it('canonicalizes and deduplicates product, alias, mapping, and accepted-code fields', () => {
@@ -373,17 +389,23 @@ describe('PR-001A1 ADAPTERS-derived registry', () => {
     expect(canonicalizeFingerprintDescriptors({ routeSignature: ['#/POLICY/ANTIMALWARE'] }))
       .toBe(canonicalizeFingerprintDescriptors({ routeSignature: ['#/policy/antiMalware'] }));
     const actualRepositoryRoutes = [
-      '#/dashboard', '#/system', '#/index', '#/overview', '#/policy/antiMalware', '#/scan', '#/policy/appControl',
-      '#/policy/deviceControl', '#/event', '#/deployment', '#/activityAudit/dlpPolicy',
-      '#/activityAudit/dlpEvent', '#/onlineActivities/accessPolicy',
-      '#/authentication/endpointCompliance', '#/logs/internetAccess', '#/detection/logs',
-      '#/detection/threats', '#/response',
+      'index', 'policy/antiMalware', 'scan', 'policy/appControl', 'policy/deviceControl', 'event', 'deployment',
+      'home', 'monitor/user_manager', 'audit/dlp_event', 'policy/access_policy', 'auth/endpoint_check',
+      'log/internet_log', 'overview', 'detection/log', 'detection/threat', 'response',
     ];
     for (const route of actualRepositoryRoutes) {
-      expect(() => canonicalizeFingerprintDescriptors({ routeSignature: [route] })).not.toThrow();
+      const noSlash = canonicalizeFingerprintDescriptors({ routeSignature: [`#${route}`] });
+      expect(canonicalizeFingerprintDescriptors({ routeSignature: [`#/${route}?token=route#secondary`] }))
+        .toBe(noSlash);
+      expect(canonicalizeFingerprintDescriptors({ routeSignature: [`https://host-a/index.html#${route}?customer=route#secondary`] }))
+        .toBe(noSlash);
     }
-    const rootRoute = canonicalizeFingerprintDescriptors({ routeSignature: ['#/'] });
+    expect(canonicalizeFingerprintDescriptors({ routeSignature: ['#detection/log'] }))
+      .not.toBe(canonicalizeFingerprintDescriptors({ routeSignature: ['#detection/threat'] }));
+    const rootRoute = canonicalizeFingerprintDescriptors({ routeSignature: ['#'] });
     expect(canonicalizeFingerprintDescriptors({ routeSignature: ['#!/'] })).toBe(rootRoute);
+    expect(canonicalizeFingerprintDescriptors({ routeSignature: ['#/'] })).toBe(rootRoute);
+    expect(canonicalizeFingerprintDescriptors({ routeSignature: ['https://host-a/index.html#'] })).toBe(rootRoute);
     expect(canonicalizeFingerprintDescriptors({ routeSignature: ['https://host-a/'] })).toBe(rootRoute);
     expect(canonicalizeFingerprintDescriptors({ routeSignature: ['https://host-b/index.html#/'] })).toBe(rootRoute);
     expect(rootRoute).not.toBe(hashDashboard);

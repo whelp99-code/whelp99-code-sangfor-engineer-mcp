@@ -604,12 +604,50 @@ const STRICT_REQUEST_KEYS = new Set([
 ]);
 const STRICT_OPTION_KEYS = new Set(['snapshot', 'registryDigest', 'productVariant']);
 
+function isPlainRecord(value: unknown): value is object {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  try {
+    const prototype = Object.getPrototypeOf(value);
+    return prototype === Object.prototype || prototype === null;
+  } catch {
+    return false;
+  }
+}
+
+function assertPlainRecord(value: unknown, label: string): asserts value is object {
+  if (!isPlainRecord(value)) throw new Error(`INVALID_REGISTRY: ${label} must be a plain object.`);
+}
+
 function hasOwnProperty(value: object, key: string): boolean {
-  return Object.prototype.hasOwnProperty.call(value, key);
+  try {
+    return Object.prototype.hasOwnProperty.call(value, key);
+  } catch {
+    throw new Error('INVALID_REGISTRY: object property inspection failed.');
+  }
+}
+
+function readOwnDataProperty(value: object, key: string, label: string): unknown {
+  if (!hasOwnProperty(value, key)) return undefined;
+  try {
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value')) {
+      throw new Error(`INVALID_REGISTRY: ${label}.${key} must be an own data property.`);
+    }
+    return descriptor.value;
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith('INVALID_REGISTRY:')) throw error;
+    throw new Error(`INVALID_REGISTRY: ${label}.${key} could not be read safely.`);
+  }
 }
 
 function assertStrictObjectKeys(value: object, allowed: ReadonlySet<string>, label: string): void {
-  for (const key of Reflect.ownKeys(value)) {
+  let keys: (string | symbol)[];
+  try {
+    keys = Reflect.ownKeys(value);
+  } catch {
+    throw new Error(`INVALID_REGISTRY: ${label} keys could not be inspected safely.`);
+  }
+  for (const key of keys) {
     if (typeof key !== 'string' || !allowed.has(key)) {
       throw new Error(`INVALID_REGISTRY: ${label} contains an unknown key.`);
     }
@@ -636,19 +674,28 @@ function strictInput(input: string | StrictProductResolveRequest): StrictProduct
   if (!input || typeof input !== 'object' || Array.isArray(input)) {
     throw new Error('UNSUPPORTED_PRODUCT: strict identity request must be an object or string.');
   }
+  assertPlainRecord(input, 'strict identity request');
   assertStrictObjectKeys(input, STRICT_REQUEST_KEYS, 'strict identity request');
   return input;
 }
 
-function validateStrictSnapshot(snapshot: unknown): { snapshot: ProductRegistryView; canonicalEntries: ProductRegistryEntry[] } {
-  const candidate = snapshot as ProductRegistryView;
-  if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate) || candidate.schemaVersion !== 1
-    || typeof candidate.registryDigest !== 'string' || !/^[a-f0-9]{64}$/.test(candidate.registryDigest)
-    || !Array.isArray(candidate.entries) || candidate.entries.length === 0) {
+function validateStrictSnapshot(snapshot: unknown): {
+  snapshot: ProductRegistryView;
+  registryDigest: string;
+  canonicalEntries: ProductRegistryEntry[];
+} {
+  assertPlainRecord(snapshot, 'registry snapshot');
+  const schemaVersion = readOwnDataProperty(snapshot, 'schemaVersion', 'registry snapshot');
+  const registryDigest = readOwnDataProperty(snapshot, 'registryDigest', 'registry snapshot');
+  const rawEntries = readOwnDataProperty(snapshot, 'entries', 'registry snapshot');
+  if (schemaVersion !== 1 || typeof registryDigest !== 'string' || !/^[a-f0-9]{64}$/.test(registryDigest)
+    || !Array.isArray(rawEntries) || rawEntries.length === 0) {
     throw new Error('INVALID_REGISTRY: snapshot shape is invalid.');
   }
+  const candidate = snapshot as ProductRegistryView;
+  const entries = rawEntries as ProductRegistryEntry[];
   const products = new Set<string>();
-  const canonicalEntries = candidate.entries.map((entry) => canonicalRegistryEntry(entry));
+  const canonicalEntries = entries.map((entry) => canonicalRegistryEntry(entry));
   for (const canonical of canonicalEntries) {
     if (products.has(canonical.adapterProduct)) throw new Error('INVALID_REGISTRY: duplicate adapter product.');
     products.add(canonical.adapterProduct);
@@ -656,11 +703,12 @@ function validateStrictSnapshot(snapshot: unknown): { snapshot: ProductRegistryV
       throw new Error('INVALID_REGISTRY: observer-only alias is not in aliases.');
     }
   }
-  if (productRegistryDigest(candidate.entries) !== candidate.registryDigest) {
+  if (productRegistryDigest(entries) !== registryDigest) {
     throw new Error('REGISTRY_DRIFT: snapshot digest does not match identity data.');
   }
   return {
     snapshot: candidate,
+    registryDigest,
     canonicalEntries: canonicalEntries.sort((left, right) => compareCodePoints(left.adapterProduct, right.adapterProduct)),
   };
 }
@@ -670,7 +718,7 @@ export function resolveProductAdapterStrict(
   options: StrictProductResolveOptions = {},
 ): AdapterIdentity {
   const request = strictInput(input);
-  if (!options || typeof options !== 'object' || Array.isArray(options)) {
+  if (!isPlainRecord(options)) {
     throw new Error('INVALID_REGISTRY: strict resolver options must be an object.');
   }
   assertStrictObjectKeys(options, STRICT_OPTION_KEYS, 'strict resolver options');
@@ -680,29 +728,35 @@ export function resolveProductAdapterStrict(
     throw new Error('INVALID_REGISTRY: request cannot provide both registry and snapshot.');
   }
   const requestSnapshot = requestSnapshotKeys.length === 1
-    ? request[requestSnapshotKeys[0]! as 'registry' | 'snapshot']
+    ? readOwnDataProperty(request, requestSnapshotKeys[0]!, 'strict identity request')
     : undefined;
   const validatedRequestSnapshot = requestSnapshotKeys.length === 1
     ? validateStrictSnapshot(requestSnapshot)
     : undefined;
   const validatedOptionsSnapshot = hasOwnProperty(options, 'snapshot')
-    ? validateStrictSnapshot(options.snapshot)
+    ? validateStrictSnapshot(readOwnDataProperty(options, 'snapshot', 'strict resolver options'))
     : undefined;
   if (validatedRequestSnapshot && validatedOptionsSnapshot
-    && (validatedRequestSnapshot.snapshot.registryDigest !== validatedOptionsSnapshot.snapshot.registryDigest
+    && (validatedRequestSnapshot.registryDigest !== validatedOptionsSnapshot.registryDigest
       || stableRegistryJson(validatedRequestSnapshot.canonicalEntries) !== stableRegistryJson(validatedOptionsSnapshot.canonicalEntries))) {
     throw new Error('REGISTRY_DRIFT: request registry differs from the authoritative options snapshot.');
   }
   const validatedSnapshot = validatedOptionsSnapshot
     ?? validatedRequestSnapshot
     ?? validateStrictSnapshot(getProductRegistrySnapshot());
-  const requestDigest = strictRegistryDigest(request.registryDigest, 'request.registryDigest');
-  const optionsDigest = strictRegistryDigest(options.registryDigest, 'options.registryDigest');
+  const requestDigest = strictRegistryDigest(
+    readOwnDataProperty(request, 'registryDigest', 'strict identity request'),
+    'request.registryDigest',
+  );
+  const optionsDigest = strictRegistryDigest(
+    readOwnDataProperty(options, 'registryDigest', 'strict resolver options'),
+    'options.registryDigest',
+  );
   if (requestDigest !== undefined && optionsDigest !== undefined && requestDigest !== optionsDigest) {
     throw new Error('REGISTRY_DRIFT: request and options registry digests differ.');
   }
   const expectedDigest = optionsDigest ?? requestDigest;
-  if (expectedDigest !== undefined && expectedDigest !== validatedSnapshot.snapshot.registryDigest) {
+  if (expectedDigest !== undefined && expectedDigest !== validatedSnapshot.registryDigest) {
     throw new Error('REGISTRY_DRIFT: expected registry digest differs.');
   }
   const productKeys = ['product', 'input', 'adapterProduct'].filter((key) => hasOwnProperty(request, key));
@@ -710,14 +764,20 @@ export function resolveProductAdapterStrict(
     throw new Error('AMBIGUOUS_PRODUCT: request provides multiple product identity fields.');
   }
   const product = productKeys.length === 1
-    ? request[productKeys[0]! as 'product' | 'input' | 'adapterProduct']
+    ? readOwnDataProperty(request, productKeys[0]!, 'strict identity request')
     : undefined;
   if (product !== undefined && typeof product !== 'string') {
     throw new Error('UNSUPPORTED_PRODUCT: strict identity product must be a string.');
   }
   const normalized = product === undefined ? '' : normalizeIdentityAlias(product);
-  const requestVariant = strictProductVariant(request.productVariant, 'request.productVariant');
-  const optionsVariant = strictProductVariant(options.productVariant, 'options.productVariant');
+  const requestVariant = strictProductVariant(
+    readOwnDataProperty(request, 'productVariant', 'strict identity request'),
+    'request.productVariant',
+  );
+  const optionsVariant = strictProductVariant(
+    readOwnDataProperty(options, 'productVariant', 'strict resolver options'),
+    'options.productVariant',
+  );
   if (requestVariant !== undefined && optionsVariant !== undefined) {
     const canonicalRequestVariant = requestVariant === null ? null : normalizeIdentityCode(requestVariant);
     const canonicalOptionsVariant = optionsVariant === null ? null : normalizeIdentityCode(optionsVariant);

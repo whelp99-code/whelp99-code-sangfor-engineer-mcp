@@ -346,7 +346,8 @@ const SAFE_FINGERPRINT_ROUTE_SEGMENTS = new Set([
   'dashboard', 'system', 'index', 'overview', 'policy', 'antimalware', 'scan', 'appcontrol',
   'devicecontrol', 'event', 'deployment', 'activityaudit', 'dlppolicy', 'dlpevent',
   'onlineactivities', 'accesspolicy', 'authentication', 'endpointcompliance', 'logs',
-  'internetaccess', 'detection', 'threats', 'response',
+  'internetaccess', 'detection', 'threats', 'response', 'home', 'monitor', 'user_manager',
+  'audit', 'dlp_event', 'access_policy', 'auth', 'endpoint_check', 'log', 'internet_log', 'threat',
 ]);
 const SAFE_FINGERPRINT_ROUTE_PARAMETERS = new Set([
   'id', 'productid', 'policyid', 'ruleid', 'eventid', 'taskid', 'reportid', 'customerid',
@@ -410,9 +411,10 @@ function routeInputString(value: unknown, field: string): string {
 }
 
 function hashRouterPath(value: string): string | null {
+  if (value.length === 0) return null;
   let hashPath = value.startsWith('#') ? value.slice(1) : value;
   if (hashPath.startsWith('!')) hashPath = hashPath.slice(1);
-  if (!hashPath.startsWith('/')) return null;
+  if (hashPath === '') return '/';
   const queryOrFragment = hashPath.search(/[?#]/u);
   return queryOrFragment === -1 ? hashPath : hashPath.slice(0, queryOrFragment);
 }
@@ -450,6 +452,15 @@ function canonicalRouteSegments(path: string, field: string): string[] {
   return canonicalSegments;
 }
 
+function isApprovedRoutePath(path: string): boolean {
+  try {
+    canonicalRouteSegments(path, 'routeSignature');
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function canonicalRoutePath(value: unknown, field: string): string {
   const route = routeInputString(value, field);
   let path = route;
@@ -464,7 +475,13 @@ function canonicalRoutePath(value: unknown, field: string): string {
       invalidTruth(`${field} must use http or https.`);
     }
     if (parsed.username || parsed.password) invalidTruth(`${field} must not contain URL userinfo.`);
-    path = hashRouterPath(parsed.hash) ?? parsed.pathname;
+    const hashIndex = route.indexOf('#');
+    const explicitRootHash = hashIndex !== -1 && ['#', '#!'].includes(route.slice(hashIndex));
+    const hashPath = hashRouterPath(parsed.hash);
+    const pathnameIsApproved = parsed.pathname !== '/' && isApprovedRoutePath(parsed.pathname);
+    const hashIsRoute = hashPath !== null && (explicitRootHash || isApprovedRoutePath(hashPath)
+      || !pathnameIsApproved || hashPath.includes('/'));
+    path = hashIsRoute ? hashPath! : (explicitRootHash ? '/' : parsed.pathname);
   } else if (route.includes('://')) {
     invalidTruth(`${field} is not a valid absolute URL.`);
   } else {
