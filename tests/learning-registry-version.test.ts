@@ -17,6 +17,8 @@ import {
   normalizeAutomationProduct,
   resolveProductAdapterStrict,
   type ProductRegistryView,
+  type StrictProductResolveOptions,
+  type StrictProductResolveRequest,
 } from '../packages/sangfor-product-adapters/src/index.js';
 import * as productAdapterRuntime from '../packages/sangfor-product-adapters/src/index.js';
 import {
@@ -161,6 +163,32 @@ describe('PR-001A1 ADAPTERS-derived registry', () => {
     emptyProduct.registryDigest = digestWithEmptyAdapterProduct(emptyProduct.entries);
     expect(() => resolveProductAdapterStrict('IAG', { snapshot: emptyProduct })).toThrow('INVALID_REGISTRY');
     expect(() => resolveInjectedAdapterProductCode(emptyProduct, 'IAG')).toThrow('INVALID_REGISTRY');
+    const trustedSnapshot = getProductRegistrySnapshot();
+    const attackerSnapshot = structuredClone(trustedSnapshot) as ProductRegistryView;
+    attackerSnapshot.entries[0]!.aliases.push('attacker-alias');
+    attackerSnapshot.registryDigest = computeProductRegistryDigest(attackerSnapshot.entries);
+    expect(() => resolveProductAdapterStrict({ product: 'attacker-alias', registry: attackerSnapshot }, {
+      snapshot: trustedSnapshot,
+      registryDigest: trustedSnapshot.registryDigest,
+    })).toThrow('REGISTRY_DRIFT');
+    expect(() => resolveProductAdapterStrict({ product: 'IAG', registry: trustedSnapshot, snapshot: trustedSnapshot }))
+      .toThrow('INVALID_REGISTRY');
+    expect(() => resolveProductAdapterStrict({ product: 'IAG', registryDigest: '0'.repeat(64) }, {
+      snapshot: trustedSnapshot,
+      registryDigest: trustedSnapshot.registryDigest,
+    })).toThrow('REGISTRY_DRIFT');
+    expect(() => resolveProductAdapterStrict({ product: 'CC', productVariant: 'CYBER_COMMAND' }, {
+      snapshot: trustedSnapshot,
+      productVariant: 'ATHENA_XDR',
+    })).toThrow('SPEC_IDENTITY_MISMATCH');
+    expect(() => resolveProductAdapterStrict({ product: 'IAG', input: 'IAG' }))
+      .toThrow('AMBIGUOUS_PRODUCT');
+    expect(() => resolveProductAdapterStrict({ product: 'IAG', unknown: true } as StrictProductResolveRequest & { unknown: boolean }))
+      .toThrow('INVALID_REGISTRY');
+    expect(() => resolveProductAdapterStrict('IAG', {
+      snapshot: trustedSnapshot,
+      unknown: true,
+    } as StrictProductResolveOptions & { unknown: boolean })).toThrow('INVALID_REGISTRY');
   });
 
   it('canonicalizes and deduplicates product, alias, mapping, and accepted-code fields', () => {
@@ -335,12 +363,34 @@ describe('PR-001A1 ADAPTERS-derived registry', () => {
     for (const secret of ['host-a', 'host-b', 'alpha', 'beta', 'acme', 'other', 'secondary', 'different']) {
       expect(hashDashboard).not.toContain(secret);
     }
-    expect(canonicalizeFingerprintDescriptors({ routeSignature: ['/customers/:customerId'] }))
-      .toBe(canonicalizeFingerprintDescriptors({ routeSignature: ['/customers/{customerId}'] }));
+    expect(canonicalizeFingerprintDescriptors({ routeSignature: ['/policy/:customerId'] }))
+      .toBe(canonicalizeFingerprintDescriptors({ routeSignature: ['/policy/{customerId}'] }));
+    expect(canonicalizeFingerprintDescriptors({ routeSignature: ['/policy/:customerId'] }))
+      .not.toBe(canonicalizeFingerprintDescriptors({ routeSignature: ['/policy/:userId'] }));
+    expect(canonicalizeFingerprintDescriptors({ routeSignature: ['#/POLICY/ANTIMALWARE'] }))
+      .toBe(canonicalizeFingerprintDescriptors({ routeSignature: ['#/policy/antiMalware'] }));
+    const actualRepositoryRoutes = [
+      '#/dashboard', '#/system', '#/index', '#/overview', '#/policy/antiMalware', '#/scan', '#/policy/appControl',
+      '#/policy/deviceControl', '#/event', '#/deployment', '#/activityAudit/dlpPolicy',
+      '#/activityAudit/dlpEvent', '#/onlineActivities/accessPolicy',
+      '#/authentication/endpointCompliance', '#/logs/internetAccess', '#/detection/logs',
+      '#/detection/threats', '#/response',
+    ];
+    for (const route of actualRepositoryRoutes) {
+      expect(() => canonicalizeFingerprintDescriptors({ routeSignature: [route] })).not.toThrow();
+    }
+    const rootRoute = canonicalizeFingerprintDescriptors({ routeSignature: ['#/'] });
+    expect(canonicalizeFingerprintDescriptors({ routeSignature: ['#!/'] })).toBe(rootRoute);
+    expect(canonicalizeFingerprintDescriptors({ routeSignature: ['https://host-a/'] })).toBe(rootRoute);
+    expect(canonicalizeFingerprintDescriptors({ routeSignature: ['https://host-b/index.html#/'] })).toBe(rootRoute);
+    expect(rootRoute).not.toBe(hashDashboard);
+    expect(rootRoute).not.toBe(hashSystem);
     for (const route of [
       '/customers/acme', '/token/alpha', '/users/admin', '/devices/SERIAL123',
       '/reports/123', '/reports/550e8400-e29b-41d4-a716-446655440000',
       '/reports/abcdefabcdefabcdef', '/reports/192.168.1.1', '/reports/admin@example.com',
+      '/org/acme', '/organization/acme', '/apiKeys/AbCdEf123456', '/profile/jmpark',
+      '/reports/acme-2026', '/download/<JWT-like>',
     ]) {
       expect(() => canonicalizeFingerprintDescriptors({ routeSignature: [route] })).toThrow('INVALID_FIRMWARE_TRUTH');
     }

@@ -342,11 +342,13 @@ const MAX_FINGERPRINT_VALUE_LENGTH = 256;
 const MAX_FINGERPRINT_ROUTE_ITEMS = 64;
 const MAX_FINGERPRINT_ROUTE_TOTAL_LENGTH = 4096;
 const MAX_FINGERPRINT_ROUTE_INPUT_LENGTH = 4096;
-const SENSITIVE_ROUTE_COLLECTIONS = new Set([
-  'account', 'accounts', 'apikey', 'api-key', 'client', 'clients', 'customer', 'customers',
-  'device', 'devices', 'key', 'keys', 'license', 'licenses', 'secret', 'secrets', 'serial',
-  'serials', 'session', 'sessions', 'tenant', 'tenants', 'token', 'tokens', 'user', 'users',
+const SAFE_FINGERPRINT_ROUTE_SEGMENTS = new Set([
+  'dashboard', 'system', 'index', 'overview', 'policy', 'antimalware', 'scan', 'appcontrol',
+  'devicecontrol', 'event', 'deployment', 'activityaudit', 'dlppolicy', 'dlpevent',
+  'onlineactivities', 'accesspolicy', 'authentication', 'endpointcompliance', 'logs',
+  'internetaccess', 'detection', 'threats', 'response',
 ]);
+const FINGERPRINT_ROUTE_ROOT = '__root__';
 
 function compareCodePoints(left: string, right: string): number {
   const leftPoints = [...left];
@@ -413,6 +415,7 @@ function hashRouterPath(value: string): string | null {
 
 function canonicalRouteSegments(path: string, field: string): string[] {
   if (path.startsWith('//')) invalidTruth(`${field} contains an invalid hash route path.`);
+  if (path === '/') return [FINGERPRINT_ROUTE_ROOT];
   if (path.startsWith('/')) path = path.slice(1);
   if (path.endsWith('/')) path = path.slice(0, -1);
   if (path.length === 0 || [...path].length > MAX_FINGERPRINT_VALUE_LENGTH || path.includes('//')) {
@@ -421,26 +424,19 @@ function canonicalRouteSegments(path: string, field: string): string[] {
   const rawSegments = path.split('/');
   const templateSegment = /^(?::([A-Za-z][A-Za-z\d._~-]*)|\{([A-Za-z][A-Za-z\d._~-]*)\})$/u;
   const staticSegment = /^[A-Za-z][A-Za-z\d._~-]*$/u;
-  const dynamicSegment = [
-    /^\d+$/u,
-    /^(?:\d{1,3}\.){3}\d{1,3}$/u,
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu,
-    /^[0-9a-f]{16,}$/iu,
-    /^[^/\s@]+@[^/\s@]+\.[^/\s@]+$/u,
-  ];
-  const isTemplate = (segment: string): boolean => templateSegment.test(segment);
-  const canonicalSegments = rawSegments.map((segment) => {
-    if (isTemplate(segment)) return ':id';
-    if (!staticSegment.test(segment) || dynamicSegment.some((pattern) => pattern.test(segment))) {
-      invalidTruth(`${field} contains a raw dynamic route segment.`);
+  const canonicalSegments = rawSegments.map((rawSegment) => {
+    const segment = rawSegment.normalize('NFKC');
+    const template = templateSegment.exec(segment);
+    if (template) return `:${(template[1] ?? template[2]!).toLowerCase()}`;
+    if (!staticSegment.test(segment)) {
+      invalidTruth(`${field} contains a route segment outside the approved static route grammar.`);
     }
-    return segment;
+    const canonical = segment.toLowerCase();
+    if (!SAFE_FINGERPRINT_ROUTE_SEGMENTS.has(canonical)) {
+      invalidTruth(`${field} contains a route segment outside the approved static route allowlist.`);
+    }
+    return canonical;
   });
-  for (let index = 0; index < rawSegments.length - 1; index += 1) {
-    if (SENSITIVE_ROUTE_COLLECTIONS.has(rawSegments[index]!.toLowerCase()) && !isTemplate(rawSegments[index + 1]!)) {
-      invalidTruth(`${field} requires an explicit placeholder after a sensitive route segment.`);
-    }
-  }
   return canonicalSegments;
 }
 

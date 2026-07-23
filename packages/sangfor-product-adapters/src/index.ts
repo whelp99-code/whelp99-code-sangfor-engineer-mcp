@@ -599,22 +599,56 @@ export interface StrictProductResolveOptions {
   productVariant?: string | null;
 }
 
+const STRICT_REQUEST_KEYS = new Set([
+  'product', 'input', 'adapterProduct', 'productVariant', 'registryDigest', 'registry', 'snapshot',
+]);
+const STRICT_OPTION_KEYS = new Set(['snapshot', 'registryDigest', 'productVariant']);
+
+function hasOwnProperty(value: object, key: string): boolean {
+  return Object.prototype.hasOwnProperty.call(value, key);
+}
+
+function assertStrictObjectKeys(value: object, allowed: ReadonlySet<string>, label: string): void {
+  for (const key of Reflect.ownKeys(value)) {
+    if (typeof key !== 'string' || !allowed.has(key)) {
+      throw new Error(`INVALID_REGISTRY: ${label} contains an unknown key.`);
+    }
+  }
+}
+
+function strictRegistryDigest(value: unknown, field: string): string | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value !== 'string' || !/^[a-f0-9]{64}$/.test(value)) {
+    throw new Error(`INVALID_REGISTRY: ${field} must be a lowercase SHA-256 digest.`);
+  }
+  return value;
+}
+
+function strictProductVariant(value: unknown, field: string): string | null | undefined {
+  if (value !== undefined && value !== null && typeof value !== 'string') {
+    throw new Error(`SPEC_IDENTITY_MISMATCH: ${field} must be a string or null.`);
+  }
+  return value as string | null | undefined;
+}
+
 function strictInput(input: string | StrictProductResolveRequest): StrictProductResolveRequest {
   if (typeof input === 'string') return { product: input };
   if (!input || typeof input !== 'object' || Array.isArray(input)) {
     throw new Error('UNSUPPORTED_PRODUCT: strict identity request must be an object or string.');
   }
+  assertStrictObjectKeys(input, STRICT_REQUEST_KEYS, 'strict identity request');
   return input;
 }
 
-function validateStrictSnapshot(snapshot: ProductRegistryView): ProductRegistryEntry[] {
-  if (!snapshot || typeof snapshot !== 'object' || Array.isArray(snapshot) || snapshot.schemaVersion !== 1
-    || typeof snapshot.registryDigest !== 'string' || !/^[a-f0-9]{64}$/.test(snapshot.registryDigest)
-    || !Array.isArray(snapshot.entries) || snapshot.entries.length === 0) {
+function validateStrictSnapshot(snapshot: unknown): { snapshot: ProductRegistryView; canonicalEntries: ProductRegistryEntry[] } {
+  const candidate = snapshot as ProductRegistryView;
+  if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate) || candidate.schemaVersion !== 1
+    || typeof candidate.registryDigest !== 'string' || !/^[a-f0-9]{64}$/.test(candidate.registryDigest)
+    || !Array.isArray(candidate.entries) || candidate.entries.length === 0) {
     throw new Error('INVALID_REGISTRY: snapshot shape is invalid.');
   }
   const products = new Set<string>();
-  const canonicalEntries = snapshot.entries.map((entry) => canonicalRegistryEntry(entry));
+  const canonicalEntries = candidate.entries.map((entry) => canonicalRegistryEntry(entry));
   for (const canonical of canonicalEntries) {
     if (products.has(canonical.adapterProduct)) throw new Error('INVALID_REGISTRY: duplicate adapter product.');
     products.add(canonical.adapterProduct);
@@ -622,10 +656,13 @@ function validateStrictSnapshot(snapshot: ProductRegistryView): ProductRegistryE
       throw new Error('INVALID_REGISTRY: observer-only alias is not in aliases.');
     }
   }
-  if (productRegistryDigest(snapshot.entries) !== snapshot.registryDigest) {
+  if (productRegistryDigest(candidate.entries) !== candidate.registryDigest) {
     throw new Error('REGISTRY_DRIFT: snapshot digest does not match identity data.');
   }
-  return canonicalEntries.sort((left, right) => compareCodePoints(left.adapterProduct, right.adapterProduct));
+  return {
+    snapshot: candidate,
+    canonicalEntries: canonicalEntries.sort((left, right) => compareCodePoints(left.adapterProduct, right.adapterProduct)),
+  };
 }
 
 export function resolveProductAdapterStrict(
@@ -636,17 +673,59 @@ export function resolveProductAdapterStrict(
   if (!options || typeof options !== 'object' || Array.isArray(options)) {
     throw new Error('INVALID_REGISTRY: strict resolver options must be an object.');
   }
-  const snapshot = request.registry ?? request.snapshot ?? options.snapshot ?? getProductRegistrySnapshot();
-  const canonicalEntries = validateStrictSnapshot(snapshot);
-  const expectedDigest = request.registryDigest ?? options.registryDigest;
-  if (expectedDigest !== undefined && (typeof expectedDigest !== 'string' || expectedDigest !== snapshot.registryDigest)) {
+  assertStrictObjectKeys(options, STRICT_OPTION_KEYS, 'strict resolver options');
+
+  const requestSnapshotKeys = ['registry', 'snapshot'].filter((key) => hasOwnProperty(request, key));
+  if (requestSnapshotKeys.length > 1) {
+    throw new Error('INVALID_REGISTRY: request cannot provide both registry and snapshot.');
+  }
+  const requestSnapshot = requestSnapshotKeys.length === 1
+    ? request[requestSnapshotKeys[0]! as 'registry' | 'snapshot']
+    : undefined;
+  const validatedRequestSnapshot = requestSnapshotKeys.length === 1
+    ? validateStrictSnapshot(requestSnapshot)
+    : undefined;
+  const validatedOptionsSnapshot = hasOwnProperty(options, 'snapshot')
+    ? validateStrictSnapshot(options.snapshot)
+    : undefined;
+  if (validatedRequestSnapshot && validatedOptionsSnapshot
+    && (validatedRequestSnapshot.snapshot.registryDigest !== validatedOptionsSnapshot.snapshot.registryDigest
+      || stableRegistryJson(validatedRequestSnapshot.canonicalEntries) !== stableRegistryJson(validatedOptionsSnapshot.canonicalEntries))) {
+    throw new Error('REGISTRY_DRIFT: request registry differs from the authoritative options snapshot.');
+  }
+  const validatedSnapshot = validatedOptionsSnapshot
+    ?? validatedRequestSnapshot
+    ?? validateStrictSnapshot(getProductRegistrySnapshot());
+  const requestDigest = strictRegistryDigest(request.registryDigest, 'request.registryDigest');
+  const optionsDigest = strictRegistryDigest(options.registryDigest, 'options.registryDigest');
+  if (requestDigest !== undefined && optionsDigest !== undefined && requestDigest !== optionsDigest) {
+    throw new Error('REGISTRY_DRIFT: request and options registry digests differ.');
+  }
+  const expectedDigest = optionsDigest ?? requestDigest;
+  if (expectedDigest !== undefined && expectedDigest !== validatedSnapshot.snapshot.registryDigest) {
     throw new Error('REGISTRY_DRIFT: expected registry digest differs.');
   }
-  const product = request.product ?? request.input ?? request.adapterProduct;
+  const productKeys = ['product', 'input', 'adapterProduct'].filter((key) => hasOwnProperty(request, key));
+  if (productKeys.length > 1) {
+    throw new Error('AMBIGUOUS_PRODUCT: request provides multiple product identity fields.');
+  }
+  const product = productKeys.length === 1
+    ? request[productKeys[0]! as 'product' | 'input' | 'adapterProduct']
+    : undefined;
   if (product !== undefined && typeof product !== 'string') {
     throw new Error('UNSUPPORTED_PRODUCT: strict identity product must be a string.');
   }
   const normalized = product === undefined ? '' : normalizeIdentityAlias(product);
+  const requestVariant = strictProductVariant(request.productVariant, 'request.productVariant');
+  const optionsVariant = strictProductVariant(options.productVariant, 'options.productVariant');
+  if (requestVariant !== undefined && optionsVariant !== undefined) {
+    const canonicalRequestVariant = requestVariant === null ? null : normalizeIdentityCode(requestVariant);
+    const canonicalOptionsVariant = optionsVariant === null ? null : normalizeIdentityCode(optionsVariant);
+    if (canonicalRequestVariant !== canonicalOptionsVariant) {
+      throw new Error('SPEC_IDENTITY_MISMATCH: request and options product variants differ.');
+    }
+  }
+  const canonicalEntries = validatedSnapshot.canonicalEntries;
   const matches = canonicalEntries.filter((entry) => (
     normalizeIdentityAlias(entry.adapterProduct) === normalized || entry.aliases.includes(normalized)
   ));
@@ -654,10 +733,7 @@ export function resolveProductAdapterStrict(
   if (matches.length > 1) throw new Error(`AMBIGUOUS_PRODUCT: multiple strict identities match ${String(product)}.`);
   const match = matches[0]!;
   if (!match.observerEligible) throw new Error(`UNSUPPORTED_PRODUCT: ${match.adapterProduct} is not observer eligible.`);
-  const variant = request.productVariant ?? options.productVariant;
-  if (variant !== undefined && variant !== null && typeof variant !== 'string') {
-    throw new Error('SPEC_IDENTITY_MISMATCH: product variant must be a string.');
-  }
+  const variant = requestVariant !== undefined ? requestVariant : optionsVariant;
   if (variant !== undefined && variant !== null) {
     const normalizedVariant = normalizeIdentityCode(variant);
     if (!Object.prototype.hasOwnProperty.call(match.specMappingByVariant, normalizedVariant)) {
