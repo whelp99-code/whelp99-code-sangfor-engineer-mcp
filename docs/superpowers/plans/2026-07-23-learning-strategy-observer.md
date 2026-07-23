@@ -21,10 +21,10 @@
 | R6 | `3.7 LM-01~LM-08`·`5.4 PR-005`·`7. 사용자 결정` | LM-02 실장비 능동 replay를 사용자 결정으로 격상하고 승인 전에는 synthetic fixture만 구현하도록 게이트했다. |
 | R7 | `3.12 기존 Spec 경계`·`REQ-20` | exact+eligible+complete 게이트가 신규 observer adapter에만 적용되며 기존 config-state→spec 및 MCP·자문 경로는 불변임을 명시했다. |
 | R8 | `3.8 CDP 공존 규칙` | EPP/IAG/CC 9333~9335와 Glass 9222의 소유권, 야간 01:30~04:15 보호창, 정확히 1-page attach와 전후 불변 규칙을 정의했다. |
-| R9 | `3.9 캡처 번들 통일` | T-H2 `data/captures/*.enc`를 최종 번들 정본으로 유지하고 `data/runtime/learning-captures/`를 동일 포맷의 임시 staging으로 한정했다. |
+| R9 | `3.9 캡처 번들 통일` | 아직 미구현인 T-H2를 PR-004가 diagnosis reader와 observer writer까지 함께 구현하도록 소유권을 통합하고 `data/captures/*.enc`를 최종 번들 정본으로 고정했다. |
 | R10 | 문서 전체 | 수집방법을 `LM-01~LM-08`, 연구방법을 `LR-01~LR-04`로 전면 개칭했다. |
 | R11 | `7. 사용자 결정` | FortiOS 8.0 실랩 확보와 learning approval/capture key 생성·보관 절차를 신규 블로커로 등록했다. |
-| R12 | `7. 사용자 결정` | 기존 4건과 신규 결정·블로커를 단일 표로 통합하고 각 항목의 안전한 기본값과 차단 범위를 명시했다. |
+| R12 | `7. 사용자 결정` | 로드맵 §9의 기존 5건과 신규 결정·블로커를 단일 표로 통합하고 각 항목의 안전한 기본값과 차단 범위를 명시했다. |
 
 ## 1. 목표와 구축 범위
 
@@ -53,6 +53,7 @@
   - `pnpm run smoke:mcp`: PASS, 77 tools
 - 구현 시작 시 최신 `main`에서 위 네 기준을 재측정하고 결과를 첫 PR 체크포인트에 기록한다.
 - 구현은 최신 `main` 기반 별도 worktree와 `feat/learning-strategy-observer-v1` 브랜치에서 수행한다. 현재 문서 브랜치와 사용자 소유 PPTX·실장비 출력은 stash·삭제·복사하지 않는다.
+- `tests/pptx-builder.test.ts`가 추적된 `outputs/Sangfor_설정가이드_MCP.pptx`를 재생성하므로 `pnpm test`·build·smoke 같은 전체 게이트는 반드시 clean task-owned implementation worktree에서만 실행한다. 현재 dirty 문서 checkout에서는 plan machine check와 Git diff 검사만 허용한다.
 
 ### 1.3 범위 밖
 
@@ -117,13 +118,13 @@
 4. L3 `@sangfor/product-adapters`
    - `ADAPTERS` 정본에서 immutable 파생 뷰를 생성해 L1에 주입한다.
    - observer 결과를 신규 Spec 입력 adapter로 변환한다.
-5. L4 MCP/App
+5. Apps/MCP transport 조립 표면 — `ARCHITECTURE.md`에서 번호를 부여하지 않는 application surface
    - registry snapshot과 L1/L2 service를 조립한다.
 6. Persistence Adapter
    - 로컬 outbox를 PostgreSQL에 at-least-once로 미러링한다.
    - DB 장애가 정본 로컬 transaction을 실패시키지 않는다.
 
-L1이 L3를 import하는 역방향 의존은 금지한다. L3/L4가 `ProductRegistryView`를 생성·주입하는 구조로 `ARCHITECTURE.md`의 downward-only 규칙을 지킨다.
+L1이 L3를 import하는 역방향 의존은 금지한다. L3가 view를 만들고 번호 없는 app/MCP transport가 `ProductRegistryView`를 주입하는 구조로 `ARCHITECTURE.md`의 L0~L3 및 downward-only 규칙을 지킨다.
 
 ### 3.2 제품 정체성 정본과 파생 뷰
 
@@ -146,6 +147,7 @@ interface ProductRegistryView {
     adapterProduct: AdapterProductCode;
     vendor: 'SANGFOR' | 'FORTINET' | 'CISCO';
     aliases: string[];
+    observerOnlyAliases: string[];
     observerEligible: boolean;
     defaultSpecMapping: SpecProductMapping | null;
     specMappingByVariant: Record<string, SpecProductMapping>;
@@ -181,6 +183,7 @@ interface AdapterIdentity<C extends ObserverAdapterProductCode> {
   adapterProduct: C;
   vendor: 'SANGFOR' | 'FORTINET' | 'CISCO';
   aliases: string[];
+  observerOnlyAliases: string[];
   observerEligible: boolean;
   defaultSpecMapping: SpecProductMapping | null;
   specMappingByVariant: Record<string, SpecProductMapping>;
@@ -204,23 +207,24 @@ const ADAPTERS: AdapterRegistry = { /* 6 entries */ };
 - 기존 `normalizeAutomationProduct()`, `getProductAdapter()`, `listProductAdapters()`는 `LEGACY_AUTOMATION_PRODUCTS` 4종의 `legacyAdapter`만 순회·반환한다. unknown과 `FortiOS`/`IOSXE` 입력을 포함해 기존 반환 object shape·값·목록 순서·개수는 semantic-equality로 유지한다.
 - 기존 4개 `legacyAdapter`에는 vendor/spec metadata를 추가하지 않는다. 해당 metadata는 sibling `identity`에만 둔다.
 - 신규 `resolveProductAdapterStrict()`와 `getProductRegistrySnapshot()`만 ADAPTERS 6종의 `identity`를 본다. `FORTIOS`와 `IOSXE` entry의 `legacyAdapter`는 null이다.
-- 기존 4개 entry는 `identity.aliases`와 `legacyAdapter.aliases`가 동일한 값을 갖는지 registry invariant test로 고정한다.
+- 기존 4개 entry는 정규화된 `legacyAdapter.aliases`가 `identity.aliases`의 부분집합인지 registry invariant test로 고정한다. `identity.observerOnlyAliases`는 두 집합의 정확한 차집합이어야 하며 strict resolver만 소비한다. `legacyAdapter=null`인 신규 product는 `observerOnlyAliases`가 전체 `identity.aliases`와 같아야 한다.
+- legacy 함수는 `identity.aliases`나 `observerOnlyAliases`를 절대 순회하지 않는다. 현재 호환 결과인 `normalizeAutomationProduct('CC')`, `normalizeAutomationProduct('Athena XDR')`, `normalizeAutomationProduct('A-Sec')`가 모두 `HCI_SCP`인 상태를 explicit regression으로 고정한다.
 - ADAPTERS는 여전히 6종 전체 product identity의 유일 정본이며 `LEGACY_AUTOMATION_PRODUCTS`는 기존 API 호환을 위한 정본의 필터 view다.
 
-`ADAPTERS`는 외부 mutation이 불가능한 snapshot 함수로 `identity`만 deep-copy/freeze해 위 `ProductRegistryView`를 만든다. entry는 `adapterProduct`, aliases는 `trim→lowercase→space/hyphen을 _로 변환`한 값, Spec mapping은 variant key로 정렬한 canonical JSON의 SHA-256 digest를 함께 반환한다. digest에는 vendor·aliases·observer eligibility·Spec mapping이 모두 포함된다. 전략 revision은 작성 당시 `registryDigest`를 기록한다. app bootstrap의 현재 digest, 전략의 digest, 선택된 adapter product가 하나라도 다르면 `REGISTRY_DRIFT`로 resolve·collect·promote를 모두 fail-closed 거부한다.
+`ADAPTERS`는 외부 mutation이 불가능한 snapshot 함수로 `identity`만 deep-copy/freeze해 위 `ProductRegistryView`를 만든다. entry는 `adapterProduct`, aliases는 `trim→lowercase→space/hyphen을 _로 변환`한 값, Spec mapping은 variant key로 정렬한 canonical JSON의 SHA-256 digest를 함께 반환한다. digest에는 vendor·aliases·observerOnlyAliases·observer eligibility·Spec mapping이 모두 포함된다. 전략 revision은 작성 당시 `registryDigest`를 기록한다. app bootstrap의 현재 digest, 전략의 digest, 선택된 adapter product가 하나라도 다르면 `REGISTRY_DRIFT`로 resolve·collect·promote를 모두 fail-closed 거부한다.
 
 별칭·Spec join 매핑:
 
-| 관측·사용자 표기 | ADAPTERS canonical code | variant | Spec mapping (`lookupCode` → `acceptedReturnedCodes`) |
-|---|---|---|---|
-| `EPP`, `Endpoint Secure`, `A-Sec` | `ENDPOINT_SECURE` | null | `ENDPOINT_SECURE` → [`ENDPOINT_SECURE`] (`EPP` directory fallback은 loader 내부) |
-| `IAG`, `IAM`, `Internet Access Gateway` | `IAG` | null | `IAG` → [`IAG`] |
-| `CC`, `Cyber Command` | `NDR` | `CYBER_COMMAND` | `CYBER_COMMAND` → [`CYBER_COMMAND`] (`CC` directory fallback은 loader 내부) |
-| `Athena NDR`, `Athena XDR` | `NDR` | `ATHENA_XDR` | `XDR` → [`XDR`] |
-| generic `NDR` | `NDR` | 미확정 | null; fingerprint로 variant를 확정할 때까지 `SPEC_IDENTITY_MISMATCH` |
-| `HCI`, `SCP`, `aCloud` | `HCI_SCP` | null | `HCI_SCP` → [`HCI_SCP`, `HCI`] |
-| `FortiOS`, `FortiGate` | `FORTIOS` | null | `FORTIOS` → [`FORTIOS`] |
-| `IOS XE`, `Cisco IOSXE` | `IOSXE` | null | `CISCO_IOSXE` → [`CISCO_IOSXE`] |
+| 관측·사용자 표기 | ADAPTERS canonical code | observer-only 추가 alias | variant | Spec mapping (`lookupCode` → `acceptedReturnedCodes`) |
+|---|---|---|---|---|
+| `EPP`, `Endpoint Secure`, `A-Sec` | `ENDPOINT_SECURE` | `A-Sec` | null | `ENDPOINT_SECURE` → [`ENDPOINT_SECURE`] (`EPP` directory fallback은 loader 내부) |
+| `IAG`, `IAM`, `Internet Access Gateway` | `IAG` | 없음 | null | `IAG` → [`IAG`] |
+| `CC`, `Cyber Command` | `NDR` | `CC` | `CYBER_COMMAND` | `CYBER_COMMAND` → [`CYBER_COMMAND`] (`CC` directory fallback은 loader 내부) |
+| `Athena NDR`, `Athena XDR` | `NDR` | `Athena XDR` | `ATHENA_XDR` | `XDR` → [`XDR`] |
+| generic `NDR` | `NDR` | 없음 | 미확정 | null; fingerprint로 variant를 확정할 때까지 `SPEC_IDENTITY_MISMATCH` |
+| `HCI`, `SCP`, `aCloud` | `HCI_SCP` | 없음 | null | `HCI_SCP` → [`HCI_SCP`, `HCI`] |
+| `FortiOS`, `FortiGate` | `FORTIOS` | 전체 alias, identity-only product | null | `FORTIOS` → [`FORTIOS`] |
+| `IOS XE`, `Cisco IOSXE` | `IOSXE` | 전체 alias, identity-only product | null | `CISCO_IOSXE` → [`CISCO_IOSXE`] |
 
 `CC`·`Cyber Command` alias는 vendor/product fingerprint가 Cyber Command임을 증명할 때만 variant로 확정한다. 단어 alias만으로 `NDR`을 `CYBER_COMMAND` spec에 join하지 않는다.
 
@@ -469,6 +473,8 @@ LM-05 한도는 파일 50MiB, 100,000 rows, 256 fields/row, 문자열 64KiB, par
 
 ### 3.9 캡처 번들 통일
 
+T-H2는 계획 카드만 있고 현재 저장소에는 `capture-bundle.v1`, AES-GCM bundle module, diagnosis reader, observer writer가 모두 **미구현**이다. 이 계획은 기존 구현을 재사용한다고 가정하지 않고, PR-004가 T-H2 전체 구현 소유권을 흡수해 diagnosis reader와 observer writer를 같은 shared module 위에 동시에 만든다. 별도 T-H2 구현 트랙을 병렬 실행하지 않으며 PR-004 완료 후 기존 T-H2 카드에 대체 구현 링크와 검증 결과를 동기화한다.
+
 T-H2의 `data/captures/<device>-<ts>.enc` 의도를 계승하되 `<device>` 자리에는 실제 hostname/IP/serial이 아니라 opaque `deviceScopeDigest`만 사용한다. `data/captures/`는 **최종 오프라인 캡처 번들의 유일 저장 위치와 포맷 정본**이며 신규 observer는 별도 포맷을 만들지 않는다.
 
 - canonical envelope: `capture-bundle.v1`
@@ -477,7 +483,7 @@ T-H2의 `data/captures/<device>-<ts>.enc` 의도를 계승하되 `<device>` 자�
 - transient staging: `data/runtime/learning-captures/<captureId>/`
 - staging은 encrypted chunks·manifest 조립에만 사용하고 성공 시 canonical bundle로 atomic promote한다.
 - promote 완료 후 staging을 제거한다. 실패 staging은 24시간 후 purge 대상이며 전략 evidence로 사용할 수 없다.
-- T-H2 진단 reader와 observer writer는 `@sangfor/collector`의 같은 envelope schema·redactor·encrypt/decrypt contract를 사용한다.
+- PR-004는 `packages/sangfor-collector/src/capture-bundle.ts`를 새로 만들고 `packages/sangfor-collector/src/index.ts`에서 export한다. `scripts/device-collect.ts` writer, `scripts/epp-diagnose.ts`, `scripts/cc-diagnose.ts`, `scripts/iag-diagnose.ts` reader, 신규 observer writer가 모두 이 단일 envelope schema·redactor·encrypt/decrypt contract를 사용한다.
 - 전략 record는 canonical bundle path와 digest를 참조한다. PostgreSQL mirror에는 path·payload를 저장하지 않는다.
 - PR-004에서 `.gitignore`에 `data/captures/**`를 추가해 전체 directory를 local-only로 고정한다.
 - `git check-ignore -q data/captures/probe.enc`가 exit code 0인지 regression으로 검증한다.
@@ -700,10 +706,14 @@ PR-004의 method 세부 분해는 PR-003 후 확정하지만 다음 보안 대�
 
 - MODIFY: `.gitignore` — `data/captures/**` local-only
 - MODIFY: `package.json` — `test:observer:e2e` script
+- CREATE: `packages/sangfor-collector/src/capture-bundle.ts`
+- MODIFY: `packages/sangfor-collector/src/index.ts`
+- MODIFY: `scripts/device-collect.ts`, `scripts/epp-diagnose.ts`, `scripts/cc-diagnose.ts`, `scripts/iag-diagnose.ts`
 - CREATE: `packages/sangfor-observer/package.json`과 session/capture entrypoint
 - CREATE: `scripts/test-observer-e2e.ts`
 - CREATE: `tests/capture-bundle.test.ts`, `tests/capture-gitignore.test.ts`, observer CDP focused tests
-- VERIFY: `git check-ignore -q data/captures/probe.enc`, bundle round-trip, E2E가 모두 exit code 0
+- VERIFY: device-collect writer→EPP/CC/IAG diagnosis reader와 observer writer→동일 reader의 `capture-bundle.v1` round-trip, `git check-ignore -q data/captures/probe.enc`, E2E가 모두 exit code 0
+- SYNC: PR-004가 PASS한 뒤 기존 T-H2 카드에 구현 커밋·검증 경로를 링크하며, 그 전에는 T-H2를 완료로 표시하지 않는다.
 
 ### 5.2 PR-001 상세
 
@@ -725,9 +735,9 @@ PR-004의 method 세부 분해는 PR-003 후 확정하지만 다음 보안 대�
 
 - `FORTIOS`, `IOSXE` read-only adapter entry와 `resolveProductAdapterStrict`
 - ADAPTERS entry를 `{ identity, legacyAdapter }`로 감싸 vendor/spec metadata와 기존 public object shape를 분리
-- identity의 product variant→Spec code mapping과 registry digest 포함
+- identity의 legacy-alias superset, explicit `observerOnlyAliases`, product variant→Spec code mapping과 registry digest 포함
 - `getProductRegistrySnapshot(): ProductRegistryView`
-- legacy 4종 filter를 통한 `normalizeAutomationProduct`/`getProductAdapter`/`listProductAdapters` 결과 불변 회귀
+- legacy 4종 filter를 통한 `normalizeAutomationProduct`/`getProductAdapter`/`listProductAdapters` 결과 불변 회귀와 `CC`/`Athena XDR`/`A-Sec`의 기존 `HCI_SCP` 결과 고정
 - L0 `@sangfor/shared.PRODUCTS`가 observer 정본으로 사용되지 않는 dependency test
 - `FirmwareTruthRecord`, parser, candidate/conflict/verified/superseded transition
 - learning contracts의 version type은 `@sangfor/version` import/re-export만 허용
@@ -938,7 +948,9 @@ PR은 순차 수행하며 다음 ownership을 지킨다.
 | `tsconfig.json`의 `@sangfor/learning-strategy` alias | PR-001A | 후속 PR은 새 package alias를 변경하지 않는다. |
 | `packages/sangfor-approval/**`, operator approval/nonce files | PR-001B | 후속 PR은 public primitive import만 한다. |
 | `packages/sangfor-learning-strategy/**` | PR-001A/B/C | PR-002~009는 각 기능별 새 module을 추가하고 선행 contract 변경 시 먼저 compatibility test를 갱신한다. |
-| `packages/sangfor-observer/**`, `@sangfor/collector` bundle module | PR-004 | PR-005~008은 method driver만 추가한다. |
+| `packages/sangfor-observer/**` | PR-004 | PR-005~008은 method driver만 추가한다. |
+| `packages/sangfor-collector/src/capture-bundle.ts`, collector export | PR-004 | T-H2와 observer가 공유하는 유일 bundle 계약이며 다른 PR은 별도 envelope를 만들지 않는다. |
+| `scripts/device-collect.ts`, `scripts/{epp,cc,iag}-diagnose.ts` bundle I/O | PR-004 | PR-004가 writer와 diagnosis reader를 함께 구현하며 후속 PR은 read-only 소비만 한다. |
 | `.gitignore`의 `data/captures/**` rule | PR-004 | 후속 PR은 ignore 예외·강제 add를 만들지 않는다. |
 | `prisma/schema.prisma`, migration 1개 | PR-010 | 다른 PR은 Prisma schema를 수정하지 않는다. |
 | 루트 `package.json`의 `test:observer:e2e` | PR-004 | PR-012는 script 의미를 변경하지 않고 최종 gate에서 호출한다. |
@@ -1019,8 +1031,9 @@ STOP: package layering 역전, 사용자 파일 충돌, Change Budget 초과, �
 | U-06 | 기존 roadmap #2 | git history의 랩 비밀번호 rewrite | BFG/filter-repo 시행 여부 별도 승인 | history rewrite·force push 금지 | 과거 secret 정리만 차단 |
 | U-07 | 기존 roadmap #3 | tech-debt-tracker 정책 | `docs/TECH-DEBT.md` 승격 또는 링크 제거 | 현재 파일·링크 유지 | tech-debt 문서 정합성만 차단 |
 | U-08 | 기존 roadmap #4 | `outputs/diagnosis` 커밋 정책 | sanitized evidence만 선별 커밋 또는 전부 local-only | 신규 실장비 output을 stage/commit하지 않음 | evidence 배포·공유 정책만 차단, 로컬 실파일 검증은 가능 |
+| U-09 | 기존 roadmap #5 | 실장비 write 시점별 사람 승인 | M3 create-volume 등 각 write run마다 action-bound 서명 승인 | 실장비 write 전면 금지 | M3 write 트랙만 차단하며 read-only인 본 계획 구현에는 영향 없음 |
 
-U-02, U-03, U-04가 미해결이어도 PR-001~004의 synthetic·local 기반 구현은 진행할 수 있다. 다만 실장비 replay, FortiOS lab 승격, live encrypted capture/promotion은 각각의 결정 없이 PASS로 보고하지 않는다.
+U-02, U-03, U-04, U-09가 미해결이어도 PR-001~004의 synthetic·local 기반 구현은 진행할 수 있다. 다만 실장비 replay, FortiOS lab 승격, live encrypted capture/promotion은 각각의 결정 없이 PASS로 보고하지 않으며 U-09 결정 없이 M3 등 외부 write를 실행하지 않는다.
 
 ## 8. 완료 판정
 
@@ -1036,7 +1049,7 @@ U-02, U-03, U-04가 미해결이어도 PR-001~004의 synthetic·local 기반 구
 - competency 승격 테스트는 digest가 아니라 존재하는 evidence 실파일을 요구한다.
 - secret canary가 로그, 파일 DB, decrypted test bundle, DB mirror 어디에도 남지 않는다.
 - browser E2E에서 포트·시간창·page count·URL·browser 생존이 불변이고 mock device write 수가 0이다.
-- T-H2 reader와 observer writer가 같은 `capture-bundle.v1`을 round-trip한다.
+- PR-004가 새로 구현한 T-H2 device-collect writer·EPP/CC/IAG diagnosis reader와 observer writer가 같은 `capture-bundle.v1`을 round-trip한다.
 - final capture filename에 장비 식별자가 없고 `data/captures/**`가 Git에서 ignore된다.
 - local canonical store가 DB 장애와 concurrent writer 상황에서도 보존된다.
 - 사용자 소유 PPTX·기존 출력 변경이 그대로 보존된다.
@@ -1058,6 +1071,15 @@ U-02, U-03, U-04가 미해결이어도 PR-001~004의 synthetic·local 기반 구
 - **Drift 판정:** 기존 계획의 독립 product registry, 독립 firmware model, 전략 `field_verified`, 중복 approval stack, live LM-02, CDP·capture 경계 누락을 현재 로드맵·코드 계약에 맞게 해소했다.
 - **다음 작업:** 사용자 편입 결정을 기록한 뒤 PR-001A registry/version truth부터 시작한다.
 - **다음 검증:** PR-001A focused tests → lint → build → full test 순서로 실행한다.
+
+### CHECKPOINT — 2026-07-23 독립 Claude 검증 보정
+
+- **Baseline:** `0fe0336` (`docs(plan): reconcile learning observer with roadmap`)
+- **Current:** 독립 Claude 검증 findings를 반영한 working tree 개정판
+- **REQ 상태:** REQ-01~REQ-25 모두 구현 전 `PENDING`; 문서 계약만 재동기화한다.
+- **Drift 판정:** strict observer alias와 legacy alias 동결의 숨은 충돌, 미구현 T-H2의 reader 소유권, 로드맵 §9 결정 5번, 비정본 L4 명칭을 보정했다.
+- **검증 안전성:** 현재 dirty checkout의 `pnpm test`가 사용자 PPTX를 재생성한 사고를 기록하고, 전체 실행 게이트를 clean implementation worktree로 한정했다.
+- **다음 작업:** plan machine check와 diff 검사 후 계획서만 커밋하고 같은 Claude 세션에 재검토를 요청한다.
 
 ## 10. 검토 기록
 
@@ -1098,3 +1120,13 @@ U-02, U-03, U-04가 미해결이어도 PR-001~004의 synthetic·local 기반 구
 | M3-02 operator approval 회귀 테스트 경로 불명확 | PR-001B의 MODIFY/VERIFY-ONLY 테스트 경로를 명시하고 PR-001 focused gate에 기존 operator·control-tower·http-bridge 테스트 6개를 직접 포함했다. |
 
 - 개정판 적대적 검토 4차: **CRITICAL 0 / HIGH 0 / MEDIUM 0 — APPROVE**
+
+- 독립 Claude 검토 5차: **CRITICAL 0 / HIGH 1 / MEDIUM 3 — NOT APPROVED**
+
+| Finding | 조치 |
+|---|---|
+| H5-01 strict observer alias와 legacy alias 동결 모순 | legacy alias를 identity alias의 부분집합으로 바꾸고 `observerOnlyAliases` 차집합을 명시했으며 `CC`·`Athena XDR`·`A-Sec`의 legacy `HCI_SCP` 결과 회귀를 고정했다. |
+| M5-01 미구현 T-H2 reader 소유권 누락 | 현재 bundle 구현이 없음을 명시하고 PR-004가 collector module, device writer, EPP/CC/IAG diagnosis reader, observer writer와 T-H2 상태 동기화를 모두 소유하도록 지정했다. |
+| M5-02 로드맵 §9 결정 5번 누락 | 실장비 write 시점별 사람 승인을 U-09로 추가하고 본 read-only 계획에는 영향이 없지만 M3 write를 계속 차단하도록 했다. |
+| M5-03 비정본 L4 계층 명칭 | `L4`를 제거하고 ARCHITECTURE.md의 L0~L3 밖에 있는 번호 없는 Apps/MCP transport 조립 표면으로 교정했다. |
+| INCIDENT-01 dirty checkout 검증 부작용 | Claude의 `pnpm test`가 기존 사용자 PPTX를 재생성했음을 기록하고 전체 test/build/smoke를 clean task-owned implementation worktree에서만 실행하도록 고정했다. |
