@@ -419,9 +419,27 @@ function hashRouterPath(value: string): string | null {
   return queryOrFragment === -1 ? hashPath : hashPath.slice(0, queryOrFragment);
 }
 
+function isShellPath(path: string): boolean {
+  const normalized = path.normalize('NFKC').trim();
+  return normalized === '' || normalized === '/' || normalized === 'index.html' || normalized === '/index.html'
+    || normalized === 'index.htm' || normalized === '/index.htm'
+    || normalized === 'ui' || normalized === '/ui' || normalized === 'ui/' || normalized === '/ui/';
+}
+
+function routePathBeforeHash(value: string): string {
+  const hashIndex = value.indexOf('#');
+  const withoutHash = hashIndex === -1 ? value : value.slice(0, hashIndex);
+  const queryIndex = withoutHash.indexOf('?');
+  return queryIndex === -1 ? withoutHash : withoutHash.slice(0, queryIndex);
+}
+
+function isExplicitHashRoute(value: string | null): boolean {
+  return value !== null && (value.startsWith('#/') || value.startsWith('#!/'));
+}
+
 function canonicalRouteSegments(path: string, field: string): string[] {
   if (path.startsWith('//')) invalidTruth(`${field} contains an invalid hash route path.`);
-  if (path === '/') return [FINGERPRINT_ROUTE_ROOT];
+  if (isShellPath(path)) return [FINGERPRINT_ROUTE_ROOT];
   if (path.startsWith('/')) path = path.slice(1);
   if (path.endsWith('/')) path = path.slice(0, -1);
   if (path.length === 0 || [...path].length > MAX_FINGERPRINT_VALUE_LENGTH || path.includes('//')) {
@@ -453,6 +471,7 @@ function canonicalRouteSegments(path: string, field: string): string[] {
 }
 
 function isApprovedRoutePath(path: string): boolean {
+  if (isShellPath(path)) return false;
   try {
     canonicalRouteSegments(path, 'routeSignature');
     return true;
@@ -476,22 +495,32 @@ function canonicalRoutePath(value: unknown, field: string): string {
     }
     if (parsed.username || parsed.password) invalidTruth(`${field} must not contain URL userinfo.`);
     const hashIndex = route.indexOf('#');
-    const explicitRootHash = hashIndex !== -1 && ['#', '#!'].includes(route.slice(hashIndex));
-    const hashPath = hashRouterPath(parsed.hash);
-    const pathnameIsApproved = parsed.pathname !== '/' && isApprovedRoutePath(parsed.pathname);
-    const hashIsRoute = hashPath !== null && (explicitRootHash || isApprovedRoutePath(hashPath)
-      || !pathnameIsApproved || hashPath.includes('/'));
-    path = hashIsRoute ? hashPath! : (explicitRootHash ? '/' : parsed.pathname);
+    const hashInput = hashIndex === -1 ? null : route.slice(hashIndex);
+    const hashPath = hashRouterPath(hashInput ?? parsed.hash);
+    if (isExplicitHashRoute(hashInput)) {
+      path = hashPath ?? '/';
+    } else if (isApprovedRoutePath(parsed.pathname)) {
+      path = parsed.pathname;
+    } else if (hashPath !== null) {
+      path = hashPath;
+    } else {
+      path = parsed.pathname;
+    }
   } else if (route.includes('://')) {
     invalidTruth(`${field} is not a valid absolute URL.`);
   } else {
     const hashIndex = route.indexOf('#');
-    const hashPath = hashIndex === -1 ? null : hashRouterPath(route.slice(hashIndex));
-    if (hashPath !== null) {
+    const hashInput = hashIndex === -1 ? null : route.slice(hashIndex);
+    const hashPath = hashRouterPath(hashInput ?? '');
+    const basePath = routePathBeforeHash(route);
+    if (isExplicitHashRoute(hashInput)) {
+      path = hashPath ?? '/';
+    } else if (isApprovedRoutePath(basePath)) {
+      path = basePath;
+    } else if (hashPath !== null) {
       path = hashPath;
     } else {
-      const queryOrHash = route.search(/[?#]/u);
-      path = queryOrHash === -1 ? route : route.slice(0, queryOrHash);
+      path = basePath;
     }
   }
 

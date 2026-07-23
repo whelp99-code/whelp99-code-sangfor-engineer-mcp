@@ -205,6 +205,106 @@ describe('PR-001A1 ADAPTERS-derived registry', () => {
     const accessorRequest = Object.create(null) as StrictProductResolveRequest;
     Object.defineProperty(accessorRequest, 'product', { enumerable: true, get: () => 'IAG' });
     expect(() => resolveProductAdapterStrict(accessorRequest)).toThrow('INVALID_REGISTRY');
+
+    let productDigestReads = 0;
+    const productTopLevelGetter = Object.create(null) as Record<string, unknown>;
+    Object.defineProperties(productTopLevelGetter, {
+      schemaVersion: { enumerable: true, value: 1 },
+      registryDigest: {
+        enumerable: true,
+        get: () => {
+          productDigestReads += 1;
+          return trustedSnapshot.registryDigest;
+        },
+      },
+      entries: { enumerable: true, value: structuredClone(trustedSnapshot.entries) },
+    });
+    expect(() => resolveProductAdapterStrict('IAG', { snapshot: productTopLevelGetter as unknown as ProductRegistryView }))
+      .toThrow('INVALID_REGISTRY');
+    expect(productDigestReads).toBeLessThanOrEqual(1);
+
+    let learningDigestReads = 0;
+    const learningTopLevelGetter = Object.create(null) as Record<string, unknown>;
+    Object.defineProperties(learningTopLevelGetter, {
+      schemaVersion: { enumerable: true, value: 1 },
+      registryDigest: {
+        enumerable: true,
+        get: () => {
+          learningDigestReads += 1;
+          return trustedSnapshot.registryDigest;
+        },
+      },
+      entries: { enumerable: true, value: structuredClone(trustedSnapshot.entries) },
+    });
+    expect(() => resolveInjectedAdapterProductCode(
+      learningTopLevelGetter as unknown as ProductRegistryView,
+      'IAG',
+      { expectedRegistryDigest: trustedSnapshot.registryDigest },
+    )).toThrow('INVALID_REGISTRY');
+    expect(learningDigestReads).toBeLessThanOrEqual(1);
+
+    const alternatingEntries = structuredClone(trustedSnapshot.entries) as ProductRegistryView['entries'];
+    let entryReads = 0;
+    Object.defineProperty(alternatingEntries, '0', {
+      configurable: true,
+      enumerable: true,
+      get: () => {
+        entryReads += 1;
+        return entryReads === 1 ? { ...trustedSnapshot.entries[0], aliases: ['attacker-alias'] } : trustedSnapshot.entries[0];
+      },
+    });
+    const alternatingView = {
+      schemaVersion: 1 as const,
+      registryDigest: trustedSnapshot.registryDigest,
+      entries: alternatingEntries,
+    } as ProductRegistryView;
+    expect(() => resolveProductAdapterStrict('IAG', { snapshot: alternatingView })).toThrow('INVALID_REGISTRY');
+    expect(() => resolveInjectedAdapterProductCode(alternatingView, 'IAG')).toThrow('INVALID_REGISTRY');
+    expect(entryReads).toBeLessThanOrEqual(1);
+
+    const inheritedEntry = Object.assign(
+      Object.create({ aliases: ['attacker-alias'] }) as Record<string, unknown>,
+      structuredClone(trustedSnapshot.entries[0]),
+    );
+    const inheritedEntryView = {
+      schemaVersion: 1 as const,
+      registryDigest: trustedSnapshot.registryDigest,
+      entries: [inheritedEntry, ...structuredClone(trustedSnapshot.entries.slice(1))],
+    } as ProductRegistryView;
+    expect(() => resolveProductAdapterStrict('IAG', { snapshot: inheritedEntryView })).toThrow('INVALID_REGISTRY');
+    expect(() => resolveInjectedAdapterProductCode(inheritedEntryView, 'IAG')).toThrow('INVALID_REGISTRY');
+
+    const mappingGetterEntry = structuredClone(trustedSnapshot.entries[0]) as ProductRegistryView['entries'][number];
+    let mappingReads = 0;
+    Object.defineProperty(mappingGetterEntry, 'defaultSpecMapping', {
+      configurable: true,
+      enumerable: true,
+      get: () => {
+        mappingReads += 1;
+        return { lookupCode: 'ATTACK', acceptedReturnedCodes: ['ATTACK'] };
+      },
+    });
+    const mappingGetterView = {
+      schemaVersion: 1 as const,
+      registryDigest: trustedSnapshot.registryDigest,
+      entries: [mappingGetterEntry, ...structuredClone(trustedSnapshot.entries.slice(1))],
+    } as ProductRegistryView;
+    expect(() => resolveProductAdapterStrict('IAG', { snapshot: mappingGetterView })).toThrow('INVALID_REGISTRY');
+    expect(() => resolveInjectedAdapterProductCode(mappingGetterView, 'IAG')).toThrow('INVALID_REGISTRY');
+    expect(mappingReads).toBeLessThanOrEqual(1);
+
+    const prototypeMappingEntry = structuredClone(trustedSnapshot.entries[0]) as ProductRegistryView['entries'][number];
+    prototypeMappingEntry.defaultSpecMapping = Object.create({
+      lookupCode: 'ATTACK',
+      acceptedReturnedCodes: ['ATTACK'],
+    });
+    const prototypeMappingView = {
+      schemaVersion: 1 as const,
+      registryDigest: trustedSnapshot.registryDigest,
+      entries: [prototypeMappingEntry, ...structuredClone(trustedSnapshot.entries.slice(1))],
+    } as ProductRegistryView;
+    expect(() => resolveProductAdapterStrict('IAG', { snapshot: prototypeMappingView })).toThrow('INVALID_REGISTRY');
+    expect(() => resolveInjectedAdapterProductCode(prototypeMappingView, 'IAG')).toThrow('INVALID_REGISTRY');
   });
 
   it('canonicalizes and deduplicates product, alias, mapping, and accepted-code fields', () => {
@@ -373,6 +473,12 @@ describe('PR-001A1 ADAPTERS-derived registry', () => {
     });
     expect(hashDashboardOtherOrigin).toBe(hashDashboard);
     expect(hashSystem).not.toBe(hashDashboard);
+    const dashboardPath = canonicalizeFingerprintDescriptors({ routeSignature: ['/dashboard'] });
+    expect(canonicalizeFingerprintDescriptors({ routeSignature: ['/dashboard#system'] })).toBe(dashboardPath);
+    expect(canonicalizeFingerprintDescriptors({ routeSignature: ['https://host-a/dashboard#system'] })).toBe(dashboardPath);
+    expect(canonicalizeFingerprintDescriptors({ routeSignature: ['https://host-a/dashboard#'] })).toBe(dashboardPath);
+    expect(canonicalizeFingerprintDescriptors({ routeSignature: ['https://host-a/dashboard#!'] })).toBe(dashboardPath);
+    expect(canonicalizeFingerprintDescriptors({ routeSignature: ['https://host-a/dashboard#/system'] })).toBe(hashSystem);
     for (const route of ['#/dashboard', '/#/dashboard', '#!/dashboard', 'index.html#/dashboard']) {
       expect(canonicalizeFingerprintDescriptors({ routeSignature: [route] })).toBe(hashDashboard);
     }
@@ -405,6 +511,10 @@ describe('PR-001A1 ADAPTERS-derived registry', () => {
     const rootRoute = canonicalizeFingerprintDescriptors({ routeSignature: ['#'] });
     expect(canonicalizeFingerprintDescriptors({ routeSignature: ['#!/'] })).toBe(rootRoute);
     expect(canonicalizeFingerprintDescriptors({ routeSignature: ['#/'] })).toBe(rootRoute);
+    expect(canonicalizeFingerprintDescriptors({ routeSignature: ['https://host-a/index.html'] })).toBe(rootRoute);
+    expect(canonicalizeFingerprintDescriptors({ routeSignature: ['https://host-a/index.htm'] })).toBe(rootRoute);
+    expect(canonicalizeFingerprintDescriptors({ routeSignature: ['index.html'] })).toBe(rootRoute);
+    expect(canonicalizeFingerprintDescriptors({ routeSignature: ['index.htm'] })).toBe(rootRoute);
     expect(canonicalizeFingerprintDescriptors({ routeSignature: ['https://host-a/index.html#'] })).toBe(rootRoute);
     expect(canonicalizeFingerprintDescriptors({ routeSignature: ['https://host-a/'] })).toBe(rootRoute);
     expect(canonicalizeFingerprintDescriptors({ routeSignature: ['https://host-b/index.html#/'] })).toBe(rootRoute);
