@@ -15,6 +15,10 @@ import {
 
 export * from './contracts.js';
 export * from './approval.js';
+export * from './methods.js';
+export * from './store.js';
+export * from './lifecycle.js';
+export * from './resolver.js';
 export {
   canonicalizeFingerprintDescriptors,
   fingerprintFromDescriptors,
