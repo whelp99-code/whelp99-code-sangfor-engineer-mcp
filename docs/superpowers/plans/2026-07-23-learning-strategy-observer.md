@@ -1120,6 +1120,15 @@ U-02, U-03, U-04, U-09가 미해결이어도 PR-001~004의 synthetic·local 기�
 - **검증:** focused 1 file/17 tests, lint, build, full 79 files/542 tests, smoke:mcp 77 tools 모두 통과.
 - **다음 작업:** PR-003 LM-01 FortiOS synthetic fixture와 direct read-only facade.
 
+### CHECKPOINT — 2026-07-25 PR-003 완료
+
+- **Baseline:** `9401a54` (`docs(plan): checkpoint PR-002 implementation`)
+- **Current:** `ca0ee16` (`feat(learning): add LM-01 FortiOS synthetic fixture and facade`)
+- **REQ 상태:** PR-003 LM-01 FortiOS synthetic fixture와 direct read-only facade `PASS`. REQ-11 official GET/HEAD synthetic integration 통과.
+- **구현 결과:** LM01FortiosFacade (synthetic mode), validateLM01Recipe (citation/endpoint/method validation, forbidden field rejection), FORTIOS_8_0_SYNTHETIC_FIXTURE.
+- **검증:** focused 1 file/12 tests, lint, build, full 80 files/554 tests, smoke:mcp 77 tools 모두 통과.
+- **다음 작업:** PR-004 existing-CDP session, passive structural capture, T-H2 통합 encrypted bundle, `test:observer:e2e`.
+
 ## 10. 검토 기록
 
 - 원안 적대적 검토: 최종 CRITICAL 0 / HIGH 0
