@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { FileNonceStore } from '../packages/sangfor-operator/src/nonce-store.js';
@@ -40,6 +40,18 @@ describe('FileNonceStore', () => {
     const result = new FileNonceStore(path).consume('n1', future());
     expect(result.ok).toBe(false);
     expect(result.reason).toMatch(/fail-closed/);
+  });
+
+  it('keeps operator error meaning while using the shared lock and 0600 store', () => {
+    const path = join(dir, 'locked.json');
+    const store = new FileNonceStore(path);
+    expect(store.consume('n1', future()).ok).toBe(true);
+    expect(statSync(path).mode & 0o777).toBe(0o600);
+    mkdirSync(`${path}.lock`, { mode: 0o700 });
+    const result = store.consume('n2', future());
+    expect(result.ok).toBe(false);
+    expect(result.reason).toMatch(/nonce store unavailable \(fail-closed\)/);
+    expect(result.reason).toMatch(/NONCE_STORE_LOCK_TIMEOUT/);
   });
 });
 

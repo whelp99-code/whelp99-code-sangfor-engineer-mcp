@@ -148,6 +148,12 @@ importers:
 
   packages/sangfor-learning-strategy:
     dependencies:
+      '@sangfor/approval':
+        specifier: workspace:*
+        version: link:../sangfor-approval
+      '@sangfor/shared':
+        specifier: workspace:*
+        version: link:../shared
       '@sangfor/version':
         specifier: workspace:*
         version: link:../sangfor-version

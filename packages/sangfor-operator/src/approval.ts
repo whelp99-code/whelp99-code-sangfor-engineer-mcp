@@ -1,4 +1,8 @@
-import { createHmac, timingSafeEqual } from 'node:crypto';
+import {
+  canonicalizeApprovalPayload,
+  signDomainApproval,
+  verifyDomainApprovalSignature,
+} from '@sangfor/approval';
 
 // ─── Signed, action-bound, time-bound live-execution approval ────────────────
 //
@@ -33,7 +37,7 @@ export function approvalCanonicalString(
   action: ApprovalActionRef,
   approval: Omit<SignedApproval, 'approvalToken'>,
 ): string {
-  return [
+  return canonicalizeApprovalPayload([
     approval.approvedBy,
     approval.changeTicketId,
     approval.rollbackPlanId,
@@ -41,7 +45,7 @@ export function approvalCanonicalString(
     approval.expiresAt,
     action.type,
     action.target ?? '',
-  ].join('\n');
+  ]);
 }
 
 export function signApprovalToken(
@@ -49,7 +53,7 @@ export function signApprovalToken(
   action: ApprovalActionRef,
   approval: Omit<SignedApproval, 'approvalToken'>,
 ): string {
-  return createHmac('sha256', secret).update(approvalCanonicalString(action, approval)).digest('hex');
+  return Buffer.from(signDomainApproval(secret, approvalCanonicalString(action, approval))).toString('hex');
 }
 
 export function verifyExecutionApproval(params: {
@@ -77,11 +81,14 @@ export function verifyExecutionApproval(params: {
   if (Number.isNaN(expiry)) return { ok: false, reason: 'invalid expiresAt' };
   if (now.getTime() > expiry) return { ok: false, reason: 'approval expired' };
 
-  const expected = signApprovalToken(secret, action, approval);
-  const a = Buffer.from(expected, 'hex');
-  const b = Buffer.from(approval.approvalToken, 'hex');
-  if (a.length !== b.length || !timingSafeEqual(a, b)) {
+  if (typeof approval.approvalToken !== 'string') {
     return { ok: false, reason: 'approval token signature mismatch' };
   }
+  const verdict = verifyDomainApprovalSignature(
+    secret,
+    approvalCanonicalString(action, approval),
+    Buffer.from(approval.approvalToken, 'hex'),
+  );
+  if (!verdict.ok) return { ok: false, reason: 'approval token signature mismatch' };
   return { ok: true };
 }

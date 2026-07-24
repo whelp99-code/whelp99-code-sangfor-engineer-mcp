@@ -3,6 +3,8 @@
   "type": "module",
   "main": "src/index.ts",
   "dependencies": {
+    "@sangfor/approval": "workspace:*",
+    "@sangfor/shared": "workspace:*",
     "@sangfor/version": "workspace:*"
   }
 }

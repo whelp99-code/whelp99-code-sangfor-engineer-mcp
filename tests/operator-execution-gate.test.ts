@@ -82,4 +82,14 @@ describe('assertRealExecutionAllowed — live-execution gate failure branches', 
     const action = liveAction();
     expect(() => assertRealExecutionAllowed(labSession(), action, validApproval(action))).not.toThrow();
   });
+
+  it('does not consume a nonce when the signature gate fails first', () => {
+    process.env.SANGFOR_ALLOW_REAL_EXECUTION = 'true';
+    process.env.SANGFOR_OPERATOR_APPROVAL_SECRET = SECRET;
+    const action = liveAction();
+    const valid = validApproval(action);
+    expect(() => assertRealExecutionAllowed(labSession(), action, { ...valid, approvalToken: '0'.repeat(64) }))
+      .toThrow(/signature/i);
+    expect(() => assertRealExecutionAllowed(labSession(), action, valid)).not.toThrow();
+  });
 });
