@@ -1111,6 +1111,15 @@ U-02, U-03, U-04, U-09가 미해결이어도 PR-001~004의 synthetic·local 기�
 - **검증:** focused 3 files/53 tests, lint, build, full 78 files/525 tests, smoke:mcp 77 tools 모두 통과.
 - **다음 작업:** PR-002 vertical slice (Fact service, ObserverSpecAdapter, fixtures).
 
+### CHECKPOINT — 2026-07-25 PR-002 완료
+
+- **Baseline:** `466a4b3` (`docs(plan): checkpoint PR-001C implementation`)
+- **Current:** `2ff3367` (`feat(learning): add fact service and observer spec adapter`)
+- **REQ 상태:** PR-002 vertical slice `PASS`.
+- **구현 결과:** Fact query service, ObserverSpecAdapter (exact product variant→Spec product code and verified specVersion resolve, FactQueryResult complete+eligible only to observed map conversion), researched/lab-verified fixtures, SPEC_PRODUCT_MAPPINGS (IOSXE→CISCO_IOSXE, NDR→CYBER_COMMAND, HCI_SCP→HCI, ENDPOINT_SECURE→ENDPOINT_SECURE).
+- **검증:** focused 1 file/17 tests, lint, build, full 79 files/542 tests, smoke:mcp 77 tools 모두 통과.
+- **다음 작업:** PR-003 LM-01 FortiOS synthetic fixture와 direct read-only facade.
+
 ## 10. 검토 기록
 
 - 원안 적대적 검토: 최종 CRITICAL 0 / HIGH 0
