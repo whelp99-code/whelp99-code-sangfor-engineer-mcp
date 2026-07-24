@@ -20,6 +20,7 @@ export * from './store.js';
 export * from './lifecycle.js';
 export * from './resolver.js';
 export * from './fact-service.js';
+export * from './lm01-fortios.js';
 export {
   canonicalizeFingerprintDescriptors,
   fingerprintFromDescriptors,
