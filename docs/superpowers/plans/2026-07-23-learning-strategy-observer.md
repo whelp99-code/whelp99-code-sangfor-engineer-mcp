@@ -1102,6 +1102,15 @@ U-02, U-03, U-04, U-09가 미해결이어도 PR-001~004의 synthetic·local 기�
 - **검증:** focused 7 files/60 tests, lint, build, full 75 files/472 tests, smoke:mcp 77 tools 모두 통과.
 - **다음 작업:** PR-001A H1-H5 보정 (vendor/variant truth binding, specVersion traversal, deep accessor TOCTOU) 및 spec-loader 경로 보안 커밋.
 
+### CHECKPOINT — 2026-07-25 PR-001C 완료
+
+- **Baseline:** `16f6991` (`docs(plan): checkpoint PR-001B implementation`)
+- **Current:** `14537fa` (`feat(learning): add DSL/store/lifecycle/resolver`)
+- **REQ 상태:** PR-001C DSL/store/lifecycle/resolver `PASS`.
+- **구현 결과:** strict LM-01~LM-08/LR-01~LR-04 method schemas with unknown-key rejection, atomic commit with lock/CAS/fsync, immutable revision history, lifecycle fold with `strategy_field_verified` vs competency non-counting boundary, registry digest and version truth exact resolver (no near-version fallback).
+- **검증:** focused 3 files/53 tests, lint, build, full 78 files/525 tests, smoke:mcp 77 tools 모두 통과.
+- **다음 작업:** PR-002 vertical slice (Fact service, ObserverSpecAdapter, fixtures).
+
 ## 10. 검토 기록
 
 - 원안 적대적 검토: 최종 CRITICAL 0 / HIGH 0
