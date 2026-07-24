@@ -1093,6 +1093,15 @@ U-02, U-03, U-04, U-09가 미해결이어도 PR-001~004의 synthetic·local 기�
 - **격리 안전성:** 전체 테스트가 task-owned clean worktree에서 재생성한 PPTX만 targeted restore했으며, 원본 checkout의 사용자 PPTX와 live output은 수정하지 않았다. 별도 개발 worktree의 전체 회귀에서 `127.0.0.1:3001` 일시 점유로 1회 실패했으나 즉시 포트가 해제된 뒤 동일 명령이 451 tests로 통과했고, 최종 통합 worktree 검증은 첫 실행에 통과했다.
 - **다음 작업:** PR-001B shared approval primitive를 실행하되 execution approval public contract·환경변수·payload·gate 순서·오류 의미를 동결한다.
 
+### CHECKPOINT — 2026-07-25 PR-001B 완료
+
+- **Baseline:** `1126ec2` (`docs(plan): checkpoint PR-001A implementation`)
+- **Current:** `17e1570` (`feat(approval): add shared domain approval primitives`)
+- **REQ 상태:** REQ-06 approval primitives `PASS`. Operator execution gate public contract·환경변수·payload·gate 순서·오류 의미 동결 확인.
+- **구현 결과:** 공통 `canonicalizeApprovalPayload`, `signDomainApproval`, `verifyDomainApprovalSignature`, `FileSingleUseNonceStore` in `@sangfor/approval`. Operator 호환 wrapper byte-for-byte 보존. Learning adapter `learning-strategy-v1` domain, strict base64 32-byte secret, lowercase 64-hex signature, typed error codes, isolated env/nonce path. Cross-process nonce race 테스트 (동일 nonce 2개 child process → 정확히 1개 성공), distinct nonce 동시 소비, fsync/rename 실패 fail-closed, malformed JSON record fail-closed, canonical newline collision 거부, event append 실패 시 state 불변·nonce 소비 유지.
+- **검증:** focused 7 files/60 tests, lint, build, full 75 files/472 tests, smoke:mcp 77 tools 모두 통과.
+- **다음 작업:** PR-001A H1-H5 보정 (vendor/variant truth binding, specVersion traversal, deep accessor TOCTOU) 및 spec-loader 경로 보안 커밋.
+
 ## 10. 검토 기록
 
 - 원안 적대적 검토: 최종 CRITICAL 0 / HIGH 0
