@@ -1666,3 +1666,5 @@ function missingApprovalFields(approval?: ApprovalPayload): string[] {
   const fields: Array<keyof ApprovalPayload> = ['approvedBy', 'approvalToken', 'changeTicketId', 'rollbackPlanId'];
   return fields.filter(field => !approval?.[field]);
 }
+
+export * from './observer-spec-adapter.js';

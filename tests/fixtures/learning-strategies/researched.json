@@ -1,0 +1,20 @@
+{
+  "strategyId": "epp-license-check",
+  "state": "researched",
+  "revisionId": "rev-researched-001",
+  "product": "ENDPOINT_SECURE",
+  "firmwareVersion": "6.0.4",
+  "facts": {
+    "licenseStatus": {
+      "methodCode": "LR-01",
+      "value": "active",
+      "citation": "https://docs.sangfor.com/epp/6.0/license",
+      "pageVerified": true
+    }
+  },
+  "evidence": {
+    "file": "data/runtime/learning-strategies/evidence/researched-001.json",
+    "digest": "a1b2c3d4e5f6789012345678901234567890123456789012345678901234abcd"
+  },
+  "createdAt": "2026-07-25T00:00:00.000Z"
+}

@@ -19,6 +19,7 @@ export * from './methods.js';
 export * from './store.js';
 export * from './lifecycle.js';
 export * from './resolver.js';
+export * from './fact-service.js';
 export {
   canonicalizeFingerprintDescriptors,
   fingerprintFromDescriptors,
