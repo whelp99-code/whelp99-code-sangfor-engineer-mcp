@@ -24,6 +24,7 @@ export * from './lm01-fortios.js';
 export * from './lm02-replay.js';
 export * from './lm03-extjs.js';
 export * from './lm05-import.js';
+export * from './lm07-ocr.js';
 export {
   canonicalizeFingerprintDescriptors,
   fingerprintFromDescriptors,
