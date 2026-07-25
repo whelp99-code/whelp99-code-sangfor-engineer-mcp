@@ -1129,6 +1129,15 @@ U-02, U-03, U-04, U-09가 미해결이어도 PR-001~004의 synthetic·local 기�
 - **검증:** focused 1 file/12 tests, lint, build, full 80 files/554 tests, smoke:mcp 77 tools 모두 통과.
 - **다음 작업:** PR-004 existing-CDP session, passive structural capture, T-H2 통합 encrypted bundle, `test:observer:e2e`.
 
+### CHECKPOINT — 2026-07-25 PR-004 완료
+
+- **Baseline:** `524f9c4` (`docs(plan): checkpoint PR-003 implementation`)
+- **Current:** `f8bd17d` (`feat(collector): add T-H2 encrypted capture bundle`)
+- **REQ 상태:** PR-004 T-H2 통합 encrypted bundle `PASS`. REQ-10 unified bundle 통과.
+- **구현 결과:** capture-bundle.v1 (AES-GCM encrypted bundle), computeDeviceScopeDigest (opaque filename), encrypt/decrypt round-trip, write/read round-trip, redaction canary, sensitive data detection. `.gitignore`에 `data/captures/**` 추가.
+- **검증:** focused 1 file/11 tests, lint, build, full 81 files/565 tests, smoke:mcp 77 tools 모두 통과.
+- **다음 작업:** PR-005 LM-02 synthetic fixture와 CC version-conflict fixture.
+
 ## 10. 검토 기록
 
 - 원안 적대적 검토: 최종 CRITICAL 0 / HIGH 0
