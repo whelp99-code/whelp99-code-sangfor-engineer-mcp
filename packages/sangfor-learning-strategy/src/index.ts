@@ -25,6 +25,7 @@ export * from './lm02-replay.js';
 export * from './lm03-extjs.js';
 export * from './lm05-import.js';
 export * from './lm07-ocr.js';
+export * from './lr-research.js';
 export {
   canonicalizeFingerprintDescriptors,
   fingerprintFromDescriptors,
