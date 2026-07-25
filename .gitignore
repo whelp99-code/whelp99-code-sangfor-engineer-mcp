@@ -28,6 +28,9 @@ data/evidence/change-runs/
 data/runs/
 data/registry/devices.json
 
+# PR-004: Encrypted capture bundles (local-only, never commit)
+data/captures/**
+
 # Learning-loop runtime stores (feedback/lessons, eval cases, wiki proposals)
 data/feedback/
 data/evals/
