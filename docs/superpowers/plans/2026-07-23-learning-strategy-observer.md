@@ -1165,6 +1165,15 @@ U-02, U-03, U-04, U-09가 미해결이어도 PR-001~004의 synthetic·local 기�
 - **검증:** focused 1 file/14 tests, lint, build, full 84 files/601 tests, smoke:mcp 77 tools 모두 통과.
 - **다음 작업:** PR-008 LM-07 local ROI와 LM-08 signed confirmation.
 
+### CHECKPOINT — 2026-07-25 PR-008 완료
+
+- **Baseline:** `aa9ea59` (`docs(plan): checkpoint PR-007 implementation`)
+- **Current:** `77cd563` (`feat(learning): add LM-07 OCR and LM-08 signed confirmation`)
+- **REQ 상태:** PR-008 LM-07 local ROI와 LM-08 signed confirmation `PASS`. REQ-17~18 OCR review-required와 signed confirmation replay 통과.
+- **구현 결과:** LM07OcrFacade (local-only OCR, recipe ROI, fixed type parser, pixel/raw OCR text storage forbidden, auto PASS forbidden, review required), LM08ConfirmationFacade (typed observation digest, reviewer/identity/nonce/expiry signature, forged boolean/free-form secret forbidden).
+- **검증:** focused 1 file/12 tests, lint, build, full 85 files/613 tests, smoke:mcp 77 tools 모두 통과.
+- **다음 작업:** PR-009 LR-01~LR-04 research, benchmark, stale-candidate workflow.
+
 ## 10. 검토 기록
 
 - 원안 적대적 검토: 최종 CRITICAL 0 / HIGH 0
