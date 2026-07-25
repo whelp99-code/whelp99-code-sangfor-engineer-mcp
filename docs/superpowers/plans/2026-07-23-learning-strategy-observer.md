@@ -1138,6 +1138,15 @@ U-02, U-03, U-04, U-09가 미해결이어도 PR-001~004의 synthetic·local 기�
 - **검증:** focused 1 file/11 tests, lint, build, full 81 files/565 tests, smoke:mcp 77 tools 모두 통과.
 - **다음 작업:** PR-005 LM-02 synthetic fixture와 CC version-conflict fixture.
 
+### CHECKPOINT — 2026-07-25 PR-005 완료
+
+- **Baseline:** `c34aaa0` (`docs(plan): checkpoint PR-004 implementation`)
+- **Current:** `f46271f` (`feat(learning): add LM-02 synthetic fixture and user approval gate`)
+- **REQ 상태:** PR-005 LM-02 synthetic fixture와 user approval gate `PASS`. REQ-12 synthetic 1회 요청 + real facade `ACTIVE_REPLAY_NOT_APPROVED` 통과.
+- **구현 결과:** LM02ReplayFacade (synthetic mode, user approval gate U-02), validateLM02Recipe (GET/HEAD/read-only POST validation, forbidden field rejection), CC_3_0_98_SYNTHETIC_FIXTURE, CC_VERSION_CONFLICT_FIXTURE.
+- **검증:** focused 1 file/12 tests, lint, build, full 82 files/577 tests, smoke:mcp 77 tools 모두 통과.
+- **다음 작업:** PR-006 LM-03/LM-04와 IAG 13.0.120 fixtures.
+
 ## 10. 검토 기록
 
 - 원안 적대적 검토: 최종 CRITICAL 0 / HIGH 0
