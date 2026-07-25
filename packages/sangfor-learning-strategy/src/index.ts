@@ -22,6 +22,7 @@ export * from './resolver.js';
 export * from './fact-service.js';
 export * from './lm01-fortios.js';
 export * from './lm02-replay.js';
+export * from './lm03-extjs.js';
 export {
   canonicalizeFingerprintDescriptors,
   fingerprintFromDescriptors,
