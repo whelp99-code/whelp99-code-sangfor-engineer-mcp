@@ -1174,6 +1174,15 @@ U-02, U-03, U-04, U-09가 미해결이어도 PR-001~004의 synthetic·local 기�
 - **검증:** focused 1 file/12 tests, lint, build, full 85 files/613 tests, smoke:mcp 77 tools 모두 통과.
 - **다음 작업:** PR-009 LR-01~LR-04 research, benchmark, stale-candidate workflow.
 
+### CHECKPOINT — 2026-07-25 PR-009 완료
+
+- **Baseline:** `62608a1` (`docs(plan): checkpoint PR-008 implementation`)
+- **Current:** `c723242` (`feat(learning): add LR-01~LR-04 research and benchmark`)
+- **REQ 상태:** PR-009 LR-01~LR-04 research, benchmark, stale-candidate workflow `PASS`. REQ-21 official citation·benchmark·evidence-gap·stale-candidate 통과.
+- **구현 결과:** LR01ResearchFacade (official citation, page-verified, product/version applicability), LR02BenchmarkFacade (passive capture structure benchmark, allowlist, raw secret/payload forbidden), LR03ProbeFacade (UI framework/route/store/DOM capability probe, no framework assumption), LR04BenchmarkFacade (latency/coverage/conflict benchmark, evidence file required for promotion), stale candidate workflow.
+- **검증:** focused 1 file/14 tests, lint, build, full 86 files/627 tests, smoke:mcp 77 tools 모두 통과.
+- **다음 작업:** PR-010 Prisma additive migration과 local outbox mirror.
+
 ## 10. 검토 기록
 
 - 원안 적대적 검토: 최종 CRITICAL 0 / HIGH 0
