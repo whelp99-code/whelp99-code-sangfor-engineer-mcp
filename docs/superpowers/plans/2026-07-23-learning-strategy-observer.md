@@ -1147,6 +1147,15 @@ U-02, U-03, U-04, U-09가 미해결이어도 PR-001~004의 synthetic·local 기�
 - **검증:** focused 1 file/12 tests, lint, build, full 82 files/577 tests, smoke:mcp 77 tools 모두 통과.
 - **다음 작업:** PR-006 LM-03/LM-04와 IAG 13.0.120 fixtures.
 
+### CHECKPOINT — 2026-07-25 PR-006 완료
+
+- **Baseline:** `6498601` (`docs(plan): checkpoint PR-005 implementation`)
+- **Current:** `cdf5669` (`feat(learning): add LM-03 ExtJS and LM-04 DOM fixtures`)
+- **REQ 상태:** PR-006 LM-03/LM-04와 IAG 13.0.120 fixtures `PASS`. REQ-13~14 ExtJS loaded-store와 DOM/ARIA fixture, mutation trap 통과.
+- **구현 결과:** LM03ExtjsFacade (ExtJS store reader, load/sync/call forbidden), LM04DomFacade (DOM/ARIA selector reader, click/focus/scroll/value mutation forbidden), IAG_13_0_120_SYNTHETIC_FIXTURE.
+- **검증:** focused 1 file/10 tests, lint, build, full 83 files/587 tests, smoke:mcp 77 tools 모두 통과.
+- **다음 작업:** PR-007 LM-05 JSON/CSV와 LM-06 inbound stream.
+
 ## 10. 검토 기록
 
 - 원안 적대적 검토: 최종 CRITICAL 0 / HIGH 0
