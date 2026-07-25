@@ -1156,6 +1156,15 @@ U-02, U-03, U-04, U-09가 미해결이어도 PR-001~004의 synthetic·local 기�
 - **검증:** focused 1 file/10 tests, lint, build, full 83 files/587 tests, smoke:mcp 77 tools 모두 통과.
 - **다음 작업:** PR-007 LM-05 JSON/CSV와 LM-06 inbound stream.
 
+### CHECKPOINT — 2026-07-25 PR-007 완료
+
+- **Baseline:** `3bbc859` (`docs(plan): checkpoint PR-006 implementation`)
+- **Current:** `cbb4c87` (`feat(learning): add LM-05 JSON/CSV import and LM-06 stream`)
+- **REQ 상태:** PR-007 LM-05 JSON/CSV와 LM-06 inbound stream `PASS`. REQ-15~16 bounded streaming import와 inbound-only stream fixture 통과.
+- **구현 결과:** LM05ImportFacade (JSON/CSV streaming parse, 50MiB/100k rows/256 fields/64KiB/30s limits, path traversal/symlink forbidden), LM06StreamFacade (WS/SSE inbound frame listener, send/new forbidden).
+- **검증:** focused 1 file/14 tests, lint, build, full 84 files/601 tests, smoke:mcp 77 tools 모두 통과.
+- **다음 작업:** PR-008 LM-07 local ROI와 LM-08 signed confirmation.
+
 ## 10. 검토 기록
 
 - 원안 적대적 검토: 최종 CRITICAL 0 / HIGH 0
