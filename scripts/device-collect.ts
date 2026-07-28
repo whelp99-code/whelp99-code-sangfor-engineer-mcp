@@ -6,10 +6,12 @@
  *   PRODUCT=EPP pnpm exec tsx scripts/device-collect.ts
  *   PRODUCT=IAG pnpm exec tsx scripts/device-collect.ts
  */
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { chromium, type Page } from 'playwright';
 import { ensureChromeRunning } from '../packages/sangfor-chrome/src/index.js';
 import { isSafeNavLabel } from '../packages/sangfor-collector/src/safe-nav.js';
+import { captureKeyringFromEnv } from '../packages/sangfor-collector/src/capture-bundle.js';
+import { writeDiagnosisCaptureFromPool, type DiagnosisProduct } from './diagnosis-bundle-io.js';
 
 const reqPass = (k: string): string => { const v = process.env[k]; if (!v) { console.error(`missing env: ${k}`); process.exit(1); } return v; };
 
@@ -22,7 +24,6 @@ const CFG: Record<string, any> = {
 const c = CFG[PRODUCT];
 if (!c) { console.error('unknown product', PRODUCT); process.exit(1); }
 const DIR = '/tmp/dev-captcha';
-const OUT = `${DIR}/${PRODUCT}_pool.json`;
 const CAPTCHA_PNG = `${DIR}/${PRODUCT}.png`;
 const CODE_FILE = `${DIR}/${PRODUCT}.code`;
 mkdirSync(DIR, { recursive: true });
@@ -41,7 +42,7 @@ async function main() {
     const u = resp.url();
     if (!u.includes(c.url.replace('https://', '')) || !c.apiRe.test(u)) return;
     const key = resp.request().method() + ' ' + u.split('?')[0].replace(c.url, '');
-    try { if (/json/.test(resp.headers()['content-type'] ?? '')) { const j = await resp.json(); pool[key] = j?.data ?? j; writeFileSync(OUT, JSON.stringify(pool, null, 2)); } } catch {}
+    try { if (/json/.test(resp.headers()['content-type'] ?? '')) { const j = await resp.json(); pool[key] = j?.data ?? j; } } catch {}
   });
 
   // ── login ──
@@ -176,8 +177,15 @@ async function main() {
     }
   }
 
-  writeFileSync(OUT, JSON.stringify(pool, null, 2));
-  console.error(`[${PRODUCT}] DONE — captured ${Object.keys(pool).length} api endpoints → ${OUT}`);
+  const summary = writeDiagnosisCaptureFromPool({
+    product: PRODUCT as DiagnosisProduct,
+    pool,
+    deviceScope: reqPass('SANGFOR_DEVICE_SCOPE'),
+    keyring: captureKeyringFromEnv(),
+    capturesDir: process.env.SANGFOR_CAPTURE_ROOT ?? 'data/captures',
+    stagingRoot: process.env.SANGFOR_CAPTURE_STAGING_ROOT ?? 'data/runtime/learning-captures',
+  });
+  console.error(`[${PRODUCT}] DONE — captured ${Object.keys(pool).length} api endpoints → ${summary.path}`);
   console.error(Object.keys(pool).slice(0, 60).join('\n'));
   await browser.close();
 }
