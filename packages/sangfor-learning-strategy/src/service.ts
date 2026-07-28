@@ -229,9 +229,21 @@ export class LearningStrategyService {
 
   promote(request: PromoteStrategyRequest): { revision: StrategyRevision; event: LearningApprovalEvent } {
     assertSafeLearningInput(request, ['strategyId', 'revisionId', 'evidenceFile', 'evidenceDigest', 'toState', 'approvalPayload', 'approvalToken', 'evidenceRoot']);
-    const validation = this.validate(request);
+    const validation = this.validate({
+      strategyId: request.strategyId,
+      revisionId: request.revisionId,
+      ...(request.evidenceFile === undefined ? {} : { evidenceFile: request.evidenceFile }),
+      ...(request.evidenceDigest === undefined ? {} : { evidenceDigest: request.evidenceDigest }),
+    });
     if (!validation.valid) throw new Error(`VALIDATION_FAILED: ${validation.errors.join(',')}`);
     if (!isValidTransition(validation.revision.state, request.toState)) throw new Error(`INVALID_TRANSITION: ${validation.revision.state} -> ${request.toState}`);
+    if (request.approvalPayload.entityType !== 'strategy'
+      || request.approvalPayload.entityId !== request.strategyId
+      || request.approvalPayload.revisionId !== request.revisionId
+      || request.approvalPayload.toState !== request.toState
+      || request.approvalPayload.fromState !== validation.revision.state) {
+      throw new Error('APPROVAL_BINDING_MISMATCH: approval must bind the exact strategy, revision, source state, and target state.');
+    }
     const requirements = getTransitionRequirements(validation.revision.state, request.toState);
     if (!requirements?.requiresHumanHmac) throw new Error('APPROVAL_REQUIRED: transition is not configured for signed approval.');
     const manager = new StrategyStoreManager(strategyPath(this.root, request.strategyId));

@@ -867,8 +867,8 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
       if (input.action !== 'stop' || typeof input.captureId !== 'string') throw new Error('INVALID_INPUT: action stop requires captureId.');
       const pending = pendingLearningCaptures.get(input.captureId);
       if (!pending) throw new Error('CAPTURE_NOT_FOUND: captureId is missing or already consumed.');
-      pendingLearningCaptures.delete(input.captureId);
       const summary = await observerManager().capture({ ...pending, capturesDir: resolveRepoData('captures'), stagingRoot: resolveRepoData('capture-staging'), keyring: captureKeyringFromEnv() });
+      pendingLearningCaptures.delete(input.captureId);
       return { captureId: input.captureId, status: 'stopped', bundle: summary };
     },
   },
