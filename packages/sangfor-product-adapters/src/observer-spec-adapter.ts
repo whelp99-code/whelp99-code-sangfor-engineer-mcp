@@ -68,8 +68,12 @@ export class ObserverSpecAdapter {
   }
 
   validateSpecVersion(specVersion: string): boolean {
-    // Version must be verified (non-empty string)
-    return typeof specVersion === 'string' && specVersion.length > 0;
+    return typeof specVersion === 'string'
+      && specVersion === specVersion.trim()
+      && specVersion !== '.'
+      && specVersion !== '..'
+      && [...specVersion].length <= 64
+      && /^[A-Za-z0-9][A-Za-z0-9._+-]*$/u.test(specVersion);
   }
 
   convertFactsToObservedMap(results: FactQueryResult[]): ObservedFactMap {

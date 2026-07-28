@@ -167,6 +167,9 @@ describe('PR-001A1 ADAPTERS-derived registry', () => {
     const attackerSnapshot = structuredClone(trustedSnapshot) as ProductRegistryView;
     attackerSnapshot.entries[0]!.aliases.push('attacker-alias');
     attackerSnapshot.registryDigest = computeProductRegistryDigest(attackerSnapshot.entries);
+    expect(() => resolveProductAdapterStrict({ product: 'attacker-alias', registry: attackerSnapshot }))
+      .toThrow('REGISTRY_DRIFT');
+    expect(resolveProductAdapterStrict({ product: 'IAG', registry: trustedSnapshot }).adapterProduct).toBe('IAG');
     expect(() => resolveProductAdapterStrict({ product: 'attacker-alias', registry: attackerSnapshot }, {
       snapshot: trustedSnapshot,
       registryDigest: trustedSnapshot.registryDigest,
@@ -406,6 +409,15 @@ describe('PR-001A1 ADAPTERS-derived registry', () => {
     expect(() => parseFirmwareTruthRecord({ ...record, observedAt: '2026-02-30T10:41:30.863Z' })).toThrow('INVALID_FIRMWARE_TRUTH');
     expect(() => parseFirmwareTruthRecord({ ...record, uiFingerprint: 'not-a-hash' })).toThrow('INVALID_FIRMWARE_TRUTH');
     expect(() => parseFirmwareTruthRecord({ ...record, productVariant: '' })).toThrow('INVALID_FIRMWARE_TRUTH');
+    for (const specVersion of [
+      '.', '..', '../EPP/6.0.4', 'EPP/6.0.4', 'EPP\\6.0.4', '/6.0.4', 'C:\\6.0.4',
+      ' 6.0.4', '6.0.4 ', '6.0 4', '6.0.4\u0000', '6.0.4\n', 'v'.repeat(65),
+    ]) {
+      expect(() => parseFirmwareTruthRecord({ ...record, specVersion })).toThrow('INVALID_FIRMWARE_TRUTH');
+    }
+    for (const specVersion of ['3.0.98', '6.0.4R4', '8.0.0-build_1+hotfix']) {
+      expect(parseFirmwareTruthRecord({ ...record, specVersion }).specVersion).toBe(specVersion);
+    }
     expect(() => parseFirmwareTruthRecord({ ...record, evidenceFile: '/etc/hosts' })).toThrow('INVALID_FIRMWARE_TRUTH');
     expect(() => parseFirmwareTruthRecord({ ...record, evidenceFile: '../evidence.json' })).toThrow('INVALID_FIRMWARE_TRUTH');
     expect(() => parseFirmwareTruthRecord({ ...record, evidenceFile: null })).not.toThrow();
@@ -613,8 +625,21 @@ describe('PR-001A1 ADAPTERS-derived registry', () => {
     for (const evidenceFile of ['', '/etc/hosts', 'C:\\outside.json', '../evidence.json', 'foo/../../evidence.json', 'missing.json', 'directory', 'symlink.json']) {
       expect(isFirmwareTruthEligible({ ...verified, evidenceFile }, { evidenceRoot: root })).toBe(false);
     }
+    for (const specVersion of ['../EPP/6.0.4', 'EPP/6.0.4', 'EPP\\6.0.4', '.', '..', '6.0.4 ']) {
+      expect(isFirmwareTruthEligible({ ...verified, specVersion }, { evidenceRoot: root })).toBe(false);
+    }
+    expect(() => resolveVerifiedFirmwareIdentity(
+      { ...verified, specVersion: '../EPP/6.0.4' },
+      getProductRegistrySnapshot(),
+      { evidenceRoot: root },
+    )).toThrow('INVALID_FIRMWARE_TRUTH');
     expect(toFirmwareIdentity(verified)).toMatchObject({ adapterProduct: 'FORTIOS', buildId: 'forti-build', specVersion: '8.0.0' });
     expect(resolveVerifiedFirmwareIdentity(verified, getProductRegistrySnapshot(), { evidenceRoot: root }).adapterProduct).toBe('FORTIOS');
+    expect(() => resolveVerifiedFirmwareIdentity(
+      { ...verified, vendor: 'CISCO' },
+      getProductRegistrySnapshot(),
+      { evidenceRoot: root },
+    )).toThrow('SPEC_IDENTITY_MISMATCH');
     expect(() => resolveVerifiedFirmwareIdentity(null as unknown as FirmwareTruthRecord, getProductRegistrySnapshot(), { evidenceRoot: root })).toThrow('INVALID_FIRMWARE_TRUTH');
     expect(() => resolveVerifiedFirmwareIdentity({ status: 'conflict' } as unknown as FirmwareTruthRecord, getProductRegistrySnapshot(), { evidenceRoot: root })).toThrow('INVALID_FIRMWARE_TRUTH');
   });

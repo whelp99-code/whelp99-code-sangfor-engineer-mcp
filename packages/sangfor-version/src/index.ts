@@ -111,6 +111,8 @@ const FIRMWARE_VENDOR_VALUES: readonly FirmwareTruthVendor[] = ['SANGFOR', 'FORT
 const SPEC_APPLICABILITY_VALUES: readonly SpecApplicability[] = ['unreviewed', 'verified'];
 const SHA256_HEX = /^[a-f0-9]{64}$/;
 const ISO_UTC_TIMESTAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/;
+const MAX_SPEC_VERSION_SEGMENT_LENGTH = 64;
+const SAFE_SPEC_VERSION_SEGMENT = /^[A-Za-z0-9][A-Za-z0-9._+-]*$/u;
 
 function invalidTruth(message: string): never {
   throw new FirmwareTruthError('INVALID_FIRMWARE_TRUTH', message);
@@ -142,6 +144,23 @@ function nullableTimestamp(record: Record<string, unknown>, key: string): string
   const canonical = value.includes('.') ? value : value.replace('Z', '.000Z');
   if (!ISO_UTC_TIMESTAMP.test(value) || !Number.isFinite(date.getTime()) || date.toISOString() !== canonical) {
     invalidTruth(`${key} must be an ISO-8601 UTC timestamp.`);
+  }
+  return value;
+}
+
+export function isSafeSpecVersionSegment(value: unknown): value is string {
+  return typeof value === 'string'
+    && value === value.trim()
+    && value !== '.'
+    && value !== '..'
+    && [...value].length <= MAX_SPEC_VERSION_SEGMENT_LENGTH
+    && SAFE_SPEC_VERSION_SEGMENT.test(value);
+}
+
+function nullableSpecVersion(record: Record<string, unknown>): string | null {
+  const value = nullableString(record, 'specVersion');
+  if (value !== null && !isSafeSpecVersionSegment(value)) {
+    invalidTruth('specVersion must be a bounded safe path segment.');
   }
   return value;
 }
@@ -185,7 +204,7 @@ export function parseFirmwareTruthRecord(input: unknown): FirmwareTruthRecord {
   if (!FIRMWARE_STATUS_VALUES.includes(status)) invalidTruth('status is invalid.');
   const observedAt = nullableTimestamp(record, 'observedAt');
   const evidenceFile = validateEvidenceReference(nullableString(record, 'evidenceFile'), status === 'verified');
-  const specVersion = nullableString(record, 'specVersion');
+  const specVersion = nullableSpecVersion(record);
   const specApplicability = requiredString(record, 'specApplicability') as SpecApplicability;
   if (!SPEC_APPLICABILITY_VALUES.includes(specApplicability)) invalidTruth('specApplicability is invalid.');
   if (specApplicability === 'verified' && specVersion === null) invalidTruth('verified spec applicability requires specVersion.');

@@ -338,11 +338,11 @@ export function validateProductRegistryView(view: ProductRegistryView): ProductR
   });
 }
 
-export function resolveInjectedAdapterProductCode(
+export function resolveInjectedProductIdentity(
   view: ProductRegistryView,
   product: string,
   options: InjectedRegistryResolveOptions = {},
-): AdapterProductCode {
+): ProductRegistryEntry {
   const canonicalView = validateProductRegistryView(view);
   const optionFields = optionalOwnDataRecord(options, RESOLVE_OPTION_KEYS, 'Resolver options');
   const expectedRegistryDigest = optionFields.expectedRegistryDigest;
@@ -369,7 +369,15 @@ export function resolveInjectedAdapterProductCode(
       throw new ProductRegistryError('SPEC_IDENTITY_MISMATCH', `${match.adapterProduct} has no mapping for ${variant}.`);
     }
   }
-  return match.adapterProduct;
+  return match;
+}
+
+export function resolveInjectedAdapterProductCode(
+  view: ProductRegistryView,
+  product: string,
+  options: InjectedRegistryResolveOptions = {},
+): AdapterProductCode {
+  return resolveInjectedProductIdentity(view, product, options).adapterProduct;
 }
 
 export interface ResolvedFirmwareIdentity extends Omit<FirmwareIdentity, 'adapterProduct'> {

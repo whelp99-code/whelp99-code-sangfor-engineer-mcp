@@ -822,14 +822,13 @@ export function resolveProductAdapterStrict(
   const validatedOptionsSnapshot = hasOwnProperty(options, 'snapshot')
     ? validateStrictSnapshot(readOwnDataProperty(options, 'snapshot', 'strict resolver options'))
     : undefined;
-  if (validatedRequestSnapshot && validatedOptionsSnapshot
-    && (validatedRequestSnapshot.registryDigest !== validatedOptionsSnapshot.registryDigest
-      || stableRegistryJson(validatedRequestSnapshot.canonicalEntries) !== stableRegistryJson(validatedOptionsSnapshot.canonicalEntries))) {
+  const validatedAuthoritySnapshot = validatedOptionsSnapshot ?? validateStrictSnapshot(getProductRegistrySnapshot());
+  if (validatedRequestSnapshot
+    && (validatedRequestSnapshot.registryDigest !== validatedAuthoritySnapshot.registryDigest
+      || stableRegistryJson(validatedRequestSnapshot.canonicalEntries) !== stableRegistryJson(validatedAuthoritySnapshot.canonicalEntries))) {
     throw new Error('REGISTRY_DRIFT: request registry differs from the authoritative options snapshot.');
   }
-  const validatedSnapshot = validatedOptionsSnapshot
-    ?? validatedRequestSnapshot
-    ?? validateStrictSnapshot(getProductRegistrySnapshot());
+  const validatedSnapshot = validatedAuthoritySnapshot;
   const requestDigest = strictRegistryDigest(
     readOwnDataProperty(request, 'registryDigest', 'strict identity request'),
     'request.registryDigest',

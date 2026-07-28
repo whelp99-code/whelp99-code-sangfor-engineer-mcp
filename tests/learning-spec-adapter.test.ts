@@ -105,16 +105,23 @@ describe('PR-002: ObserverSpecAdapter', () => {
   });
 
   describe('validateSpecVersion', () => {
-    it('accepts non-empty string version', () => {
+    it('accepts bounded safe version segments', () => {
       const registry = makeRegistry([]);
       const adapter = new ObserverSpecAdapter({ registry });
       expect(adapter.validateSpecVersion('6.0.4')).toBe(true);
+      expect(adapter.validateSpecVersion('6.0.4R4')).toBe(true);
+      expect(adapter.validateSpecVersion('8.0.0-build_1+hotfix')).toBe(true);
     });
 
-    it('rejects empty string version', () => {
+    it('rejects empty, traversal, whitespace, control, and oversized version segments', () => {
       const registry = makeRegistry([]);
       const adapter = new ObserverSpecAdapter({ registry });
-      expect(adapter.validateSpecVersion('')).toBe(false);
+      for (const version of [
+        '', '.', '..', '../EPP/6.0.4', 'EPP/6.0.4', 'EPP\\6.0.4', '/6.0.4', 'C:\\6.0.4',
+        ' 6.0.4', '6.0.4 ', '6.0 4', '6.0.4\u0000', '6.0.4\n', 'v'.repeat(65),
+      ]) {
+        expect(adapter.validateSpecVersion(version)).toBe(false);
+      }
     });
   });
 

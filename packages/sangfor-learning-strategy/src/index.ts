@@ -7,7 +7,7 @@ import {
 } from '@sangfor/version';
 import {
   normalizeRegistryCode,
-  resolveInjectedAdapterProductCode,
+  resolveInjectedProductIdentity,
   type AdapterProductCode,
   type ProductRegistryView,
   type ResolvedFirmwareIdentity,
@@ -67,12 +67,16 @@ export function resolveVerifiedFirmwareIdentity(
   if (parsed.status !== 'verified' || !isFirmwareTruthEligible(parsed, options)) {
     throw new Error('VERSION_TRUTH_UNAVAILABLE: verified firmware evidence is not confined and eligible.');
   }
-  const adapterProduct: AdapterProductCode = resolveInjectedAdapterProductCode(registry, parsed.adapterProduct, {
+  const registryIdentity = resolveInjectedProductIdentity(registry, parsed.adapterProduct, {
     expectedRegistryDigest: options.expectedRegistryDigest,
     productVariant: parsed.productVariant,
   });
+  const adapterProduct: AdapterProductCode = registryIdentity.adapterProduct;
   if (normalizeRegistryCode(adapterProduct) !== normalizeRegistryCode(parsed.adapterProduct)) {
     throw new Error('REGISTRY_DRIFT: firmware truth product does not match the injected registry.');
+  }
+  if (registryIdentity.vendor !== parsed.vendor) {
+    throw new Error('SPEC_IDENTITY_MISMATCH: firmware truth vendor does not match the injected registry identity.');
   }
   return { ...toFirmwareIdentity(parsed), adapterProduct };
 }
