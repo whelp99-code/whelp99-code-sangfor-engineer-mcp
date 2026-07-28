@@ -31,19 +31,44 @@ import {
 
 // Simulated low-level write failures. The nonce store must fail closed and
 // leave the existing store untouched when fsync or rename cannot complete.
-const fsFailure = vi.hoisted(() => ({ fsync: false, rename: false }));
+const fsFailure = vi.hoisted(() => ({
+  fsync: false,
+  fsyncCallToFail: 0,
+  fsyncCalls: 0,
+  rename: false,
+  lockErrorCode: null as string | null,
+  lockAttempts: 0,
+  renamedTempMode: null as number | null,
+  renamedTempPath: null as string | null,
+}));
 
 vi.mock('node:fs', async (importOriginal) => {
   const actual = await importOriginal<typeof import('node:fs')>();
   const fsyncSync = (...args: Parameters<typeof actual.fsyncSync>): void => {
-    if (fsFailure.fsync) throw new Error('simulated fsync failure');
+    fsFailure.fsyncCalls += 1;
+    if (fsFailure.fsync || fsFailure.fsyncCalls === fsFailure.fsyncCallToFail) {
+      throw new Error('simulated fsync failure');
+    }
     actual.fsyncSync(...args);
+  };
+  const mkdirSync = (...args: Parameters<typeof actual.mkdirSync>): ReturnType<typeof actual.mkdirSync> => {
+    if (String(args[0]).endsWith('.lock')) {
+      fsFailure.lockAttempts += 1;
+      if (fsFailure.lockErrorCode) {
+        const error = new Error(`simulated lock ${fsFailure.lockErrorCode}`) as NodeJS.ErrnoException;
+        error.code = fsFailure.lockErrorCode;
+        throw error;
+      }
+    }
+    return actual.mkdirSync(...args);
   };
   const renameSync = (...args: Parameters<typeof actual.renameSync>): void => {
     if (fsFailure.rename) throw new Error('simulated rename failure');
+    fsFailure.renamedTempPath = String(args[0]);
+    fsFailure.renamedTempMode = actual.statSync(args[0]).mode & 0o777;
     actual.renameSync(...args);
   };
-  return { ...actual, fsyncSync, renameSync };
+  return { ...actual, fsyncSync, mkdirSync, renameSync };
 });
 
 const SECRET = Buffer.alloc(32, 0x42).toString('base64');
@@ -118,7 +143,10 @@ describe('shared approval primitives', () => {
     try {
       const path = join(dir, 'nonces.json');
       const malformedDocs = [
+        JSON.stringify({ records: [] }),
+        JSON.stringify({ consumed: [], extra: true }),
         JSON.stringify({ consumed: [{ nonce: 'n1', expiresAt: FUTURE }] }),
+        JSON.stringify({ consumed: [{ nonce: 'n1', expiresAt: FUTURE, consumedAt: '2026-01-01T00:00:00.000Z', extra: true }] }),
         JSON.stringify({ consumed: [{ nonce: 123, expiresAt: FUTURE, consumedAt: '2026-01-01T00:00:00.000Z' }] }),
         JSON.stringify({ consumed: [{ nonce: 'n1', expiresAt: 'not-a-date', consumedAt: '2026-01-01T00:00:00.000Z' }] }),
         JSON.stringify({ consumed: 'not-an-array' }),
@@ -178,6 +206,59 @@ describe('shared approval primitives', () => {
       expect(existsSync(`${path}.lock`)).toBe(false);
       expect(readdirSync(dir).filter((file) => file.endsWith('.tmp'))).toHaveLength(0);
     } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('fails closed on parent-directory fsync failure while retaining the consumed nonce as a replay', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'approval-parent-fsync-'));
+    try {
+      const path = join(dir, 'nonces.json');
+      const store = new FileSingleUseNonceStore(path);
+      expect(store.consume('n1', FUTURE).ok).toBe(true);
+      fsFailure.fsyncCalls = 0;
+      fsFailure.fsyncCallToFail = 2;
+      try {
+        const result = store.consume('n2', FUTURE);
+        expect(result).toMatchObject({ ok: false, reason: expect.stringContaining('simulated fsync failure') });
+      } finally {
+        fsFailure.fsyncCallToFail = 0;
+      }
+      const persisted = JSON.parse(readFileSync(path, 'utf8')) as { consumed: Array<{ nonce: string }> };
+      expect(persisted.consumed.map((record) => record.nonce)).toEqual(['n1', 'n2']);
+      expect(store.consume('n2', FUTURE)).toMatchObject({
+        ok: false,
+        reason: expect.stringContaining('approval nonce already used: n2'),
+      });
+      expect(existsSync(`${path}.lock`)).toBe(false);
+    } finally {
+      fsFailure.fsyncCallToFail = 0;
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('uses a unique 0600 temp file and does not retry non-EEXIST lock errors', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'approval-lock-error-'));
+    try {
+      const path = join(dir, 'nonces.json');
+      const store = new FileSingleUseNonceStore(path);
+      fsFailure.renamedTempMode = null;
+      fsFailure.renamedTempPath = null;
+      expect(store.consume('mode-nonce', FUTURE)).toEqual({ ok: true });
+      expect(fsFailure.renamedTempMode).toBe(0o600);
+      expect(fsFailure.renamedTempPath).toMatch(/nonces\.json\.\d+\.[0-9a-f-]+\.tmp$/u);
+
+      fsFailure.lockAttempts = 0;
+      fsFailure.lockErrorCode = 'EACCES';
+      try {
+        const result = store.consume('lock-error-nonce', FUTURE);
+        expect(result).toMatchObject({ ok: false, reason: expect.stringContaining('simulated lock EACCES') });
+        expect(fsFailure.lockAttempts).toBe(1);
+      } finally {
+        fsFailure.lockErrorCode = null;
+      }
+    } finally {
+      fsFailure.lockErrorCode = null;
       rmSync(dir, { recursive: true, force: true });
     }
   });
