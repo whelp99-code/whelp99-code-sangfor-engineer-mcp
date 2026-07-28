@@ -86,7 +86,7 @@ function listRequest(args: Args) {
 export async function runStrategyCli(argv = process.argv.slice(2)): Promise<number> {
   try {
     const { command, args } = parse(argv);
-    const root = optional(args, 'root') ?? process.env.SANGFOR_LEARNING_STRATEGY_ROOT ?? resolveRepoData('learning-strategies');
+    const root = optional(args, 'root') ?? process.env.SANGFOR_LEARNING_STRATEGY_ROOT ?? resolveRepoData('data/runtime/learning-strategies');
     const service = new LearningStrategyService(root);
     if (command === 'list') { print(service.list(listRequest(args))); return STRATEGY_EXIT.success; }
     if (command === 'resolve') {

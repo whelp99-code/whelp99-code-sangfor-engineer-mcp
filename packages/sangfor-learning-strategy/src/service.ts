@@ -130,7 +130,7 @@ function decodeCursor(cursor: string | undefined): string | undefined {
 }
 
 export class LearningStrategyService {
-  constructor(private readonly root = resolveRepoData('learning-strategies')) {}
+  constructor(private readonly root = resolveRepoData('data/runtime/learning-strategies')) {}
 
   private stores(): Array<{ manager: StrategyStoreManager; store: StrategyStore }> {
     if (!existsSync(this.root)) return [];
