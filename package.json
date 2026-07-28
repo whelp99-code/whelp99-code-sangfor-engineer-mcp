@@ -16,6 +16,8 @@
     "test": "vitest run --config vitest.config.ts",
     "test:ui": "vitest run --config vitest.ui.config.ts",
     "test:observer:e2e": "tsx scripts/test-observer-e2e.ts",
+    "strategy": "tsx scripts/strategy-cli.ts",
+    "observe": "tsx scripts/observe-cli.ts",
     "lint": "tsc -p tsconfig.json --noEmit",
     "build": "tsc -p tsconfig.json",
     "seed:docs": "tsx scripts/seed-demo-knowledge.ts",
