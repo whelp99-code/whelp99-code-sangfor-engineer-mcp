@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-07-28T00:00:00.000Z",
+  "pilots": [
+    {
+      "pilotId": "cc-3.0.98",
+      "product": "CC",
+      "firmwareVersion": "3.0.98",
+      "status": "NOT_RUN",
+      "requiredDependencies": ["vpn", "device", "cdp", "approval_secret"],
+      "dependencySnapshot": {
+        "vpn": "available",
+        "device": "available",
+        "cdp": "available",
+        "approval_secret": "available"
+      },
+      "reasonCodes": ["OPERATOR_NOT_STARTED"],
+      "evidence": []
+    },
+    {
+      "pilotId": "iag-13.0.120",
+      "product": "IAG",
+      "firmwareVersion": "13.0.120",
+      "status": "NOT_RUN",
+      "requiredDependencies": ["vpn", "device", "cdp", "approval_secret"],
+      "dependencySnapshot": {
+        "vpn": "available",
+        "device": "available",
+        "cdp": "available",
+        "approval_secret": "available"
+      },
+      "reasonCodes": ["OPERATOR_NOT_STARTED"],
+      "evidence": []
+    },
+    {
+      "pilotId": "fortios-8.0",
+      "product": "FORTIOS",
+      "firmwareVersion": "8.0",
+      "status": "NOT_RUN",
+      "requiredDependencies": ["device", "approval_secret", "postgres"],
+      "dependencySnapshot": {
+        "device": "available",
+        "approval_secret": "available",
+        "postgres": "available"
+      },
+      "reasonCodes": ["OPERATOR_NOT_STARTED"],
+      "evidence": []
+    }
+  ]
+}

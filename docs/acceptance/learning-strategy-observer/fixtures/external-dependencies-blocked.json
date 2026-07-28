@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-07-28T00:00:00.000Z",
+  "pilots": [
+    {
+      "pilotId": "cc-3.0.98",
+      "product": "CC",
+      "firmwareVersion": "3.0.98",
+      "status": "BLOCKED",
+      "requiredDependencies": ["vpn", "device", "cdp", "approval_secret"],
+      "dependencySnapshot": {
+        "vpn": "unavailable",
+        "device": "unavailable",
+        "cdp": "unavailable",
+        "approval_secret": "unavailable"
+      },
+      "reasonCodes": ["U_02_ACTIVE_REPLAY_NOT_APPROVED", "U_04_LEARNING_SECRET_UNAVAILABLE"],
+      "evidence": []
+    },
+    {
+      "pilotId": "iag-13.0.120",
+      "product": "IAG",
+      "firmwareVersion": "13.0.120",
+      "status": "NOT_RUN",
+      "requiredDependencies": ["vpn", "device", "cdp", "approval_secret"],
+      "dependencySnapshot": {
+        "vpn": "unavailable",
+        "device": "unavailable",
+        "cdp": "unavailable",
+        "approval_secret": "unavailable"
+      },
+      "reasonCodes": ["OPERATOR_NOT_STARTED"],
+      "evidence": []
+    },
+    {
+      "pilotId": "fortios-8.0",
+      "product": "FORTIOS",
+      "firmwareVersion": "8.0",
+      "status": "BLOCKED",
+      "requiredDependencies": ["device", "approval_secret", "postgres"],
+      "dependencySnapshot": {
+        "device": "unavailable",
+        "approval_secret": "unavailable",
+        "postgres": "unavailable"
+      },
+      "reasonCodes": ["U_03_FORTIOS_8_LAB_UNAVAILABLE", "U_04_LEARNING_SECRET_UNAVAILABLE"],
+      "evidence": []
+    }
+  ]
+}
