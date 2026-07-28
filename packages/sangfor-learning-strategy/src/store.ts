@@ -13,6 +13,12 @@ import {
 } from 'node:fs';
 import { dirname, join } from 'node:path';
 import type { MethodCode } from './methods.js';
+import {
+  createRevisionMirrorEvent,
+  validateMirrorEvent,
+  type LearningMirrorOutboxEvent,
+  type LearningMirrorReceiptRecord,
+} from './mirror.js';
 
 /**
  * PR-001C: Atomic commit, lock/CAS/fsync, immutable revision store.
@@ -46,9 +52,12 @@ export interface StrategyGeneration {
 }
 
 export interface StrategyStore {
+  schemaVersion: 1;
   strategyId: string;
   generations: StrategyGeneration[];
   currentGeneration: number;
+  mirrorOutbox: LearningMirrorOutboxEvent[];
+  mirrorReceipts: LearningMirrorReceiptRecord[];
 }
 
 const LOCK_WAIT_MS = 2_000;
@@ -110,7 +119,24 @@ export class StrategyStoreManager {
     if (!existsSync(this.storePath)) return null;
     try {
       const content = readFileSync(this.storePath, 'utf8');
-      return JSON.parse(content) as StrategyStore;
+      const parsed = JSON.parse(content) as Partial<StrategyStore>;
+      if (!parsed || typeof parsed !== 'object' || typeof parsed.strategyId !== 'string' || parsed.strategyId.length === 0
+        || !Array.isArray(parsed.generations) || !Number.isSafeInteger(parsed.currentGeneration) || parsed.currentGeneration! < 0) return null;
+      const mirrorOutbox = parsed.mirrorOutbox ?? [];
+      const mirrorReceipts = parsed.mirrorReceipts ?? [];
+      if (!Array.isArray(mirrorOutbox) || !Array.isArray(mirrorReceipts)) return null;
+      for (const event of mirrorOutbox) validateMirrorEvent(event);
+      if (mirrorReceipts.some((receipt) => !receipt || typeof receipt !== 'object'
+        || typeof receipt.eventId !== 'string' || typeof receipt.payloadDigest !== 'string'
+        || typeof receipt.mirroredAt !== 'string' || receipt.status !== 'mirrored')) return null;
+      return {
+        schemaVersion: 1,
+        strategyId: parsed.strategyId,
+        generations: parsed.generations,
+        currentGeneration: parsed.currentGeneration!,
+        mirrorOutbox,
+        mirrorReceipts,
+      };
     } catch {
       return null; // Corrupt generation fail-closed
     }
@@ -140,6 +166,9 @@ export class StrategyStoreManager {
 
       const updatedStore: StrategyStore = {
         ...store,
+        schemaVersion: 1,
+        mirrorOutbox: store.mirrorOutbox ?? [],
+        mirrorReceipts: store.mirrorReceipts ?? [],
         generations: [...store.generations, newGeneration],
         currentGeneration: currentGen + 1,
       };
@@ -157,9 +186,12 @@ export class StrategyStoreManager {
 
   createStrategy(strategyId: string): StrategyStore {
     return {
+      schemaVersion: 1,
       strategyId,
       generations: [],
       currentGeneration: 0,
+      mirrorOutbox: [],
+      mirrorReceipts: [],
     };
   }
 
@@ -176,10 +208,13 @@ export class StrategyStoreManager {
       contentHash: computeContentHash([newRevision]),
     };
 
+    const mirrorEvent = createRevisionMirrorEvent(newRevision);
     return {
       ...store,
       generations: [...store.generations, newGeneration],
       currentGeneration: store.currentGeneration + 1,
+      mirrorOutbox: [...(store.mirrorOutbox ?? []), mirrorEvent],
+      mirrorReceipts: store.mirrorReceipts ?? [],
     };
   }
 }

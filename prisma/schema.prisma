@@ -18,8 +18,8 @@ model SangforProduct {
 
 model SangforManual {
   id         String   @id @default(uuid())
-  product   String
-  version   String?
+  product    String
+  version    String?
   title      String
   sourceType String
   sourceUrl  String?
@@ -29,24 +29,24 @@ model SangforManual {
 }
 
 model SangforProject {
-  id          String   @id @default(uuid())
+  id           String   @id @default(uuid())
   customerName String
-  product     String
-  version     String?
-  projectType String
-  status      String   @default("draft")
-  createdAt   DateTime @default(now())
+  product      String
+  version      String?
+  projectType  String
+  status       String   @default("draft")
+  createdAt    DateTime @default(now())
 }
 
 model SangforConfigPlan {
-  id          String   @id @default(uuid())
-  projectId   String?
-  product     String
-  planTitle   String
-  planJson    Json
-  riskLevel   String
-  status      String   @default("draft")
-  createdAt   DateTime @default(now())
+  id        String   @id @default(uuid())
+  projectId String?
+  product   String
+  planTitle String
+  planJson  Json
+  riskLevel String
+  status    String   @default("draft")
+  createdAt DateTime @default(now())
 }
 
 model SangforFeedbackEvent {
@@ -71,19 +71,19 @@ model SangforWikiUpdateProposal {
 }
 
 model SangforRagDocument {
-  id          String   @id @default(uuid())
+  id          String            @id @default(uuid())
   productCode String
   version     String?
   title       String
   sourceType  String
   filePath    String
-  contentHash String   @unique
-  createdAt   DateTime @default(now())
+  contentHash String            @unique
+  createdAt   DateTime          @default(now())
   chunks      SangforRagChunk[]
 }
 
 model SangforRagChunk {
-  id          String   @id @default(uuid())
+  id          String             @id @default(uuid())
   documentId  String
   productCode String
   version     String?
@@ -91,19 +91,19 @@ model SangforRagChunk {
   section     String?
   chunkText   String
   vector      Json?
-  contentHash String   @unique
-  createdAt   DateTime @default(now())
+  contentHash String             @unique
+  createdAt   DateTime           @default(now())
   document    SangforRagDocument @relation(fields: [documentId], references: [id])
 }
 
 model SangforFineTuneDataset {
-  id          String   @id @default(uuid())
-  productCode String
-  taskType    String
-  path        String
-  status      String   @default("draft")
-  exampleCount Int     @default(0)
-  createdAt   DateTime @default(now())
+  id           String   @id @default(uuid())
+  productCode  String
+  taskType     String
+  path         String
+  status       String   @default("draft")
+  exampleCount Int      @default(0)
+  createdAt    DateTime @default(now())
 }
 
 model SangforFineTuneJob {
@@ -115,4 +115,94 @@ model SangforFineTuneJob {
   taskType    String
   status      String   @default("ready_for_review")
   createdAt   DateTime @default(now())
+}
+
+model LearningMethodCatalog {
+  id            String   @id @default(uuid())
+  code          String
+  revisionId    String   @unique
+  status        String
+  contentDigest String
+  coverage      Json?
+  latencyMs     Int?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model LearningFirmwareProfile {
+  id              String   @id @default(uuid())
+  firmwareTruthId String   @unique
+  vendor          String
+  productCode     String
+  productVariant  String?
+  versionRaw      String
+  specVersion     String?
+  registryDigest  String
+  uiFingerprint   String?
+  apiFingerprint  String?
+  status          String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model LearningStrategyRevision {
+  revisionId        String   @id
+  strategyId        String
+  state             String
+  contentDigest     String
+  evidenceDigest    String?
+  methodCodes       Json?
+  deviceScopeDigest String?
+  createdAt         DateTime
+  mirroredAt        DateTime @default(now())
+
+  @@index([strategyId, createdAt])
+}
+
+model LearningLifecycleEvent {
+  eventId        String   @id
+  strategyId     String
+  revisionId     String
+  eventType      String
+  fromState      String?
+  toState        String
+  evidenceDigest String?
+  occurredAt     DateTime
+  mirroredAt     DateTime @default(now())
+
+  @@index([strategyId, occurredAt])
+}
+
+model LearningEvidence {
+  evidenceId String   @id
+  digest     String   @unique
+  kind       String
+  status     String
+  coverage   Json?
+  latencyMs  Int?
+  createdAt  DateTime
+  mirroredAt DateTime @default(now())
+}
+
+model LearningRun {
+  runId             String    @id
+  strategyId        String?
+  revisionId        String?
+  methodCode        String?
+  status            String
+  coverage          Json?
+  latencyMs         Int?
+  deviceScopeDigest String?
+  startedAt         DateTime
+  completedAt       DateTime?
+  mirroredAt        DateTime  @default(now())
+}
+
+model LearningMirrorReceipt {
+  eventId       String   @id
+  eventType     String
+  payloadDigest String
+  status        String
+  mirroredAt    DateTime
+  updatedAt     DateTime @updatedAt
 }

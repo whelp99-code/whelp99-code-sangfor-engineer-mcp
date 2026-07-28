@@ -1,5 +1,12 @@
 import { PrismaClient } from '@prisma/client';
 import type { ConfigPlan } from '@sangfor/shared';
+import {
+  syncStrategyMirror,
+  type LearningMirrorAdapter,
+  type LearningMirrorOutboxEvent,
+  type LearningMirrorSyncResult,
+  type StrategyStoreManager,
+} from '@sangfor/learning-strategy';
 
 let client: PrismaClient | undefined;
 
@@ -97,4 +104,116 @@ export async function storeHealthCheck(): Promise<{ ok: boolean; detail?: string
   } catch (err) {
     return { ok: false, detail: String(err) };
   }
+}
+
+function requireMirrorString(event: LearningMirrorOutboxEvent, key: keyof LearningMirrorOutboxEvent['metadata']): string {
+  const value = event.metadata[key];
+  if (typeof value !== 'string' || value.length === 0) throw new Error(`MIRROR_EVENT_INVALID: ${String(key)} is required.`);
+  return value;
+}
+
+export function createPrismaLearningMirrorAdapter(db: PrismaClient | null = getPrisma()): LearningMirrorAdapter {
+  return {
+    async upsert(event) {
+      if (!db) throw new Error('MIRROR_DB_UNAVAILABLE');
+      const mirroredAt = new Date().toISOString();
+      await db.$transaction(async (transaction) => {
+        if (event.eventType === 'strategy_revision') {
+          const revisionId = requireMirrorString(event, 'revisionId');
+          const strategyId = requireMirrorString(event, 'strategyId');
+          const state = requireMirrorString(event, 'state');
+          const contentDigest = requireMirrorString(event, 'contentDigest');
+          const data = {
+            strategyId,
+            state,
+            contentDigest,
+            evidenceDigest: event.metadata.evidenceDigest ?? null,
+            methodCodes: event.metadata.methodCodes ?? undefined,
+            deviceScopeDigest: event.metadata.deviceScopeDigest ?? null,
+            createdAt: new Date(event.occurredAt),
+            mirroredAt: new Date(mirroredAt),
+          };
+          await transaction.learningStrategyRevision.upsert({
+            where: { revisionId },
+            create: { revisionId, ...data },
+            update: data,
+          });
+        } else if (event.eventType === 'lifecycle_event') {
+          const strategyId = requireMirrorString(event, 'strategyId');
+          const revisionId = requireMirrorString(event, 'revisionId');
+          const toState = requireMirrorString(event, 'state');
+          await transaction.learningLifecycleEvent.upsert({
+            where: { eventId: event.eventId },
+            create: {
+              eventId: event.eventId, strategyId, revisionId, eventType: event.eventType,
+              toState, evidenceDigest: event.metadata.evidenceDigest ?? null,
+              occurredAt: new Date(event.occurredAt), mirroredAt: new Date(mirroredAt),
+            },
+            update: { toState, evidenceDigest: event.metadata.evidenceDigest ?? null, mirroredAt: new Date(mirroredAt) },
+          });
+        } else if (event.eventType === 'evidence') {
+          const digest = requireMirrorString(event, 'evidenceDigest');
+          await transaction.learningEvidence.upsert({
+            where: { digest },
+            create: {
+              evidenceId: event.eventId, digest, kind: 'strategy', status: event.metadata.status ?? 'verified',
+              coverage: event.metadata.coverage ?? undefined, latencyMs: event.metadata.latencyMs ?? null,
+              createdAt: new Date(event.occurredAt), mirroredAt: new Date(mirroredAt),
+            },
+            update: { status: event.metadata.status ?? 'verified', coverage: event.metadata.coverage ?? undefined,
+              latencyMs: event.metadata.latencyMs ?? null, mirroredAt: new Date(mirroredAt) },
+          });
+        } else if (event.eventType === 'run') {
+          await transaction.learningRun.upsert({
+            where: { runId: event.eventId },
+            create: {
+              runId: event.eventId, strategyId: event.metadata.strategyId ?? null, revisionId: event.metadata.revisionId ?? null,
+              methodCode: event.metadata.methodCode ?? null, status: event.metadata.status ?? 'complete', coverage: event.metadata.coverage ?? undefined,
+              latencyMs: event.metadata.latencyMs ?? null, deviceScopeDigest: event.metadata.deviceScopeDigest ?? null,
+              startedAt: new Date(event.occurredAt), completedAt: event.metadata.completedAt ? new Date(event.metadata.completedAt) : null,
+              mirroredAt: new Date(mirroredAt),
+            },
+            update: { status: event.metadata.status ?? 'complete', coverage: event.metadata.coverage ?? undefined,
+              latencyMs: event.metadata.latencyMs ?? null, mirroredAt: new Date(mirroredAt) },
+          });
+        } else if (event.eventType === 'method_catalog') {
+          const revisionId = requireMirrorString(event, 'revisionId');
+          await transaction.learningMethodCatalog.upsert({
+            where: { revisionId },
+            create: {
+              code: requireMirrorString(event, 'methodCode'), revisionId,
+              status: event.metadata.status ?? 'draft', contentDigest: requireMirrorString(event, 'contentDigest'),
+              coverage: event.metadata.coverage ?? undefined, latencyMs: event.metadata.latencyMs ?? null,
+            },
+            update: { status: event.metadata.status ?? 'draft', contentDigest: requireMirrorString(event, 'contentDigest'),
+              coverage: event.metadata.coverage ?? undefined, latencyMs: event.metadata.latencyMs ?? null },
+          });
+        } else if (event.eventType === 'firmware_profile') {
+          const firmwareTruthId = requireMirrorString(event, 'revisionId');
+          await transaction.learningFirmwareProfile.upsert({
+            where: { firmwareTruthId },
+            create: {
+              firmwareTruthId, vendor: requireMirrorString(event, 'vendor'), productCode: requireMirrorString(event, 'productCode'),
+              productVariant: event.metadata.productVariant ?? null, versionRaw: requireMirrorString(event, 'versionRaw'),
+              specVersion: event.metadata.specVersion ?? null, registryDigest: requireMirrorString(event, 'registryDigest'),
+              uiFingerprint: event.metadata.uiFingerprint ?? null, apiFingerprint: event.metadata.apiFingerprint ?? null,
+              status: event.metadata.status ?? 'candidate',
+            },
+            update: { registryDigest: requireMirrorString(event, 'registryDigest'), status: event.metadata.status ?? 'candidate' },
+          });
+        }
+        await transaction.learningMirrorReceipt.upsert({
+          where: { eventId: event.eventId },
+          create: { eventId: event.eventId, eventType: event.eventType, payloadDigest: event.payloadDigest,
+            status: 'mirrored', mirroredAt: new Date(mirroredAt) },
+          update: { payloadDigest: event.payloadDigest, status: 'mirrored', mirroredAt: new Date(mirroredAt) },
+        });
+      });
+      return { mirroredAt };
+    },
+  };
+}
+
+export async function syncLearningMirrorToPrisma(manager: StrategyStoreManager): Promise<LearningMirrorSyncResult> {
+  return await syncStrategyMirror(manager, createPrismaLearningMirrorAdapter());
 }

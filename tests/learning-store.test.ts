@@ -11,6 +11,9 @@ import {
   type StrategyRevision,
 } from '../packages/sangfor-learning-strategy/src/store.js';
 
+const CONTENT_A = 'a'.repeat(64);
+const CONTENT_B = 'b'.repeat(64);
+
 describe('PR-001C: Strategy store', () => {
   let tempDir: string;
   let storePath: string;
@@ -41,7 +44,7 @@ describe('PR-001C: Strategy store', () => {
       const updated = manager.addRevision(store, {
         strategyId: 'strategy-1',
         state: 'draft',
-        contentHash: 'abc123',
+        contentHash: CONTENT_A,
       });
 
       expect(updated.generations).toHaveLength(1);
@@ -56,12 +59,12 @@ describe('PR-001C: Strategy store', () => {
       store = manager.addRevision(store, {
         strategyId: 'strategy-1',
         state: 'draft',
-        contentHash: 'abc123',
+        contentHash: CONTENT_A,
       });
       store = manager.addRevision(store, {
         strategyId: 'strategy-1',
         state: 'researched',
-        contentHash: 'def456',
+        contentHash: CONTENT_B,
         derivedFromRevisionId: store.generations[0].revisions[0].revisionId,
       });
 
@@ -96,7 +99,7 @@ describe('PR-001C: Strategy store', () => {
       const updated = manager.addRevision(store, {
         strategyId: 'strategy-1',
         state: 'draft',
-        contentHash: 'abc123',
+        contentHash: CONTENT_A,
       });
       manager.commit(updated, 0);
 
@@ -127,7 +130,7 @@ describe('PR-001C: Strategy store', () => {
           revisionId: 'rev-1',
           strategyId: 'strategy-1',
           state: 'draft',
-          contentHash: 'abc123',
+          contentHash: CONTENT_A,
           createdAt: '2026-07-25T00:00:00.000Z',
         },
       ];
