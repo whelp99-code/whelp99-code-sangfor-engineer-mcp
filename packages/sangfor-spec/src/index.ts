@@ -9,8 +9,18 @@
  *   evidence (at least one PASS, zero FAIL, zero INDETERMINATE).
  */
 
-import { existsSync, readdirSync, readFileSync, statSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
-import { join, dirname, resolve, sep } from 'node:path';
+import {
+  existsSync,
+  lstatSync,
+  readdirSync,
+  readFileSync,
+  realpathSync,
+  statSync,
+  mkdirSync,
+  writeFileSync,
+  rmSync,
+} from 'node:fs';
+import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { resolveRepoData } from '../../shared/src/index.js';
@@ -125,28 +135,102 @@ function specDirectoryCandidates(product: string): string[] {
   return [canonical, ...(legacy[canonical] ?? [])];
 }
 
+const MAX_SPEC_PATH_SEGMENT_LENGTH = 64;
+const SAFE_SPEC_PATH_SEGMENT = /^[A-Za-z0-9][A-Za-z0-9._+-]*$/u;
+
+function isSafeSpecPathSegment(value: unknown): value is string {
+  return typeof value === 'string'
+    && value === value.trim()
+    && value !== '.'
+    && value !== '..'
+    && [...value].length <= MAX_SPEC_PATH_SEGMENT_LENGTH
+    && SAFE_SPEC_PATH_SEGMENT.test(value);
+}
+
+function isSafeSpecProductInput(value: unknown): value is string {
+  if (typeof value !== 'string' || value !== value.trim() || value.length === 0
+    || [...value].length > MAX_SPEC_PATH_SEGMENT_LENGTH) return false;
+  return /^[A-Za-z0-9 _+-]+$/u.test(value) || /^HCI\/SCP$/iu.test(value);
+}
+
+function isConfinedDescendant(root: string, candidate: string): boolean {
+  const rel = relative(root, candidate);
+  return rel.length > 0 && !rel.startsWith(`..${sep}`) && rel !== '..' && !isAbsolute(rel);
+}
+
+function resolveSpecRoot(root: string): string | null {
+  try {
+    const absolute = resolve(root);
+    const lexical = lstatSync(absolute);
+    if (!lexical.isDirectory() || lexical.isSymbolicLink()) return null;
+    const real = realpathSync(absolute);
+    return lstatSync(real).isDirectory() ? real : null;
+  } catch {
+    return null;
+  }
+}
+
+function resolveConfinedDirectory(parentReal: string, segment: string): string | null {
+  if (!isSafeSpecPathSegment(segment)) return null;
+  try {
+    const lexical = resolve(parentReal, segment);
+    if (!isConfinedDescendant(parentReal, lexical)) return null;
+    const lexicalStat = lstatSync(lexical);
+    if (!lexicalStat.isDirectory() || lexicalStat.isSymbolicLink()) return null;
+    const real = realpathSync(lexical);
+    if (!isConfinedDescendant(parentReal, real) || !lstatSync(real).isDirectory()) return null;
+    return real;
+  } catch {
+    return null;
+  }
+}
+
+function listConfinedSpecFiles(directoryReal: string): Array<{ name: string; path: string }> {
+  const out: Array<{ name: string; path: string }> = [];
+  for (const entry of readdirSync(directoryReal, { withFileTypes: true })) {
+    if (entry.name.startsWith('.') || !entry.name.endsWith('.json') || !entry.isFile() || entry.isSymbolicLink()) continue;
+    try {
+      const lexical = resolve(directoryReal, entry.name);
+      if (!isConfinedDescendant(directoryReal, lexical)) continue;
+      const lexicalStat = lstatSync(lexical);
+      if (!lexicalStat.isFile() || lexicalStat.isSymbolicLink()) continue;
+      const real = realpathSync(lexical);
+      if (!isConfinedDescendant(directoryReal, real) || !lstatSync(real).isFile()) continue;
+      out.push({ name: entry.name, path: real });
+    } catch {
+      // A disappearing or unreadable entry is not an eligible spec source.
+    }
+  }
+  return out;
+}
+
 /** Load and merge all spec JSON files for a product/version, or null if none. */
 export function loadSpec(product: string, version: string, root: string = specRoot()): IntendedSpec | null {
-  const productDir = specDirectoryCandidates(product).find((candidate) => existsSync(join(root, candidate, version)));
+  if (!isSafeSpecProductInput(product) || typeof version !== 'string' || !isSafeSpecPathSegment(version)) return null;
+  const rootReal = resolveSpecRoot(root);
+  if (!rootReal) return null;
+  const productDir = specDirectoryCandidates(product)
+    .map((candidate) => resolveConfinedDirectory(rootReal, candidate))
+    .find((candidate): candidate is string => candidate !== null);
   if (!productDir) return null;
-  const dir = join(root, productDir, version);
-  if (!existsSync(dir)) return null;
-  const files = readdirSync(dir).filter((f) => f.endsWith('.json') && !f.startsWith('.'));
+  const dir = resolveConfinedDirectory(productDir, version);
+  if (!dir) return null;
+  const files = listConfinedSpecFiles(dir);
   if (files.length === 0) return null;
   const items: SpecItem[] = [];
   let product0 = normalizeSpecProduct(product);
-  for (const f of files) {
+  for (const file of files) {
     let parsed: IntendedSpec;
     try {
-      parsed = JSON.parse(readFileSync(join(dir, f), 'utf8')) as IntendedSpec;
+      parsed = JSON.parse(readFileSync(file.path, 'utf8')) as IntendedSpec;
     } catch {
       // A single corrupt spec file must not crash the whole product's advisory, nor
       // vanish silently. Surface it as a MUST-without-source sentinel → evaluates to
       // INDETERMINATE (senior review) instead of a false clean bill of health.
       items.push({
-        id: `_unparseable_${f}`.replace(/[^\w]/g, '_'),
+        id: `_unparseable_${file.name}`.replace(/[^\w]/g, '_'),
         capabilityId: '_load_error',
-        label: `스펙 파일 파싱 실패: ${f} — 시니어 검토 필요 (unparseable spec file)`,
+        label: `스펙 파일 파싱 실패: ${file.name} — 시니어 검토 필요 (unparseable spec file)`,
         observedKey: '_unparseable',
         op: 'exists',
         severity: 'must',
@@ -162,17 +246,14 @@ export function loadSpec(product: string, version: string, root: string = specRo
 /** List all product/version pairs that have specs on disk. */
 export function listSpecCoverage(root: string = specRoot()): Array<{ product: string; version: string; items: number }> {
   const out: Array<{ product: string; version: string; items: number }> = [];
-  if (!existsSync(root)) return out;
-  const isDir = (p: string): boolean => {
-    try { return statSync(p).isDirectory(); } catch { return false; } // dangling symlink / perms → skip
-  };
-  for (const product of readdirSync(root)) {
-    const pDir = join(root, product);
-    if (!isDir(pDir)) continue;
+  const rootReal = resolveSpecRoot(root);
+  if (!rootReal) return out;
+  for (const product of readdirSync(rootReal)) {
+    const pDir = resolveConfinedDirectory(rootReal, product);
+    if (!pDir) continue;
     for (const version of readdirSync(pDir)) {
-      const vDir = join(pDir, version);
-      if (!isDir(vDir)) continue;
-      const spec = loadSpec(product, version, root);
+      if (!resolveConfinedDirectory(pDir, version)) continue;
+      const spec = loadSpec(product, version, rootReal);
       if (spec) out.push({ product, version, items: spec.items.length });
     }
   }
