@@ -6,7 +6,7 @@ import {
   type LearningMirrorOutboxEvent,
   type LearningMirrorSyncResult,
   type StrategyStoreManager,
-} from '@sangfor/learning-strategy';
+} from '../../sangfor-learning-strategy/src/index.js';
 
 let client: PrismaClient | undefined;
 

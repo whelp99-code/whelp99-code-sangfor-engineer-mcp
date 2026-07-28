@@ -31,6 +31,9 @@ describe('PR-001C: Strategy resolver', () => {
       state,
       contentHash: 'content-hash',
       createdAt: '2026-07-25T00:00:00.000Z',
+      scope: baseScope,
+      registryDigest: baseContext.registryDigest,
+      versionTruthRecord: baseContext.versionTruthRecord,
     };
   }
 

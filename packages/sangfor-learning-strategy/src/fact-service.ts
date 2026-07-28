@@ -46,10 +46,14 @@ export class FactService {
 
   private queryFact(factId: string, query: FactQuery): FactQueryResult {
     // Find revisions matching the scope
-    const matchingRevisions = this.options.revisions.filter(r => {
-      // Scope matching logic
-      return true; // Simplified for now
-    });
+    const matchingRevisions = this.options.revisions.filter((revision) => revision.scope !== undefined
+      && revision.scope.product === query.scope.product
+      && revision.scope.firmwareVersion === query.scope.firmwareVersion
+      && revision.scope.capability === query.scope.capability
+      && revision.scope.fact === query.scope.fact
+      && revision.registryDigest === query.context.registryDigest
+      && revision.versionTruthRecord === query.context.versionTruthRecord
+      && revision.productVariant === query.context.productVariant);
 
     if (matchingRevisions.length === 0) {
       return {

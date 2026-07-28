@@ -66,21 +66,34 @@ export function resolveExactStrategy(
   scope: StrategyScope,
   context: ResolverContext,
 ): ResolvedStrategy | ResolverError {
-  // Filter by scope match
-  const scopeMatches = revisions.filter(r => {
-    // Scope matching logic would go here
-    // For now, assume all revisions match the scope
-    return true;
-  });
+  const sameOptional = (expected: string | undefined, actual: string | undefined) =>
+    expected === undefined ? actual === undefined : expected === actual;
+  const scopeMatches = revisions.filter((revision) => revision.scope !== undefined
+    && revision.scope.product === scope.product
+    && revision.scope.firmwareVersion === scope.firmwareVersion
+    && sameOptional(scope.capability, revision.scope.capability)
+    && sameOptional(scope.fact, revision.scope.fact));
+
+  const identityMatches = scopeMatches.filter((revision) =>
+    revision.registryDigest === context.registryDigest
+    && revision.versionTruthRecord === context.versionTruthRecord
+    && sameOptional(context.productVariant, revision.productVariant));
+
+  if (scopeMatches.length > 0 && identityMatches.length === 0) {
+    if (scopeMatches.some((revision) => revision.registryDigest !== context.registryDigest)) {
+      return { code: 'REGISTRY_DRIFT', message: 'No revision matches the exact registry digest.' };
+    }
+    return { code: 'VERSION_TRUTH_MISMATCH', message: 'No revision matches the exact firmware truth identity.' };
+  }
 
   // Filter by usable state for environment
-  const eligible = scopeMatches.filter(r => 
+  const eligible = identityMatches.filter(r =>
     isStateUsableForEnvironment(r.state, context.environment)
   );
 
   if (eligible.length === 0) {
     // Check for near-version candidates (explanation-only)
-    const nearVersion = scopeMatches.filter(r => 
+    const nearVersion = identityMatches.filter(r =>
       isUsableState(r.state) && !isStateUsableForEnvironment(r.state, context.environment)
     );
     if (nearVersion.length > 0) {

@@ -13,6 +13,7 @@ import {
 } from 'node:fs';
 import { dirname, join } from 'node:path';
 import type { MethodCode } from './methods.js';
+import type { LearningApprovalEvent } from './approval.js';
 import {
   createRevisionMirrorEvent,
   validateMirrorEvent,
@@ -43,6 +44,16 @@ export interface StrategyRevision {
   evidenceFile?: string;
   evidenceDigest?: string;
   methods?: MethodCode[];
+  scope?: {
+    product: string;
+    firmwareVersion: string;
+    capability?: string;
+    fact?: string;
+  };
+  registryDigest?: string;
+  versionTruthRecord?: string;
+  vendor?: 'SANGFOR' | 'FORTINET' | 'CISCO';
+  productVariant?: string;
 }
 
 export interface StrategyGeneration {
@@ -58,6 +69,7 @@ export interface StrategyStore {
   currentGeneration: number;
   mirrorOutbox: LearningMirrorOutboxEvent[];
   mirrorReceipts: LearningMirrorReceiptRecord[];
+  lifecycleEvents: LearningApprovalEvent[];
 }
 
 const LOCK_WAIT_MS = 2_000;
@@ -124,11 +136,15 @@ export class StrategyStoreManager {
         || !Array.isArray(parsed.generations) || !Number.isSafeInteger(parsed.currentGeneration) || parsed.currentGeneration! < 0) return null;
       const mirrorOutbox = parsed.mirrorOutbox ?? [];
       const mirrorReceipts = parsed.mirrorReceipts ?? [];
-      if (!Array.isArray(mirrorOutbox) || !Array.isArray(mirrorReceipts)) return null;
+      const lifecycleEvents = parsed.lifecycleEvents ?? [];
+      if (!Array.isArray(mirrorOutbox) || !Array.isArray(mirrorReceipts) || !Array.isArray(lifecycleEvents)) return null;
       for (const event of mirrorOutbox) validateMirrorEvent(event);
       if (mirrorReceipts.some((receipt) => !receipt || typeof receipt !== 'object'
         || typeof receipt.eventId !== 'string' || typeof receipt.payloadDigest !== 'string'
         || typeof receipt.mirroredAt !== 'string' || receipt.status !== 'mirrored')) return null;
+      if (lifecycleEvents.some((event) => !event || typeof event !== 'object'
+        || event.type !== 'learning.lifecycle.approval' || event.domain !== 'learning-strategy-v1'
+        || typeof event.occurredAt !== 'string' || !event.payload || typeof event.payload !== 'object')) return null;
       return {
         schemaVersion: 1,
         strategyId: parsed.strategyId,
@@ -136,6 +152,7 @@ export class StrategyStoreManager {
         currentGeneration: parsed.currentGeneration!,
         mirrorOutbox,
         mirrorReceipts,
+        lifecycleEvents,
       };
     } catch {
       return null; // Corrupt generation fail-closed
@@ -169,6 +186,7 @@ export class StrategyStoreManager {
         schemaVersion: 1,
         mirrorOutbox: store.mirrorOutbox ?? [],
         mirrorReceipts: store.mirrorReceipts ?? [],
+        lifecycleEvents: store.lifecycleEvents ?? [],
         generations: [...store.generations, newGeneration],
         currentGeneration: currentGen + 1,
       };
@@ -192,6 +210,7 @@ export class StrategyStoreManager {
       currentGeneration: 0,
       mirrorOutbox: [],
       mirrorReceipts: [],
+      lifecycleEvents: [],
     };
   }
 
