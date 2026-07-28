@@ -158,6 +158,12 @@ importers:
         specifier: workspace:*
         version: link:../sangfor-version
 
+  packages/sangfor-observer:
+    dependencies:
+      '@sangfor/collector':
+        specifier: workspace:*
+        version: link:../sangfor-collector
+
   packages/sangfor-operator:
     dependencies:
       '@sangfor/approval':
