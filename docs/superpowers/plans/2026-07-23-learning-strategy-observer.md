@@ -1183,6 +1183,29 @@ U-02, U-03, U-04, U-09가 미해결이어도 PR-001~004의 synthetic·local 기�
 - **검증:** focused 1 file/14 tests, lint, build, full 86 files/627 tests, smoke:mcp 77 tools 모두 통과.
 - **다음 작업:** PR-010 Prisma additive migration과 local outbox mirror.
 
+### CHECKPOINT — 2026-07-28 PR-010 완료
+
+- **Current:** `f34496a` (`feat(learning): add local outbox and Prisma mirror`)
+- **REQ 상태:** REQ-22 `PASS`.
+- **구현 결과:** canonical local generation과 같은 commit에 pending outbox를 기록하고, stable event ID 기반 Prisma upsert, exponential retry, 10회 실패 DLQ, receipt와 DB-down local success를 구현했다. Prisma schema와 migration은 additive다.
+- **검증:** learning store/mirror/schema focused tests, Prisma validate, lint, build 통과.
+
+### CHECKPOINT — 2026-07-28 PR-011 완료
+
+- **Current:** `65afc64`, `5bae23b`, 보안 후속 `87c91d0`.
+- **REQ 상태:** REQ-23~24 `PASS`.
+- **구현 결과:** 77개 baseline에 정확히 8개 MCP tool을 추가해 총 85개가 됐다. list/resolve는 read-only, 나머지 6개는 non-destructive local write다. `strategy` 9개 subcommand와 `observe` 3개 subcommand, 고정 exit code, env-only approval signing과 mode 0600 output, purge dry-run 기본값을 구현했다. Signed promotion은 exact entity/strategy/revision/from-state/to-state에 결합한다.
+- **검증:** MCP/CLI/service focused tests, signed happy-path와 target substitution 거부, lint/build, `smoke:mcp` 85 tools 통과.
+
+### CHECKPOINT — 2026-07-28 PR-012와 최종 gate 완료
+
+- **Current:** `ac60ba2` (`test(acceptance): add honest pilot manifest gate`), 최종 HEAD `87c91d0`.
+- **REQ 상태:** REQ-25 정직성 자동 gate `PASS`. 실제 외부 pilot는 fixture별 `BLOCKED`/`NOT_RUN`이며 코드 완료와 분리한다.
+- **구현 결과:** pilot manifest JSON schema, evidence digest/path confinement, symlink와 허위 PASS 거부, external dependency probe, 운영 런북을 추가했다.
+- **최종 검증:** `pnpm test` 95 files passed/1 skipped, 656 tests passed/2 skipped; lint, build, observer Chromium E2E, Prisma validate, strategy/observe CLI smoke, MCP 85-tool smoke 통과.
+- **독립 검토:** Grok 1차가 promotion binding 결손을 발견해 수정했고, `87c91d0` 재검토는 **APPROVE — CRITICAL 0 / HIGH 0**.
+- **외부 실증:** VPN·실장비·운영 CDP·FortiOS 8.0 lab·PostgreSQL 접근이 제공될 때 런북에 따라 별도 실행한다. 증거 없는 PASS 전환은 금지한다.
+
 ## 10. 검토 기록
 
 - 원안 적대적 검토: 최종 CRITICAL 0 / HIGH 0
