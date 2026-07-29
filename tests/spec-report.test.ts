@@ -2,7 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { evaluateSpec, renderAdvisoryReport, loadSpec } from '../packages/sangfor-spec/src/index.js';
 
 const spec = loadSpec('IAG', '13.0.120')!;
-const observed = { logRetentionDays: 30, webAuthEnabled: true, dot1xEnabled: false };
+const observed = {
+  logRetentionDays: 30,
+  webAuthEnabled: true,
+  credentialWebAuthEnabled: false,
+  dot1xEnabled: false,
+};
 const result = evaluateSpec(spec, observed);
 const md = renderAdvisoryReport(spec, result);
 
