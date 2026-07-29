@@ -1,8 +1,8 @@
 # 전체 계획 검토 및 개발 순서 체크리스트
 
-최종 갱신: 2026-07-29  
-검토 기준 브랜치: `integration/pr001-security-followups`  
-검토 기준: `a83bd7c` 계획 완료 보고 → `5257534` 코드 HEAD + 현재 IAG 진단 작업 트리  
+최종 갱신: 2026-07-29
+검토 기준 브랜치: `integration/pr001-security-followups`
+검토 기준: `a83bd7c` 계획 완료 보고 → `3bc51d4` IAG 진단 코드 체크포인트
 판정: **APPROVE_WITH_CONDITIONS**
 
 이 문서는 흩어진 계획을 다시 실행하기 위한 단일 체크리스트다. 기존 계획의 역사와 완료 증거는 보존하되, 자동 테스트가 있다는 이유만으로 실제 런타임 통합이나 외부 실증을 완료로 간주하지 않는다.
@@ -13,7 +13,7 @@
 - 기존 완료 보고의 `PR-001A~PR-012 완료`, `REQ-01~REQ-24 완료` 표기는 **자동 인수 테스트 범위의 완료**로만 해석해야 한다.
 - Fact→Spec 안전 경계, LM-08 서명 확인, 여러 learning method의 실제 observer 연결은 계획의 런타임 완료 조건을 충족하지 못했다.
 - 내부 TypeScript `FactService`, MCP `sangfor.collect_facts`, 범용 `/tools/call` 브리지는 존재하지만, 사용자가 요청한 **전용 REST API와 OpenAPI 생성은 미착수**다.
-- IAG 13.0.120 수동 관측 진단은 현재 작업 중이며, 자동 DOM 수집기와 INDETERMINATE 수집 가이드는 별도 미완료 항목이다.
+- IAG 13.0.120 수동 관측 진단은 `3bc51d4`에서 완료됐으며, 자동 DOM 수집기와 INDETERMINATE 수집 가이드는 별도 미완료 항목이다.
 - 실제 장비·VPN·FortiOS 8.0·PostgreSQL 실증은 계속 `BLOCKED` 또는 `NOT_RUN`이다.
 
 ## 2. 문서 정본과 역사 문서
@@ -41,11 +41,11 @@
 
 - [x] `a83bd7c` 이후 `5257534`에서 observer data path를 `data/` 아래로 고정했다.
 - [x] `data/captures/*.enc` 실제 저장 위치, 파일 모드 `0600`, git ignore, Keychain decrypt round-trip을 실환경에서 확인했다.
-- [ ] 현재 IAG 진단 변경을 하나의 독립 작업 단위로 마감하고 새 검증 기준점을 기록한다.
-- [ ] [PR-001 진행 현황](./2026-07-27-pr001-progress.md)의 `최종 tip HEAD`, clean worktree, 전체 완료 문구를 새 기준점에 맞게 교정한다.
+- [x] IAG 진단 변경을 독립 작업 단위 `3bc51d4`로 마감하고 새 검증 기준점을 기록했다.
+- [x] [PR-001 진행 현황](./2026-07-27-pr001-progress.md)에 `3bc51d4` 재동기화 체크포인트와 완료 범위 교정을 추가했다.
 - [ ] observer 계획 본문의 오래된 분해 대기 표기 10건은 구현 작업으로 재활성화하지 말고, 후속 체크포인트에서 역사 표기임을 명시한다.
 
-현재 작업 트리의 IAG 변경은 수동 sanitized observation을 엄격히 파싱하고 보고서를 생성하는 advisory 작업이다. 이것은 learning observer의 method driver, CDP 자동 수집, Fact API 또는 전용 REST API 완료 증거가 아니다.
+`3bc51d4`의 IAG 변경은 수동 sanitized observation을 엄격히 파싱하고 보고서를 생성하는 advisory 작업이다. 이것은 learning observer의 method driver, CDP 자동 수집, Fact API 또는 전용 REST API 완료 증거가 아니다.
 
 ## 4. 전체 상태표
 
@@ -92,7 +92,7 @@
 | T-H7 M2~M6 zero-context cards | IN_PROGRESS | 개별 계획은 있으나 현재 실행 순서와 adjustment point의 단일 정본이 없었다. 이 문서가 상위 체크리스트 역할을 시작한다. |
 | Generic HTTP bridge | DONE | `/health`, `/tools`, `/tools/call`과 fail-closed tool guard가 있다. |
 | Dedicated REST/OpenAPI | UNTOUCHED | 제품별 versioned route와 repository-owned OpenAPI 문서/생성기가 없다. |
-| IAG 13.0.120 manual diagnosis | IN_PROGRESS | 현재 작업 트리에서 strict parser, CLI, spec/report 교정을 진행 중이다. |
+| IAG 13.0.120 manual diagnosis | DONE | `3bc51d4`에서 strict parser, CLI, spec/report 교정과 focused 검증을 완료했다. |
 | External pilots | BLOCKED | VPN, 실제 장비, FortiOS 8.0, 운영 CDP, PostgreSQL 접근이 필요하다. |
 
 ### 4.1 Legacy M0~M7 마일스톤 상세
@@ -350,12 +350,12 @@ HTTP `2xx`는 transport 성공일 뿐이며 observation 또는 diagnosis의 PASS
 
 ### Wave 0 — 현재 IAG 작업 마감과 기준점 교정
 
-- [ ] current IAG 변경 파일만 review한다.
-- [ ] category anchor, Open Auth/credential 분리, retention local baseline 문구를 확인한다.
-- [ ] omitted fact가 PASS로 승격되지 않는 회귀 테스트를 유지한다.
-- [ ] focused test, full test, lint, build를 새로 실행한다.
-- [ ] 요청이 있을 때만 독립 커밋한다.
-- [ ] 진행 현황 문서에 `5257534 + IAG 결과` 기준점을 추가한다.
+- [x] IAG 변경 파일만 review했다.
+- [x] category anchor, Open Auth/credential 분리, retention local baseline 문구를 확인했다.
+- [x] omitted fact가 PASS로 승격되지 않는 회귀 테스트를 유지했다.
+- [x] focused test, full test, lint, build를 실행했다.
+- [x] 사용자 요청에 따라 `3bc51d4`로 독립 커밋했다.
+- [x] 진행 현황 문서에 `3bc51d4` 기준점을 추가했다.
 
 완료 기준: IAG 변경이 별도 단위로 검증되고, learning observer 완료 주장과 혼합되지 않는다.
 
@@ -563,7 +563,7 @@ API를 먼저 보여주는 것이 목표여도 Wave 1~2는 생략하지 않는�
 - 2026-07-29: 전체 계획 문서 machine check를 수행했다. 대부분 `vague=0`, `incomplete=0`; hardening 문서의 vague 1건과 observer 계획의 오래된 PENDING 10건은 문서 drift로 분류했다.
 - 2026-07-29: Luna inventory로 현재 정본, 레거시 참고, 완료 역사 문서를 분리했다.
 - 2026-07-29: Terra repo-vs-plan audit에서 REQ-20, REQ-18, 실제 method transport, 전용 REST/OpenAPI 결손을 확인했다.
-- 2026-07-29: 현재 IAG focused test 증거는 `3 files, 13 tests passed`; 최종 전체 gate는 이 문서 작성 시점에 새로 실행하지 않았다.
+- 2026-07-29: IAG·MCP inventory focused gate는 `5 files, 20 tests passed`; lint/build PASS다. 직전 IAG remediation 전체 gate는 `97 files passed, 1 skipped; 664 tests passed, 2 skipped`다.
 
 ## 12. 완료 보고 체크리스트
 
