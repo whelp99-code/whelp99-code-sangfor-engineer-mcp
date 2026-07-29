@@ -3,7 +3,7 @@
 > ⚠️ **면책**: 본 리포트는 AI가 수집된 제품 매뉴얼을 근거로 생성한 **참고용 자문**입니다. 최종 판단과 적용은 담당 엔지니어의 책임입니다. AI는 어떤 장비 설정도 변경하지 않았습니다(read-only).
 
 - 대상 제품/버전: **IAG 13.0.120**
-- 요약: 잘못됨 0 · 추가 필요 1 · 판정 불가 3 · 정상 1
+- 요약: 잘못됨 0 · 추가 필요 1 · 환경 의존 2 · 판정 불가 0 · 정상 3
 - 종합 판정(ok): **조치 필요**
 
 ## 잘못된 설정 (misconfiguration) (0)
@@ -12,29 +12,50 @@ _없음_
 
 ## 추가로 필요 (missing/recommended) (1)
 
-- **고가용성(HA) 활성화 (가용성 권장)** (기대: true, 실제: false) 
-  - 근거: Sangfor IAG v13.0.120 User Manual — System / High Availability
-  - 출처: https://support.sangfor.com/productDocument/read?product_id=22&version_id=1144
+- **고가용성(HA) 활성화 (가용성 권장)** (기대: true, 실제: false)
+  - 근거: Sangfor IAG v13.0.120 User Manual — Functions / System / Network / High Availability
+  - 출처: https://support.sangfor.com/productDocument/read?product_id=22&version_id=1144&category_id=2633300
+  - 관측(수집기 주장, 미검증): IAG WebUI > System > Network > High Availability @ 2026-07-28T13:53:55.570Z [manual]
 
-## 판정 불가 (indeterminate — 설정값 미확인/근거 부족) (3)
+## 환경 의존 (context_dependent — 고객 환경 프로파일 확인 필요, 조건부) (2)
 
-- **Internet access log retention ≥ 180 days** (기대: 180, 실제: 확인 불가) 
-  - 근거: Sangfor IAG v13.0.120 User Manual — Functions / Internet Access Analytics / Log Option
-  - 출처: https://support.sangfor.com/productDocument/read?product_id=22&version_id=1144&category_id=2633191
+권장 기준과 다르지만, 고객 환경(규모·망분리·컴플라이언스·업무 앱)에 따라 의도된 구성일 수 있습니다. 아래 항목은 잘못된 설정으로 단정하지 않으며, 담당 엔지니어가 환경 프로파일과 대조해 확정해야 합니다.
 
-- **Web authentication is enabled for user identification** (기대: true, 실제: 확인 불가) 
-  - 근거: Sangfor IAG v13.0.120 User Manual — Functions / Access Management / Web Authentication
+- **Credential-based Web authentication is enabled for managed-user segments (recommended)** (기대: true, 실제: false)
+  - 근거: Sangfor IAG v13.0.120 User Manual — Functions / Access Management / Authentication / Web Authentication
   - 출처: https://support.sangfor.com/productDocument/read?product_id=22&version_id=1144&category_id=2633218
+  - 관측(수집기 주장, 미검증): IAG WebUI > Functions > Access Management > Web Authentication > Credential Authentication @ 2026-07-28T13:53:55.570Z [manual]
 
-- **802.1X access control configured (recommended for managed LAN)** (기대: true, 실제: 확인 불가) 
+- **802.1X access control configured (recommended for managed LAN)** (기대: true, 실제: false)
   - 근거: Sangfor IAG v13.0.120 User Manual — Functions / Access Management / 802.1X Authentication / 802.1X Access Control
   - 출처: https://support.sangfor.com/productDocument/read?product_id=22&version_id=1144&category_id=2633214
+  - 관측(수집기 주장, 미검증): IAG WebUI > Functions > Access Management > 802.1X Authentication > Access Control @ 2026-07-28T13:53:55.570Z [manual]
 
-## 정상 (ok) (1)
+## 판정 불가 (indeterminate — 설정값 미확인/근거 부족) (0)
 
-- **미처리 보안 이벤트 수가 0 (권장)** (기대: 0, 실제: 0) 
-  - 근거: Sangfor IAG v13.0.120 User Manual — Dashboard / Security
-  - 출처: https://support.sangfor.com/productDocument/read?product_id=22&version_id=1144
+_없음_
+
+## 정상 (ok) (3)
+
+- **Local advisory baseline: Internet access log retention ≥ 180 days** (기대: 180, 실제: 180)
+  - 근거: Sangfor IAG v13.0.120 User Manual — Functions / System / General / Report Center (retention control; 180 days is a local advisory baseline)
+  - 출처: https://support.sangfor.com/productDocument/read?product_id=22&version_id=1144&category_id=2633335
+  - 관측(수집기 주장, 미검증): IAG WebUI > System > General > Report Center > Internal Report Center @ 2026-07-28T13:53:55.570Z [manual]
+
+- **Web authentication policy is enabled for user identification** (기대: true, 실제: true)
+  - 근거: Sangfor IAG v13.0.120 User Manual — Functions / Access Management / Web Authentication
+  - 출처: https://support.sangfor.com/productDocument/read?product_id=22&version_id=1144&category_id=2633218
+  - 관측(수집기 주장, 미검증): IAG WebUI > Functions > Access Management > Web Authentication @ 2026-07-28T13:53:55.570Z [manual]
+
+- **미처리 보안 이벤트 수가 0 (권장)** (기대: 0, 실제: 0)
+  - 근거: Sangfor IAG v13.0.120 User Manual — Functions / Endpoint Management / Security / Security Events
+  - 출처: https://support.sangfor.com/productDocument/read?product_id=22&version_id=1144&category_id=2633271
+  - 관측(수집기 주장, 미검증): IAG WebUI > Dashboard > Security @ 2026-07-28T13:53:55.570Z [manual]
+
+## 커버리지 (감사 범위)
+
+- 스펙 항목 6개 중 관측값 미확인 0개
+- 스펙 외 관측 키 0개 — 의도 항목 외 설정 없음
 
 ---
 
@@ -44,5 +65,10 @@ _없음_
 - [ ] 판정 불가 항목의 실제 설정값을 사람이 직접 확인함
 - 담당 엔지니어: ____________  일자: __________
 
+## Live observation provenance (sanitized, read-only)
 
-> 수집: 10.80.1.108 라이브 콘솔(ExtJS) — aside repl snapshot (read-only, 2026-07-01). HA Disabled, 동시세션 784, 자산 51/식별 48, 버전 v13.0.120.
+- schemaVersion: iag-live-observation.v1
+- observedAt: 2026-07-28T13:53:55.570Z
+- evidenceSource: 2026-07-28 read-only Chrome console observation, independently reviewed
+- collector: manual
+- device configuration was not changed by this diagnosis.

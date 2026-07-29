@@ -1,7 +1,16 @@
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { requiresApprovalForText } from '@sangfor/approval';
 import { executeLiveConsoleAction, readLiveConsoleState } from '@sangfor/operator';
 import { ProductCode, RiskLevel, normalizeProduct, nowId } from '@sangfor/shared';
+import type {
+  AdapterProductCode,
+  ProductRegistryEntry,
+  ProductRegistryView,
+  SpecProductMapping,
+} from '@sangfor/learning-strategy';
+
+export type { AdapterProductCode, ProductRegistryEntry, ProductRegistryView, SpecProductMapping } from '@sangfor/learning-strategy';
 
 export { buildSettingGuideDocx, buildOperationsGuideDocx, buildComprehensiveSettingGuideDocx, buildComprehensiveOperationsGuideDocx, type DocxBuilderInput, type DocxBuilderResult } from './docx-builder.js';
 
@@ -226,7 +235,7 @@ const NDR_API_ENDPOINTS = [
 
 const DEFAULT_EVIDENCE_NEEDS = ['current setting screenshot', 'audit/checklist row reference', 'before/after comparison candidate'];
 
-const ADAPTERS: Record<AutomationProductCode, ProductAdapter> = {
+const LEGACY_ADAPTERS: Record<AutomationProductCode, ProductAdapter> = {
   HCI_SCP: {
     product: 'HCI_SCP',
     aliases: ['hci_scp', 'hci/scp', 'scp', 'hci', 'acloud', 'sangfor cloud platform'],
@@ -324,6 +333,569 @@ const ADAPTERS: Record<AutomationProductCode, ProductAdapter> = {
   }
 };
 
+export type ObserverAdapterProductCode = AutomationProductCode | 'FORTIOS' | 'IOSXE';
+
+export interface AdapterIdentity<C extends ObserverAdapterProductCode = ObserverAdapterProductCode> {
+  adapterProduct: C;
+  vendor: 'SANGFOR' | 'FORTINET' | 'CISCO';
+  aliases: string[];
+  observerOnlyAliases: string[];
+  observerEligible: boolean;
+  defaultSpecMapping: SpecProductMapping | null;
+  specMappingByVariant: Record<string, SpecProductMapping>;
+}
+
+export interface AdapterRegistryEntry<C extends ObserverAdapterProductCode = ObserverAdapterProductCode> {
+  identity: AdapterIdentity<C>;
+  legacyAdapter: C extends AutomationProductCode ? ProductAdapter : null;
+}
+
+export type AdapterRegistry = Record<ObserverAdapterProductCode, AdapterRegistryEntry>;
+
+function specMapping(lookupCode: string, acceptedReturnedCodes: string[]): SpecProductMapping {
+  return { lookupCode, acceptedReturnedCodes: acceptedReturnedCodes as [string, ...string[]] };
+}
+
+function identity<C extends ObserverAdapterProductCode>(
+  adapterProduct: C,
+  vendor: AdapterIdentity<C>['vendor'],
+  aliases: string[],
+  observerOnlyAliases: string[],
+  defaultSpecMapping: SpecProductMapping | null,
+  specMappingByVariant: Record<string, SpecProductMapping> = {},
+): AdapterIdentity<C> {
+  return {
+    adapterProduct,
+    vendor,
+    aliases,
+    observerOnlyAliases,
+    observerEligible: true,
+    defaultSpecMapping,
+    specMappingByVariant,
+  };
+}
+
+/**
+ * The only product identity source. Legacy APIs below intentionally consume
+ * LEGACY_ADAPTERS, so adding observer-only identities cannot change them.
+ */
+const ADAPTERS: AdapterRegistry = Object.freeze({
+  HCI_SCP: {
+    identity: identity('HCI_SCP', 'SANGFOR', [...LEGACY_ADAPTERS.HCI_SCP.aliases], [], specMapping('HCI_SCP', ['HCI_SCP', 'HCI'])),
+    legacyAdapter: LEGACY_ADAPTERS.HCI_SCP,
+  },
+  IAG: {
+    identity: identity('IAG', 'SANGFOR', [...LEGACY_ADAPTERS.IAG.aliases], [], specMapping('IAG', ['IAG'])),
+    legacyAdapter: LEGACY_ADAPTERS.IAG,
+  },
+  ENDPOINT_SECURE: {
+    identity: identity('ENDPOINT_SECURE', 'SANGFOR', [...LEGACY_ADAPTERS.ENDPOINT_SECURE.aliases, 'A-Sec'], ['A-Sec'], specMapping('ENDPOINT_SECURE', ['ENDPOINT_SECURE'])),
+    legacyAdapter: LEGACY_ADAPTERS.ENDPOINT_SECURE,
+  },
+  NDR: {
+    identity: identity('NDR', 'SANGFOR', [...LEGACY_ADAPTERS.NDR.aliases, 'CC', 'Athena XDR'], ['CC', 'Athena XDR'], null, {
+      CYBER_COMMAND: specMapping('CYBER_COMMAND', ['CYBER_COMMAND']),
+      ATHENA_XDR: specMapping('XDR', ['XDR']),
+    }),
+    legacyAdapter: LEGACY_ADAPTERS.NDR,
+  },
+  FORTIOS: {
+    identity: identity('FORTIOS', 'FORTINET', ['FortiOS', 'FortiGate'], ['FortiOS', 'FortiGate'], specMapping('FORTIOS', ['FORTIOS'])),
+    legacyAdapter: null,
+  },
+  IOSXE: {
+    identity: identity('IOSXE', 'CISCO', ['IOS XE', 'Cisco IOSXE'], ['IOS XE', 'Cisco IOSXE'], specMapping('CISCO_IOSXE', ['CISCO_IOSXE'])),
+    legacyAdapter: null,
+  },
+} as AdapterRegistry);
+
+function normalizeIdentityAlias(value: string): string {
+  return value.trim().toLowerCase().replace(/[\s-]+/g, '_');
+}
+
+function normalizeIdentityCode(value: string): string {
+  return value.trim().toUpperCase().replace(/[\s-]+/g, '_');
+}
+
+function compareCodePoints(left: string, right: string): number {
+  const leftPoints = [...left];
+  const rightPoints = [...right];
+  const length = Math.max(leftPoints.length, rightPoints.length);
+  for (let index = 0; index < length; index += 1) {
+    const leftCode = leftPoints[index]?.codePointAt(0) ?? -1;
+    const rightCode = rightPoints[index]?.codePointAt(0) ?? -1;
+    if (leftCode < rightCode) return -1;
+    if (leftCode > rightCode) return 1;
+  }
+  return 0;
+}
+
+function stableRegistryJson(value: unknown): string {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map((item) => stableRegistryJson(item)).join(',')}]`;
+  const record = value as Record<string, unknown>;
+  return `{${Object.keys(record).sort(compareCodePoints).map((key) => `${JSON.stringify(key)}:${stableRegistryJson(record[key])}`).join(',')}}`;
+}
+
+const REGISTRY_ENTRY_KEYS = [
+  'adapterProduct', 'vendor', 'aliases', 'observerOnlyAliases', 'observerEligible',
+  'defaultSpecMapping', 'specMappingByVariant',
+] as const;
+const SPEC_MAPPING_KEYS = ['lookupCode', 'acceptedReturnedCodes'] as const;
+const REGISTRY_VIEW_KEYS = ['schemaVersion', 'registryDigest', 'entries'] as const;
+
+function canonicalSpecMapping(mapping: unknown, label = 'Spec mapping'): SpecProductMapping | null {
+  if (mapping === null) return null;
+  const fields = exactOwnDataRecord(mapping, SPEC_MAPPING_KEYS, label);
+  const lookupCode = fields.lookupCode;
+  const acceptedReturnedCodes = denseStringArray(fields.acceptedReturnedCodes, `${label}.acceptedReturnedCodes`);
+  if (typeof lookupCode !== 'string' || lookupCode.trim() === '' || acceptedReturnedCodes.some((code) => code.trim() === '')) {
+    throw new Error(`INVALID_REGISTRY: ${label} has invalid fields.`);
+  }
+  const accepted = [...new Set(acceptedReturnedCodes.map((code) => normalizeIdentityCode(code)))].sort(compareCodePoints);
+  if (accepted.length === 0 || normalizeIdentityCode(lookupCode) === '') {
+    throw new Error(`INVALID_REGISTRY: ${label} must have a lookup code and accepted return code.`);
+  }
+  return {
+    lookupCode: normalizeIdentityCode(lookupCode),
+    acceptedReturnedCodes: accepted as [string, ...string[]],
+  };
+}
+
+function canonicalVariantMappings(value: unknown, label: string): Record<string, SpecProductMapping> {
+  assertPlainRecord(value, label);
+  const variantEntries = ownStringKeys(value, label).map((rawVariant) => ({
+    variant: normalizeIdentityCode(rawVariant),
+    mapping: canonicalSpecMapping(readOwnDataProperty(value, rawVariant, label), `${label}.${rawVariant}`),
+  }));
+  if (variantEntries.some(({ variant, mapping }) => variant === '' || mapping === null)) {
+    throw new Error(`INVALID_REGISTRY: ${label} contains an empty variant key.`);
+  }
+  if (new Set(variantEntries.map(({ variant }) => variant)).size !== variantEntries.length) {
+    throw new Error('INVALID_REGISTRY: variant keys collide after canonical normalization.');
+  }
+  const specMappingByVariant = Object.fromEntries(
+    variantEntries
+      .sort((a, b) => compareCodePoints(a.variant, b.variant))
+      .map(({ variant, mapping }) => [variant, mapping])
+  ) as Record<string, SpecProductMapping>;
+  return specMappingByVariant;
+}
+
+function canonicalRegistryEntry(entry: unknown): ProductRegistryEntry {
+  const fields = exactOwnDataRecord(entry, REGISTRY_ENTRY_KEYS, 'Registry entry');
+  const adapterProduct = fields.adapterProduct;
+  const vendor = fields.vendor;
+  const aliases = denseStringArray(fields.aliases, 'Registry entry.aliases');
+  const observerOnlyAliases = denseStringArray(fields.observerOnlyAliases, 'Registry entry.observerOnlyAliases');
+  const observerEligible = fields.observerEligible;
+  if (typeof adapterProduct !== 'string' || normalizeIdentityCode(adapterProduct) === ''
+    || typeof vendor !== 'string' || !['SANGFOR', 'FORTINET', 'CISCO'].includes(vendor)
+    || typeof observerEligible !== 'boolean'
+    || aliases.some((alias) => normalizeIdentityAlias(alias) === '')
+    || observerOnlyAliases.some((alias) => normalizeIdentityAlias(alias) === '')) {
+    throw new Error('INVALID_REGISTRY: identity fields are invalid.');
+  }
+  const normalizedAliases = [...new Set(aliases.map((alias) => normalizeIdentityAlias(alias)))].sort(compareCodePoints);
+  const normalizedObserverOnlyAliases = [...new Set(observerOnlyAliases.map((alias) => normalizeIdentityAlias(alias)))].sort(compareCodePoints);
+  return {
+    adapterProduct: normalizeIdentityCode(adapterProduct) as AdapterProductCode,
+    vendor: vendor as 'SANGFOR' | 'FORTINET' | 'CISCO',
+    aliases: normalizedAliases,
+    observerOnlyAliases: normalizedObserverOnlyAliases,
+    observerEligible,
+    defaultSpecMapping: canonicalSpecMapping(fields.defaultSpecMapping, 'Registry entry.defaultSpecMapping'),
+    specMappingByVariant: canonicalVariantMappings(fields.specMappingByVariant, 'Registry entry.specMappingByVariant'),
+  };
+}
+
+function canonicalRegistryEntries(value: unknown): ProductRegistryEntry[] {
+  const rawEntries = denseDataArray(value, 'Registry snapshot.entries');
+  if (rawEntries.length === 0) throw new Error('INVALID_REGISTRY: registry snapshot must contain entries.');
+  const canonicalEntries = rawEntries
+    .map((entry) => canonicalRegistryEntry(entry))
+    .sort((a, b) => compareCodePoints(a.adapterProduct, b.adapterProduct));
+  const products = new Set<string>();
+  for (const entry of canonicalEntries) {
+    if (products.has(entry.adapterProduct)) throw new Error('INVALID_REGISTRY: duplicate adapter product.');
+    products.add(entry.adapterProduct);
+    if (entry.observerOnlyAliases.some((alias) => !entry.aliases.includes(alias))) {
+      throw new Error('INVALID_REGISTRY: observer-only alias is not in aliases.');
+    }
+  }
+  return deepFreeze(canonicalEntries);
+}
+
+function productRegistryDigestFromCanonicalEntries(canonicalEntries: readonly ProductRegistryEntry[]): string {
+  const digestEntries = canonicalEntries
+    .map((entry) => ({
+      adapterProduct: entry.adapterProduct,
+      vendor: entry.vendor,
+      aliases: entry.aliases,
+      observerOnlyAliases: entry.observerOnlyAliases,
+      observerEligible: entry.observerEligible,
+      defaultSpecMapping: entry.defaultSpecMapping,
+      specMappingByVariant: entry.specMappingByVariant,
+    }));
+  return createHash('sha256').update(stableRegistryJson({ schemaVersion: 1, entries: digestEntries })).digest('hex');
+}
+
+function deepFreeze<T>(value: T, seen = new WeakSet<object>()): T {
+  if (!value || typeof value !== 'object' || seen.has(value as object)) return value;
+  seen.add(value as object);
+  for (const child of Object.values(value as Record<string, unknown>)) deepFreeze(child, seen);
+  return Object.freeze(value);
+}
+
+function cloneSpecMapping(mapping: SpecProductMapping | null): SpecProductMapping | null {
+  return mapping === null ? null : {
+    lookupCode: mapping.lookupCode,
+    acceptedReturnedCodes: [...mapping.acceptedReturnedCodes] as [string, ...string[]],
+  };
+}
+
+function cloneAdapterIdentity(identity: AdapterIdentity): AdapterIdentity {
+  return {
+    adapterProduct: identity.adapterProduct,
+    vendor: identity.vendor,
+    aliases: [...identity.aliases],
+    observerOnlyAliases: [...identity.observerOnlyAliases],
+    observerEligible: identity.observerEligible,
+    defaultSpecMapping: cloneSpecMapping(identity.defaultSpecMapping),
+    specMappingByVariant: Object.fromEntries(
+      Object.entries(identity.specMappingByVariant).map(([key, mapping]) => [key, cloneSpecMapping(mapping)!]),
+    ),
+  };
+}
+
+function assertLegacyIdentityInvariant(entry: AdapterRegistryEntry): void {
+  const identityAliases = new Set(entry.identity.aliases.map(normalizeIdentityAlias));
+  const legacyAliases = new Set(entry.legacyAdapter?.aliases.map(normalizeIdentityAlias) ?? []);
+  if ([...legacyAliases].some((alias) => !identityAliases.has(alias))) {
+    throw new Error(`INVALID_REGISTRY: ${entry.identity.adapterProduct} legacy alias is absent from identity aliases.`);
+  }
+  const expectedObserverOnly = [...identityAliases].filter((alias) => !legacyAliases.has(alias)).sort(compareCodePoints);
+  const actualObserverOnly = [...new Set(entry.identity.observerOnlyAliases.map(normalizeIdentityAlias))].sort(compareCodePoints);
+  if (JSON.stringify(expectedObserverOnly) !== JSON.stringify(actualObserverOnly)) {
+    throw new Error(`INVALID_REGISTRY: ${entry.identity.adapterProduct} observerOnlyAliases is not the exact legacy difference.`);
+  }
+}
+
+/*
+ * Validate the public legacy relationship once, then retain only a defensive
+ * canonical identity seed. Snapshot construction must not read the mutable
+ * legacy singleton again.
+ */
+const ADAPTER_IDENTITY_SEED = deepFreeze(
+  Object.fromEntries(Object.entries(ADAPTERS).map(([adapterProduct, entry]) => {
+    assertLegacyIdentityInvariant(entry);
+    return [adapterProduct, cloneAdapterIdentity(entry.identity)];
+  })),
+) as Readonly<Record<ObserverAdapterProductCode, AdapterIdentity>>;
+
+export function getProductRegistrySnapshot(): ProductRegistryView {
+  const entries = (Object.keys(ADAPTER_IDENTITY_SEED) as ObserverAdapterProductCode[]).map((adapterProduct) => {
+    const identity = ADAPTER_IDENTITY_SEED[adapterProduct];
+    return canonicalRegistryEntry({
+      adapterProduct: identity.adapterProduct as AdapterProductCode,
+      vendor: identity.vendor,
+      aliases: identity.aliases,
+      observerOnlyAliases: identity.observerOnlyAliases,
+      observerEligible: identity.observerEligible,
+      defaultSpecMapping: identity.defaultSpecMapping,
+      specMappingByVariant: identity.specMappingByVariant,
+    });
+  });
+  const canonicalEntries = canonicalRegistryEntries(entries);
+  const snapshotEntries = (Object.keys(ADAPTER_IDENTITY_SEED) as ObserverAdapterProductCode[]).map((adapterProduct) => (
+    canonicalEntries.find((entry) => entry.adapterProduct === adapterProduct)!
+  ));
+  const view = {
+    schemaVersion: 1 as const,
+    registryDigest: productRegistryDigestFromCanonicalEntries(canonicalEntries),
+    entries: snapshotEntries,
+  } satisfies ProductRegistryView;
+  return deepFreeze(view);
+}
+
+export interface StrictProductResolveRequest {
+  product?: string;
+  input?: string;
+  adapterProduct?: string;
+  productVariant?: string | null;
+  registryDigest?: string;
+  registry?: ProductRegistryView;
+  snapshot?: ProductRegistryView;
+}
+
+export interface StrictProductResolveOptions {
+  snapshot?: ProductRegistryView;
+  registryDigest?: string;
+  productVariant?: string | null;
+}
+
+const STRICT_REQUEST_KEYS = new Set([
+  'product', 'input', 'adapterProduct', 'productVariant', 'registryDigest', 'registry', 'snapshot',
+]);
+const STRICT_OPTION_KEYS = new Set(['snapshot', 'registryDigest', 'productVariant']);
+
+function isPlainRecord(value: unknown): value is object {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  try {
+    const prototype = Object.getPrototypeOf(value);
+    return prototype === Object.prototype || prototype === null;
+  } catch {
+    return false;
+  }
+}
+
+function assertPlainRecord(value: unknown, label: string): asserts value is object {
+  if (!isPlainRecord(value)) throw new Error(`INVALID_REGISTRY: ${label} must be a plain object.`);
+}
+
+function hasOwnProperty(value: object, key: string): boolean {
+  try {
+    return Object.prototype.hasOwnProperty.call(value, key);
+  } catch {
+    throw new Error('INVALID_REGISTRY: object property inspection failed.');
+  }
+}
+
+function readOwnDataProperty(value: object, key: string, label: string): unknown {
+  if (!hasOwnProperty(value, key)) return undefined;
+  try {
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value')) {
+      throw new Error(`INVALID_REGISTRY: ${label}.${key} must be an own data property.`);
+    }
+    return descriptor.value;
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith('INVALID_REGISTRY:')) throw error;
+    throw new Error(`INVALID_REGISTRY: ${label}.${key} could not be read safely.`);
+  }
+}
+
+function ownStringKeys(value: object, label: string): string[] {
+  let keys: (string | symbol)[];
+  try {
+    keys = Reflect.ownKeys(value);
+  } catch {
+    throw new Error(`INVALID_REGISTRY: ${label} keys could not be inspected safely.`);
+  }
+  if (keys.some((key) => typeof key !== 'string')) {
+    throw new Error(`INVALID_REGISTRY: ${label} contains a symbol key.`);
+  }
+  return keys as string[];
+}
+
+function exactOwnDataRecord(
+  value: unknown,
+  expectedKeys: readonly string[],
+  label: string,
+): Record<string, unknown> {
+  assertPlainRecord(value, label);
+  const keys = ownStringKeys(value, label);
+  if (keys.length !== expectedKeys.length || expectedKeys.some((key) => !keys.includes(key))) {
+    throw new Error(`INVALID_REGISTRY: ${label} contains missing or unknown keys.`);
+  }
+  const fields = Object.create(null) as Record<string, unknown>;
+  for (const key of expectedKeys) fields[key] = readOwnDataProperty(value, key, label);
+  return fields;
+}
+
+function denseDataArray(value: unknown, label: string): unknown[] {
+  if (!Array.isArray(value)) throw new Error(`INVALID_REGISTRY: ${label} must be an array.`);
+  try {
+    const prototype = Object.getPrototypeOf(value);
+    if (prototype !== Array.prototype && prototype !== null) {
+      throw new Error(`INVALID_REGISTRY: ${label} must have a plain array prototype.`);
+    }
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith('INVALID_REGISTRY:')) throw error;
+    throw new Error(`INVALID_REGISTRY: ${label} could not be inspected safely.`);
+  }
+  const length = readOwnDataProperty(value, 'length', label);
+  if (typeof length !== 'number' || !Number.isSafeInteger(length) || length < 0) {
+    throw new Error(`INVALID_REGISTRY: ${label} has an invalid length.`);
+  }
+  const keys = ownStringKeys(value, label);
+  for (const key of keys) {
+    if (key === 'length') continue;
+    if (!/^(?:0|[1-9]\d*)$/u.test(key) || Number(key) >= length) {
+      throw new Error(`INVALID_REGISTRY: ${label} must contain dense numeric indices only.`);
+    }
+  }
+  if (keys.length !== length + 1) throw new Error(`INVALID_REGISTRY: ${label} contains a hole.`);
+  const result: unknown[] = [];
+  for (let index = 0; index < length; index += 1) {
+    const key = String(index);
+    if (!hasOwnProperty(value, key)) throw new Error(`INVALID_REGISTRY: ${label} contains a hole.`);
+    result.push(readOwnDataProperty(value, key, `${label}[${index}]`));
+  }
+  return result;
+}
+
+function denseStringArray(value: unknown, label: string): string[] {
+  const items = denseDataArray(value, label);
+  if (items.some((item) => typeof item !== 'string')) {
+    throw new Error(`INVALID_REGISTRY: ${label} must contain only strings.`);
+  }
+  return items as string[];
+}
+
+function assertStrictObjectKeys(value: object, allowed: ReadonlySet<string>, label: string): void {
+  const keys = ownStringKeys(value, label);
+  for (const key of keys) {
+    if (!allowed.has(key)) {
+      throw new Error(`INVALID_REGISTRY: ${label} contains an unknown key.`);
+    }
+  }
+}
+
+function strictRegistryDigest(value: unknown, field: string): string | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value !== 'string' || !/^[a-f0-9]{64}$/.test(value)) {
+    throw new Error(`INVALID_REGISTRY: ${field} must be a lowercase SHA-256 digest.`);
+  }
+  return value;
+}
+
+function strictProductVariant(value: unknown, field: string): string | null | undefined {
+  if (value !== undefined && value !== null && typeof value !== 'string') {
+    throw new Error(`SPEC_IDENTITY_MISMATCH: ${field} must be a string or null.`);
+  }
+  return value as string | null | undefined;
+}
+
+function strictInput(input: string | StrictProductResolveRequest): StrictProductResolveRequest {
+  if (typeof input === 'string') return { product: input };
+  if (!input || typeof input !== 'object' || Array.isArray(input)) {
+    throw new Error('UNSUPPORTED_PRODUCT: strict identity request must be an object or string.');
+  }
+  assertPlainRecord(input, 'strict identity request');
+  assertStrictObjectKeys(input, STRICT_REQUEST_KEYS, 'strict identity request');
+  return input;
+}
+
+function validateStrictSnapshot(snapshot: unknown): {
+  registryDigest: string;
+  canonicalEntries: ProductRegistryEntry[];
+} {
+  const fields = exactOwnDataRecord(snapshot, REGISTRY_VIEW_KEYS, 'Registry snapshot');
+  const schemaVersion = fields.schemaVersion;
+  const registryDigest = fields.registryDigest;
+  const rawEntries = fields.entries;
+  if (schemaVersion !== 1 || typeof registryDigest !== 'string' || !/^[a-f0-9]{64}$/.test(registryDigest)
+    || !Array.isArray(rawEntries)) {
+    throw new Error('INVALID_REGISTRY: snapshot shape is invalid.');
+  }
+  const canonicalEntries = canonicalRegistryEntries(rawEntries);
+  if (productRegistryDigestFromCanonicalEntries(canonicalEntries) !== registryDigest) {
+    throw new Error('REGISTRY_DRIFT: snapshot digest does not match identity data.');
+  }
+  return {
+    registryDigest,
+    canonicalEntries,
+  };
+}
+
+export function resolveProductAdapterStrict(
+  input: string | StrictProductResolveRequest,
+  options: StrictProductResolveOptions = {},
+): AdapterIdentity {
+  const request = strictInput(input);
+  if (!isPlainRecord(options)) {
+    throw new Error('INVALID_REGISTRY: strict resolver options must be an object.');
+  }
+  assertStrictObjectKeys(options, STRICT_OPTION_KEYS, 'strict resolver options');
+
+  const requestSnapshotKeys = ['registry', 'snapshot'].filter((key) => hasOwnProperty(request, key));
+  if (requestSnapshotKeys.length > 1) {
+    throw new Error('INVALID_REGISTRY: request cannot provide both registry and snapshot.');
+  }
+  const requestSnapshot = requestSnapshotKeys.length === 1
+    ? readOwnDataProperty(request, requestSnapshotKeys[0]!, 'strict identity request')
+    : undefined;
+  const validatedRequestSnapshot = requestSnapshotKeys.length === 1
+    ? validateStrictSnapshot(requestSnapshot)
+    : undefined;
+  const validatedOptionsSnapshot = hasOwnProperty(options, 'snapshot')
+    ? validateStrictSnapshot(readOwnDataProperty(options, 'snapshot', 'strict resolver options'))
+    : undefined;
+  const validatedAuthoritySnapshot = validatedOptionsSnapshot ?? validateStrictSnapshot(getProductRegistrySnapshot());
+  if (validatedRequestSnapshot
+    && (validatedRequestSnapshot.registryDigest !== validatedAuthoritySnapshot.registryDigest
+      || stableRegistryJson(validatedRequestSnapshot.canonicalEntries) !== stableRegistryJson(validatedAuthoritySnapshot.canonicalEntries))) {
+    throw new Error('REGISTRY_DRIFT: request registry differs from the authoritative options snapshot.');
+  }
+  const validatedSnapshot = validatedAuthoritySnapshot;
+  const requestDigest = strictRegistryDigest(
+    readOwnDataProperty(request, 'registryDigest', 'strict identity request'),
+    'request.registryDigest',
+  );
+  const optionsDigest = strictRegistryDigest(
+    readOwnDataProperty(options, 'registryDigest', 'strict resolver options'),
+    'options.registryDigest',
+  );
+  if (requestDigest !== undefined && optionsDigest !== undefined && requestDigest !== optionsDigest) {
+    throw new Error('REGISTRY_DRIFT: request and options registry digests differ.');
+  }
+  const expectedDigest = optionsDigest ?? requestDigest;
+  if (expectedDigest !== undefined && expectedDigest !== validatedSnapshot.registryDigest) {
+    throw new Error('REGISTRY_DRIFT: expected registry digest differs.');
+  }
+  const productKeys = ['product', 'input', 'adapterProduct'].filter((key) => hasOwnProperty(request, key));
+  if (productKeys.length > 1) {
+    throw new Error('AMBIGUOUS_PRODUCT: request provides multiple product identity fields.');
+  }
+  const product = productKeys.length === 1
+    ? readOwnDataProperty(request, productKeys[0]!, 'strict identity request')
+    : undefined;
+  if (product !== undefined && typeof product !== 'string') {
+    throw new Error('UNSUPPORTED_PRODUCT: strict identity product must be a string.');
+  }
+  const normalized = product === undefined ? '' : normalizeIdentityAlias(product);
+  const requestVariant = strictProductVariant(
+    readOwnDataProperty(request, 'productVariant', 'strict identity request'),
+    'request.productVariant',
+  );
+  const optionsVariant = strictProductVariant(
+    readOwnDataProperty(options, 'productVariant', 'strict resolver options'),
+    'options.productVariant',
+  );
+  if (requestVariant !== undefined && optionsVariant !== undefined) {
+    const canonicalRequestVariant = requestVariant === null ? null : normalizeIdentityCode(requestVariant);
+    const canonicalOptionsVariant = optionsVariant === null ? null : normalizeIdentityCode(optionsVariant);
+    if (canonicalRequestVariant !== canonicalOptionsVariant) {
+      throw new Error('SPEC_IDENTITY_MISMATCH: request and options product variants differ.');
+    }
+  }
+  const canonicalEntries = validatedSnapshot.canonicalEntries;
+  const matches = canonicalEntries.filter((entry) => (
+    normalizeIdentityAlias(entry.adapterProduct) === normalized || entry.aliases.includes(normalized)
+  ));
+  if (matches.length === 0) throw new Error(`UNSUPPORTED_PRODUCT: no strict identity matches ${String(product)}.`);
+  if (matches.length > 1) throw new Error(`AMBIGUOUS_PRODUCT: multiple strict identities match ${String(product)}.`);
+  const match = matches[0]!;
+  if (!match.observerEligible) throw new Error(`UNSUPPORTED_PRODUCT: ${match.adapterProduct} is not observer eligible.`);
+  const variant = requestVariant !== undefined ? requestVariant : optionsVariant;
+  if (variant !== undefined && variant !== null) {
+    const normalizedVariant = normalizeIdentityCode(variant);
+    if (!Object.prototype.hasOwnProperty.call(match.specMappingByVariant, normalizedVariant)) {
+      throw new Error(`SPEC_IDENTITY_MISMATCH: ${match.adapterProduct} has no mapping for ${normalizedVariant}.`);
+    }
+  }
+  return {
+    adapterProduct: match.adapterProduct as ObserverAdapterProductCode,
+    vendor: match.vendor,
+    aliases: [...match.aliases],
+    observerOnlyAliases: [...match.observerOnlyAliases],
+    observerEligible: match.observerEligible,
+    defaultSpecMapping: cloneSpecMapping(match.defaultSpecMapping),
+    specMappingByVariant: Object.fromEntries(Object.entries(match.specMappingByVariant).map(([key, mapping]) => [key, cloneSpecMapping(mapping)!])),
+  };
+}
+
 function capability(
   id: string,
   title: string,
@@ -341,7 +913,7 @@ export function normalizeAutomationProduct(input?: string): AutomationProductCod
   const raw = (input ?? '').trim();
   const normalized = raw.toLowerCase().replace(/[\s-]+/g, '_');
   if (!raw) return 'HCI_SCP';
-  for (const adapter of Object.values(ADAPTERS)) {
+  for (const adapter of Object.values(LEGACY_ADAPTERS)) {
     if (adapter.product.toLowerCase() === normalized) return adapter.product;
     if (adapter.aliases.some(alias => normalized === alias.toLowerCase().replace(/[\s-]+/g, '_'))) return adapter.product;
   }
@@ -353,11 +925,11 @@ export function normalizeAutomationProduct(input?: string): AutomationProductCod
 }
 
 export function getProductAdapter(product?: string): ProductAdapter {
-  return ADAPTERS[normalizeAutomationProduct(product)];
+  return LEGACY_ADAPTERS[normalizeAutomationProduct(product)];
 }
 
 export function listProductAdapters(): ProductAdapter[] {
-  return Object.values(ADAPTERS);
+  return Object.values(LEGACY_ADAPTERS);
 }
 
 export function discoverProductConsole(input: ProductAutomationInput) {
@@ -1093,3 +1665,5 @@ function missingApprovalFields(approval?: ApprovalPayload): string[] {
   const fields: Array<keyof ApprovalPayload> = ['approvedBy', 'approvalToken', 'changeTicketId', 'rollbackPlanId'];
   return fields.filter(field => !approval?.[field]);
 }
+
+export * from './observer-spec-adapter.js';

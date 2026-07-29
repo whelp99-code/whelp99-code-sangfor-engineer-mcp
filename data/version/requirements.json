@@ -1,5 +1,44 @@
-{ "version": 1, "requirements": [
+{ "version": 2, "requirements": [
   { "device": "Athena NDR", "minVersion": "3.0.92", "recommendedVersion": "3.0.98",
     "source": "Athena XDR 3.0.98 User Manual — Version Requirements for Sangfor Security Devices",
     "sourceUrl": "https://support.sangfor.com/productDocument/read?product_id=25&version_id=1361&category_id=2653679" }
+], "firmwareTruth": [
+  {
+    "id": "cc-3.0.98-conflict",
+    "vendor": "SANGFOR",
+    "adapterProduct": "NDR",
+    "productVariant": "CYBER_COMMAND",
+    "versionRaw": "3.0.98",
+    "versionFamily": "3.0",
+    "revision": null,
+    "buildId": null,
+    "hotfix": null,
+    "uiFingerprint": null,
+    "apiFingerprint": null,
+    "status": "conflict",
+    "observedAt": "2026-07-07T10:41:30.863Z",
+    "evidenceFile": "outputs/diagnosis/CC_3.0.98_live_diagnosis.md",
+    "specVersion": "3.0.98",
+    "specApplicability": "unreviewed",
+    "source": "roadmap 3.0.98 claim; pending independent re-read"
+  },
+  {
+    "id": "cc-3.0.98c-conflict",
+    "vendor": "SANGFOR",
+    "adapterProduct": "NDR",
+    "productVariant": "CYBER_COMMAND",
+    "versionRaw": "3.0.98C",
+    "versionFamily": "3.0",
+    "revision": null,
+    "buildId": null,
+    "hotfix": null,
+    "uiFingerprint": null,
+    "apiFingerprint": null,
+    "status": "conflict",
+    "observedAt": "2026-07-07T10:41:30.863Z",
+    "evidenceFile": "outputs/diagnosis/CC_3.0.98_configstate.json",
+    "specVersion": null,
+    "specApplicability": "unreviewed",
+    "source": "live config-state observed.systemVersion; pending independent re-read"
+  }
 ]}

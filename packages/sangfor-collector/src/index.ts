@@ -331,3 +331,6 @@ export {
 
 export { loadEnvFile, parseCollectionLimit } from './load-env.js';
 export { listDemoDocTargets, DEMO_DOCS_DIR, DEMO_DOC_PRODUCTS } from './demo-docs.js';
+
+// PR-004: T-H2 통합 encrypted bundle
+export * from './capture-bundle.js';

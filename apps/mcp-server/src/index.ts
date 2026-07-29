@@ -57,6 +57,15 @@ import {
 } from '../../../packages/sangfor-hci-client/src/index.js';
 import { verifyExecutionApproval } from '../../../packages/sangfor-operator/src/approval.js';
 import { consumeApprovalNonce } from '../../../packages/sangfor-operator/src/nonce-store.js';
+import {
+  LearningStrategyService,
+  assertSafeLearningInput,
+} from '../../../packages/sangfor-learning-strategy/src/index.js';
+import {
+  ObserverSessionManager,
+  type ObserverProfile,
+} from '../../../packages/sangfor-observer/src/index.js';
+import { captureKeyringFromEnv } from '../../../packages/sangfor-collector/src/capture-bundle.js';
 
 const pmStore = createPmStore(); // process-lifetime PM state for the MCP session
 
@@ -65,6 +74,27 @@ type JsonRpcRequest = { jsonrpc: '2.0'; id?: string | number; method: string; pa
 type ToolHandler = (args: any) => unknown | Promise<unknown>;
 
 const plans = new Map<string, any>();
+const learningService = new LearningStrategyService();
+const pendingLearningCaptures = new Map<string, { sessionHandle: string; durationMs?: number; firmwareVersion?: string }>();
+let observerManagerCache: { source: string; manager: ObserverSessionManager } | undefined;
+
+function learningArgs(args: unknown, keys: readonly string[]): Record<string, any> {
+  assertSafeLearningInput(args, keys);
+  return args as Record<string, any>;
+}
+
+function observerManager(): ObserverSessionManager {
+  const source = process.env.SANGFOR_OBSERVER_PROFILES_JSON;
+  if (!source) throw new Error('OBSERVER_PROFILES_UNAVAILABLE: SANGFOR_OBSERVER_PROFILES_JSON is required.');
+  if (observerManagerCache?.source === source) return observerManagerCache.manager;
+  let parsed: unknown;
+  try { parsed = JSON.parse(source); } catch { throw new Error('OBSERVER_PROFILES_INVALID: profiles must be JSON.'); }
+  if (!Array.isArray(parsed) || parsed.length === 0) throw new Error('OBSERVER_PROFILES_INVALID: a non-empty profile array is required.');
+  for (const profile of parsed) assertSafeLearningInput(profile, ['product', 'expectedOrigin', 'cdpPort', 'firmwareTruthId', 'deviceScope']);
+  const manager = new ObserverSessionManager(parsed as ObserverProfile[]);
+  observerManagerCache = { source, manager };
+  return manager;
+}
 
 // ─── HCI/SCP OpenAPI wiring (doc-contract; verified on a real device in M4) ────
 function hciConnection(args: Record<string, unknown> = {}) {
@@ -799,6 +829,80 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
     description: 'PM safety: release a device lock held by an engagement (records a device_released audit event). Returns false if the engagement does not hold the lock.',
     inputSchema: { type: 'object', properties: { deviceId: { type: 'string' }, engagementId: { type: 'string' } }, required: ['deviceId', 'engagementId'] },
     handler: (args: { deviceId: string; engagementId: string }) => ({ released: pmStore.releaseDevice(args.deviceId, args.engagementId) })
+  },
+  'sangfor.list_learning_strategies': {
+    description: 'List local learning strategy revisions with exact filters and cursor pagination.',
+    inputSchema: { type: 'object', additionalProperties: false, properties: {
+      strategyId: { type: 'string' }, vendor: { type: 'string', enum: ['SANGFOR', 'FORTINET', 'CISCO'] },
+      product: { type: 'string' }, firmwareVersion: { type: 'string' },
+      status: { type: 'string', enum: ['draft', 'researched', 'lab_verified', 'device_verified', 'strategy_field_verified', 'stale', 'deprecated'] },
+      cursor: { type: 'string' }, limit: { type: 'integer', minimum: 1, maximum: 100 },
+    } },
+    handler: (args: unknown) => learningService.list(learningArgs(args, ['strategyId', 'vendor', 'product', 'firmwareVersion', 'status', 'cursor', 'limit'])),
+  },
+  'sangfor.resolve_learning_strategy': {
+    description: 'Resolve one exact eligible learning strategy; returns honest miss, canary, drift, or ambiguity reasons.',
+    inputSchema: { type: 'object', additionalProperties: false, required: ['scope', 'context'], properties: {
+      scope: { type: 'object', additionalProperties: false, required: ['product', 'firmwareVersion'], properties: { product: { type: 'string' }, firmwareVersion: { type: 'string' }, capability: { type: 'string' }, fact: { type: 'string' } } },
+      context: { type: 'object', additionalProperties: false, required: ['registryDigest', 'versionTruthRecord'], properties: { registryDigest: { type: 'string' }, versionTruthRecord: { type: 'string' }, productVariant: { type: 'string' }, deviceScope: { type: 'string' }, environment: { type: 'string', enum: ['lab', 'poc', 'customer', 'production'] } } },
+    } },
+    handler: (args: unknown) => { const input = learningArgs(args, ['scope', 'context']); return learningService.resolve(input.scope, input.context); },
+  },
+  'sangfor.attach_observation_session': {
+    description: 'WRITE: attach to one exact loopback CDP page owned by the observer profile registry.',
+    inputSchema: { type: 'object', additionalProperties: false, required: ['product', 'expectedOrigin', 'cdpPort', 'firmwareTruthId'], properties: { product: { type: 'string' }, expectedOrigin: { type: 'string' }, cdpPort: { type: 'integer', minimum: 1, maximum: 65535 }, firmwareTruthId: { type: 'string' } } },
+    handler: (args: unknown) => observerManager().attach(learningArgs(args, ['product', 'expectedOrigin', 'cdpPort', 'firmwareTruthId']) as any),
+  },
+  'sangfor.manage_learning_capture': {
+    description: 'WRITE: start or stop a passive observation capture; stop promotes one encrypted capture-bundle.v1.',
+    inputSchema: { type: 'object', additionalProperties: false, required: ['action'], properties: { action: { type: 'string', enum: ['start', 'stop'] }, sessionHandle: { type: 'string' }, captureId: { type: 'string' }, durationMs: { type: 'integer', minimum: 0, maximum: 30000 }, firmwareVersion: { type: 'string' } } },
+    handler: async (args: unknown) => {
+      const input = learningArgs(args, ['action', 'sessionHandle', 'captureId', 'durationMs', 'firmwareVersion']);
+      if (input.action === 'start') {
+        if (typeof input.sessionHandle !== 'string' || !observerManager().get(input.sessionHandle)) throw new Error('OBSERVER_SESSION_UNAVAILABLE: exact sessionHandle is required.');
+        const captureId = randomBytes(16).toString('hex');
+        pendingLearningCaptures.set(captureId, { sessionHandle: input.sessionHandle, durationMs: input.durationMs, firmwareVersion: input.firmwareVersion });
+        return { captureId, status: 'started' };
+      }
+      if (input.action !== 'stop' || typeof input.captureId !== 'string') throw new Error('INVALID_INPUT: action stop requires captureId.');
+      const pending = pendingLearningCaptures.get(input.captureId);
+      if (!pending) throw new Error('CAPTURE_NOT_FOUND: captureId is missing or already consumed.');
+      const summary = await observerManager().capture({ ...pending, capturesDir: resolveRepoData('data/captures'), stagingRoot: resolveRepoData('data/runtime/learning-captures'), keyring: captureKeyringFromEnv() });
+      pendingLearningCaptures.delete(input.captureId);
+      return { captureId: input.captureId, status: 'stopped', bundle: summary };
+    },
+  },
+  'sangfor.collect_facts': {
+    description: 'WRITE: collect requested facts through an exact learning strategy and return complete/partial/conflict/unavailable observations.',
+    inputSchema: { type: 'object', additionalProperties: false, required: ['scope', 'context', 'factIds'], properties: {
+      scope: { type: 'object', additionalProperties: false, required: ['product', 'firmwareVersion'], properties: { product: { type: 'string' }, firmwareVersion: { type: 'string' }, capability: { type: 'string' }, fact: { type: 'string' } } },
+      context: { type: 'object', additionalProperties: false, required: ['registryDigest', 'versionTruthRecord'], properties: { registryDigest: { type: 'string' }, versionTruthRecord: { type: 'string' }, productVariant: { type: 'string' }, deviceScope: { type: 'string' }, environment: { type: 'string', enum: ['lab', 'poc', 'customer', 'production'] } } },
+      factIds: { type: 'array', minItems: 1, items: { type: 'string' } }, allowCanary: { type: 'boolean', default: false },
+      methodResults: { type: 'array', items: { type: 'object' } },
+    } },
+    handler: (args: unknown) => learningService.collectFacts(learningArgs(args, ['scope', 'context', 'factIds', 'allowCanary', 'methodResults']) as any),
+  },
+  'sangfor.research_learning_strategy': {
+    description: 'WRITE: create an immutable draft from supplied official citation and optional capture evidence.',
+    inputSchema: { type: 'object', additionalProperties: false, required: ['strategyId', 'vendor', 'scope', 'registryDigest', 'versionTruthRecord', 'officialCitation', 'pageVerified'], properties: {
+      strategyId: { type: 'string' }, vendor: { type: 'string', enum: ['SANGFOR', 'FORTINET', 'CISCO'] },
+      scope: { type: 'object', additionalProperties: false, required: ['product', 'firmwareVersion'], properties: { product: { type: 'string' }, firmwareVersion: { type: 'string' }, capability: { type: 'string' }, fact: { type: 'string' } } },
+      registryDigest: { type: 'string', pattern: '^[a-f0-9]{64}$' }, versionTruthRecord: { type: 'string' }, productVariant: { type: 'string' }, officialCitation: { type: 'string' }, pageVerified: { type: 'boolean' }, captureEvidenceFile: { type: 'string' }, methods: { type: 'array', items: { type: 'string', enum: ['LM-01', 'LM-02', 'LM-03', 'LM-04', 'LM-05', 'LM-06', 'LM-07', 'LM-08'] } },
+    } },
+    handler: (args: unknown) => learningService.research(learningArgs(args, ['strategyId', 'vendor', 'scope', 'registryDigest', 'versionTruthRecord', 'productVariant', 'officialCitation', 'pageVerified', 'captureEvidenceFile', 'methods']) as any),
+  },
+  'sangfor.validate_learning_strategy': {
+    description: 'WRITE: validate exact revision evidence and report eligible next states without promotion.',
+    inputSchema: { type: 'object', additionalProperties: false, required: ['strategyId', 'revisionId'], properties: { strategyId: { type: 'string' }, revisionId: { type: 'string' }, evidenceFile: { type: 'string' }, evidenceDigest: { type: 'string', pattern: '^[a-f0-9]{64}$' } } },
+    handler: (args: unknown) => learningService.validate(learningArgs(args, ['strategyId', 'revisionId', 'evidenceFile', 'evidenceDigest']) as any),
+  },
+  'sangfor.promote_learning_strategy': {
+    description: 'WRITE: promote an immutable revision through a signed, action-bound, single-use lifecycle approval.',
+    inputSchema: { type: 'object', additionalProperties: false, required: ['strategyId', 'revisionId', 'toState', 'approvalPayload', 'approvalToken', 'evidenceRoot'], properties: {
+      strategyId: { type: 'string' }, revisionId: { type: 'string' }, toState: { type: 'string', enum: ['researched', 'lab_verified', 'device_verified', 'strategy_field_verified', 'stale', 'deprecated'] }, evidenceFile: { type: 'string' }, evidenceDigest: { type: 'string' }, approvalToken: { type: 'string', pattern: '^[a-f0-9]{64}$' }, evidenceRoot: { type: 'string' },
+      approvalPayload: { type: 'object', additionalProperties: false, required: ['entityType', 'entityId', 'revisionId', 'contentHash', 'fromState', 'toState', 'evidenceFile', 'evidenceDigest', 'nonce', 'expiresAt'], properties: { entityType: { type: 'string' }, entityId: { type: 'string' }, revisionId: { type: 'string' }, contentHash: { type: 'string' }, fromState: { type: 'string' }, toState: { type: 'string' }, evidenceFile: { type: 'string' }, evidenceDigest: { type: 'string' }, nonce: { type: 'string' }, expiresAt: { type: 'string' } } },
+    } },
+    handler: (args: unknown) => learningService.promote(learningArgs(args, ['strategyId', 'revisionId', 'toState', 'evidenceFile', 'evidenceDigest', 'approvalPayload', 'approvalToken', 'evidenceRoot']) as any),
   }
 };
 
@@ -828,6 +932,8 @@ const WRITE_TOOLS = new Set([
   'sangfor.generate_operations_guide_docx', 'sangfor.generate_operations_guide_pptx',
   'sangfor.generate_product_change_plan', 'sangfor.generate_setting_guide_docx', 'sangfor.generate_setting_guide_pptx',
   'sangfor.hci_apply_create_volume',
+  'sangfor.attach_observation_session', 'sangfor.manage_learning_capture', 'sangfor.collect_facts',
+  'sangfor.research_learning_strategy', 'sangfor.validate_learning_strategy', 'sangfor.promote_learning_strategy',
 ]);
 
 function categoryOf(name: string): string {

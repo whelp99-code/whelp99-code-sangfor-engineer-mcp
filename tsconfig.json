@@ -59,6 +59,9 @@
       "@sangfor/product-adapters": [
         "packages/sangfor-product-adapters/src/index.ts"
       ],
+      "@sangfor/learning-strategy": [
+        "packages/sangfor-learning-strategy/src/index.ts"
+      ],
       "@sangfor/store": [
         "packages/sangfor-store/src/index.ts"
       ],
@@ -73,6 +76,12 @@
       ],
       "@sangfor/chrome": [
         "packages/sangfor-chrome/src/index.ts"
+      ],
+      "@sangfor/collector": [
+        "packages/sangfor-collector/src/index.ts"
+      ],
+      "@sangfor/observer": [
+        "packages/sangfor-observer/src/index.ts"
       ],
       "@sangfor/spec": [
         "packages/sangfor-spec/src/index.ts"

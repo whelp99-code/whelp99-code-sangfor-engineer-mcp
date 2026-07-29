@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  approvalCanonicalString,
   signApprovalToken,
   verifyExecutionApproval,
   type SignedApproval,
@@ -72,5 +73,49 @@ describe('verifyExecutionApproval — action-bound, time-bound, signed', () => {
     });
     expect(result.ok).toBe(false);
     expect(result.reason).toMatch(/signature/i);
+  });
+
+  it('preserves the legacy canonical field order and accepts uppercase hex tokens', () => {
+    const approval = makeApproval(action);
+    expect(approvalCanonicalString(action, approval)).toBe([
+      approval.approvedBy,
+      approval.changeTicketId,
+      approval.rollbackPlanId,
+      approval.nonce,
+      approval.expiresAt,
+      action.type,
+      action.target,
+    ].join('\n'));
+    expect(verifyExecutionApproval({
+      action,
+      approval: { ...approval, approvalToken: approval.approvalToken.toUpperCase() },
+      secret: SECRET,
+    })).toEqual({ ok: true });
+  });
+
+  it('treats malformed/odd-length hex tokens as a signature mismatch (legacy Buffer.from semantics)', () => {
+    const approval = makeApproval(action);
+    // Odd-length hex: Buffer.from('abc', 'hex') yields a single byte -> length mismatch.
+    expect(verifyExecutionApproval({
+      action,
+      approval: { ...approval, approvalToken: 'abc' },
+      secret: SECRET,
+    }).reason).toMatch(/signature/i);
+    // Non-hex characters decode to zero bytes -> mismatch, not an encoding error.
+    expect(verifyExecutionApproval({
+      action,
+      approval: { ...approval, approvalToken: 'z'.repeat(64) },
+      secret: SECRET,
+    }).reason).toMatch(/signature/i);
+  });
+
+  it('treats now === expiresAt as still valid and +1ms as expired (boundary)', () => {
+    const expiresAt = new Date(Date.now() + 60_000).toISOString();
+    const approval = makeApproval(action, { expiresAt });
+    const atExpiry = new Date(expiresAt);
+    expect(verifyExecutionApproval({ action, approval, secret: SECRET, now: atExpiry })).toEqual({ ok: true });
+    const justAfter = verifyExecutionApproval({ action, approval, secret: SECRET, now: new Date(atExpiry.getTime() + 1) });
+    expect(justAfter.ok).toBe(false);
+    expect(justAfter.reason).toMatch(/expired/i);
   });
 });
