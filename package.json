@@ -47,6 +47,7 @@
     "learn:nightly": "pnpm run learn:all && pnpm run learn:kb:full && pnpm run rag:reembed",
     "smoke:mcp": "node scripts/smoke-mcp-tools.mjs",
     "check:mcp-scorecard": "node scripts/check-mcp-scorecard.mjs",
+    "check:hygiene": "node scripts/check-source-hygiene.mjs",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",

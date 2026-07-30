@@ -36,19 +36,8 @@ jobs:
       - name: Build
         run: pnpm run build
 
-      - name: Check formatting
-        run: pnpm run lint
-
-      - name: Check for console.log
-        run: |
-          if grep -r "console.log" --include="*.ts" src/ packages/ apps/; then
-            echo "console.log found - please remove"
-            exit 1
-          fi
-
-      - name: Check for TODO/FIXME
-        run: |
-          if grep -r "TODO\|FIXME" --include="*.ts" src/ packages/ apps/; then
-            echo "TODO/FIXME found - please resolve"
-            exit 1
-          fi
+      # 이전의 두 inline grep 게이트를 대체한다. 그 게이트들은 존재하지 않는 `src/`를
+      # 인자로 받아 grep이 exit 2를 반환했고, `if grep ...; then`이 2를 거짓으로 처리해
+      # 위반이 있어도 항상 통과했다. 규칙과 종료코드는 tests/check-source-hygiene이 고정한다.
+      - name: Source hygiene (stdout purity, TODO/FIXME)
+        run: pnpm run check:hygiene

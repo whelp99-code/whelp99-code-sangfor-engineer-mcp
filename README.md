@@ -2,6 +2,8 @@
 
 Sangfor product-specific senior engineer MCP server.
 
+현재 94개 MCP 도구의 전체 기능 목록, Cursor/stdio/HTTP 연결법, 승인 흐름과 예제는 **[MCP 기능 및 사용 가이드](docs/MCP_FEATURES_AND_USAGE.md)**를 참고하세요.
+
 Priority products:
 
 1. HCI
