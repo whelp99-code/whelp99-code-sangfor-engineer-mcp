@@ -32,6 +32,7 @@ export interface Playbook {
   revisions: PlaybookRevision[];  // rev 오름차순
   createdAt: string;
   updatedAt: string;
+  seedKey?: string;               // 기본 제공 시드로 생성된 경우의 멱등 키 (사용자 작성본은 없음)
 }
 
 // ── AI 분석 아티팩트 ─────────────────────────────────────────────────────────
@@ -97,6 +98,11 @@ export function validateBlocks(blocks: PlaybookBlock[]): void {
     seen.add(b.id);
     if (b.type === 'tool') {
       if (!b.toolId?.trim()) throw new PlaybookValidationError(`tool 블록 '${b.id}'에 toolId가 없습니다`);
+      // 플레이북 프록시 도구(MCP sangfor.playbook_*)를 블록으로 두면 플레이북이 플레이북을
+      // 호출한다 — 중첩 실행은 설계 비범위이므로 저장 단계에서 막는다.
+      if (b.toolId.startsWith('sangfor.playbook_')) {
+        throw new PlaybookValidationError(`블록에 플레이북 프록시 도구를 쓸 수 없습니다(중첩 실행 비범위): ${b.toolId}`);
+      }
     } else if (b.type === 'report') {
       if (b.toolId !== undefined || b.args !== undefined) {
         throw new PlaybookValidationError(`report 블록 '${b.id}'에는 toolId/args를 둘 수 없습니다`);
@@ -125,13 +131,14 @@ export class PlaybookStore {
   list(): Playbook[] { return this.load(); }
   get(id: string): Playbook | undefined { return this.load().find((p) => p.id === id); }
 
-  create(input: { name: string; goal: string; blocks: PlaybookBlock[]; authoredBy: string; note?: string }): Playbook {
+  create(input: { name: string; goal: string; blocks: PlaybookBlock[]; authoredBy: string; note?: string; seedKey?: string }): Playbook {
     validateBlocks(input.blocks);
     const now = new Date().toISOString();
     const pb: Playbook = {
       id: nowId('pb'), name: input.name, goal: input.goal,
       revisions: [{ rev: 1, blocks: maskBlocks(input.blocks), authoredBy: input.authoredBy, note: input.note, status: 'draft', createdAt: now }],
       createdAt: now, updatedAt: now,
+      ...(input.seedKey ? { seedKey: input.seedKey } : {}),
     };
     this.save([...this.load(), pb]);
     return pb;

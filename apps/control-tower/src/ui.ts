@@ -141,6 +141,7 @@ export function dashboardHtml(): string {
           <div class="card">
             <h3>플레이북 목록</h3>
             <button class="primary" onclick="requestAssemble()">AI 조립 요청</button>
+            <button onclick="seedPlaybooks()">기본 플레이북 시드</button>
             <table id="pb-table" style="margin-top:10px"><thead><tr><th>이름</th><th>목표</th><th>활성rev</th><th>최근실행</th></tr></thead><tbody></tbody></table>
             <h3 style="margin-top:16px">에이전트 작업 큐 (open)</h3>
             <div id="pb-tasks" class="meta">로딩…</div>
@@ -458,6 +459,13 @@ export function dashboardHtml(): string {
     if (!goal) return;
     req('POST', '/api/agent-tasks', { kind: 'assemble', payload: { goal: goal } })
       .then(function () { alert('AI 조립 요청을 큐에 등록했습니다. 에이전트가 draft를 제출하면 목록에 나타납니다.'); loadPlaybooks(); }).catch(fail);
+  };
+  window.seedPlaybooks = function () {
+    req('POST', '/api/playbooks/seed', {}).then(function (r) {
+      var n = (r.created || []).length;
+      alert(n === 0 ? '새로 만들 시드가 없습니다 (기존 ' + r.skipped + '건 유지).' : n + '건 생성했습니다. rev 1을 승인하면 실행할 수 있습니다.');
+      loadPlaybooks();
+    }).catch(fail);
   };
   window.cancelTask = function (id) {
     req('PATCH', '/api/agent-tasks/' + id, { cancel: true }).then(loadPlaybooks).catch(fail);

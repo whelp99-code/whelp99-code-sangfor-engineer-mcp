@@ -108,6 +108,28 @@ describe('renderReport (T-PB-3)', () => {
     expect(md).toContain('기계 집계');       // AI 분석과 구분 고지
     expect(renderReport(pb, 1, 'pbrun_1', blockRuns)).toBe(md); // 결정적
   });
+
+  // 실장비 스모크에서 드러난 회귀: ok=false + FAIL 0 + INDETERMINATE 9인 실행이
+  // "FAIL 없음"만 렌더돼 정상으로 읽혔다. INDETERMINATE는 PASS가 아니다.
+  it('INDETERMINATE 항목을 별도 섹션으로 드러낸다 (FAIL이 0건이어도)', () => {
+    const runs = [run({
+      runId: 'run_b1', blockId: 'b1', status: 'succeeded', resultSummary: 'ok=false pass=0 fail=0',
+      resultJson: { evaluations: [{ specId: 's', ok: false, summary: { pass: 0, fail: 0, indeterminate: 2 }, items: [
+        { id: 'i1', label: '시스템 CPU 사용률', verdict: 'INDETERMINATE', category: 'indeterminate', reason: '관측값 없음' },
+        { id: 'i2', label: 'IPS 서명 버전', verdict: 'INDETERMINATE', category: 'indeterminate', reason: '근거 미수집' },
+      ] }] },
+    })];
+    const md = renderReport(pb, 1, 'pbrun_1', runs);
+    expect(md).toContain('미확인(INDETERMINATE) 항목');
+    expect(md).toContain('2건은 판정하지 못했습니다');
+    expect(md).toContain('시스템 CPU 사용률');
+    expect(md).toContain('IPS 서명 버전');
+    expect(md).toContain('통과로 간주하지 마십시오');
+  });
+
+  it('INDETERMINATE가 없으면 미확인 섹션을 만들지 않는다', () => {
+    expect(renderReport(pb, 1, 'pbrun_1', blockRuns)).not.toContain('미확인(INDETERMINATE)');
+  });
 });
 
 import http from 'node:http';

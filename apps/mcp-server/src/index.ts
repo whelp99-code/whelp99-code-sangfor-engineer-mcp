@@ -55,6 +55,7 @@ import {
   AuditLedger, validateCreateVolumeInput, summarizeHciHealth, renderHciHealthReport,
   httpJson,
 } from '../../../packages/sangfor-hci-client/src/index.js';
+import { TowerClient } from './tower-client.js';
 import { verifyExecutionApproval } from '../../../packages/sangfor-operator/src/approval.js';
 import { consumeApprovalNonce } from '../../../packages/sangfor-operator/src/nonce-store.js';
 import {
@@ -903,6 +904,105 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
       approvalPayload: { type: 'object', additionalProperties: false, required: ['entityType', 'entityId', 'revisionId', 'contentHash', 'fromState', 'toState', 'evidenceFile', 'evidenceDigest', 'nonce', 'expiresAt'], properties: { entityType: { type: 'string' }, entityId: { type: 'string' }, revisionId: { type: 'string' }, contentHash: { type: 'string' }, fromState: { type: 'string' }, toState: { type: 'string' }, evidenceFile: { type: 'string' }, evidenceDigest: { type: 'string' }, nonce: { type: 'string' }, expiresAt: { type: 'string' } } },
     } },
     handler: (args: unknown) => learningService.promote(learningArgs(args, ['strategyId', 'revisionId', 'toState', 'evidenceFile', 'evidenceDigest', 'approvalPayload', 'approvalToken', 'evidenceRoot']) as any),
+  },
+
+  // ── 플레이북 (Control Tower :3700 프록시) ─────────────────────────────────
+  // 리비전 승인/반려는 의도적으로 노출하지 않는다 — 승인은 타워 UI의 사람 행위다.
+  // 실행 중 write 블록은 여전히 타워 승인 큐에서 멈춘다(도구가 승인을 대신하지 않는다).
+  'sangfor.playbook_list': {
+    description: 'Read-only: list Control Tower playbooks with their active revision and last run status.',
+    inputSchema: { type: 'object', properties: {} },
+    handler: () => new TowerClient().request('GET', '/api/playbooks')
+  },
+  'sangfor.playbook_get': {
+    description: 'Read-only: get one playbook with all revisions and blocks.',
+    inputSchema: { type: 'object', properties: { playbookId: { type: 'string' } }, required: ['playbookId'] },
+    handler: ({ playbookId }: { playbookId: string }) =>
+      new TowerClient().request('GET', `/api/playbooks/${encodeURIComponent(playbookId)}`)
+  },
+  'sangfor.playbook_run_status': {
+    description: 'Read-only: get a playbook run — derived status, per-block run ids and submitted analyses.',
+    inputSchema: { type: 'object', properties: { playbookRunId: { type: 'string' } }, required: ['playbookRunId'] },
+    handler: ({ playbookRunId }: { playbookRunId: string }) =>
+      new TowerClient().request('GET', `/api/playbook-runs/${encodeURIComponent(playbookRunId)}`)
+  },
+  'sangfor.playbook_agent_tasks': {
+    description: 'Read-only: list the Control Tower agent task queue (assemble/revise/analyze requests raised from the UI). Poll this to pick up work.',
+    inputSchema: { type: 'object', properties: { status: { type: 'string', enum: ['open', 'done', 'cancelled'], default: 'open' } } },
+    handler: ({ status }: { status?: string }) =>
+      new TowerClient().request('GET', `/api/agent-tasks?status=${encodeURIComponent(status ?? 'open')}`)
+  },
+  'sangfor.playbook_create': {
+    description: 'Write (tower-local): create a playbook as revision 1 in draft. Blocks are tool blocks (toolId/args/deviceId) plus at most one report block; args may use {{blocks.<id>.result.<path>}} templates. A human must approve the revision in the tower UI before it can run.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string' }, goal: { type: 'string' }, authoredBy: { type: 'string' },
+        note: { type: 'string' },
+        blocks: { type: 'array', items: { type: 'object' }, description: '[{id,type:"tool"|"report",title?,toolId?,args?,deviceId?}]' },
+      },
+      required: ['name', 'goal', 'authoredBy', 'blocks'],
+    },
+    handler: (args: Record<string, unknown>) => new TowerClient().request('POST', '/api/playbooks', {
+      name: args.name, goal: args.goal, authoredBy: args.authoredBy, note: args.note, blocks: args.blocks,
+    })
+  },
+  'sangfor.playbook_add_revision': {
+    description: 'Write (tower-local): append a new draft revision to an existing playbook (the revise loop). Needs human approval before it becomes the active revision.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        playbookId: { type: 'string' }, authoredBy: { type: 'string' }, note: { type: 'string' },
+        blocks: { type: 'array', items: { type: 'object' } },
+      },
+      required: ['playbookId', 'authoredBy', 'blocks'],
+    },
+    handler: (args: Record<string, unknown>) => new TowerClient().request(
+      'POST', `/api/playbooks/${encodeURIComponent(String(args.playbookId))}/revisions`,
+      { authoredBy: args.authoredBy, note: args.note, blocks: args.blocks },
+    )
+  },
+  'sangfor.playbook_execute': {
+    description: 'Write: run the approved revision of a playbook block by block. Read-only blocks run immediately; the first write/destructive block stops the run as pending_approval in the tower queue (no device mutation without a separate human approval).',
+    inputSchema: { type: 'object', properties: { playbookId: { type: 'string' } }, required: ['playbookId'] },
+    handler: ({ playbookId }: { playbookId: string }) => new TowerClient().request(
+      'POST', `/api/playbooks/${encodeURIComponent(playbookId)}/execute`, {}, 180_000,
+    )
+  },
+  'sangfor.playbook_submit_analysis': {
+    description: 'Write (tower-local): submit an append-only AI analysis for a playbook run — observations with evidence run ids plus follow-up proposals. The human accepts or dismisses each item in the UI.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        playbookRunId: { type: 'string' }, playbookId: { type: 'string' },
+        summary: { type: 'string' }, authoredBy: { type: 'string' },
+        improvements: { type: 'array', items: { type: 'object' }, description: '[{observation,recommendation,evidenceRunId?}]' },
+        proposals: { type: 'array', items: { type: 'object' }, description: '[{action,rationale,linkedPlaybookId?}]' },
+      },
+      required: ['playbookRunId', 'playbookId', 'summary', 'authoredBy'],
+    },
+    handler: (args: Record<string, unknown>) => new TowerClient().request(
+      'POST', `/api/playbook-runs/${encodeURIComponent(String(args.playbookRunId))}/analysis`,
+      {
+        playbookId: args.playbookId, summary: args.summary, authoredBy: args.authoredBy,
+        improvements: args.improvements ?? [], proposals: args.proposals ?? [],
+      },
+    )
+  },
+  'sangfor.playbook_close_agent_task': {
+    description: 'Write (tower-local): close an agent task as done, recording what was produced (playbookId/rev/analysisId/note).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        taskId: { type: 'string' },
+        result: { type: 'object', description: '{playbookId?,rev?,analysisId?,note?}' },
+      },
+      required: ['taskId'],
+    },
+    handler: (args: Record<string, unknown>) => new TowerClient().request(
+      'PATCH', `/api/agent-tasks/${encodeURIComponent(String(args.taskId))}`,
+      { result: args.result ?? {} },
+    )
   }
 };
 
@@ -934,11 +1034,16 @@ const WRITE_TOOLS = new Set([
   'sangfor.hci_apply_create_volume',
   'sangfor.attach_observation_session', 'sangfor.manage_learning_capture', 'sangfor.collect_facts',
   'sangfor.research_learning_strategy', 'sangfor.validate_learning_strategy', 'sangfor.promote_learning_strategy',
+  // 플레이북: 타워 상태를 바꾼다. execute는 장비 write 블록에서 승인 대기로 멈추므로
+  // 그 자체는 destructive가 아니다 (장비 변경은 별도 사람 승인을 거친다).
+  'sangfor.playbook_create', 'sangfor.playbook_add_revision', 'sangfor.playbook_execute',
+  'sangfor.playbook_submit_analysis', 'sangfor.playbook_close_agent_task',
 ]);
 
 function categoryOf(name: string): string {
   const n = name.replace(/^sangfor\./, '');
   if (DESTRUCTIVE_TOOLS.has(name)) return 'admin';
+  if (n.startsWith('playbook_')) return 'playbook';
   if (n.startsWith('hci_')) return 'hci';
   if (n.startsWith('pm_')) return 'pm';
   if (/wiki/.test(n)) return 'wiki';
