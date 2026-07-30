@@ -125,6 +125,16 @@ describe('POST /api/playbooks/seed — 멱등 시드', () => {
     expect((await call('POST', `/api/playbooks/${listed[0].id}/execute`, {})).status).toBe(403);
   });
 
+  it('대시보드가 시드 버튼과 핸들러를 노출하고 스크립트가 파싱된다', async () => {
+    tower = await startTower();
+    towerUrl = `http://127.0.0.1:${(tower.address() as AddressInfo).port}`;
+    const html = await (await fetch(`${towerUrl}/`)).text();
+    expect(html).toContain('onclick="seedPlaybooks()"');
+    const script = html.match(/<script>([\s\S]*?)<\/script>/)?.[1];
+    expect(script).toContain('window.seedPlaybooks');
+    expect(() => new Function(script as string)).not.toThrow();
+  });
+
   it('seedOnStart=true는 기동 시 시드하고, 승인하면 시드 플레이북이 실제로 실행된다', async () => {
     tower = await startTower(true);
     towerUrl = `http://127.0.0.1:${(tower.address() as AddressInfo).port}`;

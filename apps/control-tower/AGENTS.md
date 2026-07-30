@@ -14,7 +14,14 @@
 - Read-only tool block runs immediately; a write/destructive block creates a `pending_approval` run, **stashes un-masked original args in an in-memory map**, and pauses. Run status is **derived, not stored** (`derivePlaybookRunStatus`).
 - `POST /api/runs/:id/approve` recovers the stashed args (400 if lost to a restart — prevents sending masked `***` to a device), mints a bridge approval, and resumes via `continueFromApprove`. Keep this fail-safe.
 - Sweeps are read-only-only (non-read-only tool in a sweep is force-failed); concurrency 3.
-- Tests: `tests/control-tower-playbook-{api,engine,store}.test.ts`, `control-tower-approval-mint.test.ts`, `control-tower-e2e.test.ts`.
+- `renderReport` tabulates FAIL **and** INDETERMINATE. Never drop INDETERMINATE — a run with `ok=false, fail=0` would otherwise render as clean.
+- Seeds (`src/playbook-seed.ts`): `planSeedPlaybooks` derives candidates from `vendors.json` `advisorTools` (no product hard-coding), keyed by `seedKey` for idempotency. `POST /api/playbooks/seed`, the UI button, and startup (`seedOnStart`, off with `SANGFOR_TOWER_SEED_PLAYBOOKS=0`) all go through `api.seedPlaybooks()`. Seeded rev 1 stays `draft` — seeding must never bypass the review gate.
+- Tests: `tests/control-tower-playbook-{api,engine,store,seed}.test.ts`, `control-tower-approval-mint.test.ts`, `control-tower-e2e.test.ts`.
+
+## Playbooks over MCP
+- `apps/mcp-server` exposes 9 `sangfor.playbook_*` tools that **proxy this REST API** (`src/tower-client.ts`, `SANGFOR_TOWER_URL`). The tower stays the single writer of `playbooks.json` — never write that file from another process.
+- Revision approve/reject is deliberately **not** on the MCP surface: approval is a human action in this UI.
+- `validateBlocks` rejects `sangfor.playbook_*` as a block `toolId` (nested playbook execution is out of scope).
 
 ## Dependencies
 - Depends on: `@sangfor/shared`, `@sangfor/runs`, `@sangfor/operator` (approval types), `@sangfor/collector` (load-env); http-bridge + mock-console over HTTP.

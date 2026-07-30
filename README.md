@@ -23,6 +23,7 @@ This project includes:
 - GitHub Wiki and Obsidian write adapters
 - Feedback → lesson → wiki proposal → eval pipeline
 - Fine-tuning dataset and job manifest pipeline
+- Control Tower 플레이북 — 승인된 리비전만 실행, write 블록에서 사람 승인 대기, 기계 집계 리포트 (**[docs/PLAYBOOK_RUNBOOK.md](docs/PLAYBOOK_RUNBOOK.md)**)
 
 ## Run (local)
 

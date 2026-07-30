@@ -126,7 +126,7 @@ export function renderReport(playbook: Playbook, rev: number, playbookRunId: str
       if (item.verdict === 'FAIL') {
         fails.push({ label: item.label, observed: String(item.observed ?? '-'), expected: String(item.expected ?? '-'), reason: item.reason });
       } else if (item.verdict === 'INDETERMINATE') {
-        unknowns.push({ label: item.label, reason: item.reason });
+        unknowns.push({ label: item.label, reason: String(item.reason ?? '-') });
       }
     }
     L.push('');
