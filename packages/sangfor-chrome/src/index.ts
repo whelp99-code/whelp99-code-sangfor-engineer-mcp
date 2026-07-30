@@ -247,11 +247,11 @@ export async function ocrCaptcha(imagePathOrUrl: string): Promise<VisionOcrResul
   try {
     const result = await ocrCaptchaTesseract(imagePathOrUrl);
     if (result.success && result.text && result.text.length >= 3) {
-      console.log(`[OCR] Tesseract result: ${result.text}`);
+      console.error(`[OCR] Tesseract result: ${result.text}`);
       return result;
     }
   } catch (err) {
-    console.log(`[OCR] Tesseract unavailable: ${err}`);
+    console.error(`[OCR] Tesseract unavailable: ${err}`);
   }
 
   // ── Backend 2: LM Studio vision (localhost:1234) ──
@@ -263,11 +263,11 @@ export async function ocrCaptcha(imagePathOrUrl: string): Promise<VisionOcrResul
       process.env.LM_STUDIO_API_KEY ?? 'lm-studio',
     );
     if (result.success && result.text) {
-      console.log(`[OCR] LM Studio result: ${result.text}`);
+      console.error(`[OCR] LM Studio result: ${result.text}`);
       return result;
     }
   } catch (err) {
-    console.log(`[OCR] LM Studio unavailable: ${err}`);
+    console.error(`[OCR] LM Studio unavailable: ${err}`);
   }
 
   // ── Backend 3: OpenAI Vision API ──
@@ -281,11 +281,11 @@ export async function ocrCaptcha(imagePathOrUrl: string): Promise<VisionOcrResul
         'gpt-4o-mini',
       );
       if (result.success && result.text) {
-        console.log(`[OCR] OpenAI result: ${result.text}`);
+        console.error(`[OCR] OpenAI result: ${result.text}`);
         return result;
       }
     } catch (err) {
-      console.log(`[OCR] OpenAI unavailable: ${err}`);
+      console.error(`[OCR] OpenAI unavailable: ${err}`);
     }
   }
 
@@ -307,11 +307,11 @@ export async function ocrCaptcha(imagePathOrUrl: string): Promise<VisionOcrResul
       const match = text.match(/[A-Za-z0-9]{4}/);
       const captchaText = match ? match[0] : text.replace(/[^A-Za-z0-9]/g, '').slice(0, 4);
       if (captchaText) {
-        console.log(`[OCR] Hermes result: ${captchaText}`);
+        console.error(`[OCR] Hermes result: ${captchaText}`);
         return { success: true, text: captchaText };
       }
     } catch (err) {
-      console.log(`[OCR] Hermes endpoint unavailable: ${err}`);
+      console.error(`[OCR] Hermes endpoint unavailable: ${err}`);
     }
   }
 
@@ -468,13 +468,13 @@ export async function loginToConsole(
     let captchaText: string | null = null;
 
     if (captcha.hasCaptcha && captcha.imagePath) {
-      console.log(`[ChromeManager] CAPTCHA detected (${captcha.selector}), reading OCR...`);
+      console.error(`[ChromeManager] CAPTCHA detected (${captcha.selector}), reading OCR...`);
       const ocr = await ocrCaptcha(captcha.imagePath);
       if (!ocr.success || !ocr.text) {
         throw new Error(`CAPTCHA OCR failed: ${ocr.error}`);
       }
       captchaText = ocr.text;
-      console.log(`[ChromeManager] CAPTCHA OCR result: ${captchaText}`);
+      console.error(`[ChromeManager] CAPTCHA OCR result: ${captchaText}`);
     }
 
     // ── Step 2: Fill ALL fields at once (username + password + captcha) ──
@@ -515,7 +515,7 @@ export async function loginToConsole(
     // ── Step 4: Check login success ──
     const url = page.url();
     if (!url.includes('login') && !url.includes('Login')) {
-      console.log(`[ChromeManager] Login successful: ${url}`);
+      console.error(`[ChromeManager] Login successful: ${url}`);
       return; // success
     }
 
