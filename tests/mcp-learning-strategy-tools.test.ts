@@ -23,9 +23,11 @@ beforeAll(async () => {
 });
 
 describe('PR-011 learning MCP surface', () => {
-  it('adds exactly eight names to the 77-tool baseline', () => {
+  // 총합은 "도구가 조용히 늘지 않는다"는 카나리다. 표면을 늘리는 변경은 이 수를
+  // 함께 갱신해야 한다 (77 baseline + PR-011 학습 8 + 플레이북 프록시 9 = 94).
+  it('adds exactly eight names on top of the 77-tool baseline', () => {
     const tools = listTools();
-    expect(tools).toHaveLength(85);
+    expect(tools).toHaveLength(94);
     expect(tools.filter((tool) => EXPECTED.includes(tool.name as typeof EXPECTED[number])).map((tool) => tool.name).sort())
       .toEqual([...EXPECTED].sort());
   });

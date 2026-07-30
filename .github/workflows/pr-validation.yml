@@ -22,6 +22,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # ci.yml과 같은 이유: tsc가 요구하는 @prisma/client 생성을 postinstall 부수효과에
+      # 맡기면 캐시 복원 시 건너뛰어진다.
+      - name: Generate Prisma client
+        run: pnpm run db:generate
+
       - name: Lint
         run: pnpm run lint
 

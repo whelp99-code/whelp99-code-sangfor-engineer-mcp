@@ -7,6 +7,7 @@ import { BridgeClient, safetyOf, type BridgeTool } from './bridge-client.js';
 import { Registry, mergeDeviceArgs, applyMockCredentialFallback, RegistryValidationError, type Device, type VendorDescriptor } from './registry.js';
 import { PlaybookStore, AnalysisStore, AgentTaskStore, PlaybookValidationError, type Playbook, type PlaybookBlock, type PlaybookRevision, type PlaybookAnalysis, type AgentTask, type AnalysisVerdict } from './playbook-store.js';
 import { resolveTemplates, derivePlaybookRunStatus, renderReport, TemplateError, type PlaybookRunStatus } from './playbook-engine.js';
+import { planSeedPlaybooks } from './playbook-seed.js';
 import { mintBridgeApproval, mintApproval } from './approval-mint.js';
 
 export class ApiError extends Error {
@@ -518,6 +519,20 @@ export function createApi(opts: TowerOptions = {}) {
           return { ...pb, activeRev: active?.rev, lastRun };
         }),
       };
+    },
+
+    // 기본 제공 플레이북 시드. seedKey로 멱등 — 이미 있는 시드는 건너뛴다. 생성본은 rev 1이
+    // draft이므로 사람이 승인해야 실행된다(리뷰 게이트 우회 금지).
+    seedPlaybooks(input: { authoredBy?: string } = {}): { created: Playbook[]; skipped: number } {
+      const candidates = planSeedPlaybooks(registry.devices(), registry.vendors());
+      const existing = new Set(playbooks.list().map((p) => p.seedKey).filter(Boolean));
+      const fresh = candidates.filter((c) => !existing.has(c.seedKey));
+      const created = fresh.map((c) => playbooks.create({
+        name: c.name, goal: c.goal, blocks: c.blocks, seedKey: c.seedKey,
+        authoredBy: input.authoredBy?.trim() || 'tower-seed',
+        note: '기본 제공 시드 — 블록을 검토한 뒤 승인하세요',
+      }));
+      return { created, skipped: candidates.length - created.length };
     },
 
     createPlaybook(input: { name: string; goal: string; blocks: PlaybookBlock[]; authoredBy: string; note?: string }): Playbook {

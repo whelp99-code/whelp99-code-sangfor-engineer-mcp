@@ -111,6 +111,9 @@ export function renderReport(playbook: Playbook, rev: number, playbookRunId: str
   L.push('');
 
   const fails: Array<{ label: string; observed: string; expected: string; reason: string }> = [];
+  // INDETERMINATE는 PASS가 아니다(전 시스템 불변식). 집계에서 빠지면 ok=false인 실행이
+  // "FAIL 없음"만 보이며 정상으로 읽힌다 — 별도 섹션으로 반드시 드러낸다.
+  const unknowns: Array<{ label: string; reason: string }> = [];
   const toolBlocks = (revision?.blocks ?? []).filter((b) => b.type === 'tool');
   for (const block of toolBlocks) {
     const r = byBlock.get(block.id);
@@ -122,6 +125,8 @@ export function renderReport(playbook: Playbook, rev: number, playbookRunId: str
     for (const item of evalItemsOf(r.resultJson)) {
       if (item.verdict === 'FAIL') {
         fails.push({ label: item.label, observed: String(item.observed ?? '-'), expected: String(item.expected ?? '-'), reason: item.reason });
+      } else if (item.verdict === 'INDETERMINATE') {
+        unknowns.push({ label: item.label, reason: String(item.reason ?? '-') });
       }
     }
     L.push('');
@@ -141,6 +146,17 @@ export function renderReport(playbook: Playbook, rev: number, playbookRunId: str
     L.push('## FAIL 항목');
     L.push('');
     L.push('없음 (집계 대상 블록에서 FAIL 미검출).');
+    L.push('');
+  }
+
+  if (unknowns.length) {
+    L.push('## 미확인(INDETERMINATE) 항목');
+    L.push('');
+    L.push(`${unknowns.length}건은 판정하지 못했습니다 — 통과로 간주하지 마십시오(근거 부족).`);
+    L.push('');
+    L.push('| 항목 | 사유 |');
+    L.push('|---|---|');
+    for (const u of unknowns) L.push(`| ${u.label} | ${u.reason} |`);
     L.push('');
   }
 

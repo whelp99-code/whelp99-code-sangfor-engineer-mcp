@@ -27,6 +27,8 @@ data/evidence/change-runs/
 # Control Tower runtime data (vendors.json 시드는 커밋 대상 — devices/이력만 로컬)
 data/runs/
 data/registry/devices.json
+data/registry/playbooks.json
+data/registry/agent-tasks.json
 
 # PR-004: Encrypted capture bundles (local-only, never commit)
 data/captures/**

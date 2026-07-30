@@ -24,6 +24,10 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # ci.yml과 같은 이유: build/test가 @prisma/client 타입을 요구한다.
+      - name: Generate Prisma client
+        run: pnpm run db:generate
+
       - name: Build
         run: pnpm run build
 

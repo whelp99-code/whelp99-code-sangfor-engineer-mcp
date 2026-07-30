@@ -24,6 +24,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # tsc가 @prisma/client 타입을 요구한다. 생성이 install postinstall에만 의존하면
+      # pnpm store 캐시가 복원될 때 그 단계가 건너뛰어져 Lint가 TS2305로 깨진다.
+      - name: Generate Prisma client
+        run: pnpm run db:generate
+
       - name: Lint
         run: pnpm run lint
 
