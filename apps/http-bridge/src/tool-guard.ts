@@ -42,7 +42,8 @@ export const BRIDGE_APPROVAL_ACTION_TYPE = 'bridge.tool-call';
  * Single source of truth for whether an incoming /tools/call is authorized.
  * Invariants (regression-pinned):
  *  - unknown/missing annotations  → refuse (fail-closed), approval cannot bypass this
- *  - destructiveHint              → refuse ALWAYS, even with the whitelist off
+ *  - destructiveHint, no approval → refuse ALWAYS, even with the whitelist off
+ *                                   (WITH a valid approval it is permitted — see below)
  *  - write tool on a remote bind  → refuse unless allowRemoteWrite is explicit (redteam R3),
  *                                   even with a valid approval
  *  - non-read-only ("write") tool → refuse unless the whitelist is explicitly disabled

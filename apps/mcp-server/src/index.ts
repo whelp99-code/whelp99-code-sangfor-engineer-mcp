@@ -213,7 +213,7 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
     }
   },
   'sangfor.hci_delete_volume': {
-    description: 'DESTRUCTIVE: delete a volume (the reverse op of create). Requires a SignedApproval bound to the exact volumeId. Always refused over the HTTP bridge.',
+    description: 'DESTRUCTIVE: delete a volume (the reverse op of create). Requires a SignedApproval bound to the exact volumeId. Over the HTTP bridge it additionally needs a bridge-level bridge.tool-call approval, and on a non-loopback (real) device it is refused until volume_delete is promoted out of human_only.',
     inputSchema: { type: 'object', properties: { volumeId: { type: 'string' }, approval: { type: 'object' }, identityBaseUrl: { type: 'string' } }, required: ['volumeId', 'approval'] },
     handler: async (args: { volumeId: string; approval: unknown; identityBaseUrl?: string }) => {
       const { client, cfg } = hciClientFor(args as Record<string, unknown>);
