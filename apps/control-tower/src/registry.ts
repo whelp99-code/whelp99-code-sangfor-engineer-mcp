@@ -28,19 +28,19 @@ export class RegistryValidationError extends Error {}
 export const SEED_VENDORS: VendorDescriptor[] = [
   {
     product: 'FORTIOS', label: 'Fortinet FortiOS',
-    advisorTools: ['sangfor.advisor_fortios', 'sangfor.advisor_fortios_advanced'],
+    advisorTools: ['sangfor_advisor_fortios', 'sangfor_advisor_fortios_advanced'],
     credentialFields: ['host', 'username', 'password'],
     defaultArgs: { specVersion: '8.0.0' },
   },
   {
     product: 'CISCO_IOSXE', label: 'Cisco IOS-XE',
-    advisorTools: ['sangfor.advisor_cisco_iosxe', 'sangfor.advisor_cisco_iosxe_advanced'],
+    advisorTools: ['sangfor_advisor_cisco_iosxe', 'sangfor_advisor_cisco_iosxe_advanced'],
     credentialFields: ['host', 'username', 'password'],
     defaultArgs: { specVersion: '17.0.0' },
   },
   {
     product: 'HCI_SCP', label: 'Sangfor HCI/SCP',
-    advisorTools: ['sangfor.hci_health_report'],
+    advisorTools: ['sangfor_hci_health_report'],
     credentialFields: ['identityBaseUrl', 'username', 'password'],
     defaultArgs: {},
   },

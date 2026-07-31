@@ -23,13 +23,13 @@ describe('mock console — vendor-native advisor paths', () => {
   afterAll(() => new Promise<void>((r) => server.close(() => r())));
 
   it('advisor_fortios: mock에서 evaluation 산출 (error 없음)', async () => {
-    const result: any = await getToolHandler('sangfor.advisor_fortios')!({ host: base, username: 'mock', password: 'mock' });
+    const result: any = await getToolHandler('sangfor_advisor_fortios')!({ host: base, username: 'mock', password: 'mock' });
     expect(result.error).toBeUndefined();
     expect(result.evaluation.summary.pass + result.evaluation.summary.fail).toBeGreaterThan(0);
   });
 
   it('advisor_fortios_advanced: 5개 엔드포인트 전부 서빙 → evaluations 2개', async () => {
-    const result: any = await getToolHandler('sangfor.advisor_fortios_advanced')!({ host: base, username: 'mock', password: 'mock' });
+    const result: any = await getToolHandler('sangfor_advisor_fortios_advanced')!({ host: base, username: 'mock', password: 'mock' });
     expect(result.error).toBeUndefined();
     expect(result.evaluations).toHaveLength(2);
     // 비공허성: 실제 벤더 데이터가 매핑되어야 관측 항목이 생긴다 (수정 전엔 0 — HTML fallback)
@@ -38,14 +38,14 @@ describe('mock console — vendor-native advisor paths', () => {
   });
 
   it('advisor_cisco_iosxe: RESTCONF interfaces 경로 서빙 → evaluation 산출', async () => {
-    const result: any = await getToolHandler('sangfor.advisor_cisco_iosxe')!({ host: base, username: 'mock', password: 'mock' });
+    const result: any = await getToolHandler('sangfor_advisor_cisco_iosxe')!({ host: base, username: 'mock', password: 'mock' });
     expect(result.error).toBeUndefined();
     expect(result.evaluation).toBeDefined();
     expect(result.evaluation.coverage.observedTotal).toBeGreaterThan(0);
   });
 
   it('advisor_cisco_iosxe_advanced: 7개 RESTCONF 경로 전부 서빙 → evaluations 2개', async () => {
-    const result: any = await getToolHandler('sangfor.advisor_cisco_iosxe_advanced')!({ host: base, username: 'mock', password: 'mock' });
+    const result: any = await getToolHandler('sangfor_advisor_cisco_iosxe_advanced')!({ host: base, username: 'mock', password: 'mock' });
     expect(result.error).toBeUndefined();
     expect(result.evaluations).toHaveLength(2);
     // 비공허성: 실제 벤더 데이터가 매핑되어야 관측 항목이 생긴다 (수정 전엔 0 — HTML fallback)
@@ -54,7 +54,7 @@ describe('mock console — vendor-native advisor paths', () => {
   });
 
   it('hci_health_report: 기존 /openstack 라우트로 summary 산출 (수정 없이)', async () => {
-    const result: any = await getToolHandler('sangfor.hci_health_report')!({ identityBaseUrl: `${base}/openstack/identity/v2.0` });
+    const result: any = await getToolHandler('sangfor_hci_health_report')!({ identityBaseUrl: `${base}/openstack/identity/v2.0` });
     expect(result.summary).toBeDefined();
   });
 

@@ -34,22 +34,22 @@
 ## Step 3 — read-only smoke (실장비)
 
 - `SANGFOR_HCI_IDENTITY_URL=https://{hci_ip}/openstack/identity/v2.0`, `SANGFOR_HCI_TENANT/USER/PASSWORD`(env, 미커밋) 설정.
-- `sangfor.hci_inventory` 실행 → serviceCatalog 해석 + `GET /volumes/detail` 안정 동작(토큰 자동갱신 포함) 확인.
-- `sangfor.hci_health_report` 실행 → 실 인벤토리 기반 한국어 리포트 산출.
+- `sangfor_hci_inventory` 실행 → serviceCatalog 해석 + `GET /volumes/detail` 안정 동작(토큰 자동갱신 포함) 확인.
+- `sangfor_hci_health_report` 실행 → 실 인벤토리 기반 한국어 리포트 산출.
 
 ## Step 4 — 단일 가역 write 관통 (유지보수 윈도우, 사람 입회)
 
 1. `data/safety/capability-safety.json`의 `HCI_SCP/volume_create`를 `auto_allowed`로 승격 — **evidence=이 스파이크 캡처 로그 경로**. `volume_delete`는 복원용이므로 승격하되 http-bridge 원격 삭제는 여전히 차단.
 2. `SANGFOR_ALLOW_REAL_EXECUTION=true` (윈도우 동안만), `SANGFOR_OPERATOR_APPROVAL_SECRET` + `SANGFOR_CHANGE_LEDGER_SECRET` 설정.
 3. `scripts/mint-hci-approval.ts`로 `--type hci.create-volume --target {hci_ip}:{name}` 승인 발급.
-4. `sangfor.hci_apply_create_volume`(작은 테스트 볼륨, 고유 clientToken) → 상태기계 → **read-back PASS 시에만 SUCCEEDED**. quota/모호 시 FAILED_HALT 확인(false-pass 0).
-5. `sangfor.hci_delete_volume`(대상 volumeId 바인딩 승인)로 **복원** → `getVolume` 404 확인.
+4. `sangfor_hci_apply_create_volume`(작은 테스트 볼륨, 고유 clientToken) → 상태기계 → **read-back PASS 시에만 SUCCEEDED**. quota/모호 시 FAILED_HALT 확인(false-pass 0).
+5. `sangfor_hci_delete_volume`(대상 volumeId 바인딩 승인)로 **복원** → `getVolume` 404 확인.
 6. `data/evidence/change-runs/{runId}.jsonl` keyed 체인 verify + 마스킹 확인.
 
 ## Step 5 — 승격 (evidence 필수)
 
 - `data/competency/capability-maturity.json`의 `HCI_SCP/volume_create`를 `tested_mock` → **`field_verified`**로 승격, evidence=Step 4 원장 경로.
-- `sangfor.field_engineer_coverage` 재실행 → 정직한 대체율 갱신(교집합 automatable AND field_verified).
+- `sangfor_field_engineer_coverage` 재실행 → 정직한 대체율 갱신(교집합 automatable AND field_verified).
 - `docs/DEVICE_DIAGNOSIS_RUNBOOK.md`에 HCI 실장비 버전·엔드포인트 진실표 반영.
 
 ## Exit Criteria (제안서 §5 실장비판)

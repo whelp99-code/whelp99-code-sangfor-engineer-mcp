@@ -17,9 +17,9 @@ const TOWER_SELFCHECK: SeedCandidate = {
   name: '타워 자체 점검',
   goal: '영속 저장소·RAG 인덱스·자문 스펙 커버리지를 읽기전용으로 확인한다',
   blocks: [
-    { id: 'store', type: 'tool', title: '영속 저장소 상태', toolId: 'sangfor.store_health', args: {} },
-    { id: 'rag', type: 'tool', title: 'RAG 인덱스 요약', toolId: 'sangfor.rag_index_summary', args: {} },
-    { id: 'spec', type: 'tool', title: '자문 스펙 커버리지', toolId: 'sangfor.list_spec_coverage', args: {} },
+    { id: 'store', type: 'tool', title: '영속 저장소 상태', toolId: 'sangfor_store_health', args: {} },
+    { id: 'rag', type: 'tool', title: 'RAG 인덱스 요약', toolId: 'sangfor_rag_index_summary', args: {} },
+    { id: 'spec', type: 'tool', title: '자문 스펙 커버리지', toolId: 'sangfor_list_spec_coverage', args: {} },
     REPORT_BLOCK,
   ],
 };
@@ -35,7 +35,7 @@ function deviceCheckup(device: Device, vendor: VendorDescriptor): SeedCandidate 
       ...vendor.advisorTools.map((toolId, i) => ({
         id: `advisor${i + 1}`,
         type: 'tool' as const,
-        title: toolId.replace(/^sangfor\./, ''),
+        title: toolId.replace(/^sangfor_/, ''),
         toolId,
         args: {},
         deviceId: device.id,

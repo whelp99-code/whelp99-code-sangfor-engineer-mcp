@@ -261,9 +261,9 @@ function buildDocumentXml(plan: ExcelBasedChangePlan): string {
   body.push(para('Step 1. Chrome CDP 준비', 'Heading2'));
   body.push(para('Chrome을 remote-debugging-port=9222 옵션으로 실행하고, 대상 제품 콘솔에 로그인한다.', 'BodyText'));
   body.push(para('Step 2. Operator session 생성', 'Heading2'));
-  body.push(para('MCP의 sangfor.start_operator_session 도구로 제품, targetUrl, CDP endpoint를 지정한다.', 'BodyText'));
+  body.push(para('MCP의 sangfor_start_operator_session 도구로 제품, targetUrl, CDP endpoint를 지정한다.', 'BodyText'));
   body.push(para('Step 3. 계획 기반 dry-run 실행', 'Heading2'));
-  body.push(para('sangfor.dry_run_product_change에 생성된 계획서와 sessionId를 전달한다. 작업은 메뉴 이동, 현재값 확인, 증적 수집에서 멈춘다.', 'BodyText'));
+  body.push(para('sangfor_dry_run_product_change에 생성된 계획서와 sessionId를 전달한다. 작업은 메뉴 이동, 현재값 확인, 증적 수집에서 멈춘다.', 'BodyText'));
   body.push(para('Step 4. 결과 검토', 'Heading2'));
   body.push(para('증적이 누락된 항목, 메뉴 미발견 항목, 권한 부족 항목은 고객 확인 필요 사항으로 분리한다.', 'BodyText'));
 

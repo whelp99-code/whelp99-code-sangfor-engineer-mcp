@@ -322,7 +322,7 @@ describe('Tower API — devices/sweep/overview/health (T-API-2)', () => {
     const r = await call('GET', '/api/health');
     const health = r.body as Record<string, { ok: boolean; detail: string }>;
     expect(health.bridge.ok).toBe(true);
-    expect(health.store.ok).toBe(false); // stub bridge가 sangfor.store_health를 모름 → 404/error
+    expect(health.store.ok).toBe(false); // stub bridge가 sangfor_store_health를 모름 → 404/error
     expect(health.rag.ok).toBe(false);
     expect(health.mockConsole.ok).toBe(false);
   });

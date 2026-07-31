@@ -462,8 +462,8 @@ export function createApi(opts: TowerOptions = {}) {
         fetch(`${mockConsoleUrl}/state`, { signal: AbortSignal.timeout(3_000) })
           .then((r) => ({ ok: r.ok, detail: `HTTP ${r.status}` }))
           .catch((error) => ({ ok: false, detail: error instanceof Error ? error.message : String(error) })),
-        toEntry('sangfor.store_health'),
-        toEntry('sangfor.rag_index_summary'),
+        toEntry('sangfor_store_health'),
+        toEntry('sangfor_rag_index_summary'),
       ]);
       return {
         bridge: { ok: bridgeHealth.status === 'ok', detail: `status=${bridgeHealth.status}` },

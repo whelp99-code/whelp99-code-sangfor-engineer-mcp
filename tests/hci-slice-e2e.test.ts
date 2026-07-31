@@ -66,11 +66,11 @@ const approvalFor = (type: 'hci.create-volume' | 'hci.delete-volume', target: st
 
 describe('M1 vertical slice — plan → apply → verify → restore, hands-off', () => {
   it('runs the full lifecycle and pins every exit criterion', async () => {
-    const plan = getToolHandler('sangfor.hci_plan_create_volume')!;
-    const apply = getToolHandler('sangfor.hci_apply_create_volume')!;
-    const verify = getToolHandler('sangfor.hci_verify_volume')!;
-    const del = getToolHandler('sangfor.hci_delete_volume')!;
-    const inventory = getToolHandler('sangfor.hci_inventory')!;
+    const plan = getToolHandler('sangfor_hci_plan_create_volume')!;
+    const apply = getToolHandler('sangfor_hci_apply_create_volume')!;
+    const verify = getToolHandler('sangfor_hci_verify_volume')!;
+    const del = getToolHandler('sangfor_hci_delete_volume')!;
+    const inventory = getToolHandler('sangfor_hci_inventory')!;
 
     // 1) plan — no mutation, mints the idempotency token
     const planned = await plan({ name: 'e2e-vol', sizeGb: 5, identityBaseUrl }) as any;
@@ -120,7 +120,7 @@ describe('M1 vertical slice — plan → apply → verify → restore, hands-off
   });
 
   it('refuses a replayed approval nonce (single-use)', async () => {
-    const apply = getToolHandler('sangfor.hci_apply_create_volume')!;
+    const apply = getToolHandler('sangfor_hci_apply_create_volume')!;
     const approval = approvalFor('hci.create-volume', '127.0.0.1:replay');
     const first = await apply({ name: 'replay', sizeGb: 2, clientToken: 'ct-replay-a1', approval, identityBaseUrl }) as any;
     expect(first.ok).toBe(true);

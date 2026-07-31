@@ -98,9 +98,9 @@ export function validateBlocks(blocks: PlaybookBlock[]): void {
     seen.add(b.id);
     if (b.type === 'tool') {
       if (!b.toolId?.trim()) throw new PlaybookValidationError(`tool 블록 '${b.id}'에 toolId가 없습니다`);
-      // 플레이북 프록시 도구(MCP sangfor.playbook_*)를 블록으로 두면 플레이북이 플레이북을
+      // 플레이북 프록시 도구(MCP sangfor_playbook_*)를 블록으로 두면 플레이북이 플레이북을
       // 호출한다 — 중첩 실행은 설계 비범위이므로 저장 단계에서 막는다.
-      if (b.toolId.startsWith('sangfor.playbook_')) {
+      if (b.toolId.startsWith('sangfor_playbook_')) {
         throw new PlaybookValidationError(`블록에 플레이북 프록시 도구를 쓸 수 없습니다(중첩 실행 비범위): ${b.toolId}`);
       }
     } else if (b.type === 'report') {

@@ -5,7 +5,7 @@ import type { AddressInfo } from 'node:net';
 // Importing the MCP server module must NOT start the stdio readline loop.
 process.env.MCP_NO_SERVE = '1';
 
-describe('MCP sangfor.advisor_fortios tool', () => {
+describe('MCP sangfor_advisor_fortios tool', () => {
   let mockServer: http.Server;
   let base = '';
 
@@ -33,7 +33,7 @@ describe('MCP sangfor.advisor_fortios tool', () => {
 
   it('queries the device, maps config-state, and evaluates the FortiOS policy baseline end-to-end', async () => {
     const { getToolHandler } = await import('../apps/mcp-server/src/index.js');
-    const handler = getToolHandler('sangfor.advisor_fortios');
+    const handler = getToolHandler('sangfor_advisor_fortios');
     expect(handler).toBeDefined();
 
     const result: any = await handler!({ host: base, username: 'admin', password: 'password' });
@@ -66,7 +66,7 @@ describe('MCP sangfor.advisor_fortios tool', () => {
 
   it('returns a structured error (never throws) when the device is unreachable', async () => {
     const { getToolHandler } = await import('../apps/mcp-server/src/index.js');
-    const handler = getToolHandler('sangfor.advisor_fortios');
+    const handler = getToolHandler('sangfor_advisor_fortios');
 
     const result: any = await handler!({ host: 'http://127.0.0.1:1', username: 'admin', password: 'password' });
 

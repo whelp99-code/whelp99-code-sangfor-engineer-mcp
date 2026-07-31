@@ -29,7 +29,7 @@
 
 ## 3. 평가 + 리포트 (MCP 도구)
 
-`sangfor.evaluate_config` 도구:
+`sangfor_evaluate_config` 도구:
 ```json
 { "product": "EPP", "version": "6.0.4",
   "observed": { "patchIsLatest": true, "vulnerabilityCount": 0, ... },
@@ -39,7 +39,7 @@
 
 **안전 원칙(코드 강제):** INDETERMINATE는 절대 PASS 아님. 미확인 설정값·근거 없는 must는 판정 불가 → 종합 "조치 필요". false-pass 방지.
 
-`sangfor.list_spec_coverage` — 어떤 제품/버전 spec이 있는지. `sangfor.capability_safety` — safety_class(기본 human_only)/maturity.
+`sangfor_list_spec_coverage` — 어떤 제품/버전 spec이 있는지. `sangfor_capability_safety` — safety_class(기본 human_only)/maturity.
 
 ## 4. Spec 시드 (제품 매뉴얼 근거)
 
@@ -54,4 +54,4 @@
 
 - IAG deep config: aside로 Audit/Auth/802.1X 페이지 개별 네비→판정불가 해소.
 - EPP 멀웨어 스케줄: Defense 정책 페이지 심화 네비.
-- `sangfor.collect_device_config`(`apps/mcp-server/src/index.ts`)로 EPP/CC 풀→ConfigState→evaluate 통합 완료. 남은 갭: IAG(ExtJS) 풀 매퍼 미지원 — deep config는 여전히 aside 네비게이션 필요.
+- `sangfor_collect_device_config`(`apps/mcp-server/src/index.ts`)로 EPP/CC 풀→ConfigState→evaluate 통합 완료. 남은 갭: IAG(ExtJS) 풀 매퍼 미지원 — deep config는 여전히 aside 네비게이션 필요.

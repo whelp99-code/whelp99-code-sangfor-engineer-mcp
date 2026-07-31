@@ -10,9 +10,9 @@ import { validateBlocks, PlaybookValidationError, type Playbook } from '../apps/
 import { SEED_VENDORS, type Device } from '../apps/control-tower/src/registry.js';
 
 const TOOLS = { tools: [
-  { name: 'sangfor.store_health', description: 'r', inputSchema: { type: 'object', properties: {} }, annotations: { title: 'r', readOnlyHint: true, destructiveHint: false }, category: 'knowledge' },
-  { name: 'sangfor.rag_index_summary', description: 'r', inputSchema: { type: 'object', properties: {} }, annotations: { title: 'r', readOnlyHint: true, destructiveHint: false }, category: 'knowledge' },
-  { name: 'sangfor.list_spec_coverage', description: 'r', inputSchema: { type: 'object', properties: {} }, annotations: { title: 'r', readOnlyHint: true, destructiveHint: false }, category: 'advisory' },
+  { name: 'sangfor_store_health', description: 'r', inputSchema: { type: 'object', properties: {} }, annotations: { title: 'r', readOnlyHint: true, destructiveHint: false }, category: 'knowledge' },
+  { name: 'sangfor_rag_index_summary', description: 'r', inputSchema: { type: 'object', properties: {} }, annotations: { title: 'r', readOnlyHint: true, destructiveHint: false }, category: 'knowledge' },
+  { name: 'sangfor_list_spec_coverage', description: 'r', inputSchema: { type: 'object', properties: {} }, annotations: { title: 'r', readOnlyHint: true, destructiveHint: false }, category: 'advisory' },
 ] };
 
 let bridge: http.Server, bridgeUrl: string, runsDir: string, registryDir: string, outDir: string, tower: http.Server, towerUrl: string;
@@ -81,7 +81,7 @@ describe('planSeedPlaybooks — 순수 후보 생성', () => {
     expect(out.map((c) => c.seedKey)).toEqual(['tower-selfcheck', 'device-checkup:dev_seed_1']);
     const checkup = out[1];
     expect(checkup.blocks.filter((b) => b.type === 'tool').map((b) => b.toolId))
-      .toEqual(['sangfor.advisor_fortios', 'sangfor.advisor_fortios_advanced']);
+      .toEqual(['sangfor_advisor_fortios', 'sangfor_advisor_fortios_advanced']);
     expect(checkup.blocks.every((b) => b.type === 'report' || b.deviceId === 'dev_seed_1')).toBe(true);
     expect(() => validateBlocks(checkup.blocks)).not.toThrow();
   });
@@ -96,8 +96,8 @@ describe('planSeedPlaybooks — 순수 후보 생성', () => {
 });
 
 describe('validateBlocks — 플레이북 프록시 도구 차단 (중첩 실행 비범위)', () => {
-  it('sangfor.playbook_* 를 tool 블록으로 쓰면 400', () => {
-    expect(() => validateBlocks([{ id: 'b1', type: 'tool', toolId: 'sangfor.playbook_execute' }]))
+  it('sangfor_playbook_* 를 tool 블록으로 쓰면 400', () => {
+    expect(() => validateBlocks([{ id: 'b1', type: 'tool', toolId: 'sangfor_playbook_execute' }]))
       .toThrow(PlaybookValidationError);
   });
 });

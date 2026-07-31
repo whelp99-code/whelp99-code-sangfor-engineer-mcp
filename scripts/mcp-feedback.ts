@@ -51,7 +51,7 @@ async function main() {
   // 1단계: 피드백 제출
   console.log('\n=== 1단계: 피드백 제출 ===');
   const feedback = await sendRequest(proc, 'tools/call', {
-    name: 'sangfor.submit_feedback',
+    name: 'sangfor_submit_feedback',
     arguments: {
       product: 'ENDPOINT_SECURE',
       feedbackType: 'menu_mapping_correction',
@@ -84,7 +84,7 @@ EPP 실제 사이드바 구조:
   const feedbackId = feedback?.id || feedback?.feedbackId || feedback?.persistedId;
   if (feedbackId) {
     const lesson = await sendRequest(proc, 'tools/call', {
-      name: 'sangfor.extract_lesson',
+      name: 'sangfor_extract_lesson',
       arguments: { feedbackId: String(feedbackId) }
     });
     console.log('교훈 추출:', JSON.stringify(lesson, null, 2));
@@ -92,7 +92,7 @@ EPP 실제 사이드바 구조:
     // 3단계: wiki 업데이트 제안
     console.log('\n=== 3단계: wiki 업데이트 제안 ===');
     const proposal = await sendRequest(proc, 'tools/call', {
-      name: 'sangfor.propose_wiki_update',
+      name: 'sangfor_propose_wiki_update',
       arguments: {
         lessonTitle: 'EPP 실장비 메뉴 매핑 검증 결과 (2026-06-09)',
         lessonBody: `## EPP (Athena EPP 6.0.4ENR4) 실장비 검증 메뉴 구조
@@ -137,7 +137,7 @@ System > Agent Deployment, System Updates, Integrated Devices, Branches, Adminis
     if (proposalId) {
       console.log('\n=== 4단계: 제안 승인 ===');
       const approve = await sendRequest(proc, 'tools/call', {
-        name: 'sangfor.approve_wiki_update',
+        name: 'sangfor_approve_wiki_update',
         arguments: { proposalId: String(proposalId), decision: 'approve' }
       });
       console.log('승인:', JSON.stringify(approve, null, 2));
@@ -145,7 +145,7 @@ System > Agent Deployment, System Updates, Integrated Devices, Branches, Adminis
       // 5단계: wiki 업데이트 적용
       console.log('\n=== 5단계: wiki 업데이트 적용 ===');
       const apply = await sendRequest(proc, 'tools/call', {
-        name: 'sangfor.apply_wiki_update',
+        name: 'sangfor_apply_wiki_update',
         arguments: { proposalId: String(proposalId) }
       });
       console.log('적용:', JSON.stringify(apply, null, 2));

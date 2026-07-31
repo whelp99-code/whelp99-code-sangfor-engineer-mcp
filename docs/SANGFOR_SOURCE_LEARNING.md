@@ -54,7 +54,7 @@ export SANGFOR_COMMUNITY_MAX_THREADS=all
 pnpm run learn:sources
 ```
 
-MCP tool: `sangfor.learn_sources` (same pipeline; optional `communityMaxThreadsPerForum`, `knowledgeMaxArticles`, `includeDemoDocs`).
+MCP tool: `sangfor_learn_sources` (same pipeline; optional `communityMaxThreadsPerForum`, `knowledgeMaxArticles`, `includeDemoDocs`).
 
 ## Outputs
 

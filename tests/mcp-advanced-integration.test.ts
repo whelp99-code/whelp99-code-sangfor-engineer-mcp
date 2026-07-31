@@ -7,8 +7,8 @@ process.env.MCP_NO_SERVE = '1';
 // ─── Mock device backend on :3001 ──────────────────────────────────────────
 // A single in-process HTTP server plays the role of "mock-sangfor-console":
 // it answers the exact FortiOS (`/api/v2/...`) and Cisco RESTCONF
-// (`/restconf/data/...`) paths that `sangfor.advisor_fortios_advanced` /
-// `sangfor.advisor_cisco_iosxe_advanced` query in apps/mcp-server/src/index.ts.
+// (`/restconf/data/...`) paths that `sangfor_advisor_fortios_advanced` /
+// `sangfor_advisor_cisco_iosxe_advanced` query in apps/mcp-server/src/index.ts.
 // (The apps/mock-sangfor-console package's own `/api/v1/fortios/*` and
 // `/api/v1/cisco-iosxe/*` routes are a separate, non-overlapping URL scheme
 // used by scripts/device-collect.ts fixtures — not what the deployed advisor
@@ -151,10 +151,10 @@ describe('MCP advanced advisor tools — end-to-end integration (mock device bac
 
   afterAll(() => new Promise<void>((resolve) => mockServer.close(() => resolve())));
 
-  describe('FortiOS advanced advisor (sangfor.advisor_fortios_advanced)', () => {
+  describe('FortiOS advanced advisor (sangfor_advisor_fortios_advanced)', () => {
     it('happy path: queries all 5 endpoints, maps config-state, evaluates both baselines, returns a complete result', async () => {
       fortiosScenario = 'happy';
-      const handler = getToolHandler('sangfor.advisor_fortios_advanced');
+      const handler = getToolHandler('sangfor_advisor_fortios_advanced');
       expect(handler).toBeDefined();
 
       const result: any = await handler!({ host: base, username: 'admin', password: 'password' });
@@ -182,7 +182,7 @@ describe('MCP advanced advisor tools — end-to-end integration (mock device bac
 
     it('missing-field handling: incomplete endpoint responses are mapped and evaluated without throwing', async () => {
       fortiosScenario = 'missingField';
-      const handler = getToolHandler('sangfor.advisor_fortios_advanced');
+      const handler = getToolHandler('sangfor_advisor_fortios_advanced');
 
       const result: any = await handler!({ host: base, username: 'admin', password: 'password' });
 
@@ -208,7 +208,7 @@ describe('MCP advanced advisor tools — end-to-end integration (mock device bac
 
     it('error case: a non-2xx response from any endpoint is caught and returned as a structured error', async () => {
       fortiosScenario = 'error';
-      const handler = getToolHandler('sangfor.advisor_fortios_advanced');
+      const handler = getToolHandler('sangfor_advisor_fortios_advanced');
 
       const result: any = await handler!({ host: base, username: 'admin', password: 'password' });
 
@@ -220,10 +220,10 @@ describe('MCP advanced advisor tools — end-to-end integration (mock device bac
     });
   });
 
-  describe('Cisco IOS-XE advanced advisor (sangfor.advisor_cisco_iosxe_advanced)', () => {
+  describe('Cisco IOS-XE advanced advisor (sangfor_advisor_cisco_iosxe_advanced)', () => {
     it('happy path: queries all 7 endpoints, maps config-state, evaluates both baselines, returns a complete result', async () => {
       ciscoScenario = 'happy';
-      const handler = getToolHandler('sangfor.advisor_cisco_iosxe_advanced');
+      const handler = getToolHandler('sangfor_advisor_cisco_iosxe_advanced');
       expect(handler).toBeDefined();
 
       const result: any = await handler!({ host: base, username: 'admin', password: 'password' });
@@ -251,7 +251,7 @@ describe('MCP advanced advisor tools — end-to-end integration (mock device bac
 
     it('missing-field handling: incomplete RESTCONF responses are mapped and evaluated without throwing', async () => {
       ciscoScenario = 'missingField';
-      const handler = getToolHandler('sangfor.advisor_cisco_iosxe_advanced');
+      const handler = getToolHandler('sangfor_advisor_cisco_iosxe_advanced');
 
       const result: any = await handler!({ host: base, username: 'admin', password: 'password' });
 
@@ -278,7 +278,7 @@ describe('MCP advanced advisor tools — end-to-end integration (mock device bac
 
     it('error case: a non-2xx response from any RESTCONF endpoint is caught and returned as a structured error', async () => {
       ciscoScenario = 'error';
-      const handler = getToolHandler('sangfor.advisor_cisco_iosxe_advanced');
+      const handler = getToolHandler('sangfor_advisor_cisco_iosxe_advanced');
 
       const result: any = await handler!({ host: base, username: 'admin', password: 'password' });
 

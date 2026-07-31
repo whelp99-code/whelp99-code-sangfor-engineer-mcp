@@ -29,7 +29,7 @@ Query FortiOS firewall policies and generate a self-assessment report.
 curl -X POST http://127.0.0.1:3600/tools/call \
   -H 'Content-Type: application/json' \
   -d '{
-    "name": "sangfor.advisor_fortios",
+    "name": "sangfor_advisor_fortios",
     "arguments": {
       "host": "10.0.1.1",
       "username": "admin",
@@ -56,7 +56,7 @@ Query Cisco IOS-XE router/switch and generate a self-assessment report.
 curl -X POST http://127.0.0.1:3600/tools/call \
   -H 'Content-Type: application/json' \
   -d '{
-    "name": "sangfor.advisor_cisco_iosxe",
+    "name": "sangfor_advisor_cisco_iosxe",
     "arguments": {
       "host": "10.0.1.254",
       "username": "admin",

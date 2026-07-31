@@ -67,7 +67,7 @@ describe('RunStore — 라이프사이클/영속/필터 (T-RUN-1)', () => {
   it('immediate execution lifecycle: running → succeeded', () => {
     const store = new RunStore(dir);
     const run = store.createRun({
-      toolId: 'sangfor.products', toolSafety: 'read_only',
+      toolId: 'sangfor_products', toolSafety: 'read_only',
       args: { q: 'hci' }, initialStatus: 'running',
     });
     expect(run.runId).toMatch(/^run_/);
@@ -83,7 +83,7 @@ describe('RunStore — 라이프사이클/영속/필터 (T-RUN-1)', () => {
   it('approval lifecycle: pending_approval → running(approval meta) → succeeded, 큐 비워짐', () => {
     const store = new RunStore(dir);
     const run = store.createRun({
-      toolId: 'sangfor.pm_create_engagement', toolSafety: 'write',
+      toolId: 'sangfor_pm_create_engagement', toolSafety: 'write',
       args: { customer: 'acme' }, initialStatus: 'pending_approval',
     });
     expect(store.pendingApprovals().map((r) => r.runId)).toContain(run.runId);

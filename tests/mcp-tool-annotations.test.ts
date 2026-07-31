@@ -22,8 +22,8 @@ describe('MCP tool annotations (readOnly/destructive hints) — fail-closed', ()
 
   it('device/external mutators are marked destructive (readOnlyHint:false, destructiveHint:true)', () => {
     const mustBeDestructive = [
-      'sangfor.apply_approved_product_change',
-      'sangfor.execute_console_action_live',
+      'sangfor_apply_approved_product_change',
+      'sangfor_execute_console_action_live',
     ];
     const byName = new Map(listTools().map((t) => [t.name, t]));
     for (const n of mustBeDestructive) {
@@ -36,7 +36,7 @@ describe('MCP tool annotations (readOnly/destructive hints) — fail-closed', ()
 
   it('FAIL-CLOSED: any apply_* / execute_* tool must be classified destructive (no unlabeled mutator ships)', () => {
     for (const t of listTools()) {
-      const bare = t.name.replace(/^sangfor\./, '');
+      const bare = t.name.replace(/^sangfor_/, '');
       if (bare.startsWith('apply_') || bare.startsWith('execute_')) {
         expect(t.annotations.destructiveHint, `${t.name} is a mutator but not marked destructive`).toBe(true);
       }
@@ -45,9 +45,9 @@ describe('MCP tool annotations (readOnly/destructive hints) — fail-closed', ()
 
   it('pure advisory/read tools are readOnly and never destructive', () => {
     const readOnly = [
-      'sangfor.evaluate_config', 'sangfor.read_console_state', 'sangfor.list_spec_coverage',
-      'sangfor.pm_status', 'sangfor.suggest_rca', 'sangfor.recommend_sizing',
-      'sangfor.check_version', 'sangfor.search_manuals',
+      'sangfor_evaluate_config', 'sangfor_read_console_state', 'sangfor_list_spec_coverage',
+      'sangfor_pm_status', 'sangfor_suggest_rca', 'sangfor_recommend_sizing',
+      'sangfor_check_version', 'sangfor_search_manuals',
     ];
     const byName = new Map(listTools().map((t) => [t.name, t]));
     for (const n of readOnly) {

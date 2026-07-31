@@ -86,7 +86,7 @@ describe('renderReport (T-PB-3)', () => {
   const pb: Playbook = {
     id: 'pb_1', name: '자문 루프', goal: '전체분석', createdAt: '', updatedAt: '',
     revisions: [rev([
-      { id: 'b1', type: 'tool', toolId: 'sangfor.advisor_fortios', title: 'FortiOS 자문' },
+      { id: 'b1', type: 'tool', toolId: 'sangfor_advisor_fortios', title: 'FortiOS 자문' },
       { id: 'r1', type: 'report' },
     ])],
   };

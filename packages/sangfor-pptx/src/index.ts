@@ -282,8 +282,8 @@ function addDryRunSlide(pptx: PptxInstance) {
 
   const steps = [
     ['Step 1', 'Chrome CDP 준비', 'Chrome을 remote-debugging-port=9333 옵션으로 실행하고, 대상 제품 콘솔에 로그인한다.'],
-    ['Step 2', 'Operator session 생성', 'MCP의 sangfor.start_operator_session 도구로 제품, targetUrl, CDP endpoint를 지정한다.'],
-    ['Step 3', '계획 기반 dry-run 실행', 'sangfor.dry_run_product_change에 생성된 계획서와 sessionId를 전달한다.'],
+    ['Step 2', 'Operator session 생성', 'MCP의 sangfor_start_operator_session 도구로 제품, targetUrl, CDP endpoint를 지정한다.'],
+    ['Step 3', '계획 기반 dry-run 실행', 'sangfor_dry_run_product_change에 생성된 계획서와 sessionId를 전달한다.'],
     ['Step 4', '결과 검토', '증적이 누락된 항목, 메뉴 미발견 항목은 고객 확인 필요 사항으로 분리한다.'],
   ];
 

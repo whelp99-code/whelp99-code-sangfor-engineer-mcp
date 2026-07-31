@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { loadWorkAtoms, computeReplacementCoverage, type WorkAtom } from '../packages/sangfor-competency/src/index.js';
 
 const atoms: WorkAtom[] = [
-  { id: 'a1', product: 'EPP', phase: 'operate', title: 'daily health', automatability: 'auto', coveredBy: 'sangfor.evaluate_config', maturity: 'field_verified', evidence: 'outputs/diagnosis/EPP_6.0.4_live_diagnosis.md' },
-  { id: 'a2', product: 'EPP', phase: 'deploy', title: 'agent rollout', automatability: 'hybrid', coveredBy: 'sangfor.evaluate_config', maturity: 'tested_mock' },
+  { id: 'a1', product: 'EPP', phase: 'operate', title: 'daily health', automatability: 'auto', coveredBy: 'sangfor_evaluate_config', maturity: 'field_verified', evidence: 'outputs/diagnosis/EPP_6.0.4_live_diagnosis.md' },
+  { id: 'a2', product: 'EPP', phase: 'deploy', title: 'agent rollout', automatability: 'hybrid', coveredBy: 'sangfor_evaluate_config', maturity: 'tested_mock' },
   { id: 'a3', product: 'HCI', phase: 'deploy', title: 'rack & cable', automatability: 'human', humanReason: 'physical', maturity: 'planned' },
   { id: 'a4', product: 'IAG', phase: 'design', title: 'sizing', automatability: 'auto', coveredBy: null as any, maturity: 'planned' },
 ];
@@ -26,7 +26,7 @@ describe('sangfor-competency', () => {
   });
 
   it('never counts a human-only atom toward replacement even if marked covered', () => {
-    const sneaky: WorkAtom[] = [{ id: 'x', product: 'HCI', phase: 'deploy', title: 'rack', automatability: 'human', coveredBy: 'sangfor.something', maturity: 'field_verified' }];
+    const sneaky: WorkAtom[] = [{ id: 'x', product: 'HCI', phase: 'deploy', title: 'rack', automatability: 'human', coveredBy: 'sangfor_something', maturity: 'field_verified' }];
     const cov = computeReplacementCoverage(sneaky);
     expect(cov.replacedAtoms).toBe(0);
     expect(cov.humanOnlyAtoms).toBe(1);
@@ -35,9 +35,9 @@ describe('sangfor-competency', () => {
 
 describe('computeReplacementCoverage — red-team regressions', () => {
   it('does NOT count a field_verified atom as replaced unless it has evidence', () => {
-    const noEvidence = [{ id: 'e1', product: 'EPP', phase: 'operate', title: 't', automatability: 'auto', coveredBy: 'sangfor.x', maturity: 'field_verified' } as any];
+    const noEvidence = [{ id: 'e1', product: 'EPP', phase: 'operate', title: 't', automatability: 'auto', coveredBy: 'sangfor_x', maturity: 'field_verified' } as any];
     expect(computeReplacementCoverage(noEvidence).replacedAtoms).toBe(0);
-    const withEvidence = [{ id: 'e2', product: 'EPP', phase: 'operate', title: 't', automatability: 'auto', coveredBy: 'sangfor.x', maturity: 'field_verified', evidence: 'outputs/diagnosis/EPP_6.0.4_live_diagnosis.md' } as any];
+    const withEvidence = [{ id: 'e2', product: 'EPP', phase: 'operate', title: 't', automatability: 'auto', coveredBy: 'sangfor_x', maturity: 'field_verified', evidence: 'outputs/diagnosis/EPP_6.0.4_live_diagnosis.md' } as any];
     expect(computeReplacementCoverage(withEvidence).replacedAtoms).toBe(1);
   });
   it('deduplicates WorkAtoms by id', () => {
@@ -50,21 +50,21 @@ describe('computeReplacementCoverage — red-team regressions', () => {
 });
 
 describe('computeReplacementCoverage — verified coverage (knownTools + evidenceRoot)', () => {
-  const knownTools = new Set(['sangfor.evaluate_config']);
+  const knownTools = new Set(['sangfor_evaluate_config']);
   const evidenceRoot = process.cwd();
 
   it('(a) excludes an atom whose coveredBy is not a registered tool + reports it in unknownCoverage', () => {
     const orphan: WorkAtom[] = [
-      { id: 'o1', product: 'EPP', phase: 'operate', title: 't', automatability: 'auto', coveredBy: 'sangfor.deleted_tool', maturity: 'field_verified', evidence: 'outputs/diagnosis/EPP_6.0.4_live_diagnosis.md' },
+      { id: 'o1', product: 'EPP', phase: 'operate', title: 't', automatability: 'auto', coveredBy: 'sangfor_deleted_tool', maturity: 'field_verified', evidence: 'outputs/diagnosis/EPP_6.0.4_live_diagnosis.md' },
     ];
     const cov = computeReplacementCoverage(orphan, { knownTools, evidenceRoot });
     expect(cov.replacedAtoms).toBe(0);
-    expect(cov.unknownCoverage).toEqual([{ atomId: 'o1', coveredBy: 'sangfor.deleted_tool' }]);
+    expect(cov.unknownCoverage).toEqual([{ atomId: 'o1', coveredBy: 'sangfor_deleted_tool' }]);
   });
 
   it('(b) excludes an atom whose evidence is prose (not a real path) + reports it in evidenceMissing', () => {
     const prose: WorkAtom[] = [
-      { id: 'deploy_asbuilt_doc', product: 'HCI', phase: 'handover', title: 'as-built', automatability: 'auto', coveredBy: 'sangfor.evaluate_config', maturity: 'field_verified', evidence: 'outputs/ (generated setting/operations guides)' },
+      { id: 'deploy_asbuilt_doc', product: 'HCI', phase: 'handover', title: 'as-built', automatability: 'auto', coveredBy: 'sangfor_evaluate_config', maturity: 'field_verified', evidence: 'outputs/ (generated setting/operations guides)' },
     ];
     const cov = computeReplacementCoverage(prose, { knownTools, evidenceRoot });
     expect(cov.replacedAtoms).toBe(0);
@@ -73,7 +73,7 @@ describe('computeReplacementCoverage — verified coverage (knownTools + evidenc
 
   it('(c) keeps an atom whose evidence is a real file and coveredBy is registered', () => {
     const real: WorkAtom[] = [
-      { id: 'op_daily_health', product: 'EPP', phase: 'operate', title: 'daily health', automatability: 'auto', coveredBy: 'sangfor.evaluate_config', maturity: 'field_verified', evidence: 'outputs/diagnosis/EPP_6.0.4_live_diagnosis.md' },
+      { id: 'op_daily_health', product: 'EPP', phase: 'operate', title: 'daily health', automatability: 'auto', coveredBy: 'sangfor_evaluate_config', maturity: 'field_verified', evidence: 'outputs/diagnosis/EPP_6.0.4_live_diagnosis.md' },
     ];
     const cov = computeReplacementCoverage(real, { knownTools, evidenceRoot });
     expect(cov.replacedAtoms).toBe(1);
@@ -90,8 +90,8 @@ describe('computeReplacementCoverage — verified coverage (knownTools + evidenc
 
   it('rejects a bare directory as evidence (must be a real artifact FILE, not a folder)', () => {
     const dirEvidence: WorkAtom[] = [
-      { id: 'd1', product: 'HCI', phase: 'handover', title: 'x', automatability: 'auto', coveredBy: 'sangfor.evaluate_config', maturity: 'field_verified', evidence: 'outputs' },
-      { id: 'd2', product: 'HCI', phase: 'handover', title: 'x', automatability: 'auto', coveredBy: 'sangfor.evaluate_config', maturity: 'field_verified', evidence: '.' },
+      { id: 'd1', product: 'HCI', phase: 'handover', title: 'x', automatability: 'auto', coveredBy: 'sangfor_evaluate_config', maturity: 'field_verified', evidence: 'outputs' },
+      { id: 'd2', product: 'HCI', phase: 'handover', title: 'x', automatability: 'auto', coveredBy: 'sangfor_evaluate_config', maturity: 'field_verified', evidence: '.' },
     ];
     const cov = computeReplacementCoverage(dirEvidence, { knownTools, evidenceRoot });
     expect(cov.replacedAtoms).toBe(0);
@@ -100,8 +100,8 @@ describe('computeReplacementCoverage — verified coverage (knownTools + evidenc
 
   it('rejects an absolute or traversal evidence path that escapes the evidence root', () => {
     const escapes: WorkAtom[] = [
-      { id: 'abs', product: 'X', phase: 'operate', title: 'x', automatability: 'auto', coveredBy: 'sangfor.evaluate_config', maturity: 'field_verified', evidence: '/etc/hosts' },
-      { id: 'trav', product: 'X', phase: 'operate', title: 'x', automatability: 'auto', coveredBy: 'sangfor.evaluate_config', maturity: 'field_verified', evidence: '../../../../../../etc/hosts' },
+      { id: 'abs', product: 'X', phase: 'operate', title: 'x', automatability: 'auto', coveredBy: 'sangfor_evaluate_config', maturity: 'field_verified', evidence: '/etc/hosts' },
+      { id: 'trav', product: 'X', phase: 'operate', title: 'x', automatability: 'auto', coveredBy: 'sangfor_evaluate_config', maturity: 'field_verified', evidence: '../../../../../../etc/hosts' },
     ];
     const cov = computeReplacementCoverage(escapes, { knownTools, evidenceRoot });
     expect(cov.replacedAtoms).toBe(0);
@@ -116,7 +116,7 @@ describe('computeReplacementCoverage — maturity policy cross-check', () => {
     phase: 'operate',
     title: 'policy-backed capability',
     automatability: 'auto',
-    coveredBy: 'sangfor.evaluate_config',
+    coveredBy: 'sangfor_evaluate_config',
     maturity: 'field_verified',
     evidence: 'outputs/diagnosis/EPP_6.0.4_live_diagnosis.md',
     capabilityRef: { product: 'IAG', capabilityId: 'cap.policy' },

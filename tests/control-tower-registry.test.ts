@@ -107,7 +107,7 @@ describe('개방성 — 가상 벤더 주입 (T-REG-3)', () => {
   it('ACME_FW 디스크립터를 파일로 주입하면 코드 수정 없이 등록·인자구성이 동작한다', () => {
     const acme: VendorDescriptor = {
       product: 'ACME_FW', label: 'Acme Firewall',
-      advisorTools: ['sangfor.advisor_acme'],
+      advisorTools: ['sangfor_advisor_acme'],
       credentialFields: ['host', 'apiKey'],
       defaultArgs: { profile: 'strict' },
     };

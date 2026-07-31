@@ -26,11 +26,11 @@ afterAll(() => new Promise<void>((r) => server.close(() => r())));
 describe('hci mcp tools registration', () => {
   const byName = new Map(listTools().map((t: any) => [t.name, t]));
   it('registers 5 hci tools with correct annotations', () => {
-    expect(byName.get('sangfor.hci_inventory')?.annotations).toMatchObject({ readOnlyHint: true, destructiveHint: false });
-    expect(byName.get('sangfor.hci_plan_create_volume')?.annotations).toMatchObject({ readOnlyHint: true, destructiveHint: false });
-    expect(byName.get('sangfor.hci_verify_volume')?.annotations).toMatchObject({ readOnlyHint: true, destructiveHint: false });
-    expect(byName.get('sangfor.hci_apply_create_volume')?.annotations).toMatchObject({ readOnlyHint: false, destructiveHint: false });
-    expect(byName.get('sangfor.hci_delete_volume')?.annotations).toMatchObject({ readOnlyHint: false, destructiveHint: true });
+    expect(byName.get('sangfor_hci_inventory')?.annotations).toMatchObject({ readOnlyHint: true, destructiveHint: false });
+    expect(byName.get('sangfor_hci_plan_create_volume')?.annotations).toMatchObject({ readOnlyHint: true, destructiveHint: false });
+    expect(byName.get('sangfor_hci_verify_volume')?.annotations).toMatchObject({ readOnlyHint: true, destructiveHint: false });
+    expect(byName.get('sangfor_hci_apply_create_volume')?.annotations).toMatchObject({ readOnlyHint: false, destructiveHint: false });
+    expect(byName.get('sangfor_hci_delete_volume')?.annotations).toMatchObject({ readOnlyHint: false, destructiveHint: true });
   });
 });
 
@@ -48,7 +48,7 @@ describe('hci apply tool gates (mock target, loopback)', () => {
     rmSync(nonceDir, { recursive: true, force: true });
   });
 
-  const apply = getToolHandler('sangfor.hci_apply_create_volume')!;
+  const apply = getToolHandler('sangfor_hci_apply_create_volume')!;
   const mkApproval = (name: string) => {
     const base = {
       approvedBy: 'tester', changeTicketId: 'CHG-1', rollbackPlanId: 'RB-1',
