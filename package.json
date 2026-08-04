@@ -5,6 +5,9 @@
   "description": "Sangfor product-specific senior engineer MCP server with planner, approval, mock operator, feedback learning, and wiki integration.",
   "packageManager": "pnpm@10.28.1",
   "type": "module",
+  "bin": {
+    "sangfor-engineer-mcp": "bin/sangfor-engineer-mcp.mjs"
+  },
   "scripts": {
     "clean": "rm -rf dist",
     "dev:mcp": "tsx apps/mcp-server/src/index.ts",
@@ -58,6 +61,7 @@
     "@prisma/client": "^6.19.3",
     "pdf-parse": "^1.1.1",
     "playwright": "^1.56.1",
+    "tsx": "^4.19.2",
     "zod": "^3.25.76"
   },
   "pnpm": {
@@ -71,7 +75,6 @@
   "devDependencies": {
     "@types/node": "^22.10.2",
     "prisma": "^6.19.3",
-    "tsx": "^4.19.2",
     "typescript": "^5.9.3",
     "vitest": "^4.1.8"
   }

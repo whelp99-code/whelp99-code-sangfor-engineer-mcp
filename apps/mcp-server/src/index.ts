@@ -1064,7 +1064,7 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
     )
   },
   'sangfor_agent_manifest': {
-    description: 'Agent self-onboarding manifest: recommended first calls, standard tool groups, and the read-only-by-default safety posture. Call this first to discover the server. Read-only; never mutates.',
+    description: 'Agent self-onboarding manifest: recommended first calls, standard tool groups, tool exposure profile, and the read-only-by-default safety posture. Call this first to discover the server. Read-only; never mutates.',
     inputSchema: { type: 'object', properties: {} },
     handler: () => ({
       server: 'sangfor-engineer-mcp',
@@ -1085,6 +1085,16 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
         'sangfor_playbook_list', 'sangfor_pm_status',
       ],
       mutation_gating: 'Tools that change devices/external systems are gated: they require explicit user intent, a signed action-bound single-use approval, and SANGFOR_ALLOW_REAL_EXECUTION (production also SANGFOR_ALLOW_PRODUCTION_EXECUTION). Dry-run is the default.',
+      activeProfile: activeToolProfile(),
+      toolCountByProfile: Object.fromEntries(TOOL_PROFILES.map((p) => [p, listToolsForProfile(p).length])),
+      profileDescriptions: PROFILE_DESCRIPTIONS,
+      quickstart: {
+        // Not published to a public registry (package.json is private:true) —
+        // "npx sangfor-engineer-mcp" would not resolve. Real path: clone the
+        // repo, `pnpm install` once, then run the bin script directly.
+        stdio: 'node bin/sangfor-engineer-mcp.mjs (after: pnpm install, from a local clone)',
+        setProfileExample: 'SANGFOR_TOOL_PROFILE=advisor node bin/sangfor-engineer-mcp.mjs',
+      },
     })
   },
   'sangfor_capabilities': {
@@ -1184,6 +1194,153 @@ export function listTools() {
   }));
 }
 
+// ─── Tool exposure profiles (accessibility surface, not a safety gate) ────────
+// SANGFOR_TOOL_PROFILE narrows which tools a client sees/can call. It is derived
+// dynamically from the SAME readOnlyHint/destructiveHint annotations every tool
+// already carries (see annotationsFor above) — never a hardcoded per-tool list,
+// so a new tool is classified correctly the moment it gets annotations.
+// advisor ⊆ operator ⊆ full. Unset/unrecognized env values fall back to 'full':
+// every existing client (which never sets this var) keeps today's behavior.
+const TOOL_PROFILES = ['advisor', 'operator', 'full'] as const;
+type ToolProfile = (typeof TOOL_PROFILES)[number];
+
+export function activeToolProfile(): ToolProfile {
+  const raw = process.env.SANGFOR_TOOL_PROFILE;
+  // Unset/empty stays 'full' — every existing client that never sets this var
+  // keeps today's behavior. A non-empty but unrecognized value is a typo, not
+  // an intentional opt-out of restriction: fail CLOSED to the most-restrictive
+  // profile rather than silently granting full access.
+  if (raw === undefined || raw === '') return 'full';
+  if ((TOOL_PROFILES as readonly string[]).includes(raw)) return raw as ToolProfile;
+  process.stderr.write(`[mcp] unrecognized SANGFOR_TOOL_PROFILE '${raw}' — falling back to most-restrictive 'advisor'\n`);
+  return 'advisor';
+}
+
+// Conservative-by-construction: a tool whose hint is missing or not a strict
+// boolean is treated as NOT read-only and AS destructive, so any ambiguity
+// only ever pushes a tool toward a higher (more visible) profile — advisor
+// never gets a tool it shouldn't have. In practice every tool already carries
+// boolean hints (enforced by tests/mcp-tool-annotations.test.ts); this is a
+// belt-and-suspenders default, not a live code path today.
+function isToolVisibleInProfile(tool: { annotations?: { readOnlyHint?: unknown; destructiveHint?: unknown } }, profile: ToolProfile): boolean {
+  if (profile === 'full') return true;
+  const readOnly = tool.annotations?.readOnlyHint === true;
+  const destructive = tool.annotations?.destructiveHint !== false;
+  if (profile === 'advisor') return readOnly;
+  return readOnly || !destructive; // operator: advisor ∪ approval-gated writes, excluding destructive
+}
+
+export function listToolsForProfile(profile: ToolProfile = activeToolProfile()) {
+  const all = listTools();
+  return profile === 'full' ? all : all.filter((t) => isToolVisibleInProfile(t, profile));
+}
+
+const PROFILE_DESCRIPTIONS: Record<ToolProfile, string> = {
+  advisor: 'Read-only advisory tools only (search, evaluate, sizing, RCA, coverage) — never writes or mutates anything.',
+  operator: 'Advisor tools plus approval-gated local/plan writes (PM ledger, plans, drafts, playbook authoring) — excludes destructive device/external mutators.',
+  full: 'Every tool, including destructive device/external mutators gated by signed approval + SANGFOR_ALLOW_REAL_EXECUTION.',
+};
+
+// ─── MCP prompts: curated, workflow-shaped starting points ────────────────────
+// Each prompt only names tools that actually exist in `tools` above — verified
+// by tests/mcp-prompts.test.ts so a rename can't silently orphan a reference.
+type PromptDef = {
+  name: string;
+  description: string;
+  arguments?: Array<{ name: string; description?: string; required?: boolean }>;
+  render: (args: Record<string, string>) => string;
+};
+
+const PROMPTS: PromptDef[] = [
+  {
+    name: 'sangfor-health-check',
+    description: 'Advisory health-check workflow for a Sangfor/FortiOS/Cisco device: discover the server, run the right advisor tool, evaluate against spec, then collect evidence.',
+    arguments: [
+      { name: 'product', description: 'Target product/vendor, e.g. SANGFOR HCI_SCP, FORTIOS, CISCO_IOSXE', required: false },
+    ],
+    render: (args) => [
+      `Run a read-only health check${args.product ? ` for ${args.product}` : ''}. Follow this order:`,
+      '1. Call sangfor_agent_manifest (or sangfor_capabilities) to confirm which tools are available in the current profile.',
+      '2. Call the matching advisor tool: sangfor_advisor_fortios / sangfor_advisor_fortios_advanced for FortiOS, sangfor_advisor_cisco_iosxe / sangfor_advisor_cisco_iosxe_advanced for Cisco IOS-XE, or sangfor_hci_inventory / sangfor_hci_health_report for Sangfor HCI/SCP.',
+      '3. If you have an observed config instead of live device access, call sangfor_evaluate_config against the IntendedSpec (use sangfor_list_spec_coverage to see what specs exist).',
+      '4. Summarize findings and call sangfor_generate_evidence_report to produce a citable evidence record. Never claim a device was changed — every tool above is read-only.',
+    ].join('\n'),
+  },
+  {
+    name: 'sangfor-config-plan',
+    description: 'Turn customer requirements into a config plan with risk classification and a validation plan, without touching a device.',
+    arguments: [
+      { name: 'requirements', description: 'Free-text customer requirements to plan for', required: false },
+    ],
+    render: (args) => [
+      `Build a configuration plan${args.requirements ? ` for: ${args.requirements}` : ''}. Follow this order:`,
+      '1. Call sangfor_analyze_customer_requirements (or sangfor_analyze_project) to break requirements into product-specific tasks.',
+      '2. Call sangfor_generate_config_plan to produce the precheck/steps/rollback/validation plan.',
+      '3. Call sangfor_request_approval to classify the risk of the plan text before proposing any execution.',
+      '4. Call sangfor_validate_config_plan to confirm the plan has precheck, steps, rollback and validation before handing it to a human for approval. Do not call any apply_*/execute_* tool from this workflow — those require separate explicit human approval.',
+    ].join('\n'),
+  },
+  {
+    name: 'sangfor-troubleshoot',
+    description: 'Evidence-first troubleshooting workflow: gather grounded evidence before proposing root causes.',
+    arguments: [
+      { name: 'symptom', description: 'Observed symptom to investigate', required: false },
+    ],
+    render: (args) => [
+      `Troubleshoot${args.symptom ? `: ${args.symptom}` : ' the reported symptom'}. Follow this order:`,
+      '1. Call sangfor_rag_search to collect grounded evidence (manuals, KB, prior lessons) relevant to the symptom. Do not skip this — root causes must be grounded, not guessed.',
+      '2. From the retrieved evidence, form one or more hypotheses about the likely cause.',
+      '3. Call sangfor_suggest_rca with the symptom (and product, if known) to get ranked root-cause candidates and concrete check steps, and compare them against your hypotheses.',
+      '4. If you reach an evaluable observed config, call sangfor_evaluate_config to confirm/refute a hypothesis, then sangfor_generate_evidence_report to record findings.',
+    ].join('\n'),
+  },
+];
+
+const PROMPT_TOOL_NAME_PATTERN = /sangfor_[a-z0-9_]+/g;
+
+// Single source of truth for "which tools does this prompt tell the caller to
+// use": scan the rendered body for sangfor_* references. Args only interpolate
+// free text (product/requirements/symptom) — they never change which tool
+// names appear in the fixed step list, so an empty-args render is exact and
+// stable, and both the profile gate below and tests/mcp-prompts.test.ts read
+// from this one function instead of duplicating the regex.
+export function referencedToolNames(prompt: PromptDef): string[] {
+  const text = prompt.render({});
+  return Array.from(new Set(text.match(PROMPT_TOOL_NAME_PATTERN) ?? []));
+}
+
+// A prompt is only as available as every tool it walks the caller through.
+// If ANY referenced tool is hidden in the active profile, the whole prompt is
+// hidden too — a partially-runnable workflow is worse than an absent one.
+// Fail-closed on an unresolvable reference (should never happen; covered by
+// the tool-existence test) rather than assuming it's fine.
+function isPromptVisibleInProfile(prompt: PromptDef, profile: ToolProfile): boolean {
+  if (profile === 'full') return true;
+  const toolsByName = new Map(listTools().map((t) => [t.name, t]));
+  return referencedToolNames(prompt).every((toolName) => {
+    const tool = toolsByName.get(toolName);
+    return tool ? isToolVisibleInProfile(tool, profile) : false;
+  });
+}
+
+export function listPrompts(profile: ToolProfile = activeToolProfile()) {
+  return PROMPTS.filter((p) => isPromptVisibleInProfile(p, profile)).map(({ name, description, arguments: args }) => ({
+    name,
+    description,
+    ...(args ? { arguments: args } : {}),
+  }));
+}
+
+export function getPrompt(name: string, args?: Record<string, unknown>, profile: ToolProfile = activeToolProfile()) {
+  const prompt = PROMPTS.find((p) => p.name === name);
+  if (!prompt) throw new Error(`Unknown prompt: ${name}`);
+  if (!isPromptVisibleInProfile(prompt, profile)) {
+    throw new Error(`Prompt requires tools hidden in profile '${profile}'`);
+  }
+  const stringArgs: Record<string, string> = {};
+  for (const [k, v] of Object.entries(args ?? {})) if (typeof v === 'string') stringArgs[k] = v;
+  return { messages: [{ role: 'user', content: { type: 'text', text: prompt.render(stringArgs) } }] };
+}
 
 const SAFETY_POSTURE = {
   default: 'dry-run / read-only',
@@ -1236,10 +1393,10 @@ function capMcpResult(toolName: string, result: unknown): { result: unknown; tex
 export async function handle(req: JsonRpcRequest) {
   try {
     if (req.method === 'initialize') {
-      return { jsonrpc: '2.0', id: req.id, result: { protocolVersion: '2025-06-18', serverInfo: { name: 'sangfor-engineer-mcp', version: '0.1.0' }, capabilities: { tools: { listChanged: false }, resources: { listChanged: false } } } };
+      return { jsonrpc: '2.0', id: req.id, result: { protocolVersion: '2025-06-18', serverInfo: { name: 'sangfor-engineer-mcp', version: '0.1.0' }, capabilities: { tools: { listChanged: false }, resources: { listChanged: false }, prompts: { listChanged: false } } } };
     }
     if (req.method === 'tools/list') {
-      return { jsonrpc: '2.0', id: req.id, result: { tools: listTools() } };
+      return { jsonrpc: '2.0', id: req.id, result: { tools: listToolsForProfile() } };
     }
     if (req.method === 'resources/list') {
       return { jsonrpc: '2.0', id: req.id, result: { resources: listResources() } };
@@ -1248,11 +1405,23 @@ export async function handle(req: JsonRpcRequest) {
       const uri = req.params?.uri;
       return { jsonrpc: '2.0', id: req.id, result: readResource(uri) };
     }
+    if (req.method === 'prompts/list') {
+      return { jsonrpc: '2.0', id: req.id, result: { prompts: listPrompts() } };
+    }
+    if (req.method === 'prompts/get') {
+      const name = req.params?.name;
+      const args = req.params?.arguments;
+      return { jsonrpc: '2.0', id: req.id, result: getPrompt(name, args) };
+    }
     if (req.method === 'tools/call') {
       const name = req.params?.name;
       const args = req.params?.arguments ?? {};
       const tool = tools[name];
       if (!tool) throw new Error(`Unknown tool: ${name}`);
+      const profile = activeToolProfile();
+      if (profile !== 'full' && !isToolVisibleInProfile({ annotations: annotationsFor(name, tool.description) }, profile)) {
+        throw new Error(`Tool not available in profile '${profile}'; set SANGFOR_TOOL_PROFILE=full`);
+      }
       const raw = await tool.handler(args);
       const { result, text } = capMcpResult(name, raw);
       return { jsonrpc: '2.0', id: req.id, result: { content: [{ type: 'text', text }], structuredContent: result, isError: false } };
