@@ -21,7 +21,7 @@ import {
   generateExcelBasedChangePlan
 } from '../../../packages/sangfor-product-adapters/src/index.js';
 
-export const RAG_INDEX = process.env.SANGFOR_RAG_INDEX ?? 'data/rag/index.json';
+export const RAG_INDEX = resolveRepoData('data/rag/index.json', 'SANGFOR_RAG_INDEX');
 
 export function getSummary() {
   const rag = exportRagIndexSummary(RAG_INDEX);

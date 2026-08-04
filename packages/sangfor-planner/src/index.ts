@@ -11,7 +11,8 @@ import {
   ProjectInput,
   ProjectType,
   normalizeProduct,
-  nowId
+  nowId,
+  resolveRepoData
 } from '@sangfor/shared';
 
 function inferProjectType(input: ProjectInput): ProjectType {
@@ -96,7 +97,7 @@ function step(product: ProductCode, phase: ConfigStep['phase'], title: string, d
   };
 }
 
-const DEFAULT_RAG_INDEX = process.env.SANGFOR_RAG_INDEX_PATH ?? 'data/rag/index.json';
+const DEFAULT_RAG_INDEX = resolveRepoData('data/rag/index.json', 'SANGFOR_RAG_INDEX_PATH');
 
 function ragHitsToChunks(hits: KnowledgeChunk[]): KnowledgeChunk[] {
   return hits;

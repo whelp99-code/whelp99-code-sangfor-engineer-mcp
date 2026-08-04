@@ -1,6 +1,6 @@
-import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { nowId, resolveRepoData } from '../../../packages/shared/src/index.js';
+import { nowId, resolveRepoData, withDirLock, writeFileAtomicSync } from '../../../packages/shared/src/index.js';
 
 export interface VendorDescriptor {
   product: string;             // 열린 값 (enum 아님)
@@ -65,53 +65,67 @@ export class Registry {
     return this.loadOrSeed<Device[]>(join(this.dir, 'devices.json'), []);
   }
 
+  // devices.json's own read-modify-write sequence (existence check → mutate →
+  // write) is not atomic on its own — two concurrent createDevice/updateDevice/
+  // deleteDevice calls could each read the same snapshot and clobber one
+  // another's write. Every mutator below holds this lock for its full body.
+  private get devicesLockPath(): string {
+    return join(this.dir, 'devices.json.lock');
+  }
+
   createDevice(input: {
     name: string; product: string; host: string;
     tags?: string[]; credentialEnv?: Record<string, string>;
   }): Device {
-    if (!input.name?.trim()) throw new RegistryValidationError('name is required');
-    if (!input.host?.trim()) throw new RegistryValidationError('host is required');
-    if (!this.vendorFor(input.product)) {
-      throw new RegistryValidationError(`unknown product (vendors.json에 없음): ${input.product}`);
-    }
-    const now = new Date().toISOString();
-    const device: Device = {
-      id: nowId('dev'),
-      name: input.name.trim(),
-      product: input.product,
-      host: input.host.trim(),
-      tags: input.tags ?? [],
-      createdAt: now,
-      updatedAt: now,
-    };
-    if (input.credentialEnv) device.credentialEnv = input.credentialEnv;
-    this.writeDevices([...this.devices(), device]);
-    return device;
+    return withDirLock(this.devicesLockPath, () => {
+      if (!input.name?.trim()) throw new RegistryValidationError('name is required');
+      if (!input.host?.trim()) throw new RegistryValidationError('host is required');
+      if (!this.vendorFor(input.product)) {
+        throw new RegistryValidationError(`unknown product (vendors.json에 없음): ${input.product}`);
+      }
+      const now = new Date().toISOString();
+      const device: Device = {
+        id: nowId('dev'),
+        name: input.name.trim(),
+        product: input.product,
+        host: input.host.trim(),
+        tags: input.tags ?? [],
+        createdAt: now,
+        updatedAt: now,
+      };
+      if (input.credentialEnv) device.credentialEnv = input.credentialEnv;
+      this.writeDevices([...this.devices(), device]);
+      return device;
+    });
   }
 
   updateDevice(id: string, patch: Partial<Omit<Device, 'id' | 'createdAt' | 'updatedAt'>>): Device {
-    const devices = this.devices();
-    const index = devices.findIndex((d) => d.id === id);
-    if (index === -1) throw new RegistryValidationError(`unknown device: ${id}`);
-    if (patch.product !== undefined && !this.vendorFor(patch.product)) {
-      throw new RegistryValidationError(`unknown product (vendors.json에 없음): ${patch.product}`);
-    }
-    const updated: Device = {
-      ...devices[index],
-      ...patch,
-      id,
-      createdAt: devices[index].createdAt,
-      updatedAt: new Date().toISOString(),
-    };
-    devices[index] = updated;
-    this.writeDevices(devices);
-    return updated;
+    return withDirLock(this.devicesLockPath, () => {
+      const devices = this.devices();
+      const index = devices.findIndex((d) => d.id === id);
+      if (index === -1) throw new RegistryValidationError(`unknown device: ${id}`);
+      if (patch.product !== undefined && !this.vendorFor(patch.product)) {
+        throw new RegistryValidationError(`unknown product (vendors.json에 없음): ${patch.product}`);
+      }
+      const updated: Device = {
+        ...devices[index],
+        ...patch,
+        id,
+        createdAt: devices[index].createdAt,
+        updatedAt: new Date().toISOString(),
+      };
+      devices[index] = updated;
+      this.writeDevices(devices);
+      return updated;
+    });
   }
 
   deleteDevice(id: string): void {
-    const devices = this.devices();
-    if (!devices.some((d) => d.id === id)) throw new RegistryValidationError(`unknown device: ${id}`);
-    this.writeDevices(devices.filter((d) => d.id !== id));
+    withDirLock(this.devicesLockPath, () => {
+      const devices = this.devices();
+      if (!devices.some((d) => d.id === id)) throw new RegistryValidationError(`unknown device: ${id}`);
+      this.writeDevices(devices.filter((d) => d.id !== id));
+    });
   }
 
   private loadOrSeed<T>(path: string, seed: T): T {
@@ -131,10 +145,7 @@ export class Registry {
   }
 
   private atomicWrite(path: string, value: unknown): void {
-    mkdirSync(this.dir, { recursive: true });
-    const tmp = `${path}.tmp`;
-    writeFileSync(tmp, JSON.stringify(value, null, 2));
-    renameSync(tmp, path);
+    writeFileAtomicSync(path, JSON.stringify(value, null, 2));
   }
 }
 

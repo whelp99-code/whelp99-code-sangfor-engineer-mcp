@@ -11,7 +11,7 @@ import { generateEvidenceReport } from '../../../packages/sangfor-evidence/src/i
 import { submitFeedback, extractLesson } from '../../../packages/sangfor-feedback/src/index.js';
 import { createEvalCaseFromFeedback, runPlannerEval } from '../../../packages/sangfor-evals/src/index.js';
 import { PRODUCTS } from '../../../packages/shared/src/index.js';
-import { ingestDocument, ragSearch, exportRagIndexSummary, omitVectorFromHit } from '../../../packages/sangfor-rag/src/index.js';
+import { ingestDocument, ragSearch, exportRagIndexSummary, omitVectorFromHit, getRagSearchDiagnostics } from '../../../packages/sangfor-rag/src/index.js';
 import { createFineTuneDataset, createFineTuneJobSpec, validateFineTuneDataset } from '../../../packages/sangfor-finetune/src/index.js';
 import { loadEnvFile } from '../../../packages/sangfor-collector/src/load-env.js';
 import { runLearnSourcesPipeline } from '../../../packages/sangfor-collector/src/learn-pipeline.js';
@@ -421,7 +421,17 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
     inputSchema: { type: 'object', properties: { product: { type: 'string' }, version: { type: 'string' }, query: { type: 'string' }, limit: { type: 'number' }, indexPath: { type: 'string' }, privacy_mode: PRIVACY_MODE_SCHEMA, include_vectors: { type: 'boolean', description: 'Include each hit\'s raw embedding vector. Default false — vectors are large and rarely needed by callers.' } }, required: ['query'] },
     handler: async (args: { query: string; product?: string; version?: string; limit?: number; indexPath?: string; privacy_mode?: 'summary' | 'structured' | 'raw'; include_vectors?: boolean }) => {
       const hits = await ragSearch(args);
-      if (args.privacy_mode === 'summary') return summarizeSearchHits(hits);
+      const diagnostics = getRagSearchDiagnostics();
+      // privacy_mode=summary already returns an object ({count, hits}) — merge
+      // diagnostics into it there. The default/structured/raw response is a
+      // plain hits array (existing contract callers rely on); merging
+      // diagnostics into it would require wrapping the array in an object and
+      // is out of scope here, so degraded status stays reachable only via this
+      // object-shaped response and sangfor_rag_index_summary.
+      if (args.privacy_mode === 'summary') {
+        const summarized = summarizeSearchHits(hits);
+        return diagnostics.degraded ? { ...summarized, ...diagnostics } : summarized;
+      }
       return args.include_vectors ? hits : hits.map(omitVectorFromHit);
     }
   },

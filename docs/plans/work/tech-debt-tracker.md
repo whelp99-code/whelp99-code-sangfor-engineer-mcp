@@ -26,6 +26,10 @@ and the check that would close it. Grades and debt numbers here mirror
 - **Risk:** latency only; correctness is unaffected (cosine ranking is exact).
 - **Close when:** an ANN index (or partitioned index) backs `ragSearch` with a
   recall-parity test against the brute-force baseline.
+- **Progress (W3):** partially mitigated — `loadRagIndex` now caches the parsed
+  index keyed by mtime (avoids re-parsing the whole JSON file per search) and
+  ranking is hybrid (BM25 + cosine); the scan itself is still O(n) linear, so
+  the ANN/partitioned-index gap above remains open.
 
 ### #6 — Legacy docs drift
 - **Where:** assorted docs (e.g. stale `:3500` port references).

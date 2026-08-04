@@ -1,7 +1,7 @@
 import { createHash, createHmac } from 'node:crypto';
 import { appendFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { resolveRepoData } from '@sangfor/shared';
+import { resolveRepoData, withDirLock } from '@sangfor/shared';
 
 // Masked, append-only JSONL ledger with a hash chain. Every HCI change request,
 // response, state transition, and verdict is recorded with secrets masked. When
@@ -53,15 +53,21 @@ export class AuditLedger {
 
   append(runId: string, kind: LedgerKind, payload: unknown): void {
     mkdirSync(this.dir, { recursive: true });
-    const prior = this.readLines(runId);
-    const seq = prior.length;
-    const prevHash = prior.length ? prior[prior.length - 1].hash : 'GENESIS';
-    const masked = maskSecrets(payload);
-    const line: LedgerLine = {
-      seq, at: new Date().toISOString(), runId, kind, payload: masked,
-      prevHash, hash: digest(this.secret, prevHash, seq, kind, masked), keyed: Boolean(this.secret),
-    };
-    appendFileSync(this.pathFor(runId), `${JSON.stringify(line)}\n`);
+    // The hash chain reads the prior line's hash before computing this line's
+    // hash — two concurrent appends to the same run would otherwise both read
+    // the same "prior" tail and each produce a line claiming the same prevHash,
+    // breaking the chain's linearity. Lock the whole read-then-append.
+    withDirLock(`${this.pathFor(runId)}.lock`, () => {
+      const prior = this.readLines(runId);
+      const seq = prior.length;
+      const prevHash = prior.length ? prior[prior.length - 1].hash : 'GENESIS';
+      const masked = maskSecrets(payload);
+      const line: LedgerLine = {
+        seq, at: new Date().toISOString(), runId, kind, payload: masked,
+        prevHash, hash: digest(this.secret, prevHash, seq, kind, masked), keyed: Boolean(this.secret),
+      };
+      appendFileSync(this.pathFor(runId), `${JSON.stringify(line)}\n`);
+    });
   }
 
   verify(runId: string): { ok: boolean; keyed: boolean; brokenAt?: number } {

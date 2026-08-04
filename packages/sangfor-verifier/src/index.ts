@@ -9,7 +9,8 @@
  * - apply: navigate + fill + Apply (requires approval env vars)
  * - observe: navigate + read-only snapshot (requires session token)
  */
-import { ConfigPlan, ConfigStep, nowId, ProductCode } from '@sangfor/shared';
+import { join } from 'node:path';
+import { ConfigPlan, ConfigStep, nowId, ProductCode, resolveRepoData } from '@sangfor/shared';
 import { validateConfigPlan } from '@sangfor/planner';
 import { requiresApprovalForAction } from '@sangfor/approval';
 import {
@@ -341,7 +342,7 @@ export async function verifyResultLive(
 
   // Resolve defaults
   const mode = input.mode ?? 'dry';
-  const evidenceDir = input.evidenceDir ?? `data/evidence/${nowId('verify')}`;
+  const evidenceDir = input.evidenceDir ?? join(resolveRepoData('data/evidence'), nowId('verify'));
   const cdpPort = DEFAULT_CDP_PORT;
 
   const targetUrl = input.targetUrl

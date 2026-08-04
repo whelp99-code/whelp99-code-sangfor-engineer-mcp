@@ -1,6 +1,6 @@
-import { appendFileSync, mkdirSync, readFileSync, readdirSync, renameSync, writeFileSync } from 'node:fs';
+import { appendFileSync, mkdirSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { nowId, resolveRepoData } from '../../../packages/shared/src/index.js';
+import { nowId, resolveRepoData, withDirLock, writeFileAtomicSync } from '../../../packages/shared/src/index.js';
 import { maskSecrets } from '../../../packages/sangfor-runs/src/index.js';
 
 // ── 플레이북 정의 ────────────────────────────────────────────────────────────
@@ -131,47 +131,57 @@ export class PlaybookStore {
   list(): Playbook[] { return this.load(); }
   get(id: string): Playbook | undefined { return this.load().find((p) => p.id === id); }
 
+  private get lockPath(): string {
+    return `${this.path}.lock`;
+  }
+
   create(input: { name: string; goal: string; blocks: PlaybookBlock[]; authoredBy: string; note?: string; seedKey?: string }): Playbook {
     validateBlocks(input.blocks);
-    const now = new Date().toISOString();
-    const pb: Playbook = {
-      id: nowId('pb'), name: input.name, goal: input.goal,
-      revisions: [{ rev: 1, blocks: maskBlocks(input.blocks), authoredBy: input.authoredBy, note: input.note, status: 'draft', createdAt: now }],
-      createdAt: now, updatedAt: now,
-      ...(input.seedKey ? { seedKey: input.seedKey } : {}),
-    };
-    this.save([...this.load(), pb]);
-    return pb;
+    return withDirLock(this.lockPath, () => {
+      const now = new Date().toISOString();
+      const pb: Playbook = {
+        id: nowId('pb'), name: input.name, goal: input.goal,
+        revisions: [{ rev: 1, blocks: maskBlocks(input.blocks), authoredBy: input.authoredBy, note: input.note, status: 'draft', createdAt: now }],
+        createdAt: now, updatedAt: now,
+        ...(input.seedKey ? { seedKey: input.seedKey } : {}),
+      };
+      this.save([...this.load(), pb]);
+      return pb;
+    });
   }
 
   addRevision(id: string, input: { blocks: PlaybookBlock[]; authoredBy: string; note?: string }): Playbook {
     validateBlocks(input.blocks);
-    const pbs = this.load();
-    const pb = pbs.find((p) => p.id === id);
-    if (!pb) throw new PlaybookValidationError(`unknown playbook: ${id}`, 404);
-    const nextRev = Math.max(...pb.revisions.map((r) => r.rev)) + 1;
-    pb.revisions.push({ rev: nextRev, blocks: maskBlocks(input.blocks), authoredBy: input.authoredBy, note: input.note, status: 'draft', createdAt: new Date().toISOString() });
-    pb.updatedAt = new Date().toISOString();
-    this.save(pbs);
-    return pb;
+    return withDirLock(this.lockPath, () => {
+      const pbs = this.load();
+      const pb = pbs.find((p) => p.id === id);
+      if (!pb) throw new PlaybookValidationError(`unknown playbook: ${id}`, 404);
+      const nextRev = Math.max(...pb.revisions.map((r) => r.rev)) + 1;
+      pb.revisions.push({ rev: nextRev, blocks: maskBlocks(input.blocks), authoredBy: input.authoredBy, note: input.note, status: 'draft', createdAt: new Date().toISOString() });
+      pb.updatedAt = new Date().toISOString();
+      this.save(pbs);
+      return pb;
+    });
   }
 
   reviewRevision(id: string, rev: number, verdict: { approve: boolean; reviewedBy: string; rejectReason?: string }): Playbook {
-    const pbs = this.load();
-    const pb = pbs.find((p) => p.id === id);
-    if (!pb) throw new PlaybookValidationError(`unknown playbook: ${id}`, 404);
-    const r = pb.revisions.find((x) => x.rev === rev);
-    if (!r) throw new PlaybookValidationError(`unknown revision: ${rev}`, 404);
-    if (r.status !== 'draft') throw new PlaybookValidationError(`리비전이 draft가 아닙니다: ${r.status}`, 409);
-    if (!verdict.reviewedBy?.trim()) throw new PlaybookValidationError('reviewedBy는 필수입니다');
-    if (!verdict.approve && !verdict.rejectReason?.trim()) throw new PlaybookValidationError('반려 사유(rejectReason)는 필수입니다');
-    r.status = verdict.approve ? 'approved' : 'rejected';
-    r.reviewedBy = verdict.reviewedBy;
-    r.reviewedAt = new Date().toISOString();
-    if (!verdict.approve) r.rejectReason = verdict.rejectReason!.trim();
-    pb.updatedAt = new Date().toISOString();
-    this.save(pbs);
-    return pb;
+    return withDirLock(this.lockPath, () => {
+      const pbs = this.load();
+      const pb = pbs.find((p) => p.id === id);
+      if (!pb) throw new PlaybookValidationError(`unknown playbook: ${id}`, 404);
+      const r = pb.revisions.find((x) => x.rev === rev);
+      if (!r) throw new PlaybookValidationError(`unknown revision: ${rev}`, 404);
+      if (r.status !== 'draft') throw new PlaybookValidationError(`리비전이 draft가 아닙니다: ${r.status}`, 409);
+      if (!verdict.reviewedBy?.trim()) throw new PlaybookValidationError('reviewedBy는 필수입니다');
+      if (!verdict.approve && !verdict.rejectReason?.trim()) throw new PlaybookValidationError('반려 사유(rejectReason)는 필수입니다');
+      r.status = verdict.approve ? 'approved' : 'rejected';
+      r.reviewedBy = verdict.reviewedBy;
+      r.reviewedAt = new Date().toISOString();
+      if (!verdict.approve) r.rejectReason = verdict.rejectReason!.trim();
+      pb.updatedAt = new Date().toISOString();
+      this.save(pbs);
+      return pb;
+    });
   }
 
   activeRevision(pb: Playbook): PlaybookRevision | undefined {
@@ -188,10 +198,7 @@ export class PlaybookStore {
   }
 
   private save(pbs: Playbook[]): void {
-    mkdirSync(this.dir, { recursive: true });
-    const tmp = `${this.path}.tmp`;
-    writeFileSync(tmp, JSON.stringify(pbs, null, 2));
-    renameSync(tmp, this.path);
+    writeFileAtomicSync(this.path, JSON.stringify(pbs, null, 2));
   }
 }
 
@@ -278,18 +285,24 @@ export class AgentTaskStore {
     this.path = join(this.dir, 'agent-tasks.json');
   }
 
+  private get lockPath(): string {
+    return `${this.path}.lock`;
+  }
+
   list(status?: AgentTask['status']): AgentTask[] {
     const all = this.load();
     return status ? all.filter((t) => t.status === status) : all;
   }
 
   create(input: { kind: AgentTaskKind; payload: AgentTask['payload'] }): AgentTask {
-    const task: AgentTask = {
-      id: nowId('atask'), kind: input.kind, payload: maskSecrets(input.payload ?? {}),
-      status: 'open', createdAt: new Date().toISOString(),
-    };
-    this.save([...this.load(), task]);
-    return task;
+    return withDirLock(this.lockPath, () => {
+      const task: AgentTask = {
+        id: nowId('atask'), kind: input.kind, payload: maskSecrets(input.payload ?? {}),
+        status: 'open', createdAt: new Date().toISOString(),
+      };
+      this.save([...this.load(), task]);
+      return task;
+    });
   }
 
   close(id: string, result: AgentTask['result']): AgentTask {
@@ -308,13 +321,15 @@ export class AgentTaskStore {
   }
 
   private transition(id: string, mutate: (t: AgentTask) => void): AgentTask {
-    const tasks = this.load();
-    const t = tasks.find((x) => x.id === id);
-    if (!t) throw new PlaybookValidationError(`unknown agent-task: ${id}`, 404);
-    if (t.status !== 'open') throw new PlaybookValidationError(`task가 open이 아닙니다: ${t.status}`, 409);
-    mutate(t);
-    this.save(tasks);
-    return t;
+    return withDirLock(this.lockPath, () => {
+      const tasks = this.load();
+      const t = tasks.find((x) => x.id === id);
+      if (!t) throw new PlaybookValidationError(`unknown agent-task: ${id}`, 404);
+      if (t.status !== 'open') throw new PlaybookValidationError(`task가 open이 아닙니다: ${t.status}`, 409);
+      mutate(t);
+      this.save(tasks);
+      return t;
+    });
   }
 
   private load(): AgentTask[] {
@@ -327,9 +342,6 @@ export class AgentTaskStore {
   }
 
   private save(tasks: AgentTask[]): void {
-    mkdirSync(this.dir, { recursive: true });
-    const tmp = `${this.path}.tmp`;
-    writeFileSync(tmp, JSON.stringify(tasks, null, 2));
-    renameSync(tmp, this.path);
+    writeFileAtomicSync(this.path, JSON.stringify(tasks, null, 2));
   }
 }

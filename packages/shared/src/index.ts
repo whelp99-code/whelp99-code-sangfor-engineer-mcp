@@ -1,7 +1,20 @@
-import { existsSync, appendFileSync, mkdirSync, readFileSync } from 'node:fs';
+import {
+  existsSync,
+  appendFileSync,
+  chmodSync,
+  closeSync,
+  fsyncSync,
+  mkdirSync,
+  openSync,
+  readFileSync,
+  renameSync,
+  rmdirSync,
+  statSync,
+  writeSync,
+} from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createHash, timingSafeEqual } from 'node:crypto';
+import { createHash, randomUUID, timingSafeEqual } from 'node:crypto';
 import { isIP } from 'node:net';
 
 // ── HTTP exposure guard ─────────────────────────────────────────────────────
@@ -82,6 +95,122 @@ export function resolveRepoData(subdir: string, envVar?: string): string {
     return subdir;
   }
   return join(root, subdir);
+}
+
+// ── Atomic writes + directory locks ─────────────────────────────────────────
+// Generalized from sangfor-learning-strategy's store.ts (the first place this
+// repo got wx-temp + fsync + PID/UUID naming + parent-dir fsync right). New
+// file-backed stores should use these instead of growing their own copy of the
+// same pattern. learning-strategy/store.ts and sangfor-approval keep their
+// existing inline implementations untouched — they already shipped and pass
+// their own tests, so switching them over is a pure regression risk with no
+// behavior upside.
+
+function monotonicNowMs(): number {
+  return Number(process.hrtime.bigint() / 1_000_000n);
+}
+
+function pauseSync(milliseconds: number): void {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, milliseconds);
+}
+
+function syncParentDirectory(path: string): void {
+  const fd = openSync(path, 'r');
+  try { fsyncSync(fd); } finally { closeSync(fd); }
+}
+
+/**
+ * Write `data` to `filePath` atomically: write to a PID+UUID temp file with
+ * exclusive create ('wx' — never overwrites another writer's temp file),
+ * fsync it, rename over the target (atomic on POSIX filesystems), then fsync
+ * the parent directory so the rename survives a crash. A crash mid-write
+ * leaves only the orphaned temp file behind; the target is never partially
+ * written.
+ */
+export function writeFileAtomicSync(filePath: string, data: string): void {
+  const dir = dirname(filePath);
+  mkdirSync(dir, { recursive: true });
+  const tempPath = `${filePath}.${process.pid}.${randomUUID()}.tmp`;
+  const fd = openSync(tempPath, 'wx', 0o600);
+  try {
+    const bytes = Buffer.from(data, 'utf8');
+    let offset = 0;
+    while (offset < bytes.length) offset += writeSync(fd, bytes, offset, bytes.length - offset, null);
+    fsyncSync(fd);
+    chmodSync(tempPath, 0o600);
+  } finally {
+    closeSync(fd);
+  }
+  renameSync(tempPath, filePath);
+  syncParentDirectory(dir);
+}
+
+export class DirLockTimeoutError extends Error {
+  constructor(lockPath: string, waitMs: number) {
+    super(`LOCK_TIMEOUT: could not acquire directory lock at ${lockPath} within ${waitMs}ms`);
+    this.name = 'DirLockTimeoutError';
+  }
+}
+
+/**
+ * Run `fn` while holding an exclusive directory-based mutex at `lockPath`
+ * (mkdirSync is atomic create-if-absent on every platform this repo targets).
+ * Waits up to `waitMs` (default 2000), throwing DirLockTimeoutError if the
+ * lock is still held at the deadline. The lock is always released in
+ * `finally`, even when `fn` throws.
+ *
+ * If the lock directory's mtime is older than `staleLockMs` (default 30000),
+ * it is treated as abandoned — left behind by a holder that crashed or was
+ * killed before its own `finally` could run — and reclaimed immediately
+ * (rmdirSync + a one-line stderr warning) instead of waiting out the full
+ * budget. A race where another caller reaps it first (ENOENT on our rmdirSync)
+ * is normal contention, not an error.
+ */
+export function withDirLock<T>(
+  lockPath: string,
+  fn: () => T,
+  opts: { waitMs?: number; staleLockMs?: number } = {},
+): T {
+  const waitMs = opts.waitMs ?? 2_000;
+  const staleLockMs = opts.staleLockMs ?? 30_000;
+  mkdirSync(dirname(lockPath), { recursive: true });
+  const deadline = monotonicNowMs() + waitMs;
+  for (;;) {
+    try {
+      mkdirSync(lockPath, { mode: 0o700 });
+      chmodSync(lockPath, 0o700);
+      break;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
+
+      let ageMs = -1;
+      try {
+        ageMs = Date.now() - statSync(lockPath).mtimeMs;
+      } catch {
+        // Lock vanished between our failed mkdirSync and this stat — another
+        // holder likely has it now; fall through to normal contention below.
+      }
+      if (ageMs >= 0 && ageMs > staleLockMs) {
+        try {
+          rmdirSync(lockPath);
+          process.stderr.write(`[shared] removing stale lock ${lockPath} (age ${Math.round(ageMs)}ms)\n`);
+          continue; // reclaimed — retry mkdirSync immediately, no wait
+        } catch (reapError) {
+          if ((reapError as NodeJS.ErrnoException).code !== 'ENOENT') throw reapError;
+          // Someone else already reaped/released it — normal contention.
+        }
+      }
+
+      const remaining = deadline - monotonicNowMs();
+      if (remaining <= 0) throw new DirLockTimeoutError(lockPath, waitMs);
+      pauseSync(Math.min(25, remaining));
+    }
+  }
+  try {
+    return fn();
+  } finally {
+    try { rmdirSync(lockPath); } catch { /* leave a failed lock fail-closed */ }
+  }
 }
 
 export type ProductCode = 'HCI_SCP' | 'HCI' | 'IAG' | 'ENDPOINT_SECURE' | 'NDR' | 'CYBER_COMMAND';

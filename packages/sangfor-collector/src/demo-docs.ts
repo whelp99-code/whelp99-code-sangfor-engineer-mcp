@@ -1,8 +1,8 @@
 import { existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import type { ProductCode } from '@sangfor/shared';
+import { resolveRepoData, type ProductCode } from '@sangfor/shared';
 
-export const DEMO_DOCS_DIR = 'data/demo-docs';
+export const DEMO_DOCS_DIR = resolveRepoData('data/demo-docs', 'SANGFOR_DEMO_DOCS_ROOT');
 
 export const DEMO_DOC_PRODUCTS: Record<string, { product: ProductCode; version?: string }> = {
   'hci-storage-network.md': { product: 'HCI', version: '6.11' },

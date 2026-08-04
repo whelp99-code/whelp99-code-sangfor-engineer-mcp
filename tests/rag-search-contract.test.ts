@@ -18,6 +18,8 @@ const FIXTURE_HIT: RagSearchHit = {
   embeddingModel: 'hash-v1',
   vectorDims: 384,
   score: 0.87,
+  cosineScore: 0.87,
+  keywordScore: 0.5,
   rerankScore: 0.91
 };
 
