@@ -1,5 +1,14 @@
 import { ConfigPlan } from '@sangfor/shared';
 
+export { buildChangeRunReport, listChangeRunIds, isSafeRunId } from './change-run-report.js';
+export type {
+  ChangeRunReport,
+  ChangeRunReportJson,
+  ChangeRunStep,
+  ChangeRunVerificationEntry,
+  ChangeRunChainStatus,
+} from './change-run-report.js';
+
 export function generateEvidenceReport(input: { plan: ConfigPlan; verification?: unknown; format?: 'markdown' | 'json' }) {
   const plan = input.plan;
   const md = [

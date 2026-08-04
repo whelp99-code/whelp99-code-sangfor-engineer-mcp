@@ -1,13 +1,16 @@
 import readline from 'node:readline';
-import { mkdirSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { spawnSync } from 'node:child_process';
+import { createRequire } from 'node:module';
 import { analyzeProject, generateConfigPlan, generateConfigPlanAsync, validateConfigPlan } from '../../../packages/sangfor-planner/src/index.js';
 import { searchManuals, getManualSection } from '../../../packages/sangfor-knowledge/src/index.js';
 import { searchWiki, proposeWikiUpdate, approveWikiUpdate, applyWikiUpdate, applyObsidianWikiUpdate, applyGitHubWikiUpdate } from '../../../packages/sangfor-wiki/src/index.js';
-import { requiresApprovalForText } from '../../../packages/sangfor-approval/src/index.js';
+import { requiresApprovalForText, canonicalizeApprovalPayload, verifyDomainApprovalSignature, FileSingleUseNonceStore } from '../../../packages/sangfor-approval/src/index.js';
 import { startOperatorSession, readConsoleState, executeConsoleAction, readLiveConsoleState, executeLiveConsoleAction, killSession } from '../../../packages/sangfor-operator/src/index.js';
 import { verifyResult } from '../../../packages/sangfor-verifier/src/index.js';
-import { generateEvidenceReport } from '../../../packages/sangfor-evidence/src/index.js';
+import { generateEvidenceReport, buildChangeRunReport, listChangeRunIds, isSafeRunId } from '../../../packages/sangfor-evidence/src/index.js';
 import { submitFeedback, extractLesson } from '../../../packages/sangfor-feedback/src/index.js';
 import { createEvalCaseFromFeedback, runPlannerEval } from '../../../packages/sangfor-evals/src/index.js';
 import { PRODUCTS } from '../../../packages/shared/src/index.js';
@@ -42,7 +45,7 @@ import { recommendSizing, type SizingInput } from '../../../packages/sangfor-siz
 import { createPmStore } from '../../../packages/sangfor-pm/src/index.js';
 import { checkVersionRequirement, loadVersionRequirements } from '../../../packages/sangfor-version/src/index.js';
 import { generateIntegrationGuide, listIntegrationTypes } from '../../../packages/sangfor-integration/src/index.js';
-import { resolveRepoData, isLoopback, nowId, normalizeProduct, paginate } from '../../../packages/shared/src/index.js';
+import { resolveRepoData, isLoopback, nowId, normalizeProduct, paginate, appendJsonl, writeFileAtomicSync } from '../../../packages/shared/src/index.js';
 import { mapEppPoolToConfigState, mapCcPoolToConfigState } from '../../../packages/sangfor-config-state/src/index.js';
 import { fortios_policy_baseline, fortios_system_health_baseline, fortios_policy_audit_baseline } from '../../../packages/fortios-spec/src/index.js';
 import { mapFortiOSConfigState, mapFortiOSSystemHealth, mapFortiOSPolicyAudit } from '../../../packages/fortios-client/src/index.js';
@@ -56,6 +59,7 @@ import {
   httpJson,
 } from '../../../packages/sangfor-hci-client/src/index.js';
 import { TowerClient } from './tower-client.js';
+import { authorizeToolCall } from '../../http-bridge/src/tool-guard.js';
 import { verifyExecutionApproval } from '../../../packages/sangfor-operator/src/approval.js';
 import { consumeApprovalNonce } from '../../../packages/sangfor-operator/src/nonce-store.js';
 import {
@@ -182,6 +186,255 @@ function paginateOptionalField<T>(
   if (args.cursor === undefined && args.limit === undefined) return { [fieldName]: allItems };
   const { items, nextCursor } = paginate(allItems, { cursor: args.cursor, limit: args.limit, getKey });
   return { [fieldName]: items, ...(nextCursor === undefined ? {} : { nextCursor }) };
+}
+
+// ─── C2: search-gap flywheel ───────────────────────────────────────────────
+// A weak RAG hit (nothing found, or the best hit barely matches) is exactly
+// the signal that should drive what gets ingested/authored next. Capture it
+// to a feedback JSONL instead of silently discarding it; SANGFOR_SEARCH_GAP_CAPTURE=0
+// disables capture entirely and a capture failure never fails the search itself.
+const SEARCH_GAP_FILE = 'search-gaps.jsonl';
+const DEFAULT_SEARCH_GAP_WEAK_THRESHOLD = 0.15;
+
+interface SearchGapEvent {
+  id: string;
+  ts: string;
+  query: string;
+  product?: string;
+  version?: string;
+  hitCount: number;
+  topScore?: number;
+  reason: 'no_hits' | 'low_score';
+}
+
+function searchGapCaptureEnabled(): boolean {
+  return process.env.SANGFOR_SEARCH_GAP_CAPTURE !== '0';
+}
+
+function searchGapWeakThreshold(): number {
+  const raw = process.env.SANGFOR_RAG_WEAK_THRESHOLD;
+  if (raw === undefined) return DEFAULT_SEARCH_GAP_WEAK_THRESHOLD;
+  const parsed = Number.parseFloat(raw);
+  return Number.isFinite(parsed) ? parsed : DEFAULT_SEARCH_GAP_WEAK_THRESHOLD;
+}
+
+// Same root-resolution convention as packages/sangfor-feedback/src/index.ts:26
+// (SANGFOR_FEEDBACK_ROOT override, else data/feedback anchored to the repo root).
+function feedbackRoot(): string {
+  return resolveRepoData('data/feedback', 'SANGFOR_FEEDBACK_ROOT');
+}
+
+function searchGapFilePath(): string {
+  return join(feedbackRoot(), SEARCH_GAP_FILE);
+}
+
+function recordSearchGap(input: { query: string; product?: string; version?: string; hitCount: number; topScore?: number; reason: 'no_hits' | 'low_score' }): void {
+  if (!searchGapCaptureEnabled()) return;
+  try {
+    const event: SearchGapEvent = { id: nowId('search_gap'), ts: new Date().toISOString(), ...input };
+    appendJsonl(searchGapFilePath(), event);
+  } catch (error) {
+    process.stderr.write(`[search-gap] failed to record search gap: ${String(error instanceof Error ? error.message : error)}\n`);
+  }
+}
+
+function readSearchGaps(): SearchGapEvent[] {
+  let raw: string;
+  try {
+    raw = readFileSync(searchGapFilePath(), 'utf8');
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return [];
+    throw error;
+  }
+  return raw
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => JSON.parse(line) as SearchGapEvent);
+}
+
+// ─── C3: safety self-test ───────────────────────────────────────────────────
+// In-process proof that the fail-closed gates actually refuse an unapproved
+// action, with no device/network contact. Calls only existing exports — the
+// gate/guard logic itself is never touched here. Each check is independently
+// try/caught so one gate throwing (instead of returning a refusal) is reported
+// as a finding rather than crashing the whole self-test.
+interface SafetySelftestCheck {
+  name: string;
+  expectation: 'refused';
+  outcome: 'refused' | 'allowed' | 'skipped';
+  pass: boolean;
+  detail: string;
+}
+
+const OPERATOR_GATE_CHECK_NAME = 'operator.assertRealExecutionAllowed';
+const OPERATOR_GATE_SUBPROCESS_TIMEOUT_MS = 10_000;
+
+// (1) @sangfor/operator's real-execution gate (assertRealExecutionAllowed) reads
+// process.env.SANGFOR_ALLOW_REAL_EXECUTION / SANGFOR_OPERATOR_APPROVAL_SECRET
+// directly, with no way to inject an override through its function signature —
+// and this self-test must never mutate the PARENT process's env. So this proves
+// the gate for real in a CHILD process instead: spawn node (no shell) running the
+// gate function through the same tsx loader the bin launcher uses, with an
+// explicitly-built minimal env that does NOT set SANGFOR_ALLOW_REAL_EXECUTION
+// (never inherited from the parent — so the check proves fail-closed BY DEFAULT,
+// not "whatever the parent happened to have set"). A non-dry-run call with no
+// approval must throw; the child reports that over exit code + stdout.
+// `timeoutMs` is overridable only for tests exercising the failure/timeout
+// fallback — production always uses the 10s default.
+function checkOperatorExecutionGate(opts: { timeoutMs?: number } = {}): SafetySelftestCheck {
+  const timeoutMs = opts.timeoutMs ?? OPERATOR_GATE_SUBPROCESS_TIMEOUT_MS;
+  let scriptDir: string | undefined;
+  try {
+    const repoRoot = resolveRepoData('.');
+    const operatorIndexPath = join(repoRoot, 'packages/sangfor-operator/src/index.js');
+    // Same resolution the bin launcher (bin/sangfor-engineer-mcp.mjs) uses to
+    // find tsx without a shell/pnpm shim dependency.
+    const tsxCli = createRequire(import.meta.url).resolve('tsx/cli', { paths: [repoRoot] });
+
+    scriptDir = mkdtempSync(join(tmpdir(), 'sangfor-selftest-gate-'));
+    const scriptPath = join(scriptDir, 'check-operator-gate.ts');
+    const script = [
+      `import { assertRealExecutionAllowed } from ${JSON.stringify(operatorIndexPath)};`,
+      `const session = { id: 'selftest-subprocess', product: 'HCI', mode: 'lab', status: 'running' };`,
+      `const action = { type: 'click', target: 'selftest-probe', dryRun: false };`,
+      `try {`,
+      `  assertRealExecutionAllowed(session, action, undefined);`,
+      `  process.stdout.write('ALLOWED\\n');`,
+      `  process.exit(3);`,
+      `} catch (err) {`,
+      `  process.stdout.write('REFUSED: ' + (err instanceof Error ? err.message : String(err)) + '\\n');`,
+      `  process.exit(0);`,
+      `}`,
+    ].join('\n');
+    writeFileSync(scriptPath, script);
+
+    // Explicitly-built minimal env, NOT `{ ...process.env }` — inheriting the
+    // parent's env could carry SANGFOR_ALLOW_REAL_EXECUTION (or an approval
+    // secret) straight through and silently prove nothing. PATH/HOME are the
+    // only entries a plain `node <tsx-cli> <script>` invocation needs.
+    const minimalEnv: NodeJS.ProcessEnv = { PATH: process.env.PATH ?? '', HOME: process.env.HOME ?? '' };
+
+    const result = spawnSync(process.execPath, [tsxCli, scriptPath], {
+      cwd: repoRoot,
+      env: minimalEnv,
+      encoding: 'utf8',
+      timeout: timeoutMs,
+      shell: false,
+    });
+
+    if (result.error || result.signal) {
+      return {
+        name: OPERATOR_GATE_CHECK_NAME,
+        expectation: 'refused',
+        outcome: 'skipped',
+        pass: true,
+        detail: `subprocess spawn/timeout failed (${result.error ? result.error.message : `signal ${result.signal}`}) — skipped rather than mutate env; NOT proof the gate is safe, just that this run could not check it.`,
+      };
+    }
+    const stdout = (result.stdout ?? '').trim();
+    const refused = result.status === 0 && stdout.startsWith('REFUSED');
+    return {
+      name: OPERATOR_GATE_CHECK_NAME,
+      expectation: 'refused',
+      outcome: refused ? 'refused' : 'allowed',
+      pass: refused,
+      detail: refused
+        ? `subprocess (clean env, no SANGFOR_ALLOW_REAL_EXECUTION) refused: ${stdout}`
+        : `subprocess did NOT refuse (exit ${result.status}): ${stdout || (result.stderr ?? '').trim()}`,
+    };
+  } catch (error) {
+    return {
+      name: OPERATOR_GATE_CHECK_NAME,
+      expectation: 'refused',
+      outcome: 'skipped',
+      pass: true,
+      detail: `could not run the subprocess check (${String(error instanceof Error ? error.message : error)}) — skipped; NOT proof the gate is safe, just that this run could not check it.`,
+    };
+  } finally {
+    if (scriptDir) {
+      try { rmSync(scriptDir, { recursive: true, force: true }); } catch { /* best-effort cleanup */ }
+    }
+  }
+}
+
+// Exported (in addition to being wired as the sangfor_safety_selftest tool
+// handler below) so tests can pass operatorGateTimeoutMs to exercise the
+// spawn-timeout fallback deterministically — the MCP tool's own inputSchema
+// takes no properties, so this override is not reachable over the wire.
+export function runSafetySelftest(opts: { operatorGateTimeoutMs?: number } = {}): { checks: SafetySelftestCheck[]; skippedCount: number; allPass: boolean } {
+  const checks: SafetySelftestCheck[] = [];
+
+  checks.push(checkOperatorExecutionGate({ timeoutMs: opts.operatorGateTimeoutMs }));
+
+  // (2) http-bridge's tool-guard must refuse a destructive tool call with no approval.
+  try {
+    const toolListResult = { tools: [{ name: 'sangfor_selftest_destructive_probe', annotations: { readOnlyHint: false, destructiveHint: true } }] };
+    const decision = authorizeToolCall({ name: 'sangfor_selftest_destructive_probe', toolListResult, enforceWhitelist: true });
+    const refused = decision.allow === false && decision.status === 403;
+    checks.push({
+      name: 'http-bridge.authorizeToolCall',
+      expectation: 'refused',
+      outcome: refused ? 'refused' : 'allowed',
+      pass: refused,
+      detail: refused ? `refused: ${decision.error}` : `NOT refused: ${JSON.stringify(decision)}`,
+    });
+  } catch (error) {
+    checks.push({ name: 'http-bridge.authorizeToolCall', expectation: 'refused', outcome: 'allowed', pass: false, detail: `threw instead of returning a refusal: ${String(error instanceof Error ? error.message : error)}` });
+  }
+
+  // (3) A forged HMAC approval signature must be rejected.
+  try {
+    const secret = `selftest-${randomBytes(16).toString('hex')}`;
+    const payload = canonicalizeApprovalPayload(['selftest', 'action', 'payload']);
+    const forged = Buffer.alloc(32, 0x42);
+    const verdict = verifyDomainApprovalSignature(secret, payload, forged);
+    const refused = verdict.ok === false;
+    checks.push({
+      name: 'approval.verifyDomainApprovalSignature',
+      expectation: 'refused',
+      outcome: refused ? 'refused' : 'allowed',
+      pass: refused,
+      detail: refused ? `refused: ${verdict.reason}` : 'forged signature was accepted',
+    });
+  } catch (error) {
+    checks.push({ name: 'approval.verifyDomainApprovalSignature', expectation: 'refused', outcome: 'allowed', pass: false, detail: `threw instead of returning a refusal: ${String(error instanceof Error ? error.message : error)}` });
+  }
+
+  // (4) A single-use nonce must refuse replay. Uses a throwaway temp-dir store —
+  // never data/runtime's real nonce store.
+  let nonceDir: string | undefined;
+  try {
+    nonceDir = mkdtempSync(join(tmpdir(), 'sangfor-selftest-nonce-'));
+    const store = new FileSingleUseNonceStore(join(nonceDir, 'nonces.json'));
+    const nonce = `selftest-${randomBytes(8).toString('hex')}`;
+    const expiresAt = new Date(Date.now() + 60_000).toISOString();
+    const first = store.consume(nonce, expiresAt);
+    const second = store.consume(nonce, expiresAt);
+    const refused = first.ok === true && second.ok === false;
+    checks.push({
+      name: 'approval.FileSingleUseNonceStore replay',
+      expectation: 'refused',
+      outcome: refused ? 'refused' : 'allowed',
+      pass: refused,
+      detail: refused ? `replay refused: ${second.reason}` : `replay NOT refused (first.ok=${first.ok}, second.ok=${second.ok})`,
+    });
+  } catch (error) {
+    checks.push({ name: 'approval.FileSingleUseNonceStore replay', expectation: 'refused', outcome: 'allowed', pass: false, detail: `threw instead of exercising the store: ${String(error instanceof Error ? error.message : error)}` });
+  } finally {
+    if (nonceDir) {
+      try { rmSync(nonceDir, { recursive: true, force: true }); } catch { /* best-effort cleanup */ }
+    }
+  }
+
+  // allPass means "every EXECUTED check passed" — a skipped check contributes
+  // neither a pass nor a fail to this aggregate (it was not proven either way,
+  // see each skipped check's own detail). Counting a skip as a pass here would
+  // let allPass:true silently hide an unverified gate; skippedCount surfaces
+  // how many checks that applies to so a caller can't miss it.
+  const executed = checks.filter((c) => c.outcome !== 'skipped');
+  const skippedCount = checks.length - executed.length;
+  return { checks, skippedCount, allPass: executed.every((c) => c.pass) };
 }
 
 const tools: Record<string, { description: string; inputSchema: any; handler: ToolHandler }> = {
@@ -422,6 +675,16 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
     handler: async (args: { query: string; product?: string; version?: string; limit?: number; indexPath?: string; privacy_mode?: 'summary' | 'structured' | 'raw'; include_vectors?: boolean }) => {
       const hits = await ragSearch(args);
       const diagnostics = getRagSearchDiagnostics();
+      // C2 search-gap flywheel: a weak result (nothing found, or the best hit
+      // barely matches) is a signal for what to ingest/author next — capture it
+      // instead of silently discarding it. Never blocks or fails the search.
+      const topScore = hits.length ? Math.max(...hits.map((h) => h.score ?? 0)) : undefined;
+      const weakReason: 'no_hits' | 'low_score' | undefined = hits.length === 0
+        ? 'no_hits'
+        : (topScore !== undefined && topScore < searchGapWeakThreshold() ? 'low_score' : undefined);
+      if (weakReason) {
+        recordSearchGap({ query: args.query, product: args.product, version: args.version, hitCount: hits.length, topScore, reason: weakReason });
+      }
       // privacy_mode=summary already returns an object ({count, hits}) — merge
       // diagnostics into it there. The default/structured/raw response is a
       // plain hits array (existing contract callers rely on); merging
@@ -1107,6 +1370,38 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
       },
     })
   },
+  'sangfor_session_report': {
+    description: 'One-click session/change-run work report: overview, step timeline, read-back/verification results, hash-chain integrity (via AuditLedger.verify), and related evidence files, built from the data/evidence change-run ledger. Omit runId to list available change-run ids (read-only). Pass save:true to also write the Markdown report under data/evidence/reports/<runId>.md.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        runId: { type: 'string', description: 'Change-run id (ledger file basename under data/evidence/change-runs/). Omit to list available ids.' },
+        format: { type: 'string', enum: ['markdown', 'json'], description: 'Default markdown.' },
+        save: { type: 'boolean', description: 'Also write the Markdown report to data/evidence/reports/<runId>.md. Default false.' },
+      },
+    },
+    handler: (args: { runId?: string; format?: 'markdown' | 'json'; save?: boolean }) => {
+      if (!args.runId) return { availableRunIds: listChangeRunIds() };
+      if (!isSafeRunId(args.runId)) return { error: `INVALID_RUN_ID: "${args.runId}" is not a safe path segment.` };
+      const { markdown, json } = buildChangeRunReport({ runId: args.runId });
+      const format = args.format ?? 'markdown';
+      const report = format === 'json' ? json : markdown;
+      if (!args.save) return { format, report };
+      const savedPath = join(resolveRepoData('data/evidence', 'SANGFOR_EVIDENCE_ROOT'), 'reports', `${args.runId}.md`);
+      writeFileAtomicSync(savedPath, markdown);
+      return { format, report, savedPath };
+    },
+  },
+  'sangfor_search_gaps': {
+    description: 'Read-only: list recorded search gaps — sangfor_rag_search calls that returned 0 hits or a top score below SANGFOR_RAG_WEAK_THRESHOLD (default 0.15). Feeds what to ingest/author next. Optional cursor/limit page the list; omit both for the full list (default, backward-compatible). Disable capture entirely with SANGFOR_SEARCH_GAP_CAPTURE=0.',
+    inputSchema: { type: 'object', properties: { cursor: { type: 'string' }, limit: { type: 'integer', minimum: 1, maximum: 100 } } },
+    handler: (args: { cursor?: string; limit?: number }) => paginateOptionalField(readSearchGaps(), args, (g) => g.id, 'gaps'),
+  },
+  'sangfor_safety_selftest': {
+    description: 'Read-only self-test: proves the fail-closed safety gates actually refuse an unapproved action — the operator real-execution gate (verified in a clean-env child process, no device/network contact), the http-bridge destructive-tool guard, a forged HMAC approval-signature rejection, and single-use nonce replay rejection. allPass means every EXECUTED check passed; a check only falls back to outcome:"skipped" (never counted toward allPass) if its subprocess could not be run at all (spawn failure/timeout) — skippedCount reports how many that applies to.',
+    inputSchema: { type: 'object', properties: {} },
+    handler: () => runSafetySelftest(),
+  },
   'sangfor_capabilities': {
     description: 'Discovery: server capabilities — tool categories and counts, supported vendors/products, execution posture, and which write paths are gated. Read-only; never mutates.',
     inputSchema: { type: 'object', properties: {} },
@@ -1154,7 +1449,7 @@ const WRITE_TOOLS = new Set([
   'sangfor_capture_screenshots', 'sangfor_start_operator_session', 'sangfor_kill_session',
   'sangfor_generate_all_guides', 'sangfor_generate_comprehensive_operations_guide_docx',
   'sangfor_generate_comprehensive_setting_guide_docx', 'sangfor_generate_config_plan',
-  'sangfor_generate_evidence_report', 'sangfor_generate_excel_based_change_plan',
+  'sangfor_generate_evidence_report', 'sangfor_generate_excel_based_change_plan', 'sangfor_session_report',
   'sangfor_generate_operations_guide_docx', 'sangfor_generate_operations_guide_pptx',
   'sangfor_generate_product_change_plan', 'sangfor_generate_setting_guide_docx', 'sangfor_generate_setting_guide_pptx',
   'sangfor_hci_apply_create_volume',

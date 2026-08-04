@@ -11,6 +11,7 @@ let ingestDocument: typeof import('../packages/sangfor-rag/src/index.js').ingest
 
 let dir: string;
 let indexPath: string;
+let feedbackRoot: string;
 
 beforeAll(async () => {
   const mcp = await import('../apps/mcp-server/src/index.js');
@@ -24,11 +25,19 @@ beforeAll(async () => {
   const docPath = join(dir, 'hci.md');
   writeFileSync(docPath, '# HCI\n\nStorage network MTU validation before cluster init.');
   await ingestDocument({ filePath: docPath, product: 'HCI', indexPath });
+  // This single-chunk index normalizes any hit's hybrid score to 0 (W4 C2's
+  // search-gap capture would treat that as a weak-result "gap") — redirect
+  // capture to a throwaway dir so the repeated sangfor_rag_search calls below
+  // never write into the repo's actual data/feedback/.
+  feedbackRoot = mkdtempSync(join(tmpdir(), 'mcp-rag-vec-feedback-'));
+  process.env.SANGFOR_FEEDBACK_ROOT = feedbackRoot;
 });
 
 afterAll(() => {
   delete process.env.SANGFOR_EMBEDDING_FORCE_HASH;
+  delete process.env.SANGFOR_FEEDBACK_ROOT;
   rmSync(dir, { recursive: true, force: true });
+  rmSync(feedbackRoot, { recursive: true, force: true });
 });
 
 afterEach(() => {

@@ -106,6 +106,12 @@ describe('sangfor_rag_search MCP tool — degraded flag surfaces on privacy_mode
     const dir = mk();
     const indexPath = join(dir, 'index.json');
     process.env.SANGFOR_EMBEDDING_FORCE_HASH = '1';
+    // This single-chunk index normalizes any hit's hybrid score to 0 (W4 C2's
+    // search-gap capture would treat that as a weak-result "gap") — redirect
+    // capture to a throwaway dir so calling the real sangfor_rag_search tool
+    // handler here never writes into the repo's actual data/feedback/.
+    const feedbackRoot = mkdtempSync(join(tmpdir(), 'rag-fallback-feedback-'));
+    process.env.SANGFOR_FEEDBACK_ROOT = feedbackRoot;
     try {
       const docPath = join(dir, 'doc.md');
       writeFileSync(docPath, '# HCI\n\nStorage network MTU validation before cluster init.');
@@ -121,6 +127,8 @@ describe('sangfor_rag_search MCP tool — degraded flag surfaces on privacy_mode
       expect(result.degradedReason).toMatch(/hash-only/);
     } finally {
       delete process.env.SANGFOR_EMBEDDING_FORCE_HASH;
+      delete process.env.SANGFOR_FEEDBACK_ROOT;
+      rmSync(feedbackRoot, { recursive: true, force: true });
     }
   });
 });
