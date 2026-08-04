@@ -11,7 +11,7 @@ import { generateEvidenceReport } from '../../../packages/sangfor-evidence/src/i
 import { submitFeedback, extractLesson } from '../../../packages/sangfor-feedback/src/index.js';
 import { createEvalCaseFromFeedback, runPlannerEval } from '../../../packages/sangfor-evals/src/index.js';
 import { PRODUCTS } from '../../../packages/shared/src/index.js';
-import { ingestDocument, ragSearch, exportRagIndexSummary } from '../../../packages/sangfor-rag/src/index.js';
+import { ingestDocument, ragSearch, exportRagIndexSummary, omitVectorFromHit } from '../../../packages/sangfor-rag/src/index.js';
 import { createFineTuneDataset, createFineTuneJobSpec, validateFineTuneDataset } from '../../../packages/sangfor-finetune/src/index.js';
 import { loadEnvFile } from '../../../packages/sangfor-collector/src/load-env.js';
 import { runLearnSourcesPipeline } from '../../../packages/sangfor-collector/src/learn-pipeline.js';
@@ -42,7 +42,7 @@ import { recommendSizing, type SizingInput } from '../../../packages/sangfor-siz
 import { createPmStore } from '../../../packages/sangfor-pm/src/index.js';
 import { checkVersionRequirement, loadVersionRequirements } from '../../../packages/sangfor-version/src/index.js';
 import { generateIntegrationGuide, listIntegrationTypes } from '../../../packages/sangfor-integration/src/index.js';
-import { resolveRepoData, isLoopback, nowId, normalizeProduct } from '../../../packages/shared/src/index.js';
+import { resolveRepoData, isLoopback, nowId, normalizeProduct, paginate } from '../../../packages/shared/src/index.js';
 import { mapEppPoolToConfigState, mapCcPoolToConfigState } from '../../../packages/sangfor-config-state/src/index.js';
 import { fortios_policy_baseline, fortios_system_health_baseline, fortios_policy_audit_baseline } from '../../../packages/fortios-spec/src/index.js';
 import { mapFortiOSConfigState, mapFortiOSSystemHealth, mapFortiOSPolicyAudit } from '../../../packages/fortios-client/src/index.js';
@@ -166,6 +166,22 @@ export const PRIVACY_MODE_SCHEMA = {
 // the full result unchanged.
 function summarizeSearchHits(hits: Array<{ id: string; title: string; score?: number }>) {
   return { count: hits.length, hits: hits.map((h) => ({ id: h.id, title: h.title, score: h.score })) };
+}
+
+// Opt-in cursor pagination for a handful of list tools that historically returned
+// their whole array. Backward-compat contract: when the caller passes neither
+// cursor nor limit, return the field unchanged (full array, no nextCursor) — the
+// same shape those tools have always returned. Only pass cursor/limit to switch
+// into a paginated `{ [fieldName]: page, nextCursor? }` response.
+function paginateOptionalField<T>(
+  allItems: T[],
+  args: { cursor?: string; limit?: number },
+  getKey: (item: T) => string,
+  fieldName: string,
+): Record<string, unknown> {
+  if (args.cursor === undefined && args.limit === undefined) return { [fieldName]: allItems };
+  const { items, nextCursor } = paginate(allItems, { cursor: args.cursor, limit: args.limit, getKey });
+  return { [fieldName]: items, ...(nextCursor === undefined ? {} : { nextCursor }) };
 }
 
 const tools: Record<string, { description: string; inputSchema: any; handler: ToolHandler }> = {
@@ -401,11 +417,12 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
     handler: ingestDocument
   },
   'sangfor_rag_search': {
-    description: 'Search real ingested local RAG index by product/version/query. Supports privacy_mode (summary|structured|raw) to limit returned detail.',
-    inputSchema: { type: 'object', properties: { product: { type: 'string' }, version: { type: 'string' }, query: { type: 'string' }, limit: { type: 'number' }, indexPath: { type: 'string' }, privacy_mode: PRIVACY_MODE_SCHEMA }, required: ['query'] },
-    handler: async (args: { query: string; product?: string; version?: string; limit?: number; indexPath?: string; privacy_mode?: 'summary' | 'structured' | 'raw' }) => {
+    description: 'Search real ingested local RAG index by product/version/query. Supports privacy_mode (summary|structured|raw) to limit returned detail. Hit embedding vectors are omitted by default — pass include_vectors:true to get them back.',
+    inputSchema: { type: 'object', properties: { product: { type: 'string' }, version: { type: 'string' }, query: { type: 'string' }, limit: { type: 'number' }, indexPath: { type: 'string' }, privacy_mode: PRIVACY_MODE_SCHEMA, include_vectors: { type: 'boolean', description: 'Include each hit\'s raw embedding vector. Default false — vectors are large and rarely needed by callers.' } }, required: ['query'] },
+    handler: async (args: { query: string; product?: string; version?: string; limit?: number; indexPath?: string; privacy_mode?: 'summary' | 'structured' | 'raw'; include_vectors?: boolean }) => {
       const hits = await ragSearch(args);
-      return args.privacy_mode === 'summary' ? summarizeSearchHits(hits) : hits;
+      if (args.privacy_mode === 'summary') return summarizeSearchHits(hits);
+      return args.include_vectors ? hits : hits.map(omitVectorFromHit);
     }
   },
   'sangfor_rag_index_summary': {
@@ -610,9 +627,15 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
     }
   },
   'sangfor_list_spec_coverage': {
-    description: 'List which product/version IntendedSpecs exist (advisory coverage) so callers know what config checks are available.',
-    inputSchema: { type: 'object', properties: {} },
-    handler: () => ({ coverage: listSpecCoverage() })
+    description: 'List which product/version IntendedSpecs exist (advisory coverage) so callers know what config checks are available. Optional cursor/limit page the list; omit both for the full list (default, backward-compatible).',
+    inputSchema: { type: 'object', properties: { cursor: { type: 'string' }, limit: { type: 'integer', minimum: 1, maximum: 100 } } },
+    handler: (args: { cursor?: string; limit?: number }) => {
+      // listSpecCoverage() has no inherent order (directory listing) — sort by
+      // product+version first so the same cursor always resumes at the same row.
+      const sorted = [...listSpecCoverage()].sort((a, b) =>
+        a.product === b.product ? a.version.localeCompare(b.version) : a.product.localeCompare(b.product));
+      return paginateOptionalField(sorted, args, (c) => `${c.product}::${c.version}`, 'coverage');
+    }
   },
   'sangfor_advisor_fortios': {
     description: 'Read-only self-assessment advisor for FortiOS firewalls (policies, interfaces, routing). HTTP GET only against the REST API; never mutates the device.',
@@ -777,9 +800,9 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
       : { capabilities: listCapabilitySafety() }
   },
   'sangfor_field_engineer_coverage': {
-    description: 'Honest "field-engineer replacement rate" from the WorkAtom taxonomy: counts ONLY automatable AND field_verified atoms. Human-only atoms never count. Returns per-phase and per-product breakdown.',
-    inputSchema: { type: 'object', properties: {} },
-    handler: () => {
+    description: 'Honest "field-engineer replacement rate" from the WorkAtom taxonomy: counts ONLY automatable AND field_verified atoms. Human-only atoms never count. Returns per-phase and per-product breakdown. Optional cursor/limit page the atoms list; omit both for the full list (default, backward-compatible).',
+    inputSchema: { type: 'object', properties: { cursor: { type: 'string' }, limit: { type: 'integer', minimum: 1, maximum: 100 } } },
+    handler: (args: { cursor?: string; limit?: number }) => {
       // Verify coverage against reality: coveredBy must name a registered tool and
       // evidence must resolve to a real artifact on disk (no over-claiming the rate).
       const knownTools = new Set(Object.keys(tools));
@@ -787,7 +810,13 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
       // which would disagree with the loader anchor and zero the rate off-cwd).
       const evidenceRoot = resolveRepoData('.', 'SANGFOR_OUTPUT_ROOT');
       const maturityPolicy = loadMaturityPolicy().entries.map(({ product, capabilityId, maturity }) => ({ product, capabilityId, maturity }));
-      return { coverage: computeReplacementCoverage(loadWorkAtoms(), { knownTools, evidenceRoot, maturityPolicy }), atoms: loadWorkAtoms() };
+      const atoms = loadWorkAtoms();
+      // coverage is computed over ALL atoms regardless of pagination — only the
+      // returned `atoms` listing is windowed. Sort by id so a cursor always
+      // resumes at the same row (loader order is directory order, not stable).
+      const sortedAtoms = [...atoms].sort((a, b) => a.id.localeCompare(b.id));
+      const coverage = computeReplacementCoverage(atoms, { knownTools, evidenceRoot, maturityPolicy });
+      return { coverage, ...paginateOptionalField(sortedAtoms, args, (a) => a.id, 'atoms') };
     }
   },
   'sangfor_suggest_rca': {
@@ -816,11 +845,16 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
     handler: (args: { engagementId: string }) => ({ rollup: pmStore.statusRollup(args.engagementId), deviceOccupancy: pmStore.deviceOccupancy(), chainOk: pmStore.verifyEventChain(args.engagementId) })
   },
   'sangfor_pm_events': {
-    description: 'PM (read-only): the tamper-evident event timeline for an engagement + chain integrity status. Unknown engagement errors (no fake empty timeline).',
-    inputSchema: { type: 'object', properties: { engagementId: { type: 'string' } }, required: ['engagementId'] },
-    handler: (args: { engagementId: string }) => {
+    description: 'PM (read-only): the tamper-evident event timeline for an engagement + chain integrity status. Unknown engagement errors (no fake empty timeline). Optional cursor/limit page the event timeline; omit both for the full timeline (default, backward-compatible).',
+    inputSchema: { type: 'object', properties: { engagementId: { type: 'string' }, cursor: { type: 'string' }, limit: { type: 'integer', minimum: 1, maximum: 100 } }, required: ['engagementId'] },
+    handler: (args: { engagementId: string; cursor?: string; limit?: number }) => {
       if (!pmStore.getEngagement(args.engagementId)) throw new Error(`Engagement not found: ${args.engagementId}`);
-      return { events: pmStore.getEvents(args.engagementId), chainOk: pmStore.verifyEventChain(args.engagementId) };
+      // chainOk verifies the FULL chain regardless of pagination — only the
+      // returned `events` listing is windowed.
+      return {
+        ...paginateOptionalField(pmStore.getEvents(args.engagementId), args, (e) => e.id, 'events'),
+        chainOk: pmStore.verifyEventChain(args.engagementId),
+      };
     }
   },
   'sangfor_pm_report': {
@@ -1175,7 +1209,31 @@ export function readResource(uri: string) {
   return { contents: [{ uri, mimeType: r.mimeType, text: JSON.stringify(r.build(), null, 2) }] };
 }
 
-async function handle(req: JsonRpcRequest) {
+const DEFAULT_RESULT_MAX_CHARS = 100_000;
+
+function resolveResultMaxChars(): number {
+  const raw = process.env.SANGFOR_MCP_RESULT_MAX_CHARS;
+  if (raw === undefined) return DEFAULT_RESULT_MAX_CHARS;
+  const parsed = Number.parseInt(raw, 10);
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : DEFAULT_RESULT_MAX_CHARS;
+}
+
+// Cap the tools/call payload: an unbounded chunk/log/atom dump can blow past
+// a client's context budget. Caps on serialized char length — UTF-16 code units,
+// not bytes, matching the SANGFOR_MCP_RESULT_MAX_CHARS name (independent of the
+// disk-side cap in packages/sangfor-runs/run-store.ts's capResultJson — this one
+// governs what actually crosses the MCP wire) and replaces BOTH content[0].text
+// and structuredContent with the same truncation marker so a client can't read
+// full detail from one field after the other was capped.
+function capMcpResult(toolName: string, result: unknown): { result: unknown; text: string } {
+  const text = JSON.stringify(result);
+  const maxChars = resolveResultMaxChars();
+  if (text.length <= maxChars) return { result, text };
+  const capped = { truncated: true, tool: toolName, originalChars: text.length, hint: 'narrow the query or use pagination/cursor inputs' };
+  return { result: capped, text: JSON.stringify(capped) };
+}
+
+export async function handle(req: JsonRpcRequest) {
   try {
     if (req.method === 'initialize') {
       return { jsonrpc: '2.0', id: req.id, result: { protocolVersion: '2025-06-18', serverInfo: { name: 'sangfor-engineer-mcp', version: '0.1.0' }, capabilities: { tools: { listChanged: false }, resources: { listChanged: false } } } };
@@ -1195,8 +1253,9 @@ async function handle(req: JsonRpcRequest) {
       const args = req.params?.arguments ?? {};
       const tool = tools[name];
       if (!tool) throw new Error(`Unknown tool: ${name}`);
-      const result = await tool.handler(args);
-      return { jsonrpc: '2.0', id: req.id, result: { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }], structuredContent: result, isError: false } };
+      const raw = await tool.handler(args);
+      const { result, text } = capMcpResult(name, raw);
+      return { jsonrpc: '2.0', id: req.id, result: { content: [{ type: 'text', text }], structuredContent: result, isError: false } };
     }
     return { jsonrpc: '2.0', id: req.id, error: { code: -32601, message: `Method not found: ${req.method}` } };
   } catch (error) {

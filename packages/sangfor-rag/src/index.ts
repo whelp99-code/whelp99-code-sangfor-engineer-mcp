@@ -55,6 +55,17 @@ export interface RagSearchHit extends RagDocumentChunk {
   rerankScore?: number;
 }
 
+/**
+ * Drop the (potentially large, 384+-float) embedding vector from a hit while
+ * keeping every other field. Shared by callers that only want vector data
+ * opt-in (e.g. the MCP rag_search tool's include_vectors flag) — this is the
+ * one place the "strip the vector" decision lives so it can't drift per-caller.
+ */
+export function omitVectorFromHit<T extends { vector: number[] }>(hit: T): Omit<T, 'vector'> {
+  const { vector, ...rest } = hit;
+  return rest;
+}
+
 function ensureParent(path: string): void {
   const dir = path.split('/').slice(0, -1).join('/');
   if (dir) mkdirSync(dir, { recursive: true });

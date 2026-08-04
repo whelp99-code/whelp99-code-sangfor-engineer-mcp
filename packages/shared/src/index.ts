@@ -279,3 +279,57 @@ export function foldJsonlById<T extends { id: string }>(path: string): Map<strin
   }
   return byId;
 }
+
+// ── Cursor pagination (generalized from sangfor-learning-strategy's service.ts
+// list(), which pioneered the opaque base64url-cursor-over-a-stable-key pattern
+// for this repo). New list-shaped tools should use this instead of growing their
+// own copy; the learning-strategy service keeps its own inline implementation
+// (untouched here) to avoid a regression risk on an already-shipped tool. ──────
+
+const CURSOR_RE = /^[A-Za-z0-9_-]{1,512}$/u;
+
+/** Encode an item's stable key as an opaque base64url page cursor. */
+export function encodeCursor(key: string): string {
+  return Buffer.from(key, 'utf8').toString('base64url');
+}
+
+/** Decode a page cursor back to the stable key it was minted from. `undefined` in → `undefined` out (first page). Throws on a malformed cursor. */
+export function decodeCursor(cursor: string | undefined): string | undefined {
+  if (cursor === undefined) return undefined;
+  if (!CURSOR_RE.test(cursor)) throw new Error('INVALID_CURSOR: cursor is malformed.');
+  return Buffer.from(cursor, 'base64url').toString('utf8');
+}
+
+export interface PaginateOptions<T> {
+  cursor?: string;
+  limit?: number;
+  defaultLimit?: number;
+  maxLimit?: number;
+  /** Must return a value that is stable and unique across `items` (e.g. an id). */
+  getKey: (item: T) => string;
+}
+
+export interface PaginateResult<T> {
+  items: T[];
+  nextCursor?: string;
+}
+
+/**
+ * Cursor-paginate a pre-sorted array by a stable per-item key. `items` must
+ * already be sorted the way callers should see it — this only windows it.
+ */
+export function paginate<T>(items: readonly T[], opts: PaginateOptions<T>): PaginateResult<T> {
+  const limit = opts.limit ?? opts.defaultLimit ?? 50;
+  const maxLimit = opts.maxLimit ?? 100;
+  if (!Number.isSafeInteger(limit) || limit < 1 || limit > maxLimit) {
+    throw new Error(`INVALID_INPUT: limit must be 1..${maxLimit}.`);
+  }
+  const after = decodeCursor(opts.cursor);
+  const start = after === undefined ? 0 : items.findIndex((item) => opts.getKey(item) === after) + 1;
+  if (after !== undefined && start === 0) throw new Error('INVALID_CURSOR: cursor does not identify the current result set.');
+  const page = items.slice(start, start + limit);
+  const last = page.at(-1);
+  return start + page.length < items.length && last
+    ? { items: page, nextCursor: encodeCursor(opts.getKey(last)) }
+    : { items: page };
+}
