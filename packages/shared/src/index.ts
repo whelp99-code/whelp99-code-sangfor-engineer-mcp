@@ -242,6 +242,44 @@ export function withDirLock<T>(
   }
 }
 
+// ── Engagement-scoped data (multi-customer deployment isolation) ───────────
+// A single server process serving several customer engagements must not let
+// their file-backed data bleed together. SANGFOR_ENGAGEMENT_ID, when set,
+// isolates specific data roots (see resolveEngagementScopedData) under an
+// extra path segment. Unset (the common case) is byte-identical to the
+// unscoped resolveRepoData path — nothing changes for single-tenant use.
+const ENGAGEMENT_ID_RE = /^[A-Za-z0-9._-]{1,64}$/u;
+
+/**
+ * The active engagement id from SANGFOR_ENGAGEMENT_ID, or undefined when the
+ * env var is unset/blank. Validates as a safe single path segment and fails
+ * loud (throws) on anything else — a malformed id must never silently fall
+ * through to the unscoped root or escape via '..'.
+ */
+export function activeEngagementId(): string | undefined {
+  const raw = process.env.SANGFOR_ENGAGEMENT_ID?.trim();
+  if (!raw) return undefined;
+  // '.' would join() back to the unscoped base — an "enabled" scope with no
+  // isolation at all — so it is rejected alongside traversal.
+  if (raw === '.' || raw.includes('..') || !ENGAGEMENT_ID_RE.test(raw)) {
+    throw new Error(
+      `Invalid SANGFOR_ENGAGEMENT_ID "${raw}": must match ${ENGAGEMENT_ID_RE.source} and must not be '.' or contain '..'.`,
+    );
+  }
+  return raw;
+}
+
+/**
+ * Engagement-scoped variant of resolveRepoData: when an engagement is active,
+ * data isolates under resolveRepoData(subdir, envVar)/<engagementId>;
+ * otherwise this is identical to resolveRepoData(subdir, envVar).
+ */
+export function resolveEngagementScopedData(subdir: string, envVar?: string): string {
+  const base = resolveRepoData(subdir, envVar);
+  const engagementId = activeEngagementId();
+  return engagementId ? join(base, engagementId) : base;
+}
+
 export type ProductCode = 'HCI_SCP' | 'HCI' | 'IAG' | 'ENDPOINT_SECURE' | 'NDR' | 'CYBER_COMMAND';
 
 export const PRODUCT_PRIORITY: ProductCode[] = [

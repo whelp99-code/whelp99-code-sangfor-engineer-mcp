@@ -1,6 +1,6 @@
 import readline from 'node:readline';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { dirname, join, relative } from 'node:path';
 import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
@@ -45,7 +45,7 @@ import { recommendSizing, type SizingInput } from '../../../packages/sangfor-siz
 import { createPmStore } from '../../../packages/sangfor-pm/src/index.js';
 import { checkVersionRequirement, loadVersionRequirements } from '../../../packages/sangfor-version/src/index.js';
 import { generateIntegrationGuide, listIntegrationTypes } from '../../../packages/sangfor-integration/src/index.js';
-import { resolveRepoData, isLoopback, nowId, normalizeProduct, paginate, appendJsonl, writeFileAtomicSync } from '../../../packages/shared/src/index.js';
+import { resolveRepoData, resolveEngagementScopedData, activeEngagementId, isLoopback, nowId, normalizeProduct, paginate, appendJsonl, writeFileAtomicSync } from '../../../packages/shared/src/index.js';
 import { mapEppPoolToConfigState, mapCcPoolToConfigState } from '../../../packages/sangfor-config-state/src/index.js';
 import { fortios_policy_baseline, fortios_system_health_baseline, fortios_policy_audit_baseline } from '../../../packages/fortios-spec/src/index.js';
 import { mapFortiOSConfigState, mapFortiOSSystemHealth, mapFortiOSPolicyAudit } from '../../../packages/fortios-client/src/index.js';
@@ -219,9 +219,11 @@ function searchGapWeakThreshold(): number {
 }
 
 // Same root-resolution convention as packages/sangfor-feedback/src/index.ts:26
-// (SANGFOR_FEEDBACK_ROOT override, else data/feedback anchored to the repo root).
+// (SANGFOR_FEEDBACK_ROOT override, else data/feedback anchored to the repo root),
+// plus engagement scoping (see resolveEngagementScopedData) so search-gap
+// capture isolates per customer engagement when SANGFOR_ENGAGEMENT_ID is set.
 function feedbackRoot(): string {
-  return resolveRepoData('data/feedback', 'SANGFOR_FEEDBACK_ROOT');
+  return resolveEngagementScopedData('data/feedback', 'SANGFOR_FEEDBACK_ROOT');
 }
 
 function searchGapFilePath(): string {
@@ -1387,7 +1389,7 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
       const format = args.format ?? 'markdown';
       const report = format === 'json' ? json : markdown;
       if (!args.save) return { format, report };
-      const savedPath = join(resolveRepoData('data/evidence', 'SANGFOR_EVIDENCE_ROOT'), 'reports', `${args.runId}.md`);
+      const savedPath = join(resolveEngagementScopedData('data/evidence', 'SANGFOR_EVIDENCE_ROOT'), 'reports', `${args.runId}.md`);
       writeFileAtomicSync(savedPath, markdown);
       return { format, report, savedPath };
     },
@@ -1424,6 +1426,26 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
         discoveryTools: ['sangfor_agent_manifest', 'sangfor_capabilities'],
       };
     }
+  },
+  'sangfor_engagement_scope': {
+    description: 'Read-only: whether a customer-engagement data scope is active (SANGFOR_ENGAGEMENT_ID) and which data roots it isolates — the run ledger, search-gap feedback file, and saved session reports. Inactive (the default) means every deployment shares the same unscoped repo data roots. An invalid SANGFOR_ENGAGEMENT_ID throws rather than silently falling back.',
+    inputSchema: { type: 'object', properties: {} },
+    handler: () => {
+      const engagementId = activeEngagementId();
+      const repoRoot = resolveRepoData('.');
+      const toRel = (abs: string) => relative(repoRoot, abs) || '.';
+      const runsRoot = resolveEngagementScopedData('data/runs', 'SANGFOR_RUNS_ROOT');
+      const reportsRoot = join(resolveEngagementScopedData('data/evidence', 'SANGFOR_EVIDENCE_ROOT'), 'reports');
+      return {
+        active: engagementId !== undefined,
+        engagementId,
+        scopedRoots: [
+          { name: 'runs', path: toRel(runsRoot) },
+          { name: 'search-gaps-feedback', path: toRel(feedbackRoot()) },
+          { name: 'session-reports', path: toRel(reportsRoot) },
+        ],
+      };
+    },
   }
 };
 
