@@ -10,6 +10,8 @@ import {
   renameSync,
   rmdirSync,
   statSync,
+  unlinkSync,
+  writeFileSync,
   writeSync,
 } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -165,6 +167,17 @@ export class DirLockTimeoutError extends Error {
  * (rmdirSync + a one-line stderr warning) instead of waiting out the full
  * budget. A race where another caller reaps it first (ENOENT on our rmdirSync)
  * is normal contention, not an error.
+ *
+ * Ownership token: on acquisition an `owner` file (`${pid}:${randomUUID()}`)
+ * is written inside the lock directory. Release only rmdirs the lock if that
+ * file still holds OUR token; a mismatch (or the file being gone) means
+ * someone else reclaimed this lock as stale while we were still inside `fn`
+ * — we back off with a warning instead of deleting the new holder's lock.
+ * Trade-off (intentional, not fully closed): a holder whose critical section
+ * legitimately runs longer than `staleLockMs` can still be wrongly reclaimed
+ * by another caller — this only stops the reclaimed lock from then being
+ * double-released. Callers with slow critical sections must pass a
+ * `staleLockMs` comfortably above their worst-case duration.
  */
 export function withDirLock<T>(
   lockPath: string,
@@ -173,12 +186,16 @@ export function withDirLock<T>(
 ): T {
   const waitMs = opts.waitMs ?? 2_000;
   const staleLockMs = opts.staleLockMs ?? 30_000;
+  const ownerPath = join(lockPath, 'owner');
   mkdirSync(dirname(lockPath), { recursive: true });
   const deadline = monotonicNowMs() + waitMs;
+  let ownToken: string | undefined;
   for (;;) {
     try {
       mkdirSync(lockPath, { mode: 0o700 });
       chmodSync(lockPath, 0o700);
+      ownToken = `${process.pid}:${randomUUID()}`;
+      writeFileSync(ownerPath, ownToken, { mode: 0o600 });
       break;
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
@@ -192,6 +209,7 @@ export function withDirLock<T>(
       }
       if (ageMs >= 0 && ageMs > staleLockMs) {
         try {
+          try { unlinkSync(ownerPath); } catch { /* owner file may already be gone; fine */ }
           rmdirSync(lockPath);
           process.stderr.write(`[shared] removing stale lock ${lockPath} (age ${Math.round(ageMs)}ms)\n`);
           continue; // reclaimed — retry mkdirSync immediately, no wait
@@ -209,7 +227,18 @@ export function withDirLock<T>(
   try {
     return fn();
   } finally {
-    try { rmdirSync(lockPath); } catch { /* leave a failed lock fail-closed */ }
+    try {
+      let currentOwner: string | undefined;
+      try { currentOwner = readFileSync(ownerPath, 'utf8'); } catch { /* missing → treated as taken-over below */ }
+      if (currentOwner !== ownToken) {
+        process.stderr.write(`[shared] lock ${lockPath} was taken over — skipping release\n`);
+      } else {
+        try { unlinkSync(ownerPath); } catch { /* best effort; rmdirSync below still fails loud if this leaves other entries */ }
+        rmdirSync(lockPath);
+      }
+    } catch {
+      /* leave a failed lock fail-closed */
+    }
   }
 }
 

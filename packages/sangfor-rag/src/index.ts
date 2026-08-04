@@ -142,14 +142,24 @@ export function loadRagIndex(indexPath = DEFAULT_INDEX_PATH): RagIndex {
   return index;
 }
 
+function ragIndexLockPath(indexPath: string): string {
+  return `${indexPath}.lock`;
+}
+
+// The actual write, with no locking of its own — callers that already hold
+// the `${indexPath}.lock` mutex (e.g. ingestDocument's load-modify-save) call
+// this directly instead of the public saveRagIndex, since withDirLock is not
+// reentrant: acquiring the same lock twice from inside its own critical
+// section would just wait out its own holder and throw DirLockTimeoutError.
+function saveRagIndexUnlocked(index: RagIndex, indexPath: string): void {
+  const payload: RagIndex = { ...index, updatedAt: new Date().toISOString() };
+  writeFileAtomicSync(indexPath, JSON.stringify(payload, null, 2));
+  const stat = statSync(indexPath);
+  ragIndexCache.set(indexPath, { mtimeMs: stat.mtimeMs, index: payload });
+}
+
 export function saveRagIndex(index: RagIndex, indexPath = DEFAULT_INDEX_PATH): void {
-  const lockPath = `${indexPath}.lock`;
-  withDirLock(lockPath, () => {
-    const payload: RagIndex = { ...index, updatedAt: new Date().toISOString() };
-    writeFileAtomicSync(indexPath, JSON.stringify(payload, null, 2));
-    const stat = statSync(indexPath);
-    ragIndexCache.set(indexPath, { mtimeMs: stat.mtimeMs, index: payload });
-  });
+  withDirLock(ragIndexLockPath(indexPath), () => saveRagIndexUnlocked(index, indexPath));
 }
 
 export async function extractTextFromFile(filePath: string): Promise<string> {
@@ -372,16 +382,25 @@ export async function ingestDocument(input: IngestDocumentInput): Promise<{ docu
     };
   });
   const indexPath = input.indexPath ?? DEFAULT_INDEX_PATH;
-  const index = loadRagIndex(indexPath);
-  const existingHashes = new Set(index.chunks.map(chunk => chunk.contentHash));
-  const newChunks = chunks.filter(chunk => !existingHashes.has(chunk.contentHash));
+  // Hold the same lock saveRagIndex uses across the whole load→dedupe→mutate→
+  // save sequence — without it, two concurrent ingestDocument calls can both
+  // load the pre-mutation index, each append their own chunks on top of that
+  // stale snapshot, and whichever saves last silently discards the other's
+  // chunks (last-writer-wins data loss, not a crash — the dangerous kind).
+  const { newChunks } = withDirLock(ragIndexLockPath(indexPath), () => {
+    const index = loadRagIndex(indexPath);
+    const existingHashes = new Set(index.chunks.map(chunk => chunk.contentHash));
+    const newChunks = chunks.filter(chunk => !existingHashes.has(chunk.contentHash));
+    if (newChunks.length === 0) return { newChunks };
+    const hasSemantic = newChunks.some(c => c.embeddingBackend && c.embeddingBackend !== 'hash');
+    index.version = hasSemantic ? 2 : index.version;
+    index.chunks.push(...newChunks);
+    saveRagIndexUnlocked(index, indexPath); // NOT saveRagIndex — we already hold this lock
+    return { newChunks };
+  });
   if (newChunks.length === 0) {
     return { documentId, chunkCount: 0, indexPath, chunks: [], embeddingBackend: provider.name };
   }
-  const hasSemantic = newChunks.some(c => c.embeddingBackend && c.embeddingBackend !== 'hash');
-  index.version = hasSemantic ? 2 : index.version;
-  index.chunks.push(...newChunks);
-  saveRagIndex(index, indexPath);
   return { documentId, chunkCount: newChunks.length, indexPath, chunks: newChunks, embeddingBackend: provider.name };
 }
 
