@@ -1787,5 +1787,10 @@ function startStdioServer() {
 
 // Guard: importing this module (e.g. from tests) must not start the stdio loop.
 if (process.env.MCP_NO_SERVE !== '1' && process.env.VITEST === undefined) {
+  // Honor the repo-root .env for a SERVING process only (never for test imports):
+  // pipeline scripts already load it, and without it here a stdio session can
+  // request a different embedding model than the one the index was built with
+  // (query/index vector-space mismatch). Existing process env always wins.
+  loadEnvFile('.env', resolveRepoData('.'));
   startStdioServer();
 }
