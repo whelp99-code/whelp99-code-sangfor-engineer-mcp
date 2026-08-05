@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { tmpdir } from 'node:os';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { loadRagIndex } from '../packages/sangfor-rag/src/index.js';
 import { loadVersionRequirements, checkVersionRequirement } from '../packages/sangfor-version/src/index.js';
@@ -13,10 +13,21 @@ afterEach(() => {
 });
 
 describe('@sangfor/rag and @sangfor/version data roots are anchored to the package, not cwd', () => {
-  it('loadRagIndex(default path) still resolves the real repo index after chdir to an unrelated cwd', () => {
-    process.chdir(tmpdir());
+  it('loadRagIndex(default path) ignores a cwd-local decoy index after chdir (repo-anchored, not cwd-relative)', () => {
+    // Hermetic anchoring proof: the real repo index is a gitignored runtime
+    // artifact (absent in CI), so instead of asserting on its contents, plant a
+    // decoy at <cwd>/data/rag/index.json — a cwd-relative loader would pick it
+    // up, the anchored loader must never see it.
+    const decoyRoot = mkdtempSync(join(tmpdir(), 'sangfor-decoy-cwd-'));
+    tmpRoots.push(decoyRoot);
+    mkdirSync(join(decoyRoot, 'data', 'rag'), { recursive: true });
+    writeFileSync(
+      join(decoyRoot, 'data', 'rag', 'index.json'),
+      JSON.stringify({ version: 1, chunks: [{ id: 'decoy-chunk', title: 'decoy', text: 'decoy', vector: [1], sourceType: 'internal', product: 'HCI', trustLevel: 'internal' }], updatedAt: new Date().toISOString() }),
+    );
+    process.chdir(decoyRoot);
     const index = loadRagIndex();
-    expect(index.chunks.length).toBeGreaterThan(0);
+    expect(index.chunks.some((c) => c.id === 'decoy-chunk')).toBe(false);
   });
 
   it('loadVersionRequirements(default root) still returns the real catalog after chdir', () => {
