@@ -118,47 +118,47 @@ stdio 기반 JSON-RPC 2.0 서버. `readline`으로 한 줄씩 요청을 받아 �
 **제품 디스커버리/수집 (product-adapters):**
 | 도구 | 기능 |
 |------|------|
-| `sangfor.products` | 우선순위 순 지원 제품 목록 |
-| `sangfor.discover_product_console` | 제품 콘솔 전략/로그인·API 가능성/메뉴·역량 |
-| `sangfor.collect_product_config` | 읽기 전용 설정 수집 계획 (HCI/SCP=API-first, IAG/EPP=WebUI-first, NDR=hybrid) |
-| `sangfor.analyze_customer_requirements` | 요구사항 문자열 → 제품별 작업(메뉴/API/위험/승인) |
-| `sangfor.generate_product_change_plan` | 변경 계획(메뉴/API/롤백/검증) |
+| `sangfor_products` | 우선순위 순 지원 제품 목록 |
+| `sangfor_discover_product_console` | 제품 콘솔 전략/로그인·API 가능성/메뉴·역량 |
+| `sangfor_collect_product_config` | 읽기 전용 설정 수집 계획 (HCI/SCP=API-first, IAG/EPP=WebUI-first, NDR=hybrid) |
+| `sangfor_analyze_customer_requirements` | 요구사항 문자열 → 제품별 작업(메뉴/API/위험/승인) |
+| `sangfor_generate_product_change_plan` | 변경 계획(메뉴/API/롤백/검증) |
 
 **Excel 기반 (ITAC 체크리스트):**
 | 도구 | 기능 |
 |------|------|
-| `sangfor.import_excel_requirement_list` | ITAC Excel → 정규화 요구사항/증적/우선순위 |
-| `sangfor.map_requirements_to_products` | 행 → HCI/IAG/EPP/NDR/external 매핑 |
-| `sangfor.generate_excel_based_change_plan` | 멀티 제품 dry-run 변경 계획 |
+| `sangfor_import_excel_requirement_list` | ITAC Excel → 정규화 요구사항/증적/우선순위 |
+| `sangfor_map_requirements_to_products` | 행 → HCI/IAG/EPP/NDR/external 매핑 |
+| `sangfor_generate_excel_based_change_plan` | 멀티 제품 dry-run 변경 계획 |
 
 **문서 생성 (DOCX/PPTX):**
 | 도구 | 기능 |
 |------|------|
-| `sangfor.generate_setting_guide_docx` | 설정 가이드 Word |
-| `sangfor.generate_setting_guide_pptx` | 설정 가이드 PPT |
-| `sangfor.generate_operations_guide_pptx` | 운영 가이드 PPT |
-| `sangfor.generate_operations_guide_docx` | 운영 가이드 Word |
-| `sangfor.generate_comprehensive_setting_guide_docx` | 종합 설정 가이드(상세+스크린샷) |
-| `sangfor.generate_comprehensive_operations_guide_docx` | 종합 운영 가이드 |
-| `sangfor.capture_screenshots` | EPP/IAG/CC 콘솔 스크린샷(CDP) |
-| `sangfor.generate_all_guides` | 전체 가이드 세트 일괄 생성(try/catch로 부분 실패 허용) |
+| `sangfor_generate_setting_guide_docx` | 설정 가이드 Word |
+| `sangfor_generate_setting_guide_pptx` | 설정 가이드 PPT |
+| `sangfor_generate_operations_guide_pptx` | 운영 가이드 PPT |
+| `sangfor_generate_operations_guide_docx` | 운영 가이드 Word |
+| `sangfor_generate_comprehensive_setting_guide_docx` | 종합 설정 가이드(상세+스크린샷) |
+| `sangfor_generate_comprehensive_operations_guide_docx` | 종합 운영 가이드 |
+| `sangfor_capture_screenshots` | EPP/IAG/CC 콘솔 스크린샷(CDP) |
+| `sangfor_generate_all_guides` | 전체 가이드 세트 일괄 생성(try/catch로 부분 실패 허용) |
 
 **변경 실행 (게이트):**
 | 도구 | 기능 |
 |------|------|
-| `sangfor.dry_run_product_change` | Save/Apply/Delete 직전까지 미리보기 |
-| `sangfor.apply_approved_product_change` | 승인+env 게이트 통과 시에만 적용 |
-| `sangfor.verify_product_change` | 읽기 전용 재수집 검증 체크리스트 |
+| `sangfor_dry_run_product_change` | Save/Apply/Delete 직전까지 미리보기 |
+| `sangfor_apply_approved_product_change` | 승인+env 게이트 통과 시에만 적용 |
+| `sangfor_verify_product_change` | 읽기 전용 재수집 검증 체크리스트 |
 
 **지식/RAG:**
 | 도구 | 기능 |
 |------|------|
-| `sangfor.search_manuals` / `get_manual_section` | 시드 매뉴얼 검색/조회 |
-| `sangfor.search_wiki` | 시드 위키 검색 |
-| `sangfor.ingest_document` | PDF/HTML/MD/TXT/DOCX/PPTX/XLSX 인제스트 → 벡터 인덱스 |
-| `sangfor.rag_search` / `rag_index_summary` | 로컬 RAG 검색/요약 |
-| `sangfor.store_health` | Prisma 연결 상태 |
-| `sangfor.learn_sources` | KB 카탈로그+커뮤니티+데모독 → RAG+파인튜닝 JSONL |
+| `sangfor_search_manuals` / `get_manual_section` | 시드 매뉴얼 검색/조회 |
+| `sangfor_search_wiki` | 시드 위키 검색 |
+| `sangfor_ingest_document` | PDF/HTML/MD/TXT/DOCX/PPTX/XLSX 인제스트 → 벡터 인덱스 |
+| `sangfor_rag_search` / `rag_index_summary` | 로컬 RAG 검색/요약 |
+| `sangfor_store_health` | Prisma 연결 상태 |
+| `sangfor_learn_sources` | KB 카탈로그+커뮤니티+데모독 → RAG+파인튜닝 JSONL |
 
 **플래너/검증/근거:**
 `analyze_project`, `generate_config_plan`(DB 영속화 시도), `validate_config_plan`, `request_approval`, `verify_result`, `generate_evidence_report`(Excel 플랜은 `workPlan`→`ConfigPlan` 정규화), `run_planner_eval`.

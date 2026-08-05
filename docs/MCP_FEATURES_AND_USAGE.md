@@ -1,7 +1,7 @@
 # Sangfor Engineer MCP 기능 및 사용 가이드
 
-기준: `main` commit `e792271` (2026-07-30 문서화)  
-MCP 표면: **94 tools = 읽기 45 + 로컬 쓰기/장비 읽기 42 + 파괴적 7**
+기준: `feat/customer-ready-mcp-scorecard` (2026-07-31, 도구명 `sangfor_*` snake_case 전환 + 디스커버리 2종 추가)
+MCP 표면: **96 tools = 읽기 47 + 로컬 쓰기/장비 읽기 42 + 파괴적 7** · mcp-scorecard **96/100 (grade A)**
 
 이 문서는 현재 실행 코드의 `listTools()` 결과를 기준으로 작성한 사용자용 가이드다. 도구 이름·입력 스키마·안전 분류의 정본은 [MCP server registry](../apps/mcp-server/src/index.ts)이며, HTTP 동작의 정본은 [HTTP bridge](../apps/http-bridge/src/server.ts)와 [tool guard](../apps/http-bridge/src/tool-guard.ts)다.
 
@@ -66,7 +66,7 @@ sangfor-engineer-mcp stdio server started
 }
 ```
 
-클라이언트를 재시작한 뒤 `sangfor.products` 또는 `sangfor.search_manuals`처럼 읽기 도구부터 확인한다.
+클라이언트를 재시작한 뒤 `sangfor_products` 또는 `sangfor_search_manuals`처럼 읽기 도구부터 확인한다.
 
 ### 2.3 JSON-RPC로 직접 확인
 
@@ -74,7 +74,7 @@ sangfor-engineer-mcp stdio server started
 printf '%s\n' \
   '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"manual-test","version":"1"}}}' \
   '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' \
-  '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"sangfor.products","arguments":{}}}' \
+  '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"sangfor_products","arguments":{}}}' \
   | pnpm run dev:mcp
 ```
 
@@ -87,7 +87,7 @@ HTTP bridge는 전용 제품 REST API가 아니라 MCP의 범용 프록시다. �
 | Method | Route | 설명 |
 |---|---|---|
 | `GET` | `/health` | MCP child 연결 상태. 인증 없음 |
-| `GET` | `/tools` | 94-tool schema/annotation 조회 |
+| `GET` | `/tools` | 96-tool schema/annotation 조회 |
 | `POST` | `/tools/call` | `{name, arguments, approval?}` 호출 |
 
 실행:
@@ -109,7 +109,7 @@ curl -X POST http://127.0.0.1:3600/tools/call \
   -H "Authorization: Bearer $SANGFOR_API_TOKEN" \
   -H 'Content-Type: application/json' \
   -d '{
-    "name": "sangfor.search_manuals",
+    "name": "sangfor_search_manuals",
     "arguments": {"product": "IAG", "version": "13.0.120", "query": "Web Authentication", "limit": 5}
   }'
 ```
@@ -196,7 +196,7 @@ tool argument의 action-bound approval(`hci.delete-volume`). 여기에 non-loopb
 
 ```json
 {
-  "name": "sangfor.search_manuals",
+  "name": "sangfor_search_manuals",
   "arguments": {
     "product": "IAG",
     "version": "13.0.120",
@@ -206,13 +206,13 @@ tool argument의 action-bound approval(`hci.delete-volume`). 여기에 non-loopb
 }
 ```
 
-검색 결과의 chunk id를 `sangfor.get_manual_section`에 전달해 본문을 조회한다.
+검색 결과의 chunk id를 `sangfor_get_manual_section`에 전달해 본문을 조회한다.
 
 ### 5.2 고객 요구사항에서 설정 계획 생성
 
 ```json
 {
-  "name": "sangfor.analyze_project",
+  "name": "sangfor_analyze_project",
   "arguments": {
     "customerName": "Demo Customer",
     "product": "HCI",
@@ -223,13 +223,13 @@ tool argument의 action-bound approval(`hci.delete-volume`). 여기에 non-loopb
 }
 ```
 
-분석 결과를 검토한 뒤 `sangfor.generate_config_plan`으로 계획을 생성하고, `sangfor.validate_config_plan`으로 precheck·rollback·validation·reference 존재 여부를 확인한다.
+분석 결과를 검토한 뒤 `sangfor_generate_config_plan`으로 계획을 생성하고, `sangfor_validate_config_plan`으로 precheck·rollback·validation·reference 존재 여부를 확인한다.
 
 ### 5.3 IAG 설정 진단
 
 ```json
 {
-  "name": "sangfor.evaluate_config",
+  "name": "sangfor_evaluate_config",
   "arguments": {
     "product": "IAG",
     "version": "13.0.120",
@@ -250,7 +250,7 @@ tool argument의 action-bound approval(`hci.delete-volume`). 여기에 non-loopb
 
 ```json
 {
-  "name": "sangfor.advisor_fortios_advanced",
+  "name": "sangfor_advisor_fortios_advanced",
   "arguments": {
     "host": "https://firewall.example.invalid",
     "username": "<runtime-user>",
@@ -264,10 +264,10 @@ FortiOS는 HTTP GET, Cisco IOS-XE는 RESTCONF GET만 사용한다. credential을
 
 ### 5.5 HCI volume 계획→실행→검증
 
-1. `sangfor.hci_plan_create_volume`에 `name`, `sizeGb`를 전달한다.
+1. `sangfor_hci_plan_create_volume`에 `name`, `sizeGb`를 전달한다.
 2. 반환된 `clientToken`과 exact target으로 short-lived approval을 생성한다.
-3. 승인된 환경에서만 `sangfor.hci_apply_create_volume`을 호출한다.
-4. `sangfor.hci_verify_volume`으로 독립 read-back을 실행한다.
+3. 승인된 환경에서만 `sangfor_hci_apply_create_volume`을 호출한다.
+4. `sangfor_hci_verify_volume`으로 독립 read-back을 실행한다.
 5. 결과가 `PASS`가 아니면 성공으로 기록하지 않는다.
 
 Mock 기본 endpoint는 `http://127.0.0.1:3400/openstack/identity/v2.0`이다. 실장비는 `SANGFOR_HCI_IDENTITY_URL`, `SANGFOR_HCI_TENANT`, `SANGFOR_HCI_USER`, `SANGFOR_HCI_PASSWORD`를 환경변수로 제공한다.
@@ -290,10 +290,10 @@ export SANGFOR_OBSERVER_PROFILES_JSON='[
 
 호출 순서:
 
-1. `sangfor.attach_observation_session`
-2. `sangfor.manage_learning_capture` with `action:"start"`
+1. `sangfor_attach_observation_session`
+2. `sangfor_manage_learning_capture` with `action:"start"`
 3. passive observation
-4. `sangfor.manage_learning_capture` with `action:"stop"` and `captureId`
+4. `sangfor_manage_learning_capture` with `action:"stop"` and `captureId`
 
 최종 bundle은 `data/captures/*.enc`, staging은 `data/runtime/learning-captures`를 사용한다. credential·response body 원문을 bundle에 저장하는 용도가 아니다.
 
@@ -310,22 +310,22 @@ pnpm run dev:control-tower     # 기동 로그: 기본 플레이북 시드: N건
 
 에이전트 쪽 호출 순서:
 
-1. `sangfor.playbook_agent_tasks` — UI가 올린 `assemble`/`revise`/`analyze` 작업을 집는다
-2. `sangfor.playbook_create` 또는 `sangfor.playbook_add_revision` — draft 제출
-3. `sangfor.playbook_close_agent_task` — `{playbookId, note}` 기록 후 종료
+1. `sangfor_playbook_agent_tasks` — UI가 올린 `assemble`/`revise`/`analyze` 작업을 집는다
+2. `sangfor_playbook_create` 또는 `sangfor_playbook_add_revision` — draft 제출
+3. `sangfor_playbook_close_agent_task` — `{playbookId, note}` 기록 후 종료
 4. (사람이 UI에서 rev 승인)
-5. `sangfor.playbook_execute` → `sangfor.playbook_run_status`
-6. `sangfor.playbook_submit_analysis` — 관찰·권고 제출, 사람이 UI에서 채택/기각
+5. `sangfor_playbook_execute` → `sangfor_playbook_run_status`
+6. `sangfor_playbook_submit_analysis` — 관찰·권고 제출, 사람이 UI에서 채택/기각
 
 ```json
 {
-  "name": "sangfor.playbook_create",
+  "name": "sangfor_playbook_create",
   "arguments": {
     "name": "FortiOS 정책 감사",
     "goal": "정책 감사 항목만 좁혀 확인",
     "authoredBy": "agent:claude",
     "blocks": [
-      {"id": "audit", "type": "tool", "toolId": "sangfor.advisor_fortios", "deviceId": "<registry deviceId>", "args": {}},
+      {"id": "audit", "type": "tool", "toolId": "sangfor_advisor_fortios", "deviceId": "<registry deviceId>", "args": {}},
       {"id": "rep", "type": "report"}
     ]
   }
@@ -337,7 +337,7 @@ pnpm run dev:control-tower     # 기동 로그: 기본 플레이북 시드: N건
 **미확인(INDETERMINATE) 항목**을 별도로 싣는다 — 근거가 없어 판정하지 못한 항목을
 통과로 읽으면 안 된다.
 
-## 6. 전체 94개 도구
+## 6. 전체 96개 도구
 
 표의 필수 입력은 top-level JSON Schema의 `required`만 표시한다. optional field와 enum은 `tools/list` 결과를 확인한다.
 
@@ -345,131 +345,131 @@ pnpm run dev:control-tower     # 기동 로그: 기본 플레이북 시드: N건
 
 | Tool | 등급 | 필수 입력 | 기능 |
 |---|---|---|---|
-| `sangfor.hci_inventory` | 읽기 | - | volume/server/image 인벤토리 조회 |
-| `sangfor.hci_health_report` | 읽기 | - | HCI 운영 상태 요약과 한국어 진단 보고서 |
-| `sangfor.hci_plan_create_volume` | 읽기 | `name`, `sizeGb` | 입력 검증, client token, 승인 target 생성 |
-| `sangfor.hci_apply_create_volume` | 쓰기 | `name`, `sizeGb`, `clientToken`, `approval` | idempotent create 후 read-back state machine 실행 |
-| `sangfor.hci_verify_volume` | 읽기 | `name`, `sizeGb` | volume 기대값과 독립 read-back 비교 |
-| `sangfor.hci_delete_volume` | 파괴적 | `volumeId`, `approval` | exact volume reverse operation |
+| `sangfor_hci_inventory` | 읽기 | - | volume/server/image 인벤토리 조회 |
+| `sangfor_hci_health_report` | 읽기 | - | HCI 운영 상태 요약과 한국어 진단 보고서 |
+| `sangfor_hci_plan_create_volume` | 읽기 | `name`, `sizeGb` | 입력 검증, client token, 승인 target 생성 |
+| `sangfor_hci_apply_create_volume` | 쓰기 | `name`, `sizeGb`, `clientToken`, `approval` | idempotent create 후 read-back state machine 실행 |
+| `sangfor_hci_verify_volume` | 읽기 | `name`, `sizeGb` | volume 기대값과 독립 read-back 비교 |
+| `sangfor_hci_delete_volume` | 파괴적 | `volumeId`, `approval` | exact volume reverse operation |
 
 ### 6.2 제품·프로젝트·변경 계획 — 17
 
 | Tool | 등급 | 필수 입력 | 기능 |
 |---|---|---|---|
-| `sangfor.products` | 읽기 | - | 지원 제품 우선순위 조회 |
-| `sangfor.discover_product_console` | 읽기 | - | 제품별 console/API/login/menu 전략 탐색 |
-| `sangfor.collect_product_config` | 읽기 | - | API-first/WebUI-first read-only 설정 수집 또는 수집 계획 |
-| `sangfor.analyze_customer_requirements` | 읽기 | `requirements` | 요구사항을 제품 설정 작업·위험·승인 gate로 분해 |
-| `sangfor.generate_product_change_plan` | 쓰기 | `requirements` | 제품 변경 계획과 rollback/validation 생성 |
-| `sangfor.import_excel_requirement_list` | 쓰기 | `filePath` | ITAC Excel 행을 요구사항으로 정규화 |
-| `sangfor.map_requirements_to_products` | 읽기 | `rows` | Excel 요구사항을 제품 또는 수동 처리로 매핑 |
-| `sangfor.generate_excel_based_change_plan` | 쓰기 | - | Excel 기반 multi-product dry-run 계획 생성 |
-| `sangfor.dry_run_product_change` | 읽기 | `plan` | Save/Apply/Delete 직전까지 변경 preview |
-| `sangfor.apply_approved_product_change` | 파괴적 | `plan` | 승인된 제품 변경 실행 |
-| `sangfor.verify_product_change` | 읽기 | `plan` | 변경 후 read-only 재수집·증거 요구사항 검증 |
-| `sangfor.analyze_project` | 읽기 | `customerName` | 프로젝트 위험·누락 입력·지식 query 분석 |
-| `sangfor.generate_config_plan` | 쓰기 | `customerName`, `product` | precheck/step/rollback/validation 설정 계획 생성 |
-| `sangfor.validate_config_plan` | 읽기 | - | plan 필수 구획과 reference 검증 |
-| `sangfor.request_approval` | 쓰기 | `text` | 텍스트/행동 위험과 승인 필요성 분류 |
-| `sangfor.verify_result` | 읽기 | - | 계획 결과의 수동 validation checklist 반환 |
-| `sangfor.generate_evidence_report` | 쓰기 | - | Markdown 증적 보고서 생성 |
+| `sangfor_products` | 읽기 | - | 지원 제품 우선순위 조회 |
+| `sangfor_discover_product_console` | 읽기 | - | 제품별 console/API/login/menu 전략 탐색 |
+| `sangfor_collect_product_config` | 읽기 | - | API-first/WebUI-first read-only 설정 수집 또는 수집 계획 |
+| `sangfor_analyze_customer_requirements` | 읽기 | `requirements` | 요구사항을 제품 설정 작업·위험·승인 gate로 분해 |
+| `sangfor_generate_product_change_plan` | 쓰기 | `requirements` | 제품 변경 계획과 rollback/validation 생성 |
+| `sangfor_import_excel_requirement_list` | 쓰기 | `filePath` | ITAC Excel 행을 요구사항으로 정규화 |
+| `sangfor_map_requirements_to_products` | 읽기 | `rows` | Excel 요구사항을 제품 또는 수동 처리로 매핑 |
+| `sangfor_generate_excel_based_change_plan` | 쓰기 | - | Excel 기반 multi-product dry-run 계획 생성 |
+| `sangfor_dry_run_product_change` | 읽기 | `plan` | Save/Apply/Delete 직전까지 변경 preview |
+| `sangfor_apply_approved_product_change` | 파괴적 | `plan` | 승인된 제품 변경 실행 |
+| `sangfor_verify_product_change` | 읽기 | `plan` | 변경 후 read-only 재수집·증거 요구사항 검증 |
+| `sangfor_analyze_project` | 읽기 | `customerName` | 프로젝트 위험·누락 입력·지식 query 분석 |
+| `sangfor_generate_config_plan` | 쓰기 | `customerName`, `product` | precheck/step/rollback/validation 설정 계획 생성 |
+| `sangfor_validate_config_plan` | 읽기 | - | plan 필수 구획과 reference 검증 |
+| `sangfor_request_approval` | 쓰기 | `text` | 텍스트/행동 위험과 승인 필요성 분류 |
+| `sangfor_verify_result` | 읽기 | - | 계획 결과의 수동 validation checklist 반환 |
+| `sangfor_generate_evidence_report` | 쓰기 | - | Markdown 증적 보고서 생성 |
 
 ### 6.3 문서·보고서·스크린샷 — 8
 
 | Tool | 등급 | 필수 입력 | 기능 |
 |---|---|---|---|
-| `sangfor.generate_setting_guide_docx` | 쓰기 | `filePath` | Excel 기반 설정 가이드 DOCX |
-| `sangfor.generate_setting_guide_pptx` | 쓰기 | `filePath` | Excel 기반 설정 가이드 PPTX |
-| `sangfor.generate_operations_guide_pptx` | 쓰기 | - | 일/주/월 운영 가이드 PPTX |
-| `sangfor.generate_operations_guide_docx` | 쓰기 | - | 운영·장애·보안 절차 DOCX |
-| `sangfor.generate_comprehensive_setting_guide_docx` | 쓰기 | `filePath` | 상세 설정·복구·FAQ DOCX |
-| `sangfor.generate_comprehensive_operations_guide_docx` | 쓰기 | - | 상세 운영·백업·성능·FAQ DOCX |
-| `sangfor.capture_screenshots` | 쓰기 | `product` | Chrome CDP로 제품 화면 캡처 |
-| `sangfor.generate_all_guides` | 쓰기 | `filePath` | 설정/운영 DOCX·PPTX 일괄 생성 |
+| `sangfor_generate_setting_guide_docx` | 쓰기 | `filePath` | Excel 기반 설정 가이드 DOCX |
+| `sangfor_generate_setting_guide_pptx` | 쓰기 | `filePath` | Excel 기반 설정 가이드 PPTX |
+| `sangfor_generate_operations_guide_pptx` | 쓰기 | - | 일/주/월 운영 가이드 PPTX |
+| `sangfor_generate_operations_guide_docx` | 쓰기 | - | 운영·장애·보안 절차 DOCX |
+| `sangfor_generate_comprehensive_setting_guide_docx` | 쓰기 | `filePath` | 상세 설정·복구·FAQ DOCX |
+| `sangfor_generate_comprehensive_operations_guide_docx` | 쓰기 | - | 상세 운영·백업·성능·FAQ DOCX |
+| `sangfor_capture_screenshots` | 쓰기 | `product` | Chrome CDP로 제품 화면 캡처 |
+| `sangfor_generate_all_guides` | 쓰기 | `filePath` | 설정/운영 DOCX·PPTX 일괄 생성 |
 
 ### 6.4 지식·RAG — 8
 
 | Tool | 등급 | 필수 입력 | 기능 |
 |---|---|---|---|
-| `sangfor.search_manuals` | 읽기 | `product` | 제품·버전·query로 manual chunk 검색 |
-| `sangfor.get_manual_section` | 읽기 | `id` | manual chunk 단건 조회 |
-| `sangfor.search_wiki` | 읽기 | `product` | 내부 Wiki chunk 검색 |
-| `sangfor.ingest_document` | 쓰기 | `filePath`, `product` | PDF/HTML/Markdown/TXT chunking·indexing |
-| `sangfor.rag_search` | 읽기 | `query` | 로컬 RAG index 검색 |
-| `sangfor.rag_index_summary` | 읽기 | - | index 규모와 embedding 상태 요약 |
-| `sangfor.store_health` | 읽기 | - | `DATABASE_URL`이 있을 때 Prisma/PostgreSQL 상태 확인 |
-| `sangfor.learn_sources` | 쓰기 | - | KB/Community/demo docs 수집과 RAG·fine-tune 갱신 |
+| `sangfor_search_manuals` | 읽기 | `product` | 제품·버전·query로 manual chunk 검색 |
+| `sangfor_get_manual_section` | 읽기 | `id` | manual chunk 단건 조회 |
+| `sangfor_search_wiki` | 읽기 | `product` | 내부 Wiki chunk 검색 |
+| `sangfor_ingest_document` | 쓰기 | `filePath`, `product` | PDF/HTML/Markdown/TXT chunking·indexing |
+| `sangfor_rag_search` | 읽기 | `query` | 로컬 RAG index 검색 |
+| `sangfor_rag_index_summary` | 읽기 | - | index 규모와 embedding 상태 요약 |
+| `sangfor_store_health` | 읽기 | - | `DATABASE_URL`이 있을 때 Prisma/PostgreSQL 상태 확인 |
+| `sangfor_learn_sources` | 쓰기 | - | KB/Community/demo docs 수집과 RAG·fine-tune 갱신 |
 
 ### 6.5 Operator session — 6
 
 | Tool | 등급 | 필수 입력 | 기능 |
 |---|---|---|---|
-| `sangfor.start_operator_session` | 쓰기 | `product` | mock/lab/poc/customer session 생성 |
-| `sangfor.read_console_state` | 읽기 | `sessionId` | mock console state 조회 |
-| `sangfor.execute_console_action` | 파괴적 | `sessionId`, `action` | mock action 실행 또는 dry-run |
-| `sangfor.read_live_console_state` | 읽기 | `sessionId` | Playwright live console snapshot |
-| `sangfor.execute_console_action_live` | 파괴적 | `sessionId`, `action` | 승인된 real Playwright action |
-| `sangfor.kill_session` | 쓰기 | `sessionId` | operator session 취소 |
+| `sangfor_start_operator_session` | 쓰기 | `product` | mock/lab/poc/customer session 생성 |
+| `sangfor_read_console_state` | 읽기 | `sessionId` | mock console state 조회 |
+| `sangfor_execute_console_action` | 파괴적 | `sessionId`, `action` | mock action 실행 또는 dry-run |
+| `sangfor_read_live_console_state` | 읽기 | `sessionId` | Playwright live console snapshot |
+| `sangfor_execute_console_action_live` | 파괴적 | `sessionId`, `action` | 승인된 real Playwright action |
+| `sangfor_kill_session` | 쓰기 | `sessionId` | operator session 취소 |
 
 ### 6.6 피드백·Wiki·eval·fine-tune — 12
 
 | Tool | 등급 | 필수 입력 | 기능 |
 |---|---|---|---|
-| `sangfor.submit_feedback` | 쓰기 | `product`, `feedbackType`, `severity`, `feedbackText`, `sourceRole` | 제품/plan/session 피드백 저장 |
-| `sangfor.extract_lesson` | 쓰기 | `feedbackId` | 피드백에서 lesson 추출 |
-| `sangfor.propose_wiki_update` | 쓰기 | `lessonTitle`, `lessonBody` | Wiki 변경 proposal 생성 |
-| `sangfor.approve_wiki_update` | 쓰기 | `proposalId`, `decision` | proposal 승인 또는 거절 |
-| `sangfor.apply_wiki_update` | 파괴적 | `proposalId` | 승인된 내부 Wiki 변경 적용 |
-| `sangfor.apply_obsidian_wiki_update` | 파괴적 | `proposalId`, `vaultPath` | Obsidian vault 변경 적용 |
-| `sangfor.apply_github_wiki_update` | 파괴적 | `proposalId`, `repoUrl` | GitHub Wiki repository 변경 적용 |
-| `sangfor.create_eval_case_from_feedback` | 쓰기 | `product`, `name`, `requiredText` | planner regression case 생성 |
-| `sangfor.create_finetune_dataset` | 쓰기 | `product`, `taskType`, `examples` | 검토된 example을 JSONL로 생성 |
-| `sangfor.validate_finetune_dataset` | 읽기 | `path` | dataset 구조·민감정보 검사 |
-| `sangfor.create_finetune_job_spec` | 쓰기 | `datasetPath`, `product`, `taskType` | 제출하지 않는 job manifest 생성 |
-| `sangfor.run_planner_eval` | 쓰기 | - | built-in planner eval 실행 |
+| `sangfor_submit_feedback` | 쓰기 | `product`, `feedbackType`, `severity`, `feedbackText`, `sourceRole` | 제품/plan/session 피드백 저장 |
+| `sangfor_extract_lesson` | 쓰기 | `feedbackId` | 피드백에서 lesson 추출 |
+| `sangfor_propose_wiki_update` | 쓰기 | `lessonTitle`, `lessonBody` | Wiki 변경 proposal 생성 |
+| `sangfor_approve_wiki_update` | 쓰기 | `proposalId`, `decision` | proposal 승인 또는 거절 |
+| `sangfor_apply_wiki_update` | 파괴적 | `proposalId` | 승인된 내부 Wiki 변경 적용 |
+| `sangfor_apply_obsidian_wiki_update` | 파괴적 | `proposalId`, `vaultPath` | Obsidian vault 변경 적용 |
+| `sangfor_apply_github_wiki_update` | 파괴적 | `proposalId`, `repoUrl` | GitHub Wiki repository 변경 적용 |
+| `sangfor_create_eval_case_from_feedback` | 쓰기 | `product`, `name`, `requiredText` | planner regression case 생성 |
+| `sangfor_create_finetune_dataset` | 쓰기 | `product`, `taskType`, `examples` | 검토된 example을 JSONL로 생성 |
+| `sangfor_validate_finetune_dataset` | 읽기 | `path` | dataset 구조·민감정보 검사 |
+| `sangfor_create_finetune_job_spec` | 쓰기 | `datasetPath`, `product`, `taskType` | 제출하지 않는 job manifest 생성 |
+| `sangfor_run_planner_eval` | 쓰기 | - | built-in planner eval 실행 |
 
 ### 6.7 진단·자문 — 13
 
 | Tool | 등급 | 필수 입력 | 기능 |
 |---|---|---|---|
-| `sangfor.evaluate_config` | 읽기 | `observed` | IntendedSpec과 관측값 비교, 한국어 advisory 생성 |
-| `sangfor.list_spec_coverage` | 읽기 | - | 지원 product/version spec 조회 |
-| `sangfor.advisor_fortios` | 읽기 | `host`, `username`, `password` | FortiOS 정책·interface·routing GET 진단 |
-| `sangfor.advisor_fortios_advanced` | 읽기 | `host`, `username`, `password` | FortiOS health·HA·policy·IPS 심화 진단 |
-| `sangfor.advisor_cisco_iosxe` | 읽기 | `host`, `username`, `password` | IOS-XE interface·routing·ACL RESTCONF 진단 |
-| `sangfor.advisor_cisco_iosxe_advanced` | 읽기 | `host`, `username`, `password` | IOS-XE CPU·memory·VRF·policy 심화 진단 |
-| `sangfor.collect_device_config` | 읽기 | `product`, `version`, `poolPath` | captured XHR pool을 ConfigState와 advisory로 변환 |
-| `sangfor.capability_safety` | 읽기 | - | capability safety class·maturity 확인 |
-| `sangfor.field_engineer_coverage` | 읽기 | - | automatable + field_verified 대체율 계산 |
-| `sangfor.suggest_rca` | 읽기 | `symptom` | manual-grounded RCA 후보와 점검 단계 |
-| `sangfor.recommend_sizing` | 읽기 | `product` | scale driver 기반 tier 추천, exact BOM은 사람에게 위임 |
-| `sangfor.integration_guide` | 읽기 | - | AD/LDAP, RADIUS, SIEM/syslog 통합 절차 |
-| `sangfor.check_version` | 읽기 | - | min/recommended version 요구사항 자문 |
+| `sangfor_evaluate_config` | 읽기 | `observed` | IntendedSpec과 관측값 비교, 한국어 advisory 생성 |
+| `sangfor_list_spec_coverage` | 읽기 | - | 지원 product/version spec 조회 |
+| `sangfor_advisor_fortios` | 읽기 | `host`, `username`, `password` | FortiOS 정책·interface·routing GET 진단 |
+| `sangfor_advisor_fortios_advanced` | 읽기 | `host`, `username`, `password` | FortiOS health·HA·policy·IPS 심화 진단 |
+| `sangfor_advisor_cisco_iosxe` | 읽기 | `host`, `username`, `password` | IOS-XE interface·routing·ACL RESTCONF 진단 |
+| `sangfor_advisor_cisco_iosxe_advanced` | 읽기 | `host`, `username`, `password` | IOS-XE CPU·memory·VRF·policy 심화 진단 |
+| `sangfor_collect_device_config` | 읽기 | `product`, `version`, `poolPath` | captured XHR pool을 ConfigState와 advisory로 변환 |
+| `sangfor_capability_safety` | 읽기 | - | capability safety class·maturity 확인 |
+| `sangfor_field_engineer_coverage` | 읽기 | - | automatable + field_verified 대체율 계산 |
+| `sangfor_suggest_rca` | 읽기 | `symptom` | manual-grounded RCA 후보와 점검 단계 |
+| `sangfor_recommend_sizing` | 읽기 | `product` | scale driver 기반 tier 추천, exact BOM은 사람에게 위임 |
+| `sangfor_integration_guide` | 읽기 | - | AD/LDAP, RADIUS, SIEM/syslog 통합 절차 |
+| `sangfor_check_version` | 읽기 | - | min/recommended version 요구사항 자문 |
 
 ### 6.8 PM·장비 점유 — 7
 
 | Tool | 등급 | 필수 입력 | 기능 |
 |---|---|---|---|
-| `sangfor.pm_create_engagement` | 쓰기 | `customer`, `product` | 고객 engagement 생성 |
-| `sangfor.pm_add_work_item` | 쓰기 | `engagementId`, `title` | 작업 항목 추가 |
-| `sangfor.pm_status` | 읽기 | `engagementId` | 진행률과 장비 점유 요약 |
-| `sangfor.pm_events` | 읽기 | `engagementId` | hash-chain event timeline 조회 |
-| `sangfor.pm_report` | 읽기 | `engagementId` | 기록된 event 기반 한국어 보고서 |
-| `sangfor.pm_acquire_device` | 쓰기 | `deviceId`, `engagementId`, `holder` | engagement별 exclusive 장비 lock 획득 |
-| `sangfor.pm_release_device` | 쓰기 | `deviceId`, `engagementId` | 장비 lock 해제와 audit event 기록 |
+| `sangfor_pm_create_engagement` | 쓰기 | `customer`, `product` | 고객 engagement 생성 |
+| `sangfor_pm_add_work_item` | 쓰기 | `engagementId`, `title` | 작업 항목 추가 |
+| `sangfor_pm_status` | 읽기 | `engagementId` | 진행률과 장비 점유 요약 |
+| `sangfor_pm_events` | 읽기 | `engagementId` | hash-chain event timeline 조회 |
+| `sangfor_pm_report` | 읽기 | `engagementId` | 기록된 event 기반 한국어 보고서 |
+| `sangfor_pm_acquire_device` | 쓰기 | `deviceId`, `engagementId`, `holder` | engagement별 exclusive 장비 lock 획득 |
+| `sangfor_pm_release_device` | 쓰기 | `deviceId`, `engagementId` | 장비 lock 해제와 audit event 기록 |
 
 ### 6.9 Learning Strategy Observer — 8
 
 | Tool | 등급 | 필수 입력 | 기능 |
 |---|---|---|---|
-| `sangfor.list_learning_strategies` | 읽기 | - | strategy revision filter·pagination |
-| `sangfor.resolve_learning_strategy` | 읽기 | `scope`, `context` | exact strategy 또는 miss/canary/drift/ambiguity 반환 |
-| `sangfor.attach_observation_session` | 쓰기 | `product`, `expectedOrigin`, `cdpPort`, `firmwareTruthId` | profile registry의 exact loopback CDP page attach |
-| `sangfor.manage_learning_capture` | 쓰기 | `action` | passive capture 시작/종료와 encrypted bundle 승격 |
-| `sangfor.collect_facts` | 쓰기 | `scope`, `context`, `factIds` | complete/partial/conflict/unavailable fact 수집 |
-| `sangfor.research_learning_strategy` | 쓰기 | `strategyId`, `vendor`, `scope`, `registryDigest`, `versionTruthRecord`, `officialCitation`, `pageVerified` | 공식 출처 기반 immutable draft 생성 |
-| `sangfor.validate_learning_strategy` | 쓰기 | `strategyId`, `revisionId` | evidence와 다음 lifecycle state 검증 |
-| `sangfor.promote_learning_strategy` | 쓰기 | `strategyId`, `revisionId`, `toState`, `approvalPayload`, `approvalToken`, `evidenceRoot` | 서명·nonce 기반 immutable revision 승격 |
+| `sangfor_list_learning_strategies` | 읽기 | - | strategy revision filter·pagination |
+| `sangfor_resolve_learning_strategy` | 읽기 | `scope`, `context` | exact strategy 또는 miss/canary/drift/ambiguity 반환 |
+| `sangfor_attach_observation_session` | 쓰기 | `product`, `expectedOrigin`, `cdpPort`, `firmwareTruthId` | profile registry의 exact loopback CDP page attach |
+| `sangfor_manage_learning_capture` | 쓰기 | `action` | passive capture 시작/종료와 encrypted bundle 승격 |
+| `sangfor_collect_facts` | 쓰기 | `scope`, `context`, `factIds` | complete/partial/conflict/unavailable fact 수집 |
+| `sangfor_research_learning_strategy` | 쓰기 | `strategyId`, `vendor`, `scope`, `registryDigest`, `versionTruthRecord`, `officialCitation`, `pageVerified` | 공식 출처 기반 immutable draft 생성 |
+| `sangfor_validate_learning_strategy` | 쓰기 | `strategyId`, `revisionId` | evidence와 다음 lifecycle state 검증 |
+| `sangfor_promote_learning_strategy` | 쓰기 | `strategyId`, `revisionId`, `toState`, `approvalPayload`, `approvalToken`, `evidenceRoot` | 서명·nonce 기반 immutable revision 승격 |
 
 ### 6.10 플레이북 (Control Tower 프록시) — 9
 
@@ -480,22 +480,32 @@ pnpm run dev:control-tower     # 기동 로그: 기본 플레이북 시드: N건
 
 | Tool | 등급 | 필수 입력 | 기능 |
 |---|---|---|---|
-| `sangfor.playbook_list` | 읽기 | - | 목록 + 활성 rev + 최근 실행 상태 |
-| `sangfor.playbook_get` | 읽기 | `playbookId` | 리비전·블록 전체 |
-| `sangfor.playbook_run_status` | 읽기 | `playbookRunId` | 유도 상태 + 블록별 runId + 제출된 분석 |
-| `sangfor.playbook_agent_tasks` | 읽기 | - | `open` 작업 큐 조회 (일감 수령) |
-| `sangfor.playbook_create` | 쓰기 | `name`, `goal`, `authoredBy`, `blocks` | draft rev 1 생성 |
-| `sangfor.playbook_add_revision` | 쓰기 | `playbookId`, `authoredBy`, `blocks` | 수정 루프 — 새 draft rev 추가 |
-| `sangfor.playbook_execute` | 쓰기 | `playbookId` | 승인된 활성 rev 실행 |
-| `sangfor.playbook_submit_analysis` | 쓰기 | `playbookRunId`, `playbookId`, `summary`, `authoredBy` | append-only 분석(개선·제안) 제출 |
-| `sangfor.playbook_close_agent_task` | 쓰기 | `taskId` | 작업을 done으로 닫고 산출물 기록 |
+| `sangfor_playbook_list` | 읽기 | - | 목록 + 활성 rev + 최근 실행 상태 |
+| `sangfor_playbook_get` | 읽기 | `playbookId` | 리비전·블록 전체 |
+| `sangfor_playbook_run_status` | 읽기 | `playbookRunId` | 유도 상태 + 블록별 runId + 제출된 분석 |
+| `sangfor_playbook_agent_tasks` | 읽기 | - | `open` 작업 큐 조회 (일감 수령) |
+| `sangfor_playbook_create` | 쓰기 | `name`, `goal`, `authoredBy`, `blocks` | draft rev 1 생성 |
+| `sangfor_playbook_add_revision` | 쓰기 | `playbookId`, `authoredBy`, `blocks` | 수정 루프 — 새 draft rev 추가 |
+| `sangfor_playbook_execute` | 쓰기 | `playbookId` | 승인된 활성 rev 실행 |
+| `sangfor_playbook_submit_analysis` | 쓰기 | `playbookRunId`, `playbookId`, `summary`, `authoredBy` | append-only 분석(개선·제안) 제출 |
+| `sangfor_playbook_close_agent_task` | 쓰기 | `taskId` | 작업을 done으로 닫고 산출물 기록 |
 
 의도된 경계:
 
 - **리비전 승인/반려는 MCP에 없다.** 승인은 타워 UI에서 사람이 한다. 도구가 승인을 대신하지 않는다.
 - `playbook_execute`는 장비를 직접 바꾸지 않는다. 읽기 블록은 즉시 실행되고, 첫 write/destructive
   블록에서 `pending_approval` run을 만들고 멈춘다. 재개는 사람의 승인 이후다.
-- 블록의 `toolId`로 `sangfor.playbook_*`를 쓰면 400이다. 플레이북 중첩 실행은 설계 비범위다.
+- 블록의 `toolId`로 `sangfor_playbook_*`를 쓰면 400이다. 플레이북 중첩 실행은 설계 비범위다.
+
+### 6.11 디스커버리 (agent self-onboarding) — 2
+
+에이전트가 서버를 스스로 탐색하는 읽기 전용 도구다. MCP 리소스(`sangfor://agent-manifest`,
+`sangfor://capabilities`, `sangfor://safety/posture`)로도 같은 내용을 구독할 수 있다.
+
+| Tool | 등급 | 필수 입력 | 기능 |
+|---|---|---|---|
+| `sangfor_agent_manifest` | 읽기 | - | 추천 첫 호출 + 표준 도구 그룹 + 안전 posture |
+| `sangfor_capabilities` | 읽기 | - | 카테고리별 도구 수, 벤더/제품, 실행 posture, 게이트 |
 
 ## 7. 환경변수 요약
 
@@ -519,7 +529,7 @@ pnpm run dev:control-tower     # 기동 로그: 기본 플레이북 시드: N건
 ## 8. 운영 점검
 
 ```bash
-pnpm run smoke:mcp          # 94 tools
+pnpm run smoke:mcp          # 96 tools
 pnpm run check:mcp-scorecard
 pnpm run lint
 pnpm run build

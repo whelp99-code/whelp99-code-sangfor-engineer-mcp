@@ -1,6 +1,6 @@
 import { appendFileSync, mkdirSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { nowId, resolveRepoData } from '@sangfor/shared';
+import { nowId, resolveEngagementScopedData } from '@sangfor/shared';
 import { maskSecrets } from './mask.js';
 
 export type RunStatus = 'pending_approval' | 'rejected' | 'running' | 'succeeded' | 'failed';
@@ -62,7 +62,7 @@ export class RunStore {
   private readonly dir: string;
 
   constructor(dir?: string) {
-    this.dir = dir ?? resolveRepoData('data/runs', 'SANGFOR_RUNS_ROOT');
+    this.dir = dir ?? resolveEngagementScopedData('data/runs', 'SANGFOR_RUNS_ROOT');
   }
 
   createRun(input: {

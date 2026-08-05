@@ -1,4 +1,6 @@
 import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { resolveRepoData } from '@sangfor/shared';
 import {
   collectCommunityThreads,
   collectKnowledgeCatalog,
@@ -58,10 +60,10 @@ export interface LearnPipelineOptions {
 }
 
 const DEFAULTS = {
-  rawDir: 'data/sources/raw',
-  manifestPath: 'data/sources/manifest.json',
-  ragIndexPath: 'data/rag/index.json',
-  finetunePath: 'data/finetune/sangfor-sources.jsonl'
+  rawDir: resolveRepoData('data/sources/raw', 'SANGFOR_SOURCES_RAW_ROOT'),
+  manifestPath: join(resolveRepoData('data/sources', 'SANGFOR_SOURCES_ROOT'), 'manifest.json'),
+  ragIndexPath: resolveRepoData('data/rag/index.json', 'SANGFOR_RAG_INDEX_PATH'),
+  finetunePath: join(resolveRepoData('data/finetune', 'SANGFOR_FINETUNE_ROOT'), 'sangfor-sources.jsonl')
 };
 
 export async function runLearnSourcesPipeline(

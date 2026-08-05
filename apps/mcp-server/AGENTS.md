@@ -2,7 +2,7 @@
 
 # mcp-server
 
-> MCP stdio JSON-RPC server exposing the whole Sangfor "senior engineer" toolset (77 `sangfor.*` tools). No HTTP port.
+> MCP stdio JSON-RPC server exposing the whole Sangfor "senior engineer" toolset (96 `sangfor_*` tools). No HTTP port.
 
 ## Constraints
 - Entry: `src/index.ts` (single large file). Starts via `startStdioServer()` — hand-rolled JSON-RPC over `readline` on stdin/stdout, **not** the MCP SDK transport. Guarded by `MCP_NO_SERVE`/`VITEST`.

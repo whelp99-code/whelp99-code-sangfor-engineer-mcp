@@ -3,7 +3,7 @@
 // paths) can live-sweep this mock console. Shapes mirror the canonical fixtures
 // the config-state mappers accept (see tests/mcp-advanced-integration.test.ts).
 export const VENDOR_PATH_RESPONSES: Record<string, unknown> = {
-  // ── FortiOS: sangfor.advisor_fortios (1) + advisor_fortios_advanced (5) ──
+  // ── FortiOS: sangfor_advisor_fortios (1) + advisor_fortios_advanced (5) ──
   '/api/v2/firewall/policy': {
     results: [
       { policyid: 1, name: 'Allow-Internal-Traffic', action: 'accept', logtraffic: 'all', 'ssl-ssh-profile': 'certificate-inspection', srcintf: 'port1', dstintf: 'port2' },
@@ -30,7 +30,7 @@ export const VENDOR_PATH_RESPONSES: Record<string, unknown> = {
   '/api/v2/cmdb/ips/sensor': {
     results: [{ signature_database: '20250703', sensor_name: 'default' }],
   },
-  // ── Cisco IOS-XE: sangfor.advisor_cisco_iosxe (1) + advisor_cisco_iosxe_advanced (7) ──
+  // ── Cisco IOS-XE: sangfor_advisor_cisco_iosxe (1) + advisor_cisco_iosxe_advanced (7) ──
   '/restconf/data/ietf-interfaces:interfaces': {
     'ietf-interfaces:interface': [
       { name: 'GigabitEthernet0/0/0' },

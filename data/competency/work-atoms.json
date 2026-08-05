@@ -17,7 +17,7 @@
       "phase": "design",
       "title": "솔루션 사이징(노드/처리량/라이선스)",
       "automatability": "auto",
-      "coveredBy": "sangfor.recommend_sizing",
+      "coveredBy": "sangfor_recommend_sizing",
       "maturity": "implemented_local"
     },
     {
@@ -44,7 +44,7 @@
       "phase": "validate",
       "title": "PoC 실행·증적·리포트",
       "automatability": "auto",
-      "coveredBy": "sangfor.generate_setting_guide_docx",
+      "coveredBy": "sangfor_generate_setting_guide_docx",
       "maturity": "tested_mock"
     },
     {
@@ -89,7 +89,7 @@
       "phase": "deploy",
       "title": "보안 정책 구현(가이드+사람적용)",
       "automatability": "hybrid",
-      "coveredBy": "sangfor.evaluate_config",
+      "coveredBy": "sangfor_evaluate_config",
       "maturity": "tested_mock"
     },
     {
@@ -107,7 +107,7 @@
       "phase": "deploy",
       "title": "AD/LDAP/SIEM 연동",
       "automatability": "auto",
-      "coveredBy": "sangfor.integration_guide",
+      "coveredBy": "sangfor_integration_guide",
       "maturity": "implemented_local"
     },
     {
@@ -116,7 +116,7 @@
       "phase": "handover",
       "title": "as-built 문서·런북·인계",
       "automatability": "auto",
-      "coveredBy": "sangfor.generate_comprehensive_operations_guide_docx",
+      "coveredBy": "sangfor_generate_comprehensive_operations_guide_docx",
       "maturity": "field_verified",
       "evidence": "outputs/ (generated setting/operations guides)"
     },
@@ -126,7 +126,7 @@
       "phase": "operate",
       "title": "일일 헬스·설정 진단",
       "automatability": "auto",
-      "coveredBy": "sangfor.evaluate_config",
+      "coveredBy": "sangfor_evaluate_config",
       "maturity": "field_verified",
       "evidence": "outputs/diagnosis/EPP_6.0.4_live_diagnosis.md"
     },
@@ -136,7 +136,7 @@
       "phase": "operate",
       "title": "업그레이드·패치 호환성 자문",
       "automatability": "hybrid",
-      "coveredBy": "sangfor.check_version",
+      "coveredBy": "sangfor_check_version",
       "maturity": "implemented_local"
     },
     {
@@ -153,7 +153,7 @@
       "phase": "incident",
       "title": "장애 RCA(근본원인 후보 제시)",
       "automatability": "hybrid",
-      "coveredBy": "sangfor.suggest_rca",
+      "coveredBy": "sangfor_suggest_rca",
       "maturity": "implemented_local"
     },
     {

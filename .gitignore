@@ -52,6 +52,12 @@ docs/plans/
 # otherwise also ignore docs/generated/.
 !docs/generated/
 !docs/generated/**
+# ...and keep the running tech-debt tracker (referenced from committed docs).
+!docs/plans/
+docs/plans/*
+!docs/plans/work/
+docs/plans/work/*
+!docs/plans/work/tech-debt-tracker.md
 
 # fable-dispatch execution artifacts (local)
 artifacts/

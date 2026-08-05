@@ -107,7 +107,7 @@ export function dashboardHtml(): string {
       <div id="runs" class="panel">
         <div class="filters">
           <div><label>상태</label><select id="rf-status"><option value="">전체</option><option>pending_approval</option><option>running</option><option>succeeded</option><option>failed</option><option>rejected</option></select></div>
-          <div><label>도구</label><input id="rf-tool" placeholder="sangfor.advisor_..." /></div>
+          <div><label>도구</label><input id="rf-tool" placeholder="sangfor_advisor_..." /></div>
           <div><label>장비 ID</label><input id="rf-device" /></div>
           <div><label>Sweep ID</label><input id="rf-sweep" /></div>
           <div><label>기간(일)</label><input id="rf-since" type="number" value="14" /></div>

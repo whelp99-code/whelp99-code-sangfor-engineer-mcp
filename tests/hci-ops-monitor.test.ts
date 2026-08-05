@@ -58,7 +58,7 @@ describe('hci_health_report MCP tool (mock integration)', () => {
 
   it('produces a summary + report over the live mock inventory', async () => {
     const mod = await import('../apps/mcp-server/src/index.js');
-    const handler = (mod as { getToolHandler: (n: string) => (a: unknown) => Promise<unknown> }).getToolHandler('sangfor.hci_health_report');
+    const handler = (mod as { getToolHandler: (n: string) => (a: unknown) => Promise<unknown> }).getToolHandler('sangfor_hci_health_report');
     const r = await handler({ identityBaseUrl }) as { summary: { volumeCount: number }; report: string };
     expect(typeof r.summary.volumeCount).toBe('number');
     expect(r.report).toContain('HCI 운영 점검 리포트');

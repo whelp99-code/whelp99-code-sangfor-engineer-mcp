@@ -8,6 +8,7 @@ import { lstatSync, realpathSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { isAbsolute, join, relative, resolve, sep, win32 } from 'node:path';
 import { URL } from 'node:url';
+import { resolveRepoData } from '@sangfor/shared';
 
 export interface VersionRequirement {
   device: string;
@@ -70,7 +71,7 @@ export interface VersionCheck {
   advice: string;
 }
 
-const DATA_ROOT = process.env.SANGFOR_VERSION_ROOT ?? 'data/version';
+const DATA_ROOT = resolveRepoData('data/version', 'SANGFOR_VERSION_ROOT');
 
 /** Compare two version strings numerically (segment by segment, digits only). -1|0|1. */
 export function compareVersions(a: string, b: string): number {
@@ -93,8 +94,17 @@ export function loadVersionRequirements(root: string = DATA_ROOT): VersionRequir
   if (!existsSync(root)) return [];
   const out: VersionRequirement[] = [];
   for (const f of readdirSync(root).filter((x) => x.endsWith('.json') && !x.startsWith('.'))) {
-    const parsed = JSON.parse(readFileSync(join(root, f), 'utf8'));
-    const arr = Array.isArray(parsed) ? parsed : parsed.requirements;
+    const filePath = join(root, f);
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(readFileSync(filePath, 'utf8'));
+    } catch {
+      // Fail loud — a silently skipped requirements file would look identical
+      // to "this device has no requirement", i.e. compatibility checks would
+      // quietly stop firing instead of surfacing the corruption.
+      throw new Error(`VERSION_DATA_CORRUPT: ${filePath}`);
+    }
+    const arr = Array.isArray(parsed) ? parsed : (parsed as { requirements?: unknown })?.requirements;
     if (Array.isArray(arr)) out.push(...(arr as VersionRequirement[]));
   }
   return out;

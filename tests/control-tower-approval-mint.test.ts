@@ -6,12 +6,12 @@ const SECRET = 'mint-test-secret';
 
 describe('approval-mint', () => {
   it('mintBridgeApproval 결과가 verifyExecutionApproval을 통과한다 (round-trip)', () => {
-    const signed = mintBridgeApproval('sangfor.pm_create_engagement', {
+    const signed = mintBridgeApproval('sangfor_pm_create_engagement', {
       secret: SECRET, approvedBy: 'jmpark', changeTicketId: 'CHG-9', rollbackPlanId: 'RB-9',
     });
     expect(signed.nonce).toMatch(/^[0-9a-f]{24}$/); // randomBytes(12).hex
     const verdict = verifyExecutionApproval({
-      action: { type: BRIDGE_APPROVAL_ACTION_TYPE, target: 'sangfor.pm_create_engagement' },
+      action: { type: BRIDGE_APPROVAL_ACTION_TYPE, target: 'sangfor_pm_create_engagement' },
       approval: signed, secret: SECRET,
     });
     expect(verdict).toEqual({ ok: true });

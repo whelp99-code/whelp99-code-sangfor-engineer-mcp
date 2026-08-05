@@ -3,14 +3,14 @@ import { beforeAll, describe, expect, it } from 'vitest';
 process.env.MCP_NO_SERVE = '1';
 
 const EXPECTED = [
-  'sangfor.list_learning_strategies',
-  'sangfor.resolve_learning_strategy',
-  'sangfor.attach_observation_session',
-  'sangfor.manage_learning_capture',
-  'sangfor.collect_facts',
-  'sangfor.research_learning_strategy',
-  'sangfor.validate_learning_strategy',
-  'sangfor.promote_learning_strategy',
+  'sangfor_list_learning_strategies',
+  'sangfor_resolve_learning_strategy',
+  'sangfor_attach_observation_session',
+  'sangfor_manage_learning_capture',
+  'sangfor_collect_facts',
+  'sangfor_research_learning_strategy',
+  'sangfor_validate_learning_strategy',
+  'sangfor_promote_learning_strategy',
 ] as const;
 
 let listTools: () => Array<{ name: string; inputSchema: Record<string, unknown>; annotations: { readOnlyHint: boolean; destructiveHint: boolean } }>;
@@ -24,10 +24,12 @@ beforeAll(async () => {
 
 describe('PR-011 learning MCP surface', () => {
   // 총합은 "도구가 조용히 늘지 않는다"는 카나리다. 표면을 늘리는 변경은 이 수를
-  // 함께 갱신해야 한다 (77 baseline + PR-011 학습 8 + 플레이북 프록시 9 = 94).
+  // 함께 갱신해야 한다 (77 baseline + PR-011 학습 8 + 플레이북 프록시 9 + 디스커버리 2 = 96
+  // + W4 차별화 3 [sangfor_session_report, sangfor_search_gaps, sangfor_safety_selftest] = 99
+  // + W5 engagement 스코프 1 [sangfor_engagement_scope] = 100).
   it('adds exactly eight names on top of the 77-tool baseline', () => {
     const tools = listTools();
-    expect(tools).toHaveLength(94);
+    expect(tools).toHaveLength(100);
     expect(tools.filter((tool) => EXPECTED.includes(tool.name as typeof EXPECTED[number])).map((tool) => tool.name).sort())
       .toEqual([...EXPECTED].sort());
   });
@@ -43,12 +45,12 @@ describe('PR-011 learning MCP surface', () => {
   });
 
   it('rejects unknown and credential fields in handlers as well as schemas', async () => {
-    expect(() => getToolHandler('sangfor.list_learning_strategies')!({ unexpected: true })).toThrow('UNKNOWN_FIELD');
-    expect(() => getToolHandler('sangfor.resolve_learning_strategy')!({
+    expect(() => getToolHandler('sangfor_list_learning_strategies')!({ unexpected: true })).toThrow('UNKNOWN_FIELD');
+    expect(() => getToolHandler('sangfor_resolve_learning_strategy')!({
       scope: { product: 'ENDPOINT_SECURE', firmwareVersion: '6.0.4', password: 'forbidden' },
       context: { registryDigest: 'a'.repeat(64), versionTruthRecord: 'truth' },
     })).toThrow('SECRET_FIELD_FORBIDDEN');
-    expect(() => getToolHandler('sangfor.collect_facts')!({
+    expect(() => getToolHandler('sangfor_collect_facts')!({
       scope: { product: 'ENDPOINT_SECURE', firmwareVersion: '6.0.4' },
       context: { registryDigest: 'a'.repeat(64), versionTruthRecord: 'truth', cookie: 'forbidden' },
       factIds: ['version'],

@@ -6,7 +6,7 @@ import { PlaybookStore, PlaybookValidationError, type PlaybookBlock } from '../a
 import { AnalysisStore, AgentTaskStore, type PlaybookAnalysis } from '../apps/control-tower/src/playbook-store.js';
 
 const READ2: PlaybookBlock[] = [
-  { id: 'b1', type: 'tool', toolId: 'sangfor.advisor_fortios_advanced', deviceId: 'dev_1' },
+  { id: 'b1', type: 'tool', toolId: 'sangfor_advisor_fortios_advanced', deviceId: 'dev_1' },
   { id: 'r1', type: 'report', title: '종합 리포트' },
 ];
 

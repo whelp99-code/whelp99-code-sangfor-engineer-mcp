@@ -1,21 +1,23 @@
 import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { readFileSync, statSync } from 'node:fs';
 import { basename, extname } from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { KnowledgeChunk, ProductCode, normalizeProduct, nowId } from '@sangfor/shared';
-import { getEmbeddingProvider, resolveEmbeddingModelFromEnv } from './embedding-provider.js';
+import { KnowledgeChunk, ProductCode, normalizeProduct, nowId, resolveRepoData, withDirLock, writeFileAtomicSync } from '@sangfor/shared';
+import { getEmbeddingProvider, resolveEmbeddingModelFromEnv, wasEmbeddingFallback } from './embedding-provider.js';
 import { isMimoViaLitellm } from './litellm-config.js';
-import type { EmbeddingBackend } from './embedding-provider-types.js';
+import type { EmbeddingBackend, EmbeddingProvider } from './embedding-provider-types.js';
 import { createMimoRerankFromEnv } from './mimo-rerank-provider.js';
 import { cosineSimilarity, hashEmbedding } from './hash-embedding.js';
+import { computeBm25Scores } from './bm25.js';
 
 export { hashEmbedding, cosineSimilarity } from './hash-embedding.js';
-export { getEmbeddingProvider, resetEmbeddingProviderCache } from './embedding-provider.js';
+export { getEmbeddingProvider, resetEmbeddingProviderCache, wasEmbeddingFallback } from './embedding-provider.js';
 export type { EmbeddingBackend, EmbeddingProvider, RerankProvider } from './embedding-provider-types.js';
+export { computeBm25Scores, tokenize } from './bm25.js';
 
 const require = createRequire(import.meta.url);
-const DEFAULT_INDEX_PATH = 'data/rag/index.json';
+const DEFAULT_INDEX_PATH = resolveRepoData('data/rag/index.json', 'SANGFOR_RAG_INDEX_PATH');
 
 export interface IngestDocumentInput {
   filePath: string;
@@ -51,25 +53,113 @@ export interface RagSearchInput {
 }
 
 export interface RagSearchHit extends RagDocumentChunk {
+  /** Composite hybrid score = alpha*cosineNorm + (1-alpha)*bm25Norm (see SANGFOR_RAG_HYBRID_ALPHA). */
   score: number;
+  /** Raw cosine similarity against the query vector, before hybrid normalization. */
+  cosineScore: number;
+  /** Raw BM25 lexical score against the query, before hybrid normalization. */
+  keywordScore: number;
   rerankScore?: number;
 }
 
-function ensureParent(path: string): void {
-  const dir = path.split('/').slice(0, -1).join('/');
-  if (dir) mkdirSync(dir, { recursive: true });
+export interface RagSearchDiagnostics {
+  degraded: boolean;
+  degradedReason?: string;
 }
 
+let lastRagSearchDiagnostics: RagSearchDiagnostics = { degraded: false };
+
+/** Diagnostics for the most recent ragSearch() call (not ragSearchSync — that path is hash-by-design, not a runtime degradation). */
+export function getRagSearchDiagnostics(): RagSearchDiagnostics {
+  return lastRagSearchDiagnostics;
+}
+
+function computeRagSearchDiagnostics(index: RagIndex, queryWasHashFallback: boolean): RagSearchDiagnostics {
+  const reasons: string[] = [];
+  const semanticChunks = index.chunks.filter((c) => (c.embeddingBackend ?? 'hash') !== 'hash').length;
+  if (index.chunks.length > 0 && semanticChunks === 0) {
+    reasons.push('RAG index is hash-only (no semantic embeddings ingested) — ranking is lexical/hashed, not semantic');
+  }
+  if (queryWasHashFallback) {
+    reasons.push('query embedding fell back to the hash backend (configured semantic provider unavailable)');
+  }
+  return reasons.length > 0 ? { degraded: true, degradedReason: reasons.join('; ') } : { degraded: false };
+}
+
+/**
+ * Drop the (potentially large, 384+-float) embedding vector from a hit while
+ * keeping every other field. Shared by callers that only want vector data
+ * opt-in (e.g. the MCP rag_search tool's include_vectors flag) — this is the
+ * one place the "strip the vector" decision lives so it can't drift per-caller.
+ */
+export function omitVectorFromHit<T extends { vector: number[] }>(hit: T): Omit<T, 'vector'> {
+  const { vector, ...rest } = hit;
+  return rest;
+}
+
+// Module-level cache keyed by indexPath, invalidated by statSync mtimeMs. The
+// index is a single JSON file that can grow to several MB — re-parsing it on
+// every search call (loadRagIndex is called once per ragSearch/ragSearchSync
+// invocation) dominates latency at anything past a small corpus.
+const ragIndexCache = new Map<string, { mtimeMs: number; index: RagIndex }>();
+
 export function loadRagIndex(indexPath = DEFAULT_INDEX_PATH): RagIndex {
-  if (!existsSync(indexPath)) return { version: 1, chunks: [], updatedAt: new Date().toISOString() };
-  return JSON.parse(readFileSync(indexPath, 'utf8')) as RagIndex;
+  let stat: ReturnType<typeof statSync>;
+  try {
+    stat = statSync(indexPath);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      ragIndexCache.delete(indexPath);
+      return { version: 1, chunks: [], updatedAt: new Date().toISOString() };
+    }
+    throw error;
+  }
+  const cached = ragIndexCache.get(indexPath);
+  if (cached && cached.mtimeMs === stat.mtimeMs) return cached.index;
+
+  let raw: string;
+  try {
+    raw = readFileSync(indexPath, 'utf8');
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      ragIndexCache.delete(indexPath);
+      return { version: 1, chunks: [], updatedAt: new Date().toISOString() };
+    }
+    throw error;
+  }
+  let index: RagIndex;
+  try {
+    index = JSON.parse(raw) as RagIndex;
+  } catch {
+    // Fail loud. A silent empty-index fallback here would look identical to
+    // "nothing has been ingested yet" and quietly discard whatever was in the
+    // corrupt file from every caller's perspective (search results, ingest
+    // dedup, summaries) — the exact failure mode resolveRepoData's own
+    // diagnostic comment warns against for missing data roots.
+    throw new Error(`RAG_INDEX_CORRUPT: ${indexPath}`);
+  }
+  ragIndexCache.set(indexPath, { mtimeMs: stat.mtimeMs, index });
+  return index;
+}
+
+function ragIndexLockPath(indexPath: string): string {
+  return `${indexPath}.lock`;
+}
+
+// The actual write, with no locking of its own — callers that already hold
+// the `${indexPath}.lock` mutex (e.g. ingestDocument's load-modify-save) call
+// this directly instead of the public saveRagIndex, since withDirLock is not
+// reentrant: acquiring the same lock twice from inside its own critical
+// section would just wait out its own holder and throw DirLockTimeoutError.
+function saveRagIndexUnlocked(index: RagIndex, indexPath: string): void {
+  const payload: RagIndex = { ...index, updatedAt: new Date().toISOString() };
+  writeFileAtomicSync(indexPath, JSON.stringify(payload, null, 2));
+  const stat = statSync(indexPath);
+  ragIndexCache.set(indexPath, { mtimeMs: stat.mtimeMs, index: payload });
 }
 
 export function saveRagIndex(index: RagIndex, indexPath = DEFAULT_INDEX_PATH): void {
-  ensureParent(indexPath);
-  const tmpPath = `${indexPath}.tmp`;
-  writeFileSync(tmpPath, JSON.stringify({ ...index, updatedAt: new Date().toISOString() }, null, 2));
-  renameSync(tmpPath, indexPath);
+  withDirLock(ragIndexLockPath(indexPath), () => saveRagIndexUnlocked(index, indexPath));
 }
 
 export async function extractTextFromFile(filePath: string): Promise<string> {
@@ -199,6 +289,65 @@ function vectorForSearch(chunk: RagDocumentChunk, queryVector: number[]): number
   return cosineSimilarity(queryVector, hashEmbedding(chunk.text, queryVector.length));
 }
 
+/** SANGFOR_RAG_HYBRID_ALPHA — weight on the cosine term; 0..1, default 0.5. Out-of-range or unparseable falls back to the default rather than erroring, since this only tunes ranking. */
+function resolveHybridAlpha(): number {
+  const raw = process.env.SANGFOR_RAG_HYBRID_ALPHA;
+  if (raw === undefined || raw.trim() === '') return 0.5;
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed) || parsed < 0 || parsed > 1) return 0.5;
+  return parsed;
+}
+
+/** Min-max normalize `v` against `values`'s range. All-equal (incl. empty/zero range) collapses to 0 — a flat dimension carries no ranking signal, so it must not be treated as "everyone maximally matched". Exported for direct unit testing (large-array RangeError regression). */
+export function minMaxNormalizer(values: readonly number[]): (v: number) => number {
+  if (values.length === 0) return () => 0;
+  // Plain loop, not Math.min(...values)/Math.max(...values) — spreading a
+  // large candidate array onto the call stack as arguments blows V8's
+  // argument-count limit (RangeError: Maximum call stack size exceeded) well
+  // before it blows any memory budget.
+  let min = values[0];
+  let max = values[0];
+  for (let i = 1; i < values.length; i += 1) {
+    const v = values[i];
+    if (v < min) min = v;
+    if (v > max) max = v;
+  }
+  const range = max - min;
+  if (range <= 1e-12) return () => 0;
+  return (v: number) => (v - min) / range;
+}
+
+/**
+ * Hybrid (BM25 + cosine) ranking. `candidates` must already be the
+ * filter-passed set (product/version/trust-level) — BM25 IDF and both
+ * min-max normalizations are computed over exactly this set, per the design:
+ * "rare among what could actually match", not rare across the whole index.
+ */
+function rankHybrid<T extends RagDocumentChunk>(
+  candidates: readonly T[],
+  queryVector: number[],
+  query: string,
+): Array<T & { score: number; cosineScore: number; keywordScore: number }> {
+  const alpha = resolveHybridAlpha();
+  const cosineScores = candidates.map((chunk) => vectorForSearch(chunk, queryVector));
+  const bm25Scores = computeBm25Scores(query, candidates);
+  const keywordScores = candidates.map((chunk) => bm25Scores.get(chunk.id) ?? 0);
+  const normalizeCosine = minMaxNormalizer(cosineScores);
+  const normalizeKeyword = minMaxNormalizer(keywordScores);
+  return candidates.map((chunk, i) => {
+    const cosineScore = cosineScores[i];
+    const keywordScore = keywordScores[i];
+    const score = alpha * normalizeCosine(cosineScore) + (1 - alpha) * normalizeKeyword(keywordScore);
+    return { ...chunk, score, cosineScore, keywordScore };
+  });
+}
+
+function actualEmbeddingModelName(provider: EmbeddingProvider): string {
+  if (provider.name === 'hash') return 'hash';
+  const model = (provider as unknown as { model?: string }).model;
+  return typeof model === 'string' && model.trim() ? model : resolveEmbeddingModelFromEnv();
+}
+
 export async function ingestDocument(input: IngestDocumentInput): Promise<{ documentId: string; chunkCount: number; indexPath: string; chunks: RagDocumentChunk[]; embeddingBackend: EmbeddingBackend }> {
   const product = normalizeProduct(input.product);
   const text = await extractTextFromFile(input.filePath);
@@ -225,21 +374,33 @@ export async function ingestDocument(input: IngestDocumentInput): Promise<{ docu
       contentHash,
       filePath: input.filePath,
       embeddingBackend: provider.name,
-      embeddingModel: resolveEmbeddingModelFromEnv(),
+      // Record the model that was ACTUALLY used, not the env-configured target —
+      // if the configured backend (rapid-mlx/litellm) fell back to hash mid-call,
+      // provider.name is already 'hash' here and the metadata must say so too.
+      embeddingModel: actualEmbeddingModelName(provider),
       vectorDims: vector.length
     };
   });
   const indexPath = input.indexPath ?? DEFAULT_INDEX_PATH;
-  const index = loadRagIndex(indexPath);
-  const existingHashes = new Set(index.chunks.map(chunk => chunk.contentHash));
-  const newChunks = chunks.filter(chunk => !existingHashes.has(chunk.contentHash));
+  // Hold the same lock saveRagIndex uses across the whole load→dedupe→mutate→
+  // save sequence — without it, two concurrent ingestDocument calls can both
+  // load the pre-mutation index, each append their own chunks on top of that
+  // stale snapshot, and whichever saves last silently discards the other's
+  // chunks (last-writer-wins data loss, not a crash — the dangerous kind).
+  const { newChunks } = withDirLock(ragIndexLockPath(indexPath), () => {
+    const index = loadRagIndex(indexPath);
+    const existingHashes = new Set(index.chunks.map(chunk => chunk.contentHash));
+    const newChunks = chunks.filter(chunk => !existingHashes.has(chunk.contentHash));
+    if (newChunks.length === 0) return { newChunks };
+    const hasSemantic = newChunks.some(c => c.embeddingBackend && c.embeddingBackend !== 'hash');
+    index.version = hasSemantic ? 2 : index.version;
+    index.chunks.push(...newChunks);
+    saveRagIndexUnlocked(index, indexPath); // NOT saveRagIndex — we already hold this lock
+    return { newChunks };
+  });
   if (newChunks.length === 0) {
     return { documentId, chunkCount: 0, indexPath, chunks: [], embeddingBackend: provider.name };
   }
-  const hasSemantic = newChunks.some(c => c.embeddingBackend && c.embeddingBackend !== 'hash');
-  index.version = hasSemantic ? 2 : index.version;
-  index.chunks.push(...newChunks);
-  saveRagIndex(index, indexPath);
   return { documentId, chunkCount: newChunks.length, indexPath, chunks: newChunks, embeddingBackend: provider.name };
 }
 
@@ -252,11 +413,14 @@ export async function ragSearch(input: RagSearchInput): Promise<RagSearchHit[]> 
   const finalLimit = input.limit ?? 8;
 
   const allowCustomer = process.env.SANGFOR_ALLOW_CLOUD_RAG_CUSTOMER === '1';
-  let pool = index.chunks
+  const filtered = index.chunks
     .filter(chunk => !product || chunk.product === product)
     .filter(chunk => !input.version || !chunk.version || chunk.version === input.version)
-    .filter(chunk => allowCustomer || chunk.trustLevel !== 'customer')
-    .map(chunk => ({ ...chunk, score: vectorForSearch(chunk, queryVector) }))
+    .filter(chunk => allowCustomer || chunk.trustLevel !== 'customer');
+
+  lastRagSearchDiagnostics = computeRagSearchDiagnostics(index, wasEmbeddingFallback());
+
+  let pool = rankHybrid(filtered, queryVector, input.query)
     .sort((a, b) => b.score - a.score)
     .slice(0, candidateLimit);
 
@@ -287,15 +451,15 @@ export async function ragSearch(input: RagSearchInput): Promise<RagSearchHit[]> 
   return pool.slice(0, finalLimit);
 }
 
-/** Hash-only sync search for tests without network. */
+/** Hash-only sync search for tests without network. Still hybrid (BM25+cosine) — only the embedding backend is fixed to hash. */
 export function ragSearchSync(input: RagSearchInput): RagSearchHit[] {
   const index = loadRagIndex(input.indexPath);
   const product = input.product ? normalizeProduct(input.product) : undefined;
   const queryVector = hashEmbedding(input.query);
-  return index.chunks
+  const filtered = index.chunks
     .filter(chunk => !product || chunk.product === product)
-    .filter(chunk => !input.version || !chunk.version || chunk.version === input.version)
-    .map(chunk => ({ ...chunk, score: vectorForSearch(chunk, queryVector) }))
+    .filter(chunk => !input.version || !chunk.version || chunk.version === input.version);
+  return rankHybrid(filtered, queryVector, input.query)
     .sort((a, b) => b.score - a.score)
     .slice(0, input.limit ?? 8);
 }
@@ -311,12 +475,19 @@ export function exportRagIndexSummary(indexPath = DEFAULT_INDEX_PATH): Record<st
     acc[key] = (acc[key] ?? 0) + 1;
     return acc;
   }, {});
+  const hashChunks = index.chunks.filter((chunk) => (chunk.embeddingBackend ?? 'hash') === 'hash').length;
+  const semanticChunks = index.chunks.length - hashChunks;
+  const hashRatio = index.chunks.length > 0 ? hashChunks / index.chunks.length : 0;
   return {
     indexPath,
     indexVersion: index.version ?? 1,
     chunkCount: index.chunks.length,
     byProduct,
     embeddingBackendCounts,
+    hashChunks,
+    semanticChunks,
+    hashRatio,
+    backends: embeddingBackendCounts,
     mimoRerankEnabled: process.env.SANGFOR_MIMO_RERANK_ENABLED !== '0'
       && (process.env.SANGFOR_ALLOW_CLOUD_RAG === '1' || isMimoViaLitellm()),
     updatedAt: index.updatedAt

@@ -1,17 +1,20 @@
 import readline from 'node:readline';
-import { mkdirSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { dirname, join, relative } from 'node:path';
+import { tmpdir } from 'node:os';
+import { spawnSync } from 'node:child_process';
+import { createRequire } from 'node:module';
 import { analyzeProject, generateConfigPlan, generateConfigPlanAsync, validateConfigPlan } from '../../../packages/sangfor-planner/src/index.js';
 import { searchManuals, getManualSection } from '../../../packages/sangfor-knowledge/src/index.js';
 import { searchWiki, proposeWikiUpdate, approveWikiUpdate, applyWikiUpdate, applyObsidianWikiUpdate, applyGitHubWikiUpdate } from '../../../packages/sangfor-wiki/src/index.js';
-import { requiresApprovalForText } from '../../../packages/sangfor-approval/src/index.js';
+import { requiresApprovalForText, canonicalizeApprovalPayload, verifyDomainApprovalSignature, FileSingleUseNonceStore } from '../../../packages/sangfor-approval/src/index.js';
 import { startOperatorSession, readConsoleState, executeConsoleAction, readLiveConsoleState, executeLiveConsoleAction, killSession } from '../../../packages/sangfor-operator/src/index.js';
 import { verifyResult } from '../../../packages/sangfor-verifier/src/index.js';
-import { generateEvidenceReport } from '../../../packages/sangfor-evidence/src/index.js';
+import { generateEvidenceReport, buildChangeRunReport, listChangeRunIds, isSafeRunId } from '../../../packages/sangfor-evidence/src/index.js';
 import { submitFeedback, extractLesson } from '../../../packages/sangfor-feedback/src/index.js';
 import { createEvalCaseFromFeedback, runPlannerEval } from '../../../packages/sangfor-evals/src/index.js';
 import { PRODUCTS } from '../../../packages/shared/src/index.js';
-import { ingestDocument, ragSearch, exportRagIndexSummary } from '../../../packages/sangfor-rag/src/index.js';
+import { ingestDocument, ragSearch, exportRagIndexSummary, omitVectorFromHit, getRagSearchDiagnostics } from '../../../packages/sangfor-rag/src/index.js';
 import { createFineTuneDataset, createFineTuneJobSpec, validateFineTuneDataset } from '../../../packages/sangfor-finetune/src/index.js';
 import { loadEnvFile } from '../../../packages/sangfor-collector/src/load-env.js';
 import { runLearnSourcesPipeline } from '../../../packages/sangfor-collector/src/learn-pipeline.js';
@@ -42,7 +45,7 @@ import { recommendSizing, type SizingInput } from '../../../packages/sangfor-siz
 import { createPmStore } from '../../../packages/sangfor-pm/src/index.js';
 import { checkVersionRequirement, loadVersionRequirements } from '../../../packages/sangfor-version/src/index.js';
 import { generateIntegrationGuide, listIntegrationTypes } from '../../../packages/sangfor-integration/src/index.js';
-import { resolveRepoData, isLoopback, nowId, normalizeProduct } from '../../../packages/shared/src/index.js';
+import { resolveRepoData, resolveEngagementScopedData, activeEngagementId, isLoopback, nowId, normalizeProduct, paginate, appendJsonl, writeFileAtomicSync } from '../../../packages/shared/src/index.js';
 import { mapEppPoolToConfigState, mapCcPoolToConfigState } from '../../../packages/sangfor-config-state/src/index.js';
 import { fortios_policy_baseline, fortios_system_health_baseline, fortios_policy_audit_baseline } from '../../../packages/fortios-spec/src/index.js';
 import { mapFortiOSConfigState, mapFortiOSSystemHealth, mapFortiOSPolicyAudit } from '../../../packages/fortios-client/src/index.js';
@@ -56,6 +59,7 @@ import {
   httpJson,
 } from '../../../packages/sangfor-hci-client/src/index.js';
 import { TowerClient } from './tower-client.js';
+import { authorizeToolCall } from '../../http-bridge/src/tool-guard.js';
 import { verifyExecutionApproval } from '../../../packages/sangfor-operator/src/approval.js';
 import { consumeApprovalNonce } from '../../../packages/sangfor-operator/src/nonce-store.js';
 import {
@@ -152,13 +156,296 @@ function toObservedRecord(items: Array<{ observedKey: string; value: unknown }>)
   return Object.fromEntries(items.map((i) => [i.observedKey, i.value]));
 }
 
+// Shared privacy/verbosity control. Read tools advertise it so agents can ask
+// for only the detail they need (summary | structured | raw). Honored by read
+// tools (e.g. rag_search) to limit returned detail.
+export const PRIVACY_MODE_SCHEMA = {
+  type: 'string',
+  enum: ['summary', 'structured', 'raw'],
+  description: 'Privacy/verbosity mode: summary (concise), structured (default object), raw (full detail). Honored by read tools to limit returned detail.',
+};
+
+// Honor privacy_mode=summary on search tools: return only id/title/score instead
+// of full chunk bodies, so agents can request less detail. structured/raw return
+// the full result unchanged.
+function summarizeSearchHits(hits: Array<{ id: string; title: string; score?: number }>) {
+  return { count: hits.length, hits: hits.map((h) => ({ id: h.id, title: h.title, score: h.score })) };
+}
+
+// Opt-in cursor pagination for a handful of list tools that historically returned
+// their whole array. Backward-compat contract: when the caller passes neither
+// cursor nor limit, return the field unchanged (full array, no nextCursor) — the
+// same shape those tools have always returned. Only pass cursor/limit to switch
+// into a paginated `{ [fieldName]: page, nextCursor? }` response.
+function paginateOptionalField<T>(
+  allItems: T[],
+  args: { cursor?: string; limit?: number },
+  getKey: (item: T) => string,
+  fieldName: string,
+): Record<string, unknown> {
+  if (args.cursor === undefined && args.limit === undefined) return { [fieldName]: allItems };
+  const { items, nextCursor } = paginate(allItems, { cursor: args.cursor, limit: args.limit, getKey });
+  return { [fieldName]: items, ...(nextCursor === undefined ? {} : { nextCursor }) };
+}
+
+// ─── C2: search-gap flywheel ───────────────────────────────────────────────
+// A weak RAG hit (nothing found, or the best hit barely matches) is exactly
+// the signal that should drive what gets ingested/authored next. Capture it
+// to a feedback JSONL instead of silently discarding it; SANGFOR_SEARCH_GAP_CAPTURE=0
+// disables capture entirely and a capture failure never fails the search itself.
+const SEARCH_GAP_FILE = 'search-gaps.jsonl';
+const DEFAULT_SEARCH_GAP_WEAK_THRESHOLD = 0.15;
+
+interface SearchGapEvent {
+  id: string;
+  ts: string;
+  query: string;
+  product?: string;
+  version?: string;
+  hitCount: number;
+  topScore?: number;
+  reason: 'no_hits' | 'low_score';
+}
+
+function searchGapCaptureEnabled(): boolean {
+  return process.env.SANGFOR_SEARCH_GAP_CAPTURE !== '0';
+}
+
+function searchGapWeakThreshold(): number {
+  const raw = process.env.SANGFOR_RAG_WEAK_THRESHOLD;
+  if (raw === undefined) return DEFAULT_SEARCH_GAP_WEAK_THRESHOLD;
+  const parsed = Number.parseFloat(raw);
+  return Number.isFinite(parsed) ? parsed : DEFAULT_SEARCH_GAP_WEAK_THRESHOLD;
+}
+
+// Same root-resolution convention as packages/sangfor-feedback/src/index.ts:26
+// (SANGFOR_FEEDBACK_ROOT override, else data/feedback anchored to the repo root),
+// plus engagement scoping (see resolveEngagementScopedData) so search-gap
+// capture isolates per customer engagement when SANGFOR_ENGAGEMENT_ID is set.
+function feedbackRoot(): string {
+  return resolveEngagementScopedData('data/feedback', 'SANGFOR_FEEDBACK_ROOT');
+}
+
+function searchGapFilePath(): string {
+  return join(feedbackRoot(), SEARCH_GAP_FILE);
+}
+
+function recordSearchGap(input: { query: string; product?: string; version?: string; hitCount: number; topScore?: number; reason: 'no_hits' | 'low_score' }): void {
+  if (!searchGapCaptureEnabled()) return;
+  try {
+    const event: SearchGapEvent = { id: nowId('search_gap'), ts: new Date().toISOString(), ...input };
+    appendJsonl(searchGapFilePath(), event);
+  } catch (error) {
+    process.stderr.write(`[search-gap] failed to record search gap: ${String(error instanceof Error ? error.message : error)}\n`);
+  }
+}
+
+function readSearchGaps(): SearchGapEvent[] {
+  let raw: string;
+  try {
+    raw = readFileSync(searchGapFilePath(), 'utf8');
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return [];
+    throw error;
+  }
+  return raw
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => JSON.parse(line) as SearchGapEvent);
+}
+
+// ─── C3: safety self-test ───────────────────────────────────────────────────
+// In-process proof that the fail-closed gates actually refuse an unapproved
+// action, with no device/network contact. Calls only existing exports — the
+// gate/guard logic itself is never touched here. Each check is independently
+// try/caught so one gate throwing (instead of returning a refusal) is reported
+// as a finding rather than crashing the whole self-test.
+interface SafetySelftestCheck {
+  name: string;
+  expectation: 'refused';
+  outcome: 'refused' | 'allowed' | 'skipped';
+  pass: boolean;
+  detail: string;
+}
+
+const OPERATOR_GATE_CHECK_NAME = 'operator.assertRealExecutionAllowed';
+const OPERATOR_GATE_SUBPROCESS_TIMEOUT_MS = 10_000;
+
+// (1) @sangfor/operator's real-execution gate (assertRealExecutionAllowed) reads
+// process.env.SANGFOR_ALLOW_REAL_EXECUTION / SANGFOR_OPERATOR_APPROVAL_SECRET
+// directly, with no way to inject an override through its function signature —
+// and this self-test must never mutate the PARENT process's env. So this proves
+// the gate for real in a CHILD process instead: spawn node (no shell) running the
+// gate function through the same tsx loader the bin launcher uses, with an
+// explicitly-built minimal env that does NOT set SANGFOR_ALLOW_REAL_EXECUTION
+// (never inherited from the parent — so the check proves fail-closed BY DEFAULT,
+// not "whatever the parent happened to have set"). A non-dry-run call with no
+// approval must throw; the child reports that over exit code + stdout.
+// `timeoutMs` is overridable only for tests exercising the failure/timeout
+// fallback — production always uses the 10s default.
+function checkOperatorExecutionGate(opts: { timeoutMs?: number } = {}): SafetySelftestCheck {
+  const timeoutMs = opts.timeoutMs ?? OPERATOR_GATE_SUBPROCESS_TIMEOUT_MS;
+  let scriptDir: string | undefined;
+  try {
+    const repoRoot = resolveRepoData('.');
+    const operatorIndexPath = join(repoRoot, 'packages/sangfor-operator/src/index.js');
+    // Same resolution the bin launcher (bin/sangfor-engineer-mcp.mjs) uses to
+    // find tsx without a shell/pnpm shim dependency.
+    const tsxCli = createRequire(import.meta.url).resolve('tsx/cli', { paths: [repoRoot] });
+
+    scriptDir = mkdtempSync(join(tmpdir(), 'sangfor-selftest-gate-'));
+    const scriptPath = join(scriptDir, 'check-operator-gate.ts');
+    const script = [
+      `import { assertRealExecutionAllowed } from ${JSON.stringify(operatorIndexPath)};`,
+      `const session = { id: 'selftest-subprocess', product: 'HCI', mode: 'lab', status: 'running' };`,
+      `const action = { type: 'click', target: 'selftest-probe', dryRun: false };`,
+      `try {`,
+      `  assertRealExecutionAllowed(session, action, undefined);`,
+      `  process.stdout.write('ALLOWED\\n');`,
+      `  process.exit(3);`,
+      `} catch (err) {`,
+      `  process.stdout.write('REFUSED: ' + (err instanceof Error ? err.message : String(err)) + '\\n');`,
+      `  process.exit(0);`,
+      `}`,
+    ].join('\n');
+    writeFileSync(scriptPath, script);
+
+    // Explicitly-built minimal env, NOT `{ ...process.env }` — inheriting the
+    // parent's env could carry SANGFOR_ALLOW_REAL_EXECUTION (or an approval
+    // secret) straight through and silently prove nothing. PATH/HOME are the
+    // only entries a plain `node <tsx-cli> <script>` invocation needs.
+    const minimalEnv: NodeJS.ProcessEnv = { PATH: process.env.PATH ?? '', HOME: process.env.HOME ?? '' };
+
+    const result = spawnSync(process.execPath, [tsxCli, scriptPath], {
+      cwd: repoRoot,
+      env: minimalEnv,
+      encoding: 'utf8',
+      timeout: timeoutMs,
+      shell: false,
+    });
+
+    if (result.error || result.signal) {
+      return {
+        name: OPERATOR_GATE_CHECK_NAME,
+        expectation: 'refused',
+        outcome: 'skipped',
+        pass: true,
+        detail: `subprocess spawn/timeout failed (${result.error ? result.error.message : `signal ${result.signal}`}) — skipped rather than mutate env; NOT proof the gate is safe, just that this run could not check it.`,
+      };
+    }
+    const stdout = (result.stdout ?? '').trim();
+    const refused = result.status === 0 && stdout.startsWith('REFUSED');
+    return {
+      name: OPERATOR_GATE_CHECK_NAME,
+      expectation: 'refused',
+      outcome: refused ? 'refused' : 'allowed',
+      pass: refused,
+      detail: refused
+        ? `subprocess (clean env, no SANGFOR_ALLOW_REAL_EXECUTION) refused: ${stdout}`
+        : `subprocess did NOT refuse (exit ${result.status}): ${stdout || (result.stderr ?? '').trim()}`,
+    };
+  } catch (error) {
+    return {
+      name: OPERATOR_GATE_CHECK_NAME,
+      expectation: 'refused',
+      outcome: 'skipped',
+      pass: true,
+      detail: `could not run the subprocess check (${String(error instanceof Error ? error.message : error)}) — skipped; NOT proof the gate is safe, just that this run could not check it.`,
+    };
+  } finally {
+    if (scriptDir) {
+      try { rmSync(scriptDir, { recursive: true, force: true }); } catch { /* best-effort cleanup */ }
+    }
+  }
+}
+
+// Exported (in addition to being wired as the sangfor_safety_selftest tool
+// handler below) so tests can pass operatorGateTimeoutMs to exercise the
+// spawn-timeout fallback deterministically — the MCP tool's own inputSchema
+// takes no properties, so this override is not reachable over the wire.
+export function runSafetySelftest(opts: { operatorGateTimeoutMs?: number } = {}): { checks: SafetySelftestCheck[]; skippedCount: number; allPass: boolean } {
+  const checks: SafetySelftestCheck[] = [];
+
+  checks.push(checkOperatorExecutionGate({ timeoutMs: opts.operatorGateTimeoutMs }));
+
+  // (2) http-bridge's tool-guard must refuse a destructive tool call with no approval.
+  try {
+    const toolListResult = { tools: [{ name: 'sangfor_selftest_destructive_probe', annotations: { readOnlyHint: false, destructiveHint: true } }] };
+    const decision = authorizeToolCall({ name: 'sangfor_selftest_destructive_probe', toolListResult, enforceWhitelist: true });
+    const refused = decision.allow === false && decision.status === 403;
+    checks.push({
+      name: 'http-bridge.authorizeToolCall',
+      expectation: 'refused',
+      outcome: refused ? 'refused' : 'allowed',
+      pass: refused,
+      detail: refused ? `refused: ${decision.error}` : `NOT refused: ${JSON.stringify(decision)}`,
+    });
+  } catch (error) {
+    checks.push({ name: 'http-bridge.authorizeToolCall', expectation: 'refused', outcome: 'allowed', pass: false, detail: `threw instead of returning a refusal: ${String(error instanceof Error ? error.message : error)}` });
+  }
+
+  // (3) A forged HMAC approval signature must be rejected.
+  try {
+    const secret = `selftest-${randomBytes(16).toString('hex')}`;
+    const payload = canonicalizeApprovalPayload(['selftest', 'action', 'payload']);
+    const forged = Buffer.alloc(32, 0x42);
+    const verdict = verifyDomainApprovalSignature(secret, payload, forged);
+    const refused = verdict.ok === false;
+    checks.push({
+      name: 'approval.verifyDomainApprovalSignature',
+      expectation: 'refused',
+      outcome: refused ? 'refused' : 'allowed',
+      pass: refused,
+      detail: refused ? `refused: ${verdict.reason}` : 'forged signature was accepted',
+    });
+  } catch (error) {
+    checks.push({ name: 'approval.verifyDomainApprovalSignature', expectation: 'refused', outcome: 'allowed', pass: false, detail: `threw instead of returning a refusal: ${String(error instanceof Error ? error.message : error)}` });
+  }
+
+  // (4) A single-use nonce must refuse replay. Uses a throwaway temp-dir store —
+  // never data/runtime's real nonce store.
+  let nonceDir: string | undefined;
+  try {
+    nonceDir = mkdtempSync(join(tmpdir(), 'sangfor-selftest-nonce-'));
+    const store = new FileSingleUseNonceStore(join(nonceDir, 'nonces.json'));
+    const nonce = `selftest-${randomBytes(8).toString('hex')}`;
+    const expiresAt = new Date(Date.now() + 60_000).toISOString();
+    const first = store.consume(nonce, expiresAt);
+    const second = store.consume(nonce, expiresAt);
+    const refused = first.ok === true && second.ok === false;
+    checks.push({
+      name: 'approval.FileSingleUseNonceStore replay',
+      expectation: 'refused',
+      outcome: refused ? 'refused' : 'allowed',
+      pass: refused,
+      detail: refused ? `replay refused: ${second.reason}` : `replay NOT refused (first.ok=${first.ok}, second.ok=${second.ok})`,
+    });
+  } catch (error) {
+    checks.push({ name: 'approval.FileSingleUseNonceStore replay', expectation: 'refused', outcome: 'allowed', pass: false, detail: `threw instead of exercising the store: ${String(error instanceof Error ? error.message : error)}` });
+  } finally {
+    if (nonceDir) {
+      try { rmSync(nonceDir, { recursive: true, force: true }); } catch { /* best-effort cleanup */ }
+    }
+  }
+
+  // allPass means "every EXECUTED check passed" — a skipped check contributes
+  // neither a pass nor a fail to this aggregate (it was not proven either way,
+  // see each skipped check's own detail). Counting a skip as a pass here would
+  // let allPass:true silently hide an unverified gate; skippedCount surfaces
+  // how many checks that applies to so a caller can't miss it.
+  const executed = checks.filter((c) => c.outcome !== 'skipped');
+  const skippedCount = checks.length - executed.length;
+  return { checks, skippedCount, allPass: executed.every((c) => c.pass) };
+}
+
 const tools: Record<string, { description: string; inputSchema: any; handler: ToolHandler }> = {
-  'sangfor.products': {
+  'sangfor_products': {
     description: 'List supported Sangfor products in current priority order.',
     inputSchema: { type: 'object', properties: {} },
     handler: () => ({ products: PRODUCTS })
   },
-  'sangfor.hci_inventory': {
+  'sangfor_hci_inventory': {
     description: `Read-only HCI/SCP inventory over the OpenAPI surface (volumes/servers/images). Auth contract: ${HCI_AUTH_CONTRACT_STATUS}.`,
     inputSchema: { type: 'object', properties: { identityBaseUrl: { type: 'string' }, tenantName: { type: 'string' }, username: { type: 'string' }, password: { type: 'string' } } },
     handler: async (args: Record<string, unknown>) => {
@@ -166,7 +453,7 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
       return { ...(await collectInventory(client)), authContract: HCI_AUTH_CONTRACT_STATUS };
     }
   },
-  'sangfor.hci_health_report': {
+  'sangfor_hci_health_report': {
     description: `Read-only HCI/SCP operations health report (volume status distribution, error volumes, findings) rendered as a Korean advisory. Never mutates. Auth contract: ${HCI_AUTH_CONTRACT_STATUS}.`,
     inputSchema: { type: 'object', properties: { identityBaseUrl: { type: 'string' }, tenantName: { type: 'string' }, username: { type: 'string' }, password: { type: 'string' } } },
     handler: async (args: Record<string, unknown>) => {
@@ -176,8 +463,8 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
       return { summary, report: renderHciHealthReport(summary, { host: cfg.host, collectedAt: new Date().toISOString() }), authContract: HCI_AUTH_CONTRACT_STATUS };
     }
   },
-  'sangfor.hci_plan_create_volume': {
-    description: 'Plan (no mutation): validate a create-volume intent, mint the idempotency clientToken, and describe the SignedApproval required to apply.',
+  'sangfor_hci_plan_create_volume': {
+    description: 'Plan (no mutation): validate a create-volume intent, mint the idempotency clientToken, and describe the SignedApproval required to apply. No device mutation here; applying requires explicit user intent via the separate hci_apply_create_volume (signed, single-use approval).',
     inputSchema: { type: 'object', properties: { name: { type: 'string' }, sizeGb: { type: 'number' }, description: { type: 'string' }, identityBaseUrl: { type: 'string' } }, required: ['name', 'sizeGb'] },
     handler: (args: { name: string; sizeGb: number; description?: string; identityBaseUrl?: string }) => {
       const clientToken = `cv-${randomBytes(8).toString('hex')}`;
@@ -193,8 +480,8 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
       };
     }
   },
-  'sangfor.hci_apply_create_volume': {
-    description: 'WRITE: apply a planned create-volume through the state machine (idempotent POST -> read-back verify -> succeed or HALT). Requires a SignedApproval; nonce is single-use.',
+  'sangfor_hci_apply_create_volume': {
+    description: 'WRITE: apply a planned create-volume through the state machine (idempotent POST -> read-back verify -> succeed or HALT). Requires explicit signed approval (action-bound, single-use nonce). On a non-loopback (real device) target it is additionally gated by SANGFOR_ALLOW_REAL_EXECUTION and an auto_allowed safety class (volume_create stays human_only until the M4 real-device promotion). Over the HTTP bridge it additionally needs a bridge-level bridge.tool-call approval.',
     inputSchema: { type: 'object', properties: { name: { type: 'string' }, sizeGb: { type: 'number' }, description: { type: 'string' }, clientToken: { type: 'string' }, approval: { type: 'object' }, identityBaseUrl: { type: 'string' } }, required: ['name', 'sizeGb', 'clientToken', 'approval'] },
     handler: async (args: { name: string; sizeGb: number; description?: string; clientToken: string; approval: unknown; identityBaseUrl?: string }) => {
       const { client, cfg } = hciClientFor(args as Record<string, unknown>);
@@ -204,7 +491,7 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
       return { ...result, mutationPerformed: result.finalState === 'SUCCEEDED' || Boolean(result.volumeId), ledger: new AuditLedger().pathFor(result.runId) };
     }
   },
-  'sangfor.hci_verify_volume': {
+  'sangfor_hci_verify_volume': {
     description: 'Read-only read-back verification of a volume against an expectation (PASS/FAIL/INDETERMINATE; INDETERMINATE never passes).',
     inputSchema: { type: 'object', properties: { volumeId: { type: 'string' }, name: { type: 'string' }, sizeGb: { type: 'number' }, identityBaseUrl: { type: 'string' } }, required: ['name', 'sizeGb'] },
     handler: async (args: { volumeId?: string; name: string; sizeGb: number; identityBaseUrl?: string }) => {
@@ -212,8 +499,8 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
       return readBackVolume(client, { volumeId: args.volumeId, name: args.name, sizeGb: args.sizeGb });
     }
   },
-  'sangfor.hci_delete_volume': {
-    description: 'DESTRUCTIVE: delete a volume (the reverse op of create). Requires a SignedApproval bound to the exact volumeId. Over the HTTP bridge it additionally needs a bridge-level bridge.tool-call approval, and on a non-loopback (real) device it is refused until volume_delete is promoted out of human_only.',
+  'sangfor_hci_delete_volume': {
+    description: 'DESTRUCTIVE: delete a volume (the reverse op of create). Requires a SignedApproval bound to the exact volumeId. Over the HTTP bridge it additionally needs a bridge-level bridge.tool-call approval, and on a non-loopback (real) device it is refused until volume_delete is promoted out of human_only. Gated by SANGFOR_ALLOW_REAL_EXECUTION and requires explicit signed approval bound to the exact volumeId.',
     inputSchema: { type: 'object', properties: { volumeId: { type: 'string' }, approval: { type: 'object' }, identityBaseUrl: { type: 'string' } }, required: ['volumeId', 'approval'] },
     handler: async (args: { volumeId: string; approval: unknown; identityBaseUrl?: string }) => {
       const { client, cfg } = hciClientFor(args as Record<string, unknown>);
@@ -229,77 +516,77 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
       return { ok: res.status === 202, mutationPerformed: res.status === 202, status: res.status, runId };
     }
   },
-  'sangfor.discover_product_console': {
+  'sangfor_discover_product_console': {
     description: 'Discover product console strategy, login/API likelihood, menu routes and product capabilities for HCI/SCP, IAG, Endpoint Secure or NDR.',
     inputSchema: { type: 'object', properties: { product: { type: 'string' }, targetUrl: { type: 'string' }, version: { type: 'string' }, environment: { type: 'string' }, preferApi: { type: 'boolean' } } },
     handler: discoverProductConsole
   },
-  'sangfor.collect_product_config': {
+  'sangfor_collect_product_config': {
     description: 'Collect or plan read-only collection of current product configuration. Uses API-first for HCI/SCP, WebUI-first for IAG/Endpoint Secure, hybrid for NDR.',
     inputSchema: { type: 'object', properties: { product: { type: 'string' }, targetUrl: { type: 'string' }, version: { type: 'string' }, environment: { type: 'string' }, preferApi: { type: 'boolean' } } },
     handler: collectProductConfig
   },
-  'sangfor.analyze_customer_requirements': {
+  'sangfor_analyze_customer_requirements': {
     description: 'Break customer requirement strings into product-specific configuration tasks with menu paths, API candidates, risk and approval gates.',
     inputSchema: { type: 'object', properties: { product: { type: 'string' }, targetUrl: { type: 'string' }, version: { type: 'string' }, environment: { type: 'string' }, requirements: { type: 'array', items: { type: 'string' } }, currentConfig: { type: 'object' } }, required: ['requirements'] },
     handler: analyzeCustomerRequirements
   },
-  'sangfor.generate_product_change_plan': {
+  'sangfor_generate_product_change_plan': {
     description: 'Generate product change plan with menu path, API endpoint candidates, current/target planning context, impact/risk, rollback and validation.',
     inputSchema: { type: 'object', properties: { product: { type: 'string' }, targetUrl: { type: 'string' }, version: { type: 'string' }, environment: { type: 'string' }, requirements: { type: 'array', items: { type: 'string' } }, currentConfig: { type: 'object' } }, required: ['requirements'] },
     handler: generateProductChangePlan
   },
-  'sangfor.import_excel_requirement_list': {
+  'sangfor_import_excel_requirement_list': {
     description: 'Import an ITAC-style Excel checklist and normalize rows into configuration requirements, evidence needs, target controls, gaps and priority.',
     inputSchema: { type: 'object', properties: { filePath: { type: 'string' }, sheetName: { type: 'string' }, prioritizeOnly: { type: 'boolean' } }, required: ['filePath'] },
     handler: importExcelRequirementList
   },
-  'sangfor.map_requirements_to_products': {
+  'sangfor_map_requirements_to_products': {
     description: 'Map normalized Excel checklist rows to HCI/SCP, IAG, Endpoint Secure, NDR, or external/manual handling.',
     inputSchema: { type: 'object', properties: { rows: { type: 'array', items: { type: 'object' } } }, required: ['rows'] },
     handler: mapRequirementsToProducts
   },
-  'sangfor.generate_excel_based_change_plan': {
+  'sangfor_generate_excel_based_change_plan': {
     description: 'Generate a multi-product dry-run change plan from an ITAC-style Excel checklist. Actual mutation remains blocked.',
     inputSchema: { type: 'object', properties: { filePath: { type: 'string' }, rows: { type: 'array', items: { type: 'object' } }, sheetName: { type: 'string' }, prioritizeOnly: { type: 'boolean' } } },
     handler: generateExcelBasedChangePlan
   },
-  'sangfor.generate_setting_guide_docx': {
+  'sangfor_generate_setting_guide_docx': {
     description: 'Generate a Word (.docx) customer setting guide from an ITAC-style Excel checklist. Produces a formatted document with product tables, manual evidence section, dry-run procedure, and customer action items.',
     inputSchema: { type: 'object', properties: { filePath: { type: 'string', description: 'Path to the ITAC Excel (.xlsx) file' }, outputPath: { type: 'string', description: 'Optional output path for the .docx file' } }, required: ['filePath'] },
     handler: (args: { filePath: string; outputPath?: string }) => buildSettingGuideDocx({ filePath: args.filePath, outputPath: args.outputPath })
   },
-  'sangfor.generate_setting_guide_pptx': {
+  'sangfor_generate_setting_guide_pptx': {
     description: 'Generate a PowerPoint (.pptx) customer setting guide from an ITAC-style Excel checklist. Produces a formatted presentation with product-specific slides, tables, charts, and dry-run procedures.',
     inputSchema: { type: 'object', properties: { filePath: { type: 'string', description: 'Path to the ITAC Excel (.xlsx) file' }, outputPath: { type: 'string', description: 'Optional output path for the .pptx file' }, screenshotDir: { type: 'string', description: 'Optional directory containing product screenshots' } }, required: ['filePath'] },
     handler: (args: { filePath: string; outputPath?: string; screenshotDir?: string }) => buildSettingGuidePptx({ filePath: args.filePath, outputPath: args.outputPath, screenshotDir: args.screenshotDir })
   },
-  'sangfor.generate_operations_guide_pptx': {
+  'sangfor_generate_operations_guide_pptx': {
     description: 'Generate a PowerPoint (.pptx) operations guide for Sangfor products covering daily monitoring, weekly/monthly procedures, incident response, and security policies.',
     inputSchema: { type: 'object', properties: { outputPath: { type: 'string', description: 'Optional output path for the .pptx file' } } },
     handler: (args: { outputPath?: string }) => buildOperationsGuidePptx({ outputPath: args.outputPath })
   },
-  'sangfor.generate_operations_guide_docx': {
+  'sangfor_generate_operations_guide_docx': {
     description: 'Generate a Word (.docx) operations guide for Sangfor products covering daily monitoring, weekly/monthly inspection, incident response, and security policy management.',
     inputSchema: { type: 'object', properties: { outputPath: { type: 'string', description: 'Optional output path for the .docx file' } } },
     handler: (args: { outputPath?: string }) => buildOperationsGuideDocx({ outputPath: args.outputPath })
   },
-  'sangfor.generate_comprehensive_setting_guide_docx': {
+  'sangfor_generate_comprehensive_setting_guide_docx': {
     description: 'Generate a comprehensive Word (.docx) customer setting guide with detailed setup procedures, product-specific configuration, operational steps, security policies, backup/recovery, and troubleshooting. Much more detailed than the basic setting guide.',
     inputSchema: { type: 'object', properties: { filePath: { type: 'string', description: 'Path to the ITAC Excel (.xlsx) file' }, outputPath: { type: 'string', description: 'Optional output path for the .docx file' }, screenshotDir: { type: 'string', description: 'Optional directory containing product screenshots (outputs/final_images)' } }, required: ['filePath'] },
     handler: (args: { filePath: string; outputPath?: string; screenshotDir?: string }) => buildComprehensiveSettingGuideDocx({ filePath: args.filePath, outputPath: args.outputPath, screenshotDir: args.screenshotDir })
   },
-  'sangfor.generate_comprehensive_operations_guide_docx': {
+  'sangfor_generate_comprehensive_operations_guide_docx': {
     description: 'Generate a comprehensive Word (.docx) operations guide covering detailed daily/weekly/monthly procedures, incident response, backup/recovery, security policy management, performance monitoring, and troubleshooting FAQ.',
     inputSchema: { type: 'object', properties: { outputPath: { type: 'string', description: 'Optional output path for the .docx file' }, screenshotDir: { type: 'string', description: 'Optional directory containing product screenshots (outputs/final_images)' } } },
     handler: (args: { outputPath?: string; screenshotDir?: string }) => buildComprehensiveOperationsGuideDocx({ outputPath: args.outputPath, screenshotDir: args.screenshotDir })
   },
-  'sangfor.capture_screenshots': {
+  'sangfor_capture_screenshots': {
     description: 'Capture screenshots from Sangfor product consoles (EPP, IAG, CC) via Chrome CDP. Connects to the product console, logs in, navigates menus, and saves screenshots.',
     inputSchema: { type: 'object', properties: { product: { type: 'string', enum: ['EPP', 'IAG', 'CC'], description: 'Product to capture screenshots from' }, targetUrl: { type: 'string', description: 'Override target URL' }, username: { type: 'string', description: 'Login username' }, password: { type: 'string', description: 'Login password' }, outputDir: { type: 'string', description: 'Output directory for screenshots' }, headless: { type: 'boolean', description: 'Run Chrome in headless mode' }, dryRun: { type: 'boolean', description: 'Dry-run mode: skip Chrome and just list planned screenshots' } }, required: ['product'] },
     handler: (args: { product: 'EPP' | 'IAG' | 'CC'; targetUrl?: string; username?: string; password?: string; outputDir?: string; headless?: boolean; dryRun?: boolean }) => captureProductScreenshots(args)
   },
-  'sangfor.generate_all_guides': {
+  'sangfor_generate_all_guides': {
     description: 'Generate complete guide set: setting guide (docx + pptx), operations guide (docx + pptx), and optionally capture screenshots. Uses the ITAC Excel as input.',
     inputSchema: { type: 'object', properties: { filePath: { type: 'string', description: 'Path to the ITAC Excel (.xlsx) file' }, outputDir: { type: 'string', description: 'Output directory for all guides' }, screenshotDir: { type: 'string', description: 'Directory containing product screenshots (default: outputs/final_images)' }, captureScreenshots: { type: 'boolean', description: 'Also capture product console screenshots' }, screenshotProducts: { type: 'array', items: { type: 'string' }, description: 'Products to capture screenshots for (EPP, IAG, CC)' } }, required: ['filePath'] },
     handler: async (args: { filePath: string; outputDir?: string; screenshotDir?: string; captureScreenshots?: boolean; screenshotProducts?: string[] }) => {
@@ -342,58 +629,88 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
       return results;
     }
   },
-  'sangfor.dry_run_product_change': {
+  'sangfor_dry_run_product_change': {
     description: 'Dry-run a product change plan. WebUI route preview stops before Save/Apply/Delete; API changes produce request previews only.',
     inputSchema: { type: 'object', properties: { plan: { type: 'object' }, targetUrl: { type: 'string' }, sessionId: { type: 'string' } }, required: ['plan'] },
     handler: dryRunProductChange
   },
-  'sangfor.apply_approved_product_change': {
+  'sangfor_apply_approved_product_change': {
     description: 'Apply only an approved product change. Requires approval payload and SANGFOR_ALLOW_REAL_EXECUTION; production also requires SANGFOR_ALLOW_PRODUCTION_EXECUTION.',
     inputSchema: { type: 'object', properties: { plan: { type: 'object' }, approval: { type: 'object' }, environment: { type: 'string' }, sessionId: { type: 'string' } }, required: ['plan'] },
     handler: applyApprovedProductChange
   },
-  'sangfor.verify_product_change': {
+  'sangfor_verify_product_change': {
     description: 'Verify a product change with read-only API/WebUI re-collection checklist and evidence expectations.',
     inputSchema: { type: 'object', properties: { plan: { type: 'object' }, observed: { type: 'object' } }, required: ['plan'] },
     handler: verifyProductChange
   },
-  'sangfor.search_manuals': {
-    description: 'Search Sangfor manual/guide chunks by product, version and query.',
-    inputSchema: { type: 'object', properties: { product: { type: 'string' }, version: { type: 'string' }, query: { type: 'string' }, limit: { type: 'number' } }, required: ['product'] },
-    handler: searchManuals
+  'sangfor_search_manuals': {
+    description: 'Search Sangfor manual/guide chunks by product, version and query. Supports privacy_mode (summary|structured|raw).',
+    inputSchema: { type: 'object', properties: { product: { type: 'string' }, version: { type: 'string' }, query: { type: 'string' }, limit: { type: 'number' }, privacy_mode: PRIVACY_MODE_SCHEMA }, required: ['product'] },
+    handler: (args: { product?: string; version?: string; query?: string; limit?: number; privacy_mode?: 'summary' | 'structured' | 'raw' }) => {
+      const hits = searchManuals(args);
+      return args.privacy_mode === 'summary' ? summarizeSearchHits(hits) : hits;
+    }
   },
-  'sangfor.get_manual_section': {
+  'sangfor_get_manual_section': {
     description: 'Get one manual section by chunk id.',
     inputSchema: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] },
     handler: ({ id }) => getManualSection(id) ?? { error: `Manual section not found: ${id}` }
   },
-  'sangfor.search_wiki': {
-    description: 'Search internal wiki chunks by product, version and query.',
-    inputSchema: { type: 'object', properties: { product: { type: 'string' }, version: { type: 'string' }, query: { type: 'string' }, limit: { type: 'number' } }, required: ['product'] },
-    handler: searchWiki
+  'sangfor_search_wiki': {
+    description: 'Search internal wiki chunks by product, version and query. Supports privacy_mode (summary|structured|raw).',
+    inputSchema: { type: 'object', properties: { product: { type: 'string' }, version: { type: 'string' }, query: { type: 'string' }, limit: { type: 'number' }, privacy_mode: PRIVACY_MODE_SCHEMA }, required: ['product'] },
+    handler: (args: { product?: string; version?: string; query?: string; limit?: number; privacy_mode?: 'summary' | 'structured' | 'raw' }) => {
+      const hits = searchWiki(args);
+      return args.privacy_mode === 'summary' ? summarizeSearchHits(hits) : hits;
+    }
   },
 
-  'sangfor.ingest_document': {
+  'sangfor_ingest_document': {
     description: 'Parse PDF/HTML/Markdown/TXT document, chunk it, create local vector index, and store searchable RAG chunks.',
     inputSchema: { type: 'object', properties: { filePath: { type: 'string' }, product: { type: 'string' }, version: { type: 'string' }, sourceType: { type: 'string' }, trustLevel: { type: 'string' }, title: { type: 'string' }, indexPath: { type: 'string' } }, required: ['filePath', 'product'] },
     handler: ingestDocument
   },
-  'sangfor.rag_search': {
-    description: 'Search real ingested local RAG index by product/version/query.',
-    inputSchema: { type: 'object', properties: { product: { type: 'string' }, version: { type: 'string' }, query: { type: 'string' }, limit: { type: 'number' }, indexPath: { type: 'string' } }, required: ['query'] },
-    handler: (args) => ragSearch(args)
+  'sangfor_rag_search': {
+    description: 'Search real ingested local RAG index by product/version/query. Supports privacy_mode (summary|structured|raw) to limit returned detail. Hit embedding vectors are omitted by default — pass include_vectors:true to get them back.',
+    inputSchema: { type: 'object', properties: { product: { type: 'string' }, version: { type: 'string' }, query: { type: 'string' }, limit: { type: 'number' }, indexPath: { type: 'string' }, privacy_mode: PRIVACY_MODE_SCHEMA, include_vectors: { type: 'boolean', description: 'Include each hit\'s raw embedding vector. Default false — vectors are large and rarely needed by callers.' } }, required: ['query'] },
+    handler: async (args: { query: string; product?: string; version?: string; limit?: number; indexPath?: string; privacy_mode?: 'summary' | 'structured' | 'raw'; include_vectors?: boolean }) => {
+      const hits = await ragSearch(args);
+      const diagnostics = getRagSearchDiagnostics();
+      // C2 search-gap flywheel: a weak result (nothing found, or the best hit
+      // barely matches) is a signal for what to ingest/author next — capture it
+      // instead of silently discarding it. Never blocks or fails the search.
+      const topScore = hits.length ? Math.max(...hits.map((h) => h.score ?? 0)) : undefined;
+      const weakReason: 'no_hits' | 'low_score' | undefined = hits.length === 0
+        ? 'no_hits'
+        : (topScore !== undefined && topScore < searchGapWeakThreshold() ? 'low_score' : undefined);
+      if (weakReason) {
+        recordSearchGap({ query: args.query, product: args.product, version: args.version, hitCount: hits.length, topScore, reason: weakReason });
+      }
+      // privacy_mode=summary already returns an object ({count, hits}) — merge
+      // diagnostics into it there. The default/structured/raw response is a
+      // plain hits array (existing contract callers rely on); merging
+      // diagnostics into it would require wrapping the array in an object and
+      // is out of scope here, so degraded status stays reachable only via this
+      // object-shaped response and sangfor_rag_index_summary.
+      if (args.privacy_mode === 'summary') {
+        const summarized = summarizeSearchHits(hits);
+        return diagnostics.degraded ? { ...summarized, ...diagnostics } : summarized;
+      }
+      return args.include_vectors ? hits : hits.map(omitVectorFromHit);
+    }
   },
-  'sangfor.rag_index_summary': {
+  'sangfor_rag_index_summary': {
     description: 'Return summary of the real local RAG index.',
     inputSchema: { type: 'object', properties: { indexPath: { type: 'string' } } },
     handler: ({ indexPath }) => exportRagIndexSummary(indexPath)
   },
-  'sangfor.store_health': {
+  'sangfor_store_health': {
     description: 'Check PostgreSQL persistence (Prisma) when DATABASE_URL is configured.',
     inputSchema: { type: 'object', properties: {} },
     handler: () => storeHealthCheck()
   },
-  'sangfor.learn_sources': {
+  'sangfor_learn_sources': {
     description: 'Collect Sangfor KB catalog, Community threads, ingest demo docs, update local RAG index and fine-tune JSONL. Uses .env / SANGFOR_ONE_ACCESS_TOKEN when present.',
     inputSchema: {
       type: 'object',
@@ -420,12 +737,12 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
       });
     }
   },
-  'sangfor.analyze_project': {
+  'sangfor_analyze_project': {
     description: 'Analyze customer project input and return product, project type, risk, missing inputs and knowledge queries.',
     inputSchema: { type: 'object', properties: { customerName: { type: 'string' }, product: { type: 'string' }, version: { type: 'string' }, projectType: { type: 'string' }, environment: { type: 'object' }, requirements: { type: 'array', items: { type: 'string' } } }, required: ['customerName'] },
     handler: analyzeProject
   },
-  'sangfor.generate_config_plan': {
+  'sangfor_generate_config_plan': {
     description: 'Generate a configuration plan with precheck, steps, rollback, validation and approval gates.',
     inputSchema: { type: 'object', properties: { customerName: { type: 'string' }, product: { type: 'string' }, version: { type: 'string' }, projectType: { type: 'string' }, environment: { type: 'object' }, requirements: { type: 'array', items: { type: 'string' } } }, required: ['customerName', 'product'] },
     handler: async (args) => {
@@ -435,53 +752,53 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
       return dbId ? { ...plan, persistedId: dbId } : plan;
     }
   },
-  'sangfor.validate_config_plan': {
+  'sangfor_validate_config_plan': {
     description: 'Validate that a generated plan has precheck, steps, rollback, validation and references.',
     inputSchema: { type: 'object', properties: { planId: { type: 'string' }, plan: { type: 'object' } } },
     handler: ({ planId, plan }) => validateConfigPlan(plan ?? plans.get(planId))
   },
-  'sangfor.request_approval': {
+  'sangfor_request_approval': {
     description: 'Classify text/action risk and return approval decision.',
     inputSchema: { type: 'object', properties: { text: { type: 'string' } }, required: ['text'] },
     handler: ({ text }) => requiresApprovalForText(text)
   },
-  'sangfor.start_operator_session': {
+  'sangfor_start_operator_session': {
     description: 'Start a mock/lab/poc/customer operator session. MVP defaults to mock.',
     inputSchema: { type: 'object', properties: { product: { type: 'string' }, mode: { type: 'string' }, targetUrl: { type: 'string' }, browser: { type: 'object', properties: { cdpEndpoint: { type: 'string' }, useLocalBrowser: { type: 'boolean' } } } }, required: ['product'] },
     handler: startOperatorSession
   },
-  'sangfor.read_console_state': {
+  'sangfor_read_console_state': {
     description: 'Read current mock console state for a session.',
     inputSchema: { type: 'object', properties: { sessionId: { type: 'string' } }, required: ['sessionId'] },
     handler: ({ sessionId }) => readConsoleState(sessionId)
   },
-  'sangfor.execute_console_action': {
+  'sangfor_execute_console_action': {
     description: 'Execute or dry-run a console action. MVP blocks high-risk non-dry-run operations.',
     inputSchema: { type: 'object', properties: { sessionId: { type: 'string' }, action: { type: 'object' } }, required: ['sessionId', 'action'] },
     handler: ({ sessionId, action }) => executeConsoleAction(sessionId, action)
   },
 
-  'sangfor.read_live_console_state': {
+  'sangfor_read_live_console_state': {
     description: 'Read live Sangfor Web Console state using Playwright. Requires targetUrl session. Read-only snapshot.',
     inputSchema: { type: 'object', properties: { sessionId: { type: 'string' } }, required: ['sessionId'] },
     handler: readLiveConsoleState
   },
-  'sangfor.execute_console_action_live': {
+  'sangfor_execute_console_action_live': {
     description: 'Execute a real Playwright console action. Requires SANGFOR_ALLOW_REAL_EXECUTION and approval fields for non-dry-run.',
     inputSchema: { type: 'object', properties: { sessionId: { type: 'string' }, action: { type: 'object' }, approval: { type: 'object' } }, required: ['sessionId', 'action'] },
     handler: executeLiveConsoleAction
   },
-  'sangfor.kill_session': {
+  'sangfor_kill_session': {
     description: 'Cancel an operator session.',
     inputSchema: { type: 'object', properties: { sessionId: { type: 'string' } }, required: ['sessionId'] },
     handler: ({ sessionId }) => killSession(sessionId)
   },
-  'sangfor.verify_result': {
+  'sangfor_verify_result': {
     description: 'Verify plan/result. MVP returns manual validation checklist.',
     inputSchema: { type: 'object', properties: { planId: { type: 'string' }, plan: { type: 'object' }, observed: { type: 'object' } } },
     handler: ({ planId, plan, observed }) => verifyResult({ plan: plan ?? plans.get(planId), observed })
   },
-  'sangfor.generate_evidence_report': {
+  'sangfor_generate_evidence_report': {
     description: 'Generate Markdown evidence report for a plan.',
     inputSchema: { type: 'object', properties: { planId: { type: 'string' }, plan: { type: 'object' }, verification: { type: 'object' }, format: { type: 'string' } } },
     handler: ({ planId, plan, verification, format }) => {
@@ -506,7 +823,7 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
       return generateEvidenceReport({ plan: normalizedPlan, verification, format });
     }
   },
-  'sangfor.submit_feedback': {
+  'sangfor_submit_feedback': {
     description: 'Submit feedback linked to a product/plan/session.',
     inputSchema: { type: 'object', properties: { product: { type: 'string' }, feedbackType: { type: 'string' }, severity: { type: 'string' }, feedbackText: { type: 'string' }, sourceRole: { type: 'string' } }, required: ['product', 'feedbackType', 'severity', 'feedbackText', 'sourceRole'] },
     handler: async (args) => {
@@ -515,64 +832,64 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
       return dbId ? { ...event, persistedId: dbId } : event;
     }
   },
-  'sangfor.extract_lesson': {
+  'sangfor_extract_lesson': {
     description: 'Extract a lesson learned from feedback.',
     inputSchema: { type: 'object', properties: { feedbackId: { type: 'string' } }, required: ['feedbackId'] },
     handler: ({ feedbackId }) => extractLesson(feedbackId)
   },
-  'sangfor.propose_wiki_update': {
-    description: 'Create a wiki update proposal from a lesson. Does not directly modify wiki.',
+  'sangfor_propose_wiki_update': {
+    description: 'Create a wiki update proposal from a lesson. Does not directly modify wiki. Creates a pending_review proposal only; applying it requires explicit human approval (reviewer token). Requires explicit reviewer consent before any wiki change.',
     inputSchema: { type: 'object', properties: { lessonTitle: { type: 'string' }, lessonBody: { type: 'string' }, targetPage: { type: 'string' } }, required: ['lessonTitle', 'lessonBody'] },
     handler: proposeWikiUpdate
   },
-  'sangfor.approve_wiki_update': {
-    description: 'Approve or reject a wiki update proposal.',
+  'sangfor_approve_wiki_update': {
+    description: 'Approve or reject a wiki update proposal. Requires explicit reviewer token to confirm the approve/reject decision.',
     inputSchema: { type: 'object', properties: { proposalId: { type: 'string' }, decision: { type: 'string' }, token: { type: 'string' }, reviewer: { type: 'string' } }, required: ['proposalId', 'decision'] },
     handler: ({ proposalId, decision, token, reviewer }) => approveWikiUpdate(proposalId, decision, { token, reviewer })
   },
-  'sangfor.apply_wiki_update': {
-    description: 'Apply an approved wiki update proposal. Blocks pending proposals.',
+  'sangfor_apply_wiki_update': {
+    description: 'Apply an approved wiki update proposal. Blocks pending proposals. Gated by explicit human approval: applies only proposals that passed review; pending proposals are blocked.',
     inputSchema: { type: 'object', properties: { proposalId: { type: 'string' } }, required: ['proposalId'] },
     handler: ({ proposalId }) => applyWikiUpdate(proposalId)
   },
 
-  'sangfor.apply_obsidian_wiki_update': {
-    description: 'Apply an approved wiki update proposal to an Obsidian vault path.',
+  'sangfor_apply_obsidian_wiki_update': {
+    description: 'Apply an approved wiki update proposal to an Obsidian vault path. Gated by explicit human approval: applies only proposals that passed review; pending proposals are blocked.',
     inputSchema: { type: 'object', properties: { proposalId: { type: 'string' }, vaultPath: { type: 'string' } }, required: ['proposalId', 'vaultPath'] },
     handler: applyObsidianWikiUpdate
   },
-  'sangfor.apply_github_wiki_update': {
-    description: 'Apply an approved wiki update proposal to a GitHub Wiki git repository. Uses git CLI and provided repoUrl/localPath.',
+  'sangfor_apply_github_wiki_update': {
+    description: 'Apply an approved wiki update proposal to a GitHub Wiki git repository. Uses git CLI and provided repoUrl/localPath. Gated by explicit human approval: applies only proposals that passed review; pending proposals are blocked.',
     inputSchema: { type: 'object', properties: { proposalId: { type: 'string' }, repoUrl: { type: 'string' }, localPath: { type: 'string' } }, required: ['proposalId', 'repoUrl'] },
     handler: applyGitHubWikiUpdate
   },
-  'sangfor.create_eval_case_from_feedback': {
-    description: 'Create planner regression eval case from feedback.',
+  'sangfor_create_eval_case_from_feedback': {
+    description: 'Create planner regression eval case from feedback. Local-only evals-store write; requires explicit product, name and requiredText, and never touches a device.',
     inputSchema: { type: 'object', properties: { product: { type: 'string' }, name: { type: 'string' }, requiredText: { type: 'string' } }, required: ['product', 'name', 'requiredText'] },
     handler: createEvalCaseFromFeedback
   },
 
-  'sangfor.create_finetune_dataset': {
-    description: 'Create JSONL fine-tuning dataset from reviewed Sangfor examples. Blocks secrets during validation step.',
+  'sangfor_create_finetune_dataset': {
+    description: 'Create JSONL fine-tuning dataset from reviewed Sangfor examples. Blocks secrets during validation step. Local-only dataset write; requires explicit examples and blocks secrets during validation.',
     inputSchema: { type: 'object', properties: { product: { type: 'string' }, taskType: { type: 'string' }, examples: { type: 'array' }, outputPath: { type: 'string' } }, required: ['product', 'taskType', 'examples'] },
     handler: createFineTuneDataset
   },
-  'sangfor.validate_finetune_dataset': {
+  'sangfor_validate_finetune_dataset': {
     description: 'Validate JSONL fine-tuning dataset for structure and obvious sensitive data.',
     inputSchema: { type: 'object', properties: { path: { type: 'string' } }, required: ['path'] },
     handler: ({ path }) => validateFineTuneDataset(path)
   },
-  'sangfor.create_finetune_job_spec': {
-    description: 'Create a reviewed fine-tuning job manifest. Does not submit automatically.',
+  'sangfor_create_finetune_job_spec': {
+    description: 'Create a reviewed fine-tuning job manifest. Does not submit automatically. Local-only manifest write; does not submit — running a job requires explicit external action.',
     inputSchema: { type: 'object', properties: { provider: { type: 'string' }, baseModel: { type: 'string' }, datasetPath: { type: 'string' }, validationDatasetPath: { type: 'string' }, product: { type: 'string' }, taskType: { type: 'string' } }, required: ['datasetPath', 'product', 'taskType'] },
     handler: createFineTuneJobSpec
   },
-  'sangfor.run_planner_eval': {
+  'sangfor_run_planner_eval': {
     description: 'Run built-in planner evals against a generated config plan.',
     inputSchema: { type: 'object', properties: { planId: { type: 'string' }, plan: { type: 'object' } } },
     handler: ({ planId, plan }) => runPlannerEval(plan ?? plans.get(planId))
   },
-  'sangfor.evaluate_config': {
+  'sangfor_evaluate_config': {
     description: 'Advisory (read-only) config check: compare an observed product config against an IntendedSpec (from manuals) and split findings into misconfiguration / missing / indeterminate / ok. Never mutates a device. INDETERMINATE never counts as pass; MUST items without a source citation stay indeterminate. Returns the evaluation and a Korean advisory report; pass docxPath to also write a .docx.',
     inputSchema: { type: 'object', properties: { product: { type: 'string' }, version: { type: 'string' }, observed: { type: 'object', description: 'observed config key→value map (from screenshot/backup/human)' }, spec: { type: 'object', description: 'optional inline IntendedSpec; if omitted, loaded by product+version' }, docxPath: { type: 'string', description: 'optional path to also write the report as a .docx' } }, required: ['observed'] },
     handler: (args: { product?: string; version?: string; observed: Record<string, unknown>; spec?: IntendedSpec; docxPath?: string }) => {
@@ -584,12 +901,18 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
       return { result, report, ...(docx ? { docx } : {}) };
     }
   },
-  'sangfor.list_spec_coverage': {
-    description: 'List which product/version IntendedSpecs exist (advisory coverage) so callers know what config checks are available.',
-    inputSchema: { type: 'object', properties: {} },
-    handler: () => ({ coverage: listSpecCoverage() })
+  'sangfor_list_spec_coverage': {
+    description: 'List which product/version IntendedSpecs exist (advisory coverage) so callers know what config checks are available. Optional cursor/limit page the list; omit both for the full list (default, backward-compatible).',
+    inputSchema: { type: 'object', properties: { cursor: { type: 'string' }, limit: { type: 'integer', minimum: 1, maximum: 100 } } },
+    handler: (args: { cursor?: string; limit?: number }) => {
+      // listSpecCoverage() has no inherent order (directory listing) — sort by
+      // product+version first so the same cursor always resumes at the same row.
+      const sorted = [...listSpecCoverage()].sort((a, b) =>
+        a.product === b.product ? a.version.localeCompare(b.version) : a.product.localeCompare(b.product));
+      return paginateOptionalField(sorted, args, (c) => `${c.product}::${c.version}`, 'coverage');
+    }
   },
-  'sangfor.advisor_fortios': {
+  'sangfor_advisor_fortios': {
     description: 'Read-only self-assessment advisor for FortiOS firewalls (policies, interfaces, routing). HTTP GET only against the REST API; never mutates the device.',
     inputSchema: {
       type: 'object',
@@ -618,7 +941,7 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
       }
     }
   },
-  'sangfor.advisor_fortios_advanced': {
+  'sangfor_advisor_fortios_advanced': {
     description: 'Advanced read-only FortiOS advisor: system health (CPU/memory/disk usage, ASIC/NPU load, HA mode and primary-unit status) plus policy audit (syntax validity, duplicate policies, IPS signature version). HTTP GET only across 5 endpoints; never mutates the device.',
     inputSchema: {
       type: 'object',
@@ -656,7 +979,7 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
       }
     }
   },
-  'sangfor.advisor_cisco_iosxe': {
+  'sangfor_advisor_cisco_iosxe': {
     description: 'Read-only self-assessment advisor for Cisco IOS-XE routers/switches (interfaces, routing, ACLs). RESTCONF GET only; never mutates the device.',
     inputSchema: {
       type: 'object',
@@ -685,7 +1008,7 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
       }
     }
   },
-  'sangfor.advisor_cisco_iosxe_advanced': {
+  'sangfor_advisor_cisco_iosxe_advanced': {
     description: 'Advanced read-only Cisco IOS-XE advisor: system health (per-core CPU average, memory usage, interface down count, VRF count) plus policy audit (zone-pair policy count, ACL rule count, SNORT signature version/inspection status). RESTCONF GET only across 7 endpoints; never mutates the device.',
     inputSchema: {
       type: 'object',
@@ -725,7 +1048,7 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
       }
     }
   },
-  'sangfor.collect_device_config': {
+  'sangfor_collect_device_config': {
     description: 'Advisory: map a captured device XHR pool file (from scripts/device-collect.ts) into a provenance-carrying ConfigState, evaluate it against the IntendedSpec, and render the Korean advisory report. Read-only; live capture is NOT performed here (VPN + interactive session required — see docs/DEVICE_DIAGNOSIS_RUNBOOK.md).',
     inputSchema: { type: 'object', properties: { product: { type: 'string' }, version: { type: 'string' }, poolPath: { type: 'string' }, docxPath: { type: 'string' }, live: { type: 'boolean' } }, required: ['product', 'version', 'poolPath'] },
     handler: (args: { product: string; version: string; poolPath: string; docxPath?: string; live?: boolean }) => {
@@ -744,17 +1067,17 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
       return { mapped: { endpointsCaptured: mapped.endpointsCaptured, mappedKeys: mapped.mappedKeys }, result, report, ...(docx ? { docx } : {}) };
     }
   },
-  'sangfor.capability_safety': {
+  'sangfor_capability_safety': {
     description: 'Report capability safety_class and maturity from physically separated safety/competency files. Default is human_only; autoAllowed is true only for explicit auto_allowed entries, and fieldVerifiedAutoAllowed additionally requires maturity=field_verified.',
     inputSchema: { type: 'object', properties: { product: { type: 'string' }, capabilityId: { type: 'string' } } },
     handler: (args: { product?: string; capabilityId?: string }) => args.product && args.capabilityId
       ? getCapabilitySafety(args.product, args.capabilityId)
       : { capabilities: listCapabilitySafety() }
   },
-  'sangfor.field_engineer_coverage': {
-    description: 'Honest "field-engineer replacement rate" from the WorkAtom taxonomy: counts ONLY automatable AND field_verified atoms. Human-only atoms never count. Returns per-phase and per-product breakdown.',
-    inputSchema: { type: 'object', properties: {} },
-    handler: () => {
+  'sangfor_field_engineer_coverage': {
+    description: 'Honest "field-engineer replacement rate" from the WorkAtom taxonomy: counts ONLY automatable AND field_verified atoms. Human-only atoms never count. Returns per-phase and per-product breakdown. Optional cursor/limit page the atoms list; omit both for the full list (default, backward-compatible).',
+    inputSchema: { type: 'object', properties: { cursor: { type: 'string' }, limit: { type: 'integer', minimum: 1, maximum: 100 } } },
+    handler: (args: { cursor?: string; limit?: number }) => {
       // Verify coverage against reality: coveredBy must name a registered tool and
       // evidence must resolve to a real artifact on disk (no over-claiming the rate).
       const knownTools = new Set(Object.keys(tools));
@@ -762,48 +1085,59 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
       // which would disagree with the loader anchor and zero the rate off-cwd).
       const evidenceRoot = resolveRepoData('.', 'SANGFOR_OUTPUT_ROOT');
       const maturityPolicy = loadMaturityPolicy().entries.map(({ product, capabilityId, maturity }) => ({ product, capabilityId, maturity }));
-      return { coverage: computeReplacementCoverage(loadWorkAtoms(), { knownTools, evidenceRoot, maturityPolicy }), atoms: loadWorkAtoms() };
+      const atoms = loadWorkAtoms();
+      // coverage is computed over ALL atoms regardless of pagination — only the
+      // returned `atoms` listing is windowed. Sort by id so a cursor always
+      // resumes at the same row (loader order is directory order, not stable).
+      const sortedAtoms = [...atoms].sort((a, b) => a.id.localeCompare(b.id));
+      const coverage = computeReplacementCoverage(atoms, { knownTools, evidenceRoot, maturityPolicy });
+      return { coverage, ...paginateOptionalField(sortedAtoms, args, (a) => a.id, 'atoms') };
     }
   },
-  'sangfor.suggest_rca': {
+  'sangfor_suggest_rca': {
     description: 'Suggest ranked root-cause candidates + concrete check steps for a symptom (read-only advisory). Grounded in product manuals; returns empty (no fabrication) for unrelated symptoms.',
     inputSchema: { type: 'object', properties: { symptom: { type: 'string' }, product: { type: 'string' } }, required: ['symptom'] },
     handler: (args: { symptom: string; product?: string }) => suggestRca(args.symptom, args.product)
   },
-  'sangfor.recommend_sizing': {
+  'sangfor_recommend_sizing': {
     description: 'Advisory sizing tier (small/medium/large/xlarge) from the primary scale driver (IAG=users, EPP=endpoints, HCI=vmCount, CC=eps, NGFW=Mbps). Never invents an exact model/BOM — defers to official Sizing Guide + SE validation.',
     inputSchema: { type: 'object', properties: { product: { type: 'string' }, concurrentUsers: { type: 'number' }, endpoints: { type: 'number' }, vmCount: { type: 'number' }, eventsPerSecond: { type: 'number' }, throughputMbps: { type: 'number' } }, required: ['product'] },
     handler: (args: { product: string } & SizingInput) => recommendSizing(args.product, args)
   },
-  'sangfor.pm_create_engagement': {
-    description: 'PM: create an engagement (customer project).',
+  'sangfor_pm_create_engagement': {
+    description: 'PM: create an engagement (customer project). Local PM-ledger write; requires explicit user intent (customer and product), recorded as a hash-chained audit event.',
     inputSchema: { type: 'object', properties: { customer: { type: 'string' }, product: { type: 'string' } }, required: ['customer', 'product'] },
     handler: (args: { customer: string; product: string }) => pmStore.createEngagement(args)
   },
-  'sangfor.pm_add_work_item': {
-    description: 'PM: add a work item to an engagement.',
+  'sangfor_pm_add_work_item': {
+    description: 'PM: add a work item to an engagement. Local PM-ledger write; requires explicit engagementId, recorded as a hash-chained audit event.',
     inputSchema: { type: 'object', properties: { engagementId: { type: 'string' }, title: { type: 'string' }, deviceId: { type: 'string' }, assignee: { type: 'string' } }, required: ['engagementId', 'title'] },
     handler: (args: { engagementId: string; title: string; deviceId?: string; assignee?: string }) => pmStore.addWorkItem(args.engagementId, args)
   },
-  'sangfor.pm_status': {
+  'sangfor_pm_status': {
     description: 'PM: status rollup for an engagement + current device occupancy (who holds which device).',
     inputSchema: { type: 'object', properties: { engagementId: { type: 'string' } }, required: ['engagementId'] },
     handler: (args: { engagementId: string }) => ({ rollup: pmStore.statusRollup(args.engagementId), deviceOccupancy: pmStore.deviceOccupancy(), chainOk: pmStore.verifyEventChain(args.engagementId) })
   },
-  'sangfor.pm_events': {
-    description: 'PM (read-only): the tamper-evident event timeline for an engagement + chain integrity status. Unknown engagement errors (no fake empty timeline).',
-    inputSchema: { type: 'object', properties: { engagementId: { type: 'string' } }, required: ['engagementId'] },
-    handler: (args: { engagementId: string }) => {
+  'sangfor_pm_events': {
+    description: 'PM (read-only): the tamper-evident event timeline for an engagement + chain integrity status. Unknown engagement errors (no fake empty timeline). Optional cursor/limit page the event timeline; omit both for the full timeline (default, backward-compatible).',
+    inputSchema: { type: 'object', properties: { engagementId: { type: 'string' }, cursor: { type: 'string' }, limit: { type: 'integer', minimum: 1, maximum: 100 } }, required: ['engagementId'] },
+    handler: (args: { engagementId: string; cursor?: string; limit?: number }) => {
       if (!pmStore.getEngagement(args.engagementId)) throw new Error(`Engagement not found: ${args.engagementId}`);
-      return { events: pmStore.getEvents(args.engagementId), chainOk: pmStore.verifyEventChain(args.engagementId) };
+      // chainOk verifies the FULL chain regardless of pagination — only the
+      // returned `events` listing is windowed.
+      return {
+        ...paginateOptionalField(pmStore.getEvents(args.engagementId), args, (e) => e.id, 'events'),
+        chainOk: pmStore.verifyEventChain(args.engagementId),
+      };
     }
   },
-  'sangfor.pm_report': {
+  'sangfor_pm_report': {
     description: 'PM (read-only): a citable Korean progress report derived ONLY from recorded events (rollup %, work items, event timeline, audit-chain-broken banner if tampered). No unrecorded-progress guessing.',
     inputSchema: { type: 'object', properties: { engagementId: { type: 'string' } }, required: ['engagementId'] },
     handler: (args: { engagementId: string }) => ({ report: pmStore.renderStatusReport(args.engagementId) })
   },
-  'sangfor.integration_guide': {
+  'sangfor_integration_guide': {
     description: 'Standard integration guide (AD/LDAP, RADIUS, SIEM/syslog): cited prerequisites → steps → validation → pitfalls for the human to follow. Unknown integration type returns an error (no fabrication). No type → list supported types.',
     inputSchema: { type: 'object', properties: { type: { type: 'string', description: 'LDAP/AD, RADIUS, or SIEM/syslog' }, product: { type: 'string' } } },
     handler: (args: { type?: string; product?: string }) => {
@@ -812,7 +1146,7 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
       return g ?? { error: `Unknown integration type "${args.type}". Supported: ${listIntegrationTypes().join(', ')}` };
     }
   },
-  'sangfor.check_version': {
+  'sangfor_check_version': {
     description: 'Upgrade advisory: check a device version against the collected Version Requirements (min/recommended) and return meetsMin/atRecommended + cited advice. Returns null-style error for unknown devices (no fabricated compatibility claim). No args → list known requirements.',
     inputSchema: { type: 'object', properties: { device: { type: 'string' }, currentVersion: { type: 'string' } } },
     handler: (args: { device?: string; currentVersion?: string }) => {
@@ -821,17 +1155,17 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
       return r ?? { error: `No version requirement on file for device "${args.device}". Known: ${loadVersionRequirements().map((x) => x.device).join(', ')}` };
     }
   },
-  'sangfor.pm_acquire_device': {
+  'sangfor_pm_acquire_device': {
     description: 'PM safety: acquire an exclusive device lock for an engagement before any device work. Blocks if another engagement holds it (prevents cross-engagement changes on a shared lab device).',
     inputSchema: { type: 'object', properties: { deviceId: { type: 'string' }, engagementId: { type: 'string' }, holder: { type: 'string' } }, required: ['deviceId', 'engagementId', 'holder'] },
     handler: (args: { deviceId: string; engagementId: string; holder: string }) => pmStore.acquireDevice(args.deviceId, args.engagementId, args.holder)
   },
-  'sangfor.pm_release_device': {
+  'sangfor_pm_release_device': {
     description: 'PM safety: release a device lock held by an engagement (records a device_released audit event). Returns false if the engagement does not hold the lock.',
     inputSchema: { type: 'object', properties: { deviceId: { type: 'string' }, engagementId: { type: 'string' } }, required: ['deviceId', 'engagementId'] },
     handler: (args: { deviceId: string; engagementId: string }) => ({ released: pmStore.releaseDevice(args.deviceId, args.engagementId) })
   },
-  'sangfor.list_learning_strategies': {
+  'sangfor_list_learning_strategies': {
     description: 'List local learning strategy revisions with exact filters and cursor pagination.',
     inputSchema: { type: 'object', additionalProperties: false, properties: {
       strategyId: { type: 'string' }, vendor: { type: 'string', enum: ['SANGFOR', 'FORTINET', 'CISCO'] },
@@ -841,7 +1175,7 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
     } },
     handler: (args: unknown) => learningService.list(learningArgs(args, ['strategyId', 'vendor', 'product', 'firmwareVersion', 'status', 'cursor', 'limit'])),
   },
-  'sangfor.resolve_learning_strategy': {
+  'sangfor_resolve_learning_strategy': {
     description: 'Resolve one exact eligible learning strategy; returns honest miss, canary, drift, or ambiguity reasons.',
     inputSchema: { type: 'object', additionalProperties: false, required: ['scope', 'context'], properties: {
       scope: { type: 'object', additionalProperties: false, required: ['product', 'firmwareVersion'], properties: { product: { type: 'string' }, firmwareVersion: { type: 'string' }, capability: { type: 'string' }, fact: { type: 'string' } } },
@@ -849,12 +1183,12 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
     } },
     handler: (args: unknown) => { const input = learningArgs(args, ['scope', 'context']); return learningService.resolve(input.scope, input.context); },
   },
-  'sangfor.attach_observation_session': {
+  'sangfor_attach_observation_session': {
     description: 'WRITE: attach to one exact loopback CDP page owned by the observer profile registry.',
     inputSchema: { type: 'object', additionalProperties: false, required: ['product', 'expectedOrigin', 'cdpPort', 'firmwareTruthId'], properties: { product: { type: 'string' }, expectedOrigin: { type: 'string' }, cdpPort: { type: 'integer', minimum: 1, maximum: 65535 }, firmwareTruthId: { type: 'string' } } },
     handler: (args: unknown) => observerManager().attach(learningArgs(args, ['product', 'expectedOrigin', 'cdpPort', 'firmwareTruthId']) as any),
   },
-  'sangfor.manage_learning_capture': {
+  'sangfor_manage_learning_capture': {
     description: 'WRITE: start or stop a passive observation capture; stop promotes one encrypted capture-bundle.v1.',
     inputSchema: { type: 'object', additionalProperties: false, required: ['action'], properties: { action: { type: 'string', enum: ['start', 'stop'] }, sessionHandle: { type: 'string' }, captureId: { type: 'string' }, durationMs: { type: 'integer', minimum: 0, maximum: 30000 }, firmwareVersion: { type: 'string' } } },
     handler: async (args: unknown) => {
@@ -873,7 +1207,7 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
       return { captureId: input.captureId, status: 'stopped', bundle: summary };
     },
   },
-  'sangfor.collect_facts': {
+  'sangfor_collect_facts': {
     description: 'WRITE: collect requested facts through an exact learning strategy and return complete/partial/conflict/unavailable observations.',
     inputSchema: { type: 'object', additionalProperties: false, required: ['scope', 'context', 'factIds'], properties: {
       scope: { type: 'object', additionalProperties: false, required: ['product', 'firmwareVersion'], properties: { product: { type: 'string' }, firmwareVersion: { type: 'string' }, capability: { type: 'string' }, fact: { type: 'string' } } },
@@ -883,7 +1217,7 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
     } },
     handler: (args: unknown) => learningService.collectFacts(learningArgs(args, ['scope', 'context', 'factIds', 'allowCanary', 'methodResults']) as any),
   },
-  'sangfor.research_learning_strategy': {
+  'sangfor_research_learning_strategy': {
     description: 'WRITE: create an immutable draft from supplied official citation and optional capture evidence.',
     inputSchema: { type: 'object', additionalProperties: false, required: ['strategyId', 'vendor', 'scope', 'registryDigest', 'versionTruthRecord', 'officialCitation', 'pageVerified'], properties: {
       strategyId: { type: 'string' }, vendor: { type: 'string', enum: ['SANGFOR', 'FORTINET', 'CISCO'] },
@@ -892,12 +1226,12 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
     } },
     handler: (args: unknown) => learningService.research(learningArgs(args, ['strategyId', 'vendor', 'scope', 'registryDigest', 'versionTruthRecord', 'productVariant', 'officialCitation', 'pageVerified', 'captureEvidenceFile', 'methods']) as any),
   },
-  'sangfor.validate_learning_strategy': {
+  'sangfor_validate_learning_strategy': {
     description: 'WRITE: validate exact revision evidence and report eligible next states without promotion.',
     inputSchema: { type: 'object', additionalProperties: false, required: ['strategyId', 'revisionId'], properties: { strategyId: { type: 'string' }, revisionId: { type: 'string' }, evidenceFile: { type: 'string' }, evidenceDigest: { type: 'string', pattern: '^[a-f0-9]{64}$' } } },
     handler: (args: unknown) => learningService.validate(learningArgs(args, ['strategyId', 'revisionId', 'evidenceFile', 'evidenceDigest']) as any),
   },
-  'sangfor.promote_learning_strategy': {
+  'sangfor_promote_learning_strategy': {
     description: 'WRITE: promote an immutable revision through a signed, action-bound, single-use lifecycle approval.',
     inputSchema: { type: 'object', additionalProperties: false, required: ['strategyId', 'revisionId', 'toState', 'approvalPayload', 'approvalToken', 'evidenceRoot'], properties: {
       strategyId: { type: 'string' }, revisionId: { type: 'string' }, toState: { type: 'string', enum: ['researched', 'lab_verified', 'device_verified', 'strategy_field_verified', 'stale', 'deprecated'] }, evidenceFile: { type: 'string' }, evidenceDigest: { type: 'string' }, approvalToken: { type: 'string', pattern: '^[a-f0-9]{64}$' }, evidenceRoot: { type: 'string' },
@@ -909,31 +1243,31 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
   // ── 플레이북 (Control Tower :3700 프록시) ─────────────────────────────────
   // 리비전 승인/반려는 의도적으로 노출하지 않는다 — 승인은 타워 UI의 사람 행위다.
   // 실행 중 write 블록은 여전히 타워 승인 큐에서 멈춘다(도구가 승인을 대신하지 않는다).
-  'sangfor.playbook_list': {
+  'sangfor_playbook_list': {
     description: 'Read-only: list Control Tower playbooks with their active revision and last run status.',
     inputSchema: { type: 'object', properties: {} },
     handler: () => new TowerClient().request('GET', '/api/playbooks')
   },
-  'sangfor.playbook_get': {
+  'sangfor_playbook_get': {
     description: 'Read-only: get one playbook with all revisions and blocks.',
     inputSchema: { type: 'object', properties: { playbookId: { type: 'string' } }, required: ['playbookId'] },
     handler: ({ playbookId }: { playbookId: string }) =>
       new TowerClient().request('GET', `/api/playbooks/${encodeURIComponent(playbookId)}`)
   },
-  'sangfor.playbook_run_status': {
+  'sangfor_playbook_run_status': {
     description: 'Read-only: get a playbook run — derived status, per-block run ids and submitted analyses.',
     inputSchema: { type: 'object', properties: { playbookRunId: { type: 'string' } }, required: ['playbookRunId'] },
     handler: ({ playbookRunId }: { playbookRunId: string }) =>
       new TowerClient().request('GET', `/api/playbook-runs/${encodeURIComponent(playbookRunId)}`)
   },
-  'sangfor.playbook_agent_tasks': {
+  'sangfor_playbook_agent_tasks': {
     description: 'Read-only: list the Control Tower agent task queue (assemble/revise/analyze requests raised from the UI). Poll this to pick up work.',
     inputSchema: { type: 'object', properties: { status: { type: 'string', enum: ['open', 'done', 'cancelled'], default: 'open' } } },
     handler: ({ status }: { status?: string }) =>
       new TowerClient().request('GET', `/api/agent-tasks?status=${encodeURIComponent(status ?? 'open')}`)
   },
-  'sangfor.playbook_create': {
-    description: 'Write (tower-local): create a playbook as revision 1 in draft. Blocks are tool blocks (toolId/args/deviceId) plus at most one report block; args may use {{blocks.<id>.result.<path>}} templates. A human must approve the revision in the tower UI before it can run.',
+  'sangfor_playbook_create': {
+    description: 'Write (tower-local): create a playbook as revision 1 in draft. Blocks are tool blocks (toolId/args/deviceId) plus at most one report block; args may use {{blocks.<id>.result.<path>}} templates. A human must approve the revision in the tower UI before it can run. Running it requires explicit human approval in the tower UI.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -947,8 +1281,8 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
       name: args.name, goal: args.goal, authoredBy: args.authoredBy, note: args.note, blocks: args.blocks,
     })
   },
-  'sangfor.playbook_add_revision': {
-    description: 'Write (tower-local): append a new draft revision to an existing playbook (the revise loop). Needs human approval before it becomes the active revision.',
+  'sangfor_playbook_add_revision': {
+    description: 'Write (tower-local): append a new draft revision to an existing playbook (the revise loop). Needs human approval before it becomes the active revision. Becoming active requires explicit human approval in the tower UI.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -962,14 +1296,14 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
       { authoredBy: args.authoredBy, note: args.note, blocks: args.blocks },
     )
   },
-  'sangfor.playbook_execute': {
+  'sangfor_playbook_execute': {
     description: 'Write: run the approved revision of a playbook block by block. Read-only blocks run immediately; the first write/destructive block stops the run as pending_approval in the tower queue (no device mutation without a separate human approval).',
     inputSchema: { type: 'object', properties: { playbookId: { type: 'string' } }, required: ['playbookId'] },
     handler: ({ playbookId }: { playbookId: string }) => new TowerClient().request(
       'POST', `/api/playbooks/${encodeURIComponent(playbookId)}/execute`, {}, 180_000,
     )
   },
-  'sangfor.playbook_submit_analysis': {
+  'sangfor_playbook_submit_analysis': {
     description: 'Write (tower-local): submit an append-only AI analysis for a playbook run — observations with evidence run ids plus follow-up proposals. The human accepts or dismisses each item in the UI.',
     inputSchema: {
       type: 'object',
@@ -989,7 +1323,7 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
       },
     )
   },
-  'sangfor.playbook_close_agent_task': {
+  'sangfor_playbook_close_agent_task': {
     description: 'Write (tower-local): close an agent task as done, recording what was produced (playbookId/rev/analysisId/note).',
     inputSchema: {
       type: 'object',
@@ -1003,45 +1337,154 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
       'PATCH', `/api/agent-tasks/${encodeURIComponent(String(args.taskId))}`,
       { result: args.result ?? {} },
     )
+  },
+  'sangfor_agent_manifest': {
+    description: 'Agent self-onboarding manifest: recommended first calls, standard tool groups, tool exposure profile, and the read-only-by-default safety posture. Call this first to discover the server. Read-only; never mutates.',
+    inputSchema: { type: 'object', properties: {} },
+    handler: () => ({
+      server: 'sangfor-engineer-mcp',
+      posture: 'read-only by default; device/external writes require explicit signed approval + SANGFOR_ALLOW_REAL_EXECUTION',
+      recommended_first_calls: [
+        'sangfor_products',
+        'sangfor_capabilities',
+        'sangfor_list_spec_coverage',
+        'sangfor_search_manuals',
+        'sangfor_analyze_project',
+      ],
+      standard_tools: [
+        'sangfor_evaluate_config', 'sangfor_suggest_rca', 'sangfor_recommend_sizing', 'sangfor_check_version',
+        'sangfor_analyze_project', 'sangfor_generate_config_plan', 'sangfor_generate_evidence_report',
+        'sangfor_search_manuals', 'sangfor_search_wiki', 'sangfor_rag_search',
+        'sangfor_advisor_fortios', 'sangfor_advisor_cisco_iosxe',
+        'sangfor_hci_inventory', 'sangfor_hci_health_report',
+        'sangfor_playbook_list', 'sangfor_pm_status',
+      ],
+      mutation_gating: 'Tools that change devices/external systems are gated: they require explicit user intent, a signed action-bound single-use approval, and SANGFOR_ALLOW_REAL_EXECUTION (production also SANGFOR_ALLOW_PRODUCTION_EXECUTION). Dry-run is the default.',
+      activeProfile: activeToolProfile(),
+      toolCountByProfile: Object.fromEntries(TOOL_PROFILES.map((p) => [p, listToolsForProfile(p).length])),
+      profileDescriptions: PROFILE_DESCRIPTIONS,
+      quickstart: {
+        // Not published to a public registry (package.json is private:true) —
+        // "npx sangfor-engineer-mcp" would not resolve. Real path: clone the
+        // repo, `pnpm install` once, then run the bin script directly.
+        stdio: 'node bin/sangfor-engineer-mcp.mjs (after: pnpm install, from a local clone)',
+        setProfileExample: 'SANGFOR_TOOL_PROFILE=advisor node bin/sangfor-engineer-mcp.mjs',
+      },
+    })
+  },
+  'sangfor_session_report': {
+    description: 'One-click session/change-run work report: overview, step timeline, read-back/verification results, hash-chain integrity (via AuditLedger.verify), and related evidence files, built from the data/evidence change-run ledger. Omit runId to list available change-run ids (read-only). Pass save:true to also write the Markdown report under data/evidence/reports/<runId>.md.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        runId: { type: 'string', description: 'Change-run id (ledger file basename under data/evidence/change-runs/). Omit to list available ids.' },
+        format: { type: 'string', enum: ['markdown', 'json'], description: 'Default markdown.' },
+        save: { type: 'boolean', description: 'Also write the Markdown report to data/evidence/reports/<runId>.md. Default false.' },
+      },
+    },
+    handler: (args: { runId?: string; format?: 'markdown' | 'json'; save?: boolean }) => {
+      if (!args.runId) return { availableRunIds: listChangeRunIds() };
+      if (!isSafeRunId(args.runId)) return { error: `INVALID_RUN_ID: "${args.runId}" is not a safe path segment.` };
+      const { markdown, json } = buildChangeRunReport({ runId: args.runId });
+      const format = args.format ?? 'markdown';
+      const report = format === 'json' ? json : markdown;
+      if (!args.save) return { format, report };
+      const savedPath = join(resolveEngagementScopedData('data/evidence', 'SANGFOR_EVIDENCE_ROOT'), 'reports', `${args.runId}.md`);
+      writeFileAtomicSync(savedPath, markdown);
+      return { format, report, savedPath };
+    },
+  },
+  'sangfor_search_gaps': {
+    description: 'Read-only: list recorded search gaps — sangfor_rag_search calls that returned 0 hits or a top score below SANGFOR_RAG_WEAK_THRESHOLD (default 0.15). Feeds what to ingest/author next. Optional cursor/limit page the list; omit both for the full list (default, backward-compatible). Disable capture entirely with SANGFOR_SEARCH_GAP_CAPTURE=0.',
+    inputSchema: { type: 'object', properties: { cursor: { type: 'string' }, limit: { type: 'integer', minimum: 1, maximum: 100 } } },
+    handler: (args: { cursor?: string; limit?: number }) => paginateOptionalField(readSearchGaps(), args, (g) => g.id, 'gaps'),
+  },
+  'sangfor_safety_selftest': {
+    description: 'Read-only self-test: proves the fail-closed safety gates actually refuse an unapproved action — the operator real-execution gate (verified in a clean-env child process, no device/network contact), the http-bridge destructive-tool guard, a forged HMAC approval-signature rejection, and single-use nonce replay rejection. allPass means every EXECUTED check passed; a check only falls back to outcome:"skipped" (never counted toward allPass) if its subprocess could not be run at all (spawn failure/timeout) — skippedCount reports how many that applies to.',
+    inputSchema: { type: 'object', properties: {} },
+    handler: () => runSafetySelftest(),
+  },
+  'sangfor_capabilities': {
+    description: 'Discovery: server capabilities — tool categories and counts, supported vendors/products, execution posture, and which write paths are gated. Read-only; never mutates.',
+    inputSchema: { type: 'object', properties: {} },
+    handler: () => {
+      const all = listTools();
+      const byCategory: Record<string, number> = {};
+      for (const t of all) byCategory[t.category] = (byCategory[t.category] ?? 0) + 1;
+      return {
+        server: 'sangfor-engineer-mcp',
+        toolCount: all.length,
+        categories: byCategory,
+        vendors: ['SANGFOR', 'FORTIOS', 'CISCO_IOSXE'],
+        priorityProducts: PRODUCTS,
+        executionPosture: {
+          default: 'dry-run / read-only',
+          liveWriteRequires: ['SANGFOR_ALLOW_REAL_EXECUTION', 'signed action-bound single-use approval'],
+          productionAlsoRequires: ['SANGFOR_ALLOW_PRODUCTION_EXECUTION'],
+          indeterminateIsNeverPass: true,
+        },
+        discoveryTools: ['sangfor_agent_manifest', 'sangfor_capabilities'],
+      };
+    }
+  },
+  'sangfor_engagement_scope': {
+    description: 'Read-only: whether a customer-engagement data scope is active (SANGFOR_ENGAGEMENT_ID) and which data roots it isolates — the run ledger, search-gap feedback file, and saved session reports. Inactive (the default) means every deployment shares the same unscoped repo data roots. An invalid SANGFOR_ENGAGEMENT_ID throws rather than silently falling back.',
+    inputSchema: { type: 'object', properties: {} },
+    handler: () => {
+      const engagementId = activeEngagementId();
+      const repoRoot = resolveRepoData('.');
+      const toRel = (abs: string) => relative(repoRoot, abs) || '.';
+      const runsRoot = resolveEngagementScopedData('data/runs', 'SANGFOR_RUNS_ROOT');
+      const reportsRoot = join(resolveEngagementScopedData('data/evidence', 'SANGFOR_EVIDENCE_ROOT'), 'reports');
+      return {
+        active: engagementId !== undefined,
+        engagementId,
+        scopedRoots: [
+          { name: 'runs', path: toRel(runsRoot) },
+          { name: 'search-gaps-feedback', path: toRel(feedbackRoot()) },
+          { name: 'session-reports', path: toRel(reportsRoot) },
+        ],
+      };
+    },
   }
 };
 
 // Tools that change customer devices or external systems — clients MUST gate these.
 // Adding a new mutator without listing it here is caught by tests/mcp-tool-annotations.
 const DESTRUCTIVE_TOOLS = new Set([
-  'sangfor.apply_approved_product_change',
-  'sangfor.execute_console_action',
-  'sangfor.execute_console_action_live',
-  'sangfor.apply_wiki_update',
-  'sangfor.apply_github_wiki_update',
-  'sangfor.apply_obsidian_wiki_update',
-  'sangfor.hci_delete_volume',
+  'sangfor_apply_approved_product_change',
+  'sangfor_execute_console_action',
+  'sangfor_execute_console_action_live',
+  'sangfor_apply_wiki_update',
+  'sangfor_apply_github_wiki_update',
+  'sangfor_apply_obsidian_wiki_update',
+  'sangfor_hci_delete_volume',
 ]);
 
 // Tools that write local server/session/dataset/artifact state (not customer devices).
 const WRITE_TOOLS = new Set([
-  'sangfor.pm_create_engagement', 'sangfor.pm_add_work_item', 'sangfor.pm_acquire_device', 'sangfor.pm_release_device',
-  'sangfor.create_eval_case_from_feedback', 'sangfor.create_finetune_dataset', 'sangfor.create_finetune_job_spec',
-  'sangfor.propose_wiki_update', 'sangfor.approve_wiki_update',
-  'sangfor.ingest_document', 'sangfor.learn_sources', 'sangfor.import_excel_requirement_list',
-  'sangfor.submit_feedback', 'sangfor.extract_lesson', 'sangfor.request_approval', 'sangfor.run_planner_eval',
-  'sangfor.capture_screenshots', 'sangfor.start_operator_session', 'sangfor.kill_session',
-  'sangfor.generate_all_guides', 'sangfor.generate_comprehensive_operations_guide_docx',
-  'sangfor.generate_comprehensive_setting_guide_docx', 'sangfor.generate_config_plan',
-  'sangfor.generate_evidence_report', 'sangfor.generate_excel_based_change_plan',
-  'sangfor.generate_operations_guide_docx', 'sangfor.generate_operations_guide_pptx',
-  'sangfor.generate_product_change_plan', 'sangfor.generate_setting_guide_docx', 'sangfor.generate_setting_guide_pptx',
-  'sangfor.hci_apply_create_volume',
-  'sangfor.attach_observation_session', 'sangfor.manage_learning_capture', 'sangfor.collect_facts',
-  'sangfor.research_learning_strategy', 'sangfor.validate_learning_strategy', 'sangfor.promote_learning_strategy',
+  'sangfor_pm_create_engagement', 'sangfor_pm_add_work_item', 'sangfor_pm_acquire_device', 'sangfor_pm_release_device',
+  'sangfor_create_eval_case_from_feedback', 'sangfor_create_finetune_dataset', 'sangfor_create_finetune_job_spec',
+  'sangfor_propose_wiki_update', 'sangfor_approve_wiki_update',
+  'sangfor_ingest_document', 'sangfor_learn_sources', 'sangfor_import_excel_requirement_list',
+  'sangfor_submit_feedback', 'sangfor_extract_lesson', 'sangfor_request_approval', 'sangfor_run_planner_eval',
+  'sangfor_capture_screenshots', 'sangfor_start_operator_session', 'sangfor_kill_session',
+  'sangfor_generate_all_guides', 'sangfor_generate_comprehensive_operations_guide_docx',
+  'sangfor_generate_comprehensive_setting_guide_docx', 'sangfor_generate_config_plan',
+  'sangfor_generate_evidence_report', 'sangfor_generate_excel_based_change_plan', 'sangfor_session_report',
+  'sangfor_generate_operations_guide_docx', 'sangfor_generate_operations_guide_pptx',
+  'sangfor_generate_product_change_plan', 'sangfor_generate_setting_guide_docx', 'sangfor_generate_setting_guide_pptx',
+  'sangfor_hci_apply_create_volume',
+  'sangfor_attach_observation_session', 'sangfor_manage_learning_capture', 'sangfor_collect_facts',
+  'sangfor_research_learning_strategy', 'sangfor_validate_learning_strategy', 'sangfor_promote_learning_strategy',
   // 플레이북: 타워 상태를 바꾼다. execute는 장비 write 블록에서 승인 대기로 멈추므로
   // 그 자체는 destructive가 아니다 (장비 변경은 별도 사람 승인을 거친다).
-  'sangfor.playbook_create', 'sangfor.playbook_add_revision', 'sangfor.playbook_execute',
-  'sangfor.playbook_submit_analysis', 'sangfor.playbook_close_agent_task',
+  'sangfor_playbook_create', 'sangfor_playbook_add_revision', 'sangfor_playbook_execute',
+  'sangfor_playbook_submit_analysis', 'sangfor_playbook_close_agent_task',
 ]);
 
 function categoryOf(name: string): string {
-  const n = name.replace(/^sangfor\./, '');
+  const n = name.replace(/^sangfor_/, '');
   if (DESTRUCTIVE_TOOLS.has(name)) return 'admin';
   if (n.startsWith('playbook_')) return 'playbook';
   if (n.startsWith('hci_')) return 'hci';
@@ -1078,21 +1521,237 @@ export function listTools() {
   }));
 }
 
-async function handle(req: JsonRpcRequest) {
+// ─── Tool exposure profiles (accessibility surface, not a safety gate) ────────
+// SANGFOR_TOOL_PROFILE narrows which tools a client sees/can call. It is derived
+// dynamically from the SAME readOnlyHint/destructiveHint annotations every tool
+// already carries (see annotationsFor above) — never a hardcoded per-tool list,
+// so a new tool is classified correctly the moment it gets annotations.
+// advisor ⊆ operator ⊆ full. Unset/unrecognized env values fall back to 'full':
+// every existing client (which never sets this var) keeps today's behavior.
+const TOOL_PROFILES = ['advisor', 'operator', 'full'] as const;
+type ToolProfile = (typeof TOOL_PROFILES)[number];
+
+export function activeToolProfile(): ToolProfile {
+  const raw = process.env.SANGFOR_TOOL_PROFILE;
+  // Unset/empty stays 'full' — every existing client that never sets this var
+  // keeps today's behavior. A non-empty but unrecognized value is a typo, not
+  // an intentional opt-out of restriction: fail CLOSED to the most-restrictive
+  // profile rather than silently granting full access.
+  if (raw === undefined || raw === '') return 'full';
+  if ((TOOL_PROFILES as readonly string[]).includes(raw)) return raw as ToolProfile;
+  process.stderr.write(`[mcp] unrecognized SANGFOR_TOOL_PROFILE '${raw}' — falling back to most-restrictive 'advisor'\n`);
+  return 'advisor';
+}
+
+// Conservative-by-construction: a tool whose hint is missing or not a strict
+// boolean is treated as NOT read-only and AS destructive, so any ambiguity
+// only ever pushes a tool toward a higher (more visible) profile — advisor
+// never gets a tool it shouldn't have. In practice every tool already carries
+// boolean hints (enforced by tests/mcp-tool-annotations.test.ts); this is a
+// belt-and-suspenders default, not a live code path today.
+function isToolVisibleInProfile(tool: { annotations?: { readOnlyHint?: unknown; destructiveHint?: unknown } }, profile: ToolProfile): boolean {
+  if (profile === 'full') return true;
+  const readOnly = tool.annotations?.readOnlyHint === true;
+  const destructive = tool.annotations?.destructiveHint !== false;
+  if (profile === 'advisor') return readOnly;
+  return readOnly || !destructive; // operator: advisor ∪ approval-gated writes, excluding destructive
+}
+
+export function listToolsForProfile(profile: ToolProfile = activeToolProfile()) {
+  const all = listTools();
+  return profile === 'full' ? all : all.filter((t) => isToolVisibleInProfile(t, profile));
+}
+
+const PROFILE_DESCRIPTIONS: Record<ToolProfile, string> = {
+  advisor: 'Read-only advisory tools only (search, evaluate, sizing, RCA, coverage) — never writes or mutates anything.',
+  operator: 'Advisor tools plus approval-gated local/plan writes (PM ledger, plans, drafts, playbook authoring) — excludes destructive device/external mutators.',
+  full: 'Every tool, including destructive device/external mutators gated by signed approval + SANGFOR_ALLOW_REAL_EXECUTION.',
+};
+
+// ─── MCP prompts: curated, workflow-shaped starting points ────────────────────
+// Each prompt only names tools that actually exist in `tools` above — verified
+// by tests/mcp-prompts.test.ts so a rename can't silently orphan a reference.
+type PromptDef = {
+  name: string;
+  description: string;
+  arguments?: Array<{ name: string; description?: string; required?: boolean }>;
+  render: (args: Record<string, string>) => string;
+};
+
+const PROMPTS: PromptDef[] = [
+  {
+    name: 'sangfor-health-check',
+    description: 'Advisory health-check workflow for a Sangfor/FortiOS/Cisco device: discover the server, run the right advisor tool, evaluate against spec, then collect evidence.',
+    arguments: [
+      { name: 'product', description: 'Target product/vendor, e.g. SANGFOR HCI_SCP, FORTIOS, CISCO_IOSXE', required: false },
+    ],
+    render: (args) => [
+      `Run a read-only health check${args.product ? ` for ${args.product}` : ''}. Follow this order:`,
+      '1. Call sangfor_agent_manifest (or sangfor_capabilities) to confirm which tools are available in the current profile.',
+      '2. Call the matching advisor tool: sangfor_advisor_fortios / sangfor_advisor_fortios_advanced for FortiOS, sangfor_advisor_cisco_iosxe / sangfor_advisor_cisco_iosxe_advanced for Cisco IOS-XE, or sangfor_hci_inventory / sangfor_hci_health_report for Sangfor HCI/SCP.',
+      '3. If you have an observed config instead of live device access, call sangfor_evaluate_config against the IntendedSpec (use sangfor_list_spec_coverage to see what specs exist).',
+      '4. Summarize findings and call sangfor_generate_evidence_report to produce a citable evidence record. Never claim a device was changed — every tool above is read-only.',
+    ].join('\n'),
+  },
+  {
+    name: 'sangfor-config-plan',
+    description: 'Turn customer requirements into a config plan with risk classification and a validation plan, without touching a device.',
+    arguments: [
+      { name: 'requirements', description: 'Free-text customer requirements to plan for', required: false },
+    ],
+    render: (args) => [
+      `Build a configuration plan${args.requirements ? ` for: ${args.requirements}` : ''}. Follow this order:`,
+      '1. Call sangfor_analyze_customer_requirements (or sangfor_analyze_project) to break requirements into product-specific tasks.',
+      '2. Call sangfor_generate_config_plan to produce the precheck/steps/rollback/validation plan.',
+      '3. Call sangfor_request_approval to classify the risk of the plan text before proposing any execution.',
+      '4. Call sangfor_validate_config_plan to confirm the plan has precheck, steps, rollback and validation before handing it to a human for approval. Do not call any apply_*/execute_* tool from this workflow — those require separate explicit human approval.',
+    ].join('\n'),
+  },
+  {
+    name: 'sangfor-troubleshoot',
+    description: 'Evidence-first troubleshooting workflow: gather grounded evidence before proposing root causes.',
+    arguments: [
+      { name: 'symptom', description: 'Observed symptom to investigate', required: false },
+    ],
+    render: (args) => [
+      `Troubleshoot${args.symptom ? `: ${args.symptom}` : ' the reported symptom'}. Follow this order:`,
+      '1. Call sangfor_rag_search to collect grounded evidence (manuals, KB, prior lessons) relevant to the symptom. Do not skip this — root causes must be grounded, not guessed.',
+      '2. From the retrieved evidence, form one or more hypotheses about the likely cause.',
+      '3. Call sangfor_suggest_rca with the symptom (and product, if known) to get ranked root-cause candidates and concrete check steps, and compare them against your hypotheses.',
+      '4. If you reach an evaluable observed config, call sangfor_evaluate_config to confirm/refute a hypothesis, then sangfor_generate_evidence_report to record findings.',
+    ].join('\n'),
+  },
+];
+
+const PROMPT_TOOL_NAME_PATTERN = /sangfor_[a-z0-9_]+/g;
+
+// Single source of truth for "which tools does this prompt tell the caller to
+// use": scan the rendered body for sangfor_* references. Args only interpolate
+// free text (product/requirements/symptom) — they never change which tool
+// names appear in the fixed step list, so an empty-args render is exact and
+// stable, and both the profile gate below and tests/mcp-prompts.test.ts read
+// from this one function instead of duplicating the regex.
+export function referencedToolNames(prompt: PromptDef): string[] {
+  const text = prompt.render({});
+  return Array.from(new Set(text.match(PROMPT_TOOL_NAME_PATTERN) ?? []));
+}
+
+// A prompt is only as available as every tool it walks the caller through.
+// If ANY referenced tool is hidden in the active profile, the whole prompt is
+// hidden too — a partially-runnable workflow is worse than an absent one.
+// Fail-closed on an unresolvable reference (should never happen; covered by
+// the tool-existence test) rather than assuming it's fine.
+function isPromptVisibleInProfile(prompt: PromptDef, profile: ToolProfile): boolean {
+  if (profile === 'full') return true;
+  const toolsByName = new Map(listTools().map((t) => [t.name, t]));
+  return referencedToolNames(prompt).every((toolName) => {
+    const tool = toolsByName.get(toolName);
+    return tool ? isToolVisibleInProfile(tool, profile) : false;
+  });
+}
+
+export function listPrompts(profile: ToolProfile = activeToolProfile()) {
+  return PROMPTS.filter((p) => isPromptVisibleInProfile(p, profile)).map(({ name, description, arguments: args }) => ({
+    name,
+    description,
+    ...(args ? { arguments: args } : {}),
+  }));
+}
+
+export function getPrompt(name: string, args?: Record<string, unknown>, profile: ToolProfile = activeToolProfile()) {
+  const prompt = PROMPTS.find((p) => p.name === name);
+  if (!prompt) throw new Error(`Unknown prompt: ${name}`);
+  if (!isPromptVisibleInProfile(prompt, profile)) {
+    throw new Error(`Prompt requires tools hidden in profile '${profile}'`);
+  }
+  const stringArgs: Record<string, string> = {};
+  for (const [k, v] of Object.entries(args ?? {})) if (typeof v === 'string') stringArgs[k] = v;
+  return { messages: [{ role: 'user', content: { type: 'text', text: prompt.render(stringArgs) } }] };
+}
+
+const SAFETY_POSTURE = {
+  default: 'dry-run / read-only',
+  liveWriteRequires: ['SANGFOR_ALLOW_REAL_EXECUTION', 'signed action-bound single-use approval'],
+  productionAlsoRequires: ['SANGFOR_ALLOW_PRODUCTION_EXECUTION'],
+  indeterminateIsNeverPass: true,
+  irreversibleActsStayHuman: true,
+};
+
+const RESOURCES: Array<{ uri: string; name: string; description: string; mimeType: string; build: () => unknown }> = [
+  { uri: 'sangfor://agent-manifest', name: 'Agent manifest', description: 'Recommended first calls and standard tool groups for agent self-onboarding.', mimeType: 'application/json', build: () => tools['sangfor_agent_manifest'].handler({}) },
+  { uri: 'sangfor://capabilities', name: 'Server capabilities', description: 'Tool categories, supported vendors/products, and execution posture.', mimeType: 'application/json', build: () => tools['sangfor_capabilities'].handler({}) },
+  { uri: 'sangfor://safety/posture', name: 'Safety posture', description: 'Read-only-by-default execution model and the gates a live write must clear.', mimeType: 'application/json', build: () => SAFETY_POSTURE },
+];
+
+export function listResources() {
+  return RESOURCES.map(({ uri, name, description, mimeType }) => ({ uri, name, description, mimeType }));
+}
+
+export function readResource(uri: string) {
+  const r = RESOURCES.find((x) => x.uri === uri);
+  if (!r) throw new Error(`Unknown resource: ${uri}`);
+  return { contents: [{ uri, mimeType: r.mimeType, text: JSON.stringify(r.build(), null, 2) }] };
+}
+
+const DEFAULT_RESULT_MAX_CHARS = 100_000;
+
+function resolveResultMaxChars(): number {
+  const raw = process.env.SANGFOR_MCP_RESULT_MAX_CHARS;
+  if (raw === undefined) return DEFAULT_RESULT_MAX_CHARS;
+  const parsed = Number.parseInt(raw, 10);
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : DEFAULT_RESULT_MAX_CHARS;
+}
+
+// Cap the tools/call payload: an unbounded chunk/log/atom dump can blow past
+// a client's context budget. Caps on serialized char length — UTF-16 code units,
+// not bytes, matching the SANGFOR_MCP_RESULT_MAX_CHARS name (independent of the
+// disk-side cap in packages/sangfor-runs/run-store.ts's capResultJson — this one
+// governs what actually crosses the MCP wire) and replaces BOTH content[0].text
+// and structuredContent with the same truncation marker so a client can't read
+// full detail from one field after the other was capped.
+function capMcpResult(toolName: string, result: unknown): { result: unknown; text: string } {
+  const text = JSON.stringify(result);
+  const maxChars = resolveResultMaxChars();
+  if (text.length <= maxChars) return { result, text };
+  const capped = { truncated: true, tool: toolName, originalChars: text.length, hint: 'narrow the query or use pagination/cursor inputs' };
+  return { result: capped, text: JSON.stringify(capped) };
+}
+
+export async function handle(req: JsonRpcRequest) {
   try {
     if (req.method === 'initialize') {
-      return { jsonrpc: '2.0', id: req.id, result: { protocolVersion: '2025-06-18', serverInfo: { name: 'sangfor-engineer-mcp', version: '0.1.0' }, capabilities: { tools: { listChanged: false } } } };
+      return { jsonrpc: '2.0', id: req.id, result: { protocolVersion: '2025-06-18', serverInfo: { name: 'sangfor-engineer-mcp', version: '0.1.0' }, capabilities: { tools: { listChanged: false }, resources: { listChanged: false }, prompts: { listChanged: false } } } };
     }
     if (req.method === 'tools/list') {
-      return { jsonrpc: '2.0', id: req.id, result: { tools: listTools() } };
+      return { jsonrpc: '2.0', id: req.id, result: { tools: listToolsForProfile() } };
+    }
+    if (req.method === 'resources/list') {
+      return { jsonrpc: '2.0', id: req.id, result: { resources: listResources() } };
+    }
+    if (req.method === 'resources/read') {
+      const uri = req.params?.uri;
+      return { jsonrpc: '2.0', id: req.id, result: readResource(uri) };
+    }
+    if (req.method === 'prompts/list') {
+      return { jsonrpc: '2.0', id: req.id, result: { prompts: listPrompts() } };
+    }
+    if (req.method === 'prompts/get') {
+      const name = req.params?.name;
+      const args = req.params?.arguments;
+      return { jsonrpc: '2.0', id: req.id, result: getPrompt(name, args) };
     }
     if (req.method === 'tools/call') {
       const name = req.params?.name;
       const args = req.params?.arguments ?? {};
       const tool = tools[name];
       if (!tool) throw new Error(`Unknown tool: ${name}`);
-      const result = await tool.handler(args);
-      return { jsonrpc: '2.0', id: req.id, result: { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }], structuredContent: result, isError: false } };
+      const profile = activeToolProfile();
+      if (profile !== 'full' && !isToolVisibleInProfile({ annotations: annotationsFor(name, tool.description) }, profile)) {
+        throw new Error(`Tool not available in profile '${profile}'; set SANGFOR_TOOL_PROFILE=full`);
+      }
+      const raw = await tool.handler(args);
+      const { result, text } = capMcpResult(name, raw);
+      return { jsonrpc: '2.0', id: req.id, result: { content: [{ type: 'text', text }], structuredContent: result, isError: false } };
     }
     return { jsonrpc: '2.0', id: req.id, error: { code: -32601, message: `Method not found: ${req.method}` } };
   } catch (error) {

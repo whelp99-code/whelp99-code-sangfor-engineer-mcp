@@ -66,7 +66,7 @@ async function main() {
   // ── 1단계: 피드백 제출 ──
   console.log('━━━ 1단계: 피드백 제출 ━━━');
   const fb = await call('tools/call', {
-    name: 'sangfor.submit_feedback',
+    name: 'sangfor_submit_feedback',
     arguments: {
       product: 'ENDPOINT_SECURE',
       feedbackType: 'menu_mapping_correction',
@@ -99,7 +99,7 @@ EPP 실제 사이드바 구조:
   // ── 2단계: 교훈 추출 ──
   console.log('━━━ 2단계: 교훈 추출 ━━━');
   const lesson = await call('tools/call', {
-    name: 'sangfor.extract_lesson',
+    name: 'sangfor_extract_lesson',
     arguments: { feedbackId: fbId! }
   });
   const lessonId = extractId(lesson);
@@ -112,7 +112,7 @@ EPP 실제 사이드바 구조:
   // ── 3단계: wiki 업데이트 제안 ──
   console.log('━━━ 3단계: wiki 업데이트 제안 ━━━');
   const proposal = await call('tools/call', {
-    name: 'sangfor.propose_wiki_update',
+    name: 'sangfor_propose_wiki_update',
     arguments: {
       lessonTitle: 'EPP 실장비 메뉴 매핑 검증 결과 (2026-06-09)',
       lessonBody: `## EPP (Athena EPP 6.0.4ENR4) 실장비 검증
@@ -154,7 +154,7 @@ EPP 실제 사이드바 구조:
   // ── 4단계: 제안 승인 ──
   console.log('━━━ 4단계: 제안 승인 ━━━');
   const approve = await call('tools/call', {
-    name: 'sangfor.approve_wiki_update',
+    name: 'sangfor_approve_wiki_update',
     arguments: { proposalId: proposalId!, decision: 'approve' }
   });
   console.log(`✅ 승인: ${approve?.structuredContent?.status || approve?.status || 'approved'}`);
@@ -163,7 +163,7 @@ EPP 실제 사이드바 구조:
   // ── 5단계: wiki 업데이트 적용 ──
   console.log('━━━ 5단계: wiki 업데이트 적용 ━━━');
   const apply = await call('tools/call', {
-    name: 'sangfor.apply_wiki_update',
+    name: 'sangfor_apply_wiki_update',
     arguments: { proposalId: proposalId! }
   });
   console.log(`✅ 적용: ${apply?.structuredContent?.status || apply?.status || 'applied'}`);

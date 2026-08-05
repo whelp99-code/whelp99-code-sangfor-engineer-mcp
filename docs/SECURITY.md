@@ -29,7 +29,7 @@ Defense-in-depth for the REST surface:
 - Write tools on a **non-loopback** bind → refused unless `SANGFOR_ALLOW_REMOTE_WRITE=true`, **even with a valid approval**.
 - The nonce is `consume`d **last** (after all other checks pass), so a refused call never burns a single-use approval.
 
-A destructive HCI tool therefore needs **two independent approvals** over HTTP: the bridge-level `bridge.tool-call` approval above, plus the tool's own action-bound approval (`hci.delete-volume` for `sangfor.hci_delete_volume`). On a **non-loopback** target it is refused regardless, because `hciWriteGate` additionally requires `SANGFOR_ALLOW_REAL_EXECUTION=true` **and** an `auto_allowed` safety class — and `volume_create`/`volume_delete` are both `human_only` until the M4 real-device promotion.
+A destructive HCI tool therefore needs **two independent approvals** over HTTP: the bridge-level `bridge.tool-call` approval above, plus the tool's own action-bound approval (`hci.delete-volume` for `sangfor_hci_delete_volume`). On a **non-loopback** target it is refused regardless, because `hciWriteGate` additionally requires `SANGFOR_ALLOW_REAL_EXECUTION=true` **and** an `auto_allowed` safety class — and `volume_create`/`volume_delete` are both `human_only` until the M4 real-device promotion.
 
 ## Network exposure (`@sangfor/shared`)
 - `assertBindSafety` **fails closed**: binding a non-loopback host **requires** a token (`SANGFOR_API_TOKEN`). An empty/whitespace `BIND_HOST` must not silently become an all-interfaces bind.

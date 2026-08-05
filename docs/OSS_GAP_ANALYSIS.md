@@ -46,7 +46,7 @@ Subagent: `.cursor/agents/sangfor-oss-gap-analyst.md`
 
 ### Critical
 
-1. **Non-semantic RAG** — `packages/sangfor-rag/src/index.ts` (`hashEmbedding`). Hurts `sangfor.search_manuals` / planner grounding.
+1. **Non-semantic RAG** — `packages/sangfor-rag/src/index.ts` (`hashEmbedding`). Hurts `sangfor_search_manuals` / planner grounding.
 2. **KB body crawl unstable** — `scripts/lib/kb-browser-session.ts`; API 405; headless Login without CDP.
 3. **Live operator unverified** — `packages/sangfor-verifier` manual-only; no E2E for `execute_console_action_live`.
 
@@ -81,7 +81,7 @@ Subagent: `.cursor/agents/sangfor-oss-gap-analyst.md`
 3. `mcp-scorecard` in CI after `pnpm test`
 4. Planner uses `rag_search` only (drop mock manual path) — **done** (`generateConfigPlanAsync`)
 5. Product adapter discovery for IAG/EPP/NDR — **done** (route catalogs promoted to `ready`)
-6. Persistent stores (Prisma) — **done** (`@sangfor/store`, `sangfor.store_health`)
+6. Persistent stores (Prisma) — **done** (`@sangfor/store`, `sangfor_store_health`)
 
 ## References
 

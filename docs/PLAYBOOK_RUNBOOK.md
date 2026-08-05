@@ -67,15 +67,15 @@ Cursor/Claude 등 MCP client는 다음 9개 도구로 이 루프를 돈다. 타�
 
 | 도구 | 성격 | 용도 |
 |---|---|---|
-| `sangfor.playbook_list` | read | 목록 + 활성 rev + 최근 실행 상태 |
-| `sangfor.playbook_get` | read | 리비전·블록 전체 |
-| `sangfor.playbook_run_status` | read | 유도 상태 + 블록별 runId + 제출된 분석 |
-| `sangfor.playbook_agent_tasks` | read | `open` 작업 큐 조회 (여기서 일감을 집는다) |
-| `sangfor.playbook_create` | write | draft rev 1 생성 |
-| `sangfor.playbook_add_revision` | write | 수정 루프 — 새 draft rev 추가 |
-| `sangfor.playbook_execute` | write | 활성 rev 실행 |
-| `sangfor.playbook_submit_analysis` | write | append-only 분석(개선·제안) 제출 |
-| `sangfor.playbook_close_agent_task` | write | 작업을 done으로 닫고 산출물 기록 |
+| `sangfor_playbook_list` | read | 목록 + 활성 rev + 최근 실행 상태 |
+| `sangfor_playbook_get` | read | 리비전·블록 전체 |
+| `sangfor_playbook_run_status` | read | 유도 상태 + 블록별 runId + 제출된 분석 |
+| `sangfor_playbook_agent_tasks` | read | `open` 작업 큐 조회 (여기서 일감을 집는다) |
+| `sangfor_playbook_create` | write | draft rev 1 생성 |
+| `sangfor_playbook_add_revision` | write | 수정 루프 — 새 draft rev 추가 |
+| `sangfor_playbook_execute` | write | 활성 rev 실행 |
+| `sangfor_playbook_submit_analysis` | write | append-only 분석(개선·제안) 제출 |
+| `sangfor_playbook_close_agent_task` | write | 작업을 done으로 닫고 산출물 기록 |
 
 전형적인 루프:
 
@@ -91,7 +91,7 @@ Cursor/Claude 등 MCP client는 다음 9개 도구로 이 루프를 돈다. 타�
 
 - **리비전 승인/반려는 MCP에 없다.** 승인은 UI에서 사람이 한다. 도구가 승인을 대신하지 않는다.
 - `playbook_execute`가 장비를 직접 바꾸지 않는다. write 블록에서 멈추고 별도 사람 승인을 기다린다.
-- 블록의 `toolId`로 `sangfor.playbook_*`를 쓸 수 없다(400). 플레이북 중첩 실행은 비범위다.
+- 블록의 `toolId`로 `sangfor_playbook_*`를 쓸 수 없다(400). 플레이북 중첩 실행은 비범위다.
 - 플레이북 상태의 기록자는 타워 하나다. 다른 프로세스가 `data/registry/playbooks.json`을
   직접 쓰면 atomic-rename이 서로를 덮어 유실된다.
 

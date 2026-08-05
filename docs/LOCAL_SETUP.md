@@ -110,7 +110,7 @@ cp .cursor/mcp.json.example .cursor/mcp.json
 
 `cwd`는 `${workspaceFolder}` 로 두면 로컬 clone 경로에 자동 맞춰집니다.
 
-도구 `sangfor.learn_sources` 로 `.env` 기반 수집도 가능.
+도구 `sangfor_learn_sources` 로 `.env` 기반 수집도 가능.
 
 ## 6. 웹 UI (Operator Console)
 
@@ -162,9 +162,9 @@ VM에서 만든 인덱스를 쓰려면 위 파일들을 **scp/rsync** 로 복사
 ### launchd (KB daily 03:00)
 
 ```bash
-cp automation/com.jmpark.sangfor.learnkb.plist ~/Library/LaunchAgents/
-launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.jmpark.sangfor.learnkb.plist
-launchctl print gui/$(id -u)/com.jmpark.sangfor.learnkb
+cp automation/com.jmpark.sangfor_learnkb.plist ~/Library/LaunchAgents/
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.jmpark.sangfor_learnkb.plist
+launchctl print gui/$(id -u)/com.jmpark.sangfor_learnkb
 ```
 
 ### MiMo Token Plan

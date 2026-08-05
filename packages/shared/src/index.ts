@@ -1,7 +1,22 @@
-import { existsSync, appendFileSync, mkdirSync, readFileSync } from 'node:fs';
+import {
+  existsSync,
+  appendFileSync,
+  chmodSync,
+  closeSync,
+  fsyncSync,
+  mkdirSync,
+  openSync,
+  readFileSync,
+  renameSync,
+  rmdirSync,
+  statSync,
+  unlinkSync,
+  writeFileSync,
+  writeSync,
+} from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createHash, timingSafeEqual } from 'node:crypto';
+import { createHash, randomUUID, timingSafeEqual } from 'node:crypto';
 import { isIP } from 'node:net';
 
 // ── HTTP exposure guard ─────────────────────────────────────────────────────
@@ -82,6 +97,187 @@ export function resolveRepoData(subdir: string, envVar?: string): string {
     return subdir;
   }
   return join(root, subdir);
+}
+
+// ── Atomic writes + directory locks ─────────────────────────────────────────
+// Generalized from sangfor-learning-strategy's store.ts (the first place this
+// repo got wx-temp + fsync + PID/UUID naming + parent-dir fsync right). New
+// file-backed stores should use these instead of growing their own copy of the
+// same pattern. learning-strategy/store.ts and sangfor-approval keep their
+// existing inline implementations untouched — they already shipped and pass
+// their own tests, so switching them over is a pure regression risk with no
+// behavior upside.
+
+function monotonicNowMs(): number {
+  return Number(process.hrtime.bigint() / 1_000_000n);
+}
+
+function pauseSync(milliseconds: number): void {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, milliseconds);
+}
+
+function syncParentDirectory(path: string): void {
+  const fd = openSync(path, 'r');
+  try { fsyncSync(fd); } finally { closeSync(fd); }
+}
+
+/**
+ * Write `data` to `filePath` atomically: write to a PID+UUID temp file with
+ * exclusive create ('wx' — never overwrites another writer's temp file),
+ * fsync it, rename over the target (atomic on POSIX filesystems), then fsync
+ * the parent directory so the rename survives a crash. A crash mid-write
+ * leaves only the orphaned temp file behind; the target is never partially
+ * written.
+ */
+export function writeFileAtomicSync(filePath: string, data: string): void {
+  const dir = dirname(filePath);
+  mkdirSync(dir, { recursive: true });
+  const tempPath = `${filePath}.${process.pid}.${randomUUID()}.tmp`;
+  const fd = openSync(tempPath, 'wx', 0o600);
+  try {
+    const bytes = Buffer.from(data, 'utf8');
+    let offset = 0;
+    while (offset < bytes.length) offset += writeSync(fd, bytes, offset, bytes.length - offset, null);
+    fsyncSync(fd);
+    chmodSync(tempPath, 0o600);
+  } finally {
+    closeSync(fd);
+  }
+  renameSync(tempPath, filePath);
+  syncParentDirectory(dir);
+}
+
+export class DirLockTimeoutError extends Error {
+  constructor(lockPath: string, waitMs: number) {
+    super(`LOCK_TIMEOUT: could not acquire directory lock at ${lockPath} within ${waitMs}ms`);
+    this.name = 'DirLockTimeoutError';
+  }
+}
+
+/**
+ * Run `fn` while holding an exclusive directory-based mutex at `lockPath`
+ * (mkdirSync is atomic create-if-absent on every platform this repo targets).
+ * Waits up to `waitMs` (default 2000), throwing DirLockTimeoutError if the
+ * lock is still held at the deadline. The lock is always released in
+ * `finally`, even when `fn` throws.
+ *
+ * If the lock directory's mtime is older than `staleLockMs` (default 30000),
+ * it is treated as abandoned — left behind by a holder that crashed or was
+ * killed before its own `finally` could run — and reclaimed immediately
+ * (rmdirSync + a one-line stderr warning) instead of waiting out the full
+ * budget. A race where another caller reaps it first (ENOENT on our rmdirSync)
+ * is normal contention, not an error.
+ *
+ * Ownership token: on acquisition an `owner` file (`${pid}:${randomUUID()}`)
+ * is written inside the lock directory. Release only rmdirs the lock if that
+ * file still holds OUR token; a mismatch (or the file being gone) means
+ * someone else reclaimed this lock as stale while we were still inside `fn`
+ * — we back off with a warning instead of deleting the new holder's lock.
+ * Trade-off (intentional, not fully closed): a holder whose critical section
+ * legitimately runs longer than `staleLockMs` can still be wrongly reclaimed
+ * by another caller — this only stops the reclaimed lock from then being
+ * double-released. Callers with slow critical sections must pass a
+ * `staleLockMs` comfortably above their worst-case duration.
+ */
+export function withDirLock<T>(
+  lockPath: string,
+  fn: () => T,
+  opts: { waitMs?: number; staleLockMs?: number } = {},
+): T {
+  const waitMs = opts.waitMs ?? 2_000;
+  const staleLockMs = opts.staleLockMs ?? 30_000;
+  const ownerPath = join(lockPath, 'owner');
+  mkdirSync(dirname(lockPath), { recursive: true });
+  const deadline = monotonicNowMs() + waitMs;
+  let ownToken: string | undefined;
+  for (;;) {
+    try {
+      mkdirSync(lockPath, { mode: 0o700 });
+      chmodSync(lockPath, 0o700);
+      ownToken = `${process.pid}:${randomUUID()}`;
+      writeFileSync(ownerPath, ownToken, { mode: 0o600 });
+      break;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
+
+      let ageMs = -1;
+      try {
+        ageMs = Date.now() - statSync(lockPath).mtimeMs;
+      } catch {
+        // Lock vanished between our failed mkdirSync and this stat — another
+        // holder likely has it now; fall through to normal contention below.
+      }
+      if (ageMs >= 0 && ageMs > staleLockMs) {
+        try {
+          try { unlinkSync(ownerPath); } catch { /* owner file may already be gone; fine */ }
+          rmdirSync(lockPath);
+          process.stderr.write(`[shared] removing stale lock ${lockPath} (age ${Math.round(ageMs)}ms)\n`);
+          continue; // reclaimed — retry mkdirSync immediately, no wait
+        } catch (reapError) {
+          if ((reapError as NodeJS.ErrnoException).code !== 'ENOENT') throw reapError;
+          // Someone else already reaped/released it — normal contention.
+        }
+      }
+
+      const remaining = deadline - monotonicNowMs();
+      if (remaining <= 0) throw new DirLockTimeoutError(lockPath, waitMs);
+      pauseSync(Math.min(25, remaining));
+    }
+  }
+  try {
+    return fn();
+  } finally {
+    try {
+      let currentOwner: string | undefined;
+      try { currentOwner = readFileSync(ownerPath, 'utf8'); } catch { /* missing → treated as taken-over below */ }
+      if (currentOwner !== ownToken) {
+        process.stderr.write(`[shared] lock ${lockPath} was taken over — skipping release\n`);
+      } else {
+        try { unlinkSync(ownerPath); } catch { /* best effort; rmdirSync below still fails loud if this leaves other entries */ }
+        rmdirSync(lockPath);
+      }
+    } catch {
+      /* leave a failed lock fail-closed */
+    }
+  }
+}
+
+// ── Engagement-scoped data (multi-customer deployment isolation) ───────────
+// A single server process serving several customer engagements must not let
+// their file-backed data bleed together. SANGFOR_ENGAGEMENT_ID, when set,
+// isolates specific data roots (see resolveEngagementScopedData) under an
+// extra path segment. Unset (the common case) is byte-identical to the
+// unscoped resolveRepoData path — nothing changes for single-tenant use.
+const ENGAGEMENT_ID_RE = /^[A-Za-z0-9._-]{1,64}$/u;
+
+/**
+ * The active engagement id from SANGFOR_ENGAGEMENT_ID, or undefined when the
+ * env var is unset/blank. Validates as a safe single path segment and fails
+ * loud (throws) on anything else — a malformed id must never silently fall
+ * through to the unscoped root or escape via '..'.
+ */
+export function activeEngagementId(): string | undefined {
+  const raw = process.env.SANGFOR_ENGAGEMENT_ID?.trim();
+  if (!raw) return undefined;
+  // '.' would join() back to the unscoped base — an "enabled" scope with no
+  // isolation at all — so it is rejected alongside traversal.
+  if (raw === '.' || raw.includes('..') || !ENGAGEMENT_ID_RE.test(raw)) {
+    throw new Error(
+      `Invalid SANGFOR_ENGAGEMENT_ID "${raw}": must match ${ENGAGEMENT_ID_RE.source} and must not be '.' or contain '..'.`,
+    );
+  }
+  return raw;
+}
+
+/**
+ * Engagement-scoped variant of resolveRepoData: when an engagement is active,
+ * data isolates under resolveRepoData(subdir, envVar)/<engagementId>;
+ * otherwise this is identical to resolveRepoData(subdir, envVar).
+ */
+export function resolveEngagementScopedData(subdir: string, envVar?: string): string {
+  const base = resolveRepoData(subdir, envVar);
+  const engagementId = activeEngagementId();
+  return engagementId ? join(base, engagementId) : base;
 }
 
 export type ProductCode = 'HCI_SCP' | 'HCI' | 'IAG' | 'ENDPOINT_SECURE' | 'NDR' | 'CYBER_COMMAND';
@@ -278,4 +474,58 @@ export function foldJsonlById<T extends { id: string }>(path: string): Map<strin
     }
   }
   return byId;
+}
+
+// ── Cursor pagination (generalized from sangfor-learning-strategy's service.ts
+// list(), which pioneered the opaque base64url-cursor-over-a-stable-key pattern
+// for this repo). New list-shaped tools should use this instead of growing their
+// own copy; the learning-strategy service keeps its own inline implementation
+// (untouched here) to avoid a regression risk on an already-shipped tool. ──────
+
+const CURSOR_RE = /^[A-Za-z0-9_-]{1,512}$/u;
+
+/** Encode an item's stable key as an opaque base64url page cursor. */
+export function encodeCursor(key: string): string {
+  return Buffer.from(key, 'utf8').toString('base64url');
+}
+
+/** Decode a page cursor back to the stable key it was minted from. `undefined` in → `undefined` out (first page). Throws on a malformed cursor. */
+export function decodeCursor(cursor: string | undefined): string | undefined {
+  if (cursor === undefined) return undefined;
+  if (!CURSOR_RE.test(cursor)) throw new Error('INVALID_CURSOR: cursor is malformed.');
+  return Buffer.from(cursor, 'base64url').toString('utf8');
+}
+
+export interface PaginateOptions<T> {
+  cursor?: string;
+  limit?: number;
+  defaultLimit?: number;
+  maxLimit?: number;
+  /** Must return a value that is stable and unique across `items` (e.g. an id). */
+  getKey: (item: T) => string;
+}
+
+export interface PaginateResult<T> {
+  items: T[];
+  nextCursor?: string;
+}
+
+/**
+ * Cursor-paginate a pre-sorted array by a stable per-item key. `items` must
+ * already be sorted the way callers should see it — this only windows it.
+ */
+export function paginate<T>(items: readonly T[], opts: PaginateOptions<T>): PaginateResult<T> {
+  const limit = opts.limit ?? opts.defaultLimit ?? 50;
+  const maxLimit = opts.maxLimit ?? 100;
+  if (!Number.isSafeInteger(limit) || limit < 1 || limit > maxLimit) {
+    throw new Error(`INVALID_INPUT: limit must be 1..${maxLimit}.`);
+  }
+  const after = decodeCursor(opts.cursor);
+  const start = after === undefined ? 0 : items.findIndex((item) => opts.getKey(item) === after) + 1;
+  if (after !== undefined && start === 0) throw new Error('INVALID_CURSOR: cursor does not identify the current result set.');
+  const page = items.slice(start, start + limit);
+  const last = page.at(-1);
+  return start + page.length < items.length && last
+    ? { items: page, nextCursor: encodeCursor(opts.getKey(last)) }
+    : { items: page };
 }

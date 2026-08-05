@@ -19,9 +19,9 @@
 - Tests: `tests/control-tower-playbook-{api,engine,store,seed}.test.ts`, `control-tower-approval-mint.test.ts`, `control-tower-e2e.test.ts`.
 
 ## Playbooks over MCP
-- `apps/mcp-server` exposes 9 `sangfor.playbook_*` tools that **proxy this REST API** (`src/tower-client.ts`, `SANGFOR_TOWER_URL`). The tower stays the single writer of `playbooks.json` — never write that file from another process.
+- `apps/mcp-server` exposes 9 `sangfor_playbook_*` tools that **proxy this REST API** (`src/tower-client.ts`, `SANGFOR_TOWER_URL`). The tower stays the single writer of `playbooks.json` — never write that file from another process.
 - Revision approve/reject is deliberately **not** on the MCP surface: approval is a human action in this UI.
-- `validateBlocks` rejects `sangfor.playbook_*` as a block `toolId` (nested playbook execution is out of scope).
+- `validateBlocks` rejects `sangfor_playbook_*` as a block `toolId` (nested playbook execution is out of scope).
 
 ## Dependencies
 - Depends on: `@sangfor/shared`, `@sangfor/runs`, `@sangfor/operator` (approval types), `@sangfor/collector` (load-env); http-bridge + mock-console over HTTP.

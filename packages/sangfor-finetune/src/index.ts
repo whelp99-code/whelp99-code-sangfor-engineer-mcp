@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname } from 'node:path';
-import { ProductCode, normalizeProduct, nowId } from '@sangfor/shared';
+import { dirname, join } from 'node:path';
+import { ProductCode, normalizeProduct, nowId, resolveRepoData } from '@sangfor/shared';
 
 export type FineTuneTaskType = 'config_planning' | 'risk_classification' | 'lesson_extraction' | 'wiki_update_writing';
 
@@ -59,7 +59,8 @@ export function buildFineTuneExample(input: { product: string; taskType: FineTun
 
 export function createFineTuneDataset(input: FineTuneDatasetInput): { path: string; count: number; examples: FineTuneExample[] } {
   const product = normalizeProduct(input.product);
-  const outputPath = input.outputPath ?? `data/finetune/${product.toLowerCase()}-${input.taskType}.jsonl`;
+  const outputPath = input.outputPath
+    ?? join(resolveRepoData('data/finetune', 'SANGFOR_FINETUNE_ROOT'), `${product.toLowerCase()}-${input.taskType}.jsonl`);
   ensureParent(outputPath);
   const examples = input.examples.map(example => buildFineTuneExample({
     product,

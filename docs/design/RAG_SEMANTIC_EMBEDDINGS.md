@@ -6,7 +6,7 @@
 
 ## Goals
 
-1. Improve `sangfor.rag_search` / `sangfor.search_manuals` recall on paraphrased Sangfor queries (Korean + English).
+1. Improve `sangfor_rag_search` / `sangfor_search_manuals` recall on paraphrased Sangfor queries (Korean + English).
 2. Keep **offline-capable** ingest on Apple Silicon when Rapid-MLX is running.
 3. Use **MiMo cloud** when local MLX is down or to **rerank** candidates (MiMo has chat API; embeddings API is not documented as of 2026-06).
 4. Preserve **backward compatibility**: existing `data/rag/index.json` must re-embed or dual-read during migration.
@@ -164,7 +164,7 @@ pnpm run rag:reembed -- --provider rapid-mlx
 |--------|--------|
 | `ingestDocument()` | Rapid-MLX embed (fallback hash) |
 | `ragSearch()` | Rapid-MLX query embed + optional MiMo rerank |
-| MCP `sangfor.rag_index_summary` | `embeddingBackendCounts`, `mimoRerankEnabled` |
+| MCP `sangfor_rag_index_summary` | `embeddingBackendCounts`, `mimoRerankEnabled` |
 
 ## Testing
 
