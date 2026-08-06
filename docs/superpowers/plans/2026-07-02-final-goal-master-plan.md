@@ -8,6 +8,15 @@
 
 **Tech Stack:** TypeScript ESM(NodeNext), pnpm 10.28.1 workspace, tsx 직접실행, Vitest, node:http/https(신규 클라이언트 무의존성), Playwright(기존 operator), Prisma(선택적 graceful degrade).
 
+## 진행 상태 (2026-08-06 실측 검증)
+
+- **M0 (Task 1~4): 완료.** nonce 단일사용(`packages/sangfor-operator/src/nonce-store.ts`, `tests/operator-nonce-store.test.ts`), 원격 write 기본 거부(`tests/http-bridge-authorize.test.ts` R3 5케이스), navigate origin 가드(`assertNavigationWithinTarget`, `tests/operator-fail-closed.test.ts`), 문서 드리프트 0건(`SANGFOR_OPERATOR_APPROVAL_TOKEN` 잔존 없음).
+- **M1 (Task 5~13): 완료.** `data/hci-api/catalog.json` + mock OpenStack fixture(`apps/mock-sangfor-console/src/openstack.ts`, X-Client-Token 멱등 + quota-silent-noop 함정 시나리오), `@sangfor/hci-client`(Keystone v2 문서계약 토큰·volumes/inventory·read-back oracle·마스킹 JSONL 원장·apply 상태기계), MCP 도구 등록(`sangfor_hci_inventory/health_report/plan/apply/verify/delete`), `tests/hci-slice-e2e.test.ts`가 M1 Exit Criteria 전 항목을 고정. competency: HCI_SCP volume_create `tested_mock`(evidence 링크 완료; field_verified는 M4 전 금지 유지).
+- **M2 (Task 14~16): 완료.** `@sangfor/config-state` + `sangfor_collect_device_config`, `context_dependent` 분류(`tests/spec-context-dependent.test.ts`), spec 시드 40항목(전부 출처 인용; FortiOS/Cisco IOS-XE 다중벤더 spec 추가 포함).
+- **전체 검증 (2026-08-06):** `pnpm test` 3연속 그린 — 130 파일 / 937 테스트 중 935 통과, 2건은 의도적 스킵, 실패 0. `pnpm run lint`(tsc --noEmit) 클린.
+- **M3~M6: 게이트 대기 — 사람/장비 조건이라 코드로 구축 불가.** M3=G-VPN(FortiClient 연결), M4=G-HCI(HCI 장비 + OpenAPI 기능/tenant 계정), M5=M3 통과 후, M6=M4 통과 후. 게이트 충족 시 Part 7 런북대로 진행.
+- **M7: north-star 규칙 (빌드 대상 아님).**
+
 ---
 
 ## 목차
@@ -156,7 +165,7 @@ EPP/IAG/CC/NDR 자동 write는 로드맵에 없다(부록A 결론 유지). AI↔
 - Consumes: `verifyExecutionApproval`(approval.ts), `resolveRepoData(subdir: string, envVar?: string): string`(@sangfor/shared), `LiveExecutionApproval`(nonce/expiresAt 필드 존재 확인됨, index.ts:47-56)
 - Produces: `FileNonceStore.consume(nonce, expiresAt, now?): { ok: boolean; reason?: string }`, `consumeApprovalNonce(approval: { nonce: string; expiresAt: string }, now?: Date)` — Task 12의 HCI apply 도구도 이 함수를 재사용한다.
 
-- [ ] **Step 1: 실패 테스트 작성** — `tests/operator-nonce-store.test.ts`
+- [x] **Step 1: 실패 테스트 작성** — `tests/operator-nonce-store.test.ts`
 
 ```ts
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -229,10 +238,10 @@ describe('assertRealExecutionAllowed + nonce single-use', () => {
 });
 ```
 
-- [ ] **Step 2: 실패 확인** — `pnpm exec vitest run tests/operator-nonce-store.test.ts` → FAIL ("nonce-store.js를 찾을 수 없음").
+- [x] **Step 2: 실패 확인** — `pnpm exec vitest run tests/operator-nonce-store.test.ts` → FAIL ("nonce-store.js를 찾을 수 없음").
   주의: `startOperatorSession` 입력 필드명이 다르면 `tests/operator-execution-gate.test.ts`의 arrange 패턴에 맞춰 조정(동작 기대치는 불변).
 
-- [ ] **Step 3: 구현** — `packages/sangfor-operator/src/nonce-store.ts`
+- [x] **Step 3: 구현** — `packages/sangfor-operator/src/nonce-store.ts`
 
 ```ts
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
@@ -316,8 +325,8 @@ export { FileNonceStore, consumeApprovalNonce, defaultNonceStorePath } from './n
 `.env.example` 안전 게이트 섹션에 추가: `# SANGFOR_NONCE_STORE_PATH=  # (선택) 승인 nonce 단일사용 store 경로. 기본 data/runtime/approval-nonces.json`
 `data/runtime/`은 `.gitignore`에 추가(런타임 상태는 커밋 금지).
 
-- [ ] **Step 4: 통과 확인** — `pnpm exec vitest run tests/operator-nonce-store.test.ts` → PASS. 이어서 `pnpm test && pnpm run lint` 전체 통과(기존 operator-approval/execution-gate 스위트가 nonce 재사용을 하지 않는지 확인 — 재사용 시 각 테스트에 고유 nonce 부여로 수정).
-- [ ] **Step 5: 커밋** — `git add -A && git commit -m "feat(operator): durable single-use nonce store closes approval replay (redteam R1)"`
+- [x] **Step 4: 통과 확인** — `pnpm exec vitest run tests/operator-nonce-store.test.ts` → PASS. 이어서 `pnpm test && pnpm run lint` 전체 통과(기존 operator-approval/execution-gate 스위트가 nonce 재사용을 하지 않는지 확인 — 재사용 시 각 테스트에 고유 nonce 부여로 수정).
+- [x] **Step 5: 커밋** — `git add -A && git commit -m "feat(operator): durable single-use nonce store closes approval replay (redteam R1)"`
 
 ---
 
@@ -336,7 +345,7 @@ export { FileNonceStore, consumeApprovalNonce, defaultNonceStorePath } from './n
 
 **정책(문서화되는 불변식):** ① destructive는 어떤 조건에서도 원격 거부(기존 유지) ② **비-loopback 바인드에서 write 도구는 `WHELP99_ENFORCE_SAFE_TOOLS=false`여도 거부** ③ 예외는 `SANGFOR_ALLOW_REMOTE_WRITE=true`를 명시했을 때만(이때도 `SANGFOR_API_TOKEN` 필수 — 기존 `assertBindSafety`가 보장) ④ loopback 바인드는 기존 동작 불변.
 
-- [ ] **Step 1: 실패 테스트 추가** — `tests/http-bridge-authorize.test.ts`에 append (기존 헬퍼 `toolList(...)` 형태가 있으면 재사용, 없으면 아래 인라인 사용):
+- [x] **Step 1: 실패 테스트 추가** — `tests/http-bridge-authorize.test.ts`에 append (기존 헬퍼 `toolList(...)` 형태가 있으면 재사용, 없으면 아래 인라인 사용):
 
 ```ts
 const listWith = (name: string, readOnlyHint: boolean, destructiveHint: boolean) =>
@@ -363,8 +372,8 @@ describe('remote write policy (R3)', () => {
 });
 ```
 
-- [ ] **Step 2: 실패 확인** — 해당 파일만 실행 → 새 4케이스 FAIL.
-- [ ] **Step 3: 구현** — `tool-guard.ts`의 `authorizeToolCall`을 다음으로 교체(기존 불변식 주석 유지+확장):
+- [x] **Step 2: 실패 확인** — 해당 파일만 실행 → 새 4케이스 FAIL.
+- [x] **Step 3: 구현** — `tool-guard.ts`의 `authorizeToolCall`을 다음으로 교체(기존 불변식 주석 유지+확장):
 
 ```ts
 export function authorizeToolCall(params: {
@@ -417,8 +426,8 @@ const decision = authorizeToolCall({ name, toolListResult: list.error ? null : l
 `.env.example`에 `# SANGFOR_ALLOW_REMOTE_WRITE=  # 기본 미설정 = 비-loopback 바인드에서 write 도구 전면 거부(R3). true는 승인된 배포에서만.` 추가.
 `docs/INCLUDED_HIGH_RISK_SCOPE.md` "Non-negotiable controls"에 항목 추가: `8. Over HTTP (http-bridge): destructive tools are always refused; write tools are refused on a non-loopback bind unless SANGFOR_ALLOW_REMOTE_WRITE=true (and a bearer token is mandatory on any non-loopback bind).`
 
-- [ ] **Step 4: 통과 확인** — `pnpm exec vitest run tests/http-bridge-authorize.test.ts tests/http-bridge-guard.test.ts tests/http-guard.test.ts` PASS 후 전체 `pnpm test && pnpm run lint`.
-- [ ] **Step 5: 커밋** — `git commit -m "feat(http-bridge): refuse remote writes by default; explicit SANGFOR_ALLOW_REMOTE_WRITE opt-in (redteam R3)"`
+- [x] **Step 4: 통과 확인** — `pnpm exec vitest run tests/http-bridge-authorize.test.ts tests/http-bridge-guard.test.ts tests/http-guard.test.ts` PASS 후 전체 `pnpm test && pnpm run lint`.
+- [x] **Step 5: 커밋** — `git commit -m "feat(http-bridge): refuse remote writes by default; explicit SANGFOR_ALLOW_REMOTE_WRITE opt-in (redteam R3)"`
 
 ---
 
@@ -433,7 +442,7 @@ const decision = authorizeToolCall({ name, toolListResult: list.error ? null : l
 
 **배경:** dry-run 단락(click/type/select만 가드)에서 `navigate/scroll/wait`는 실제 수행된다. 의미론은 유지하되(관찰은 dry-run의 목적), navigate가 세션 origin 밖으로 나가는 것만 fail-closed로 막는다.
 
-- [ ] **Step 1: 실패 테스트** — `tests/operator-fail-closed.test.ts`에 추가:
+- [x] **Step 1: 실패 테스트** — `tests/operator-fail-closed.test.ts`에 추가:
 
 ```ts
 import { assertNavigationWithinTarget } from '@sangfor/operator';
@@ -455,8 +464,8 @@ describe('navigate origin guard', () => {
 });
 ```
 
-- [ ] **Step 2: 실패 확인.**
-- [ ] **Step 3: 구현** — index.ts에 추가하고 `executeLiveConsoleAction`에서 `assertRealExecutionAllowed(...)` 호출 직후(즉 dry-run 여부와 무관하게) 호출:
+- [x] **Step 2: 실패 확인.**
+- [x] **Step 3: 구현** — index.ts에 추가하고 `executeLiveConsoleAction`에서 `assertRealExecutionAllowed(...)` 호출 직후(즉 dry-run 여부와 무관하게) 호출:
 
 ```ts
 export function assertNavigationWithinTarget(session: { targetUrl?: string }, action: { type: string; target?: string }): void {
@@ -470,8 +479,8 @@ export function assertNavigationWithinTarget(session: { targetUrl?: string }, ac
 }
 ```
 
-- [ ] **Step 4: 통과 확인 + 전체 스위트.**
-- [ ] **Step 5: 커밋** — `git commit -m "fix(operator): pin dry-run navigate to the session origin (fail-closed)"`
+- [x] **Step 4: 통과 확인 + 전체 스위트.**
+- [x] **Step 5: 커밋** — `git commit -m "fix(operator): pin dry-run navigate to the session origin (fail-closed)"`
 
 ---
 
@@ -480,7 +489,7 @@ export function assertNavigationWithinTarget(session: { targetUrl?: string }, ac
 **Files:**
 - Modify: `docs/INCLUDED_HIGH_RISK_SCOPE.md` (§Non-negotiable controls)
 
-- [ ] **Step 1:** 항목 3·4를 현행 SignedApproval 체계로 교체:
+- [x] **Step 1:** 항목 3·4를 현행 SignedApproval 체계로 교체:
 
 ```markdown
 3. `SANGFOR_OPERATOR_APPROVAL_SECRET` set in the runtime environment (server-side HMAC key; approvals are unforgeable without it — fail-closed)
@@ -491,9 +500,9 @@ export function assertNavigationWithinTarget(session: { targetUrl?: string }, ac
    - `approvalToken` = HMAC-SHA256 over (fields above + action type + action target)
 ```
 
-- [ ] **Step 2:** 같은 문서에 Task 2에서 추가한 원격 write 정책 항목이 반영됐는지 재확인(중복 추가 금지).
-- [ ] **Step 3:** `grep -rn "SANGFOR_OPERATOR_APPROVAL_TOKEN" docs/ README.md` → 0건 확인.
-- [ ] **Step 4: 커밋** — `git commit -m "docs: high-risk scope reflects signed approvals + remote-write policy"`
+- [x] **Step 2:** 같은 문서에 Task 2에서 추가한 원격 write 정책 항목이 반영됐는지 재확인(중복 추가 금지).
+- [x] **Step 3:** `grep -rn "SANGFOR_OPERATOR_APPROVAL_TOKEN" docs/ README.md` → 0건 확인.
+- [x] **Step 4: 커밋** — `git commit -m "docs: high-risk scope reflects signed approvals + remote-write policy"`
 
 ---
 
@@ -514,7 +523,7 @@ export function assertNavigationWithinTarget(session: { targetUrl?: string }, ac
 **Interfaces:**
 - Produces: `data/hci-api/catalog.json` — Task 6(mock)·Task 7(client)·M4(대조)의 단일 진실원. `contractStatus` 필드는 M4 전까지 `doc_contract_unverified_on_real_device` 고정.
 
-- [ ] **Step 1: fixture 4종 작성** (전부 공식 문서 예제에서 발췌·축약 — 값 창작 금지):
+- [x] **Step 1: fixture 4종 작성** (전부 공식 문서 예제에서 발췌·축약 — 값 창작 금지):
 
 `tokens-request.json`:
 ```json
@@ -570,7 +579,7 @@ export function assertNavigationWithinTarget(session: { targetUrl?: string }, ac
 
 `volume-detail-available.json`: 위와 동일 구조에 `"status": "available"`.
 
-- [ ] **Step 2: 카탈로그 작성** — `data/hci-api/catalog.json`:
+- [x] **Step 2: 카탈로그 작성** — `data/hci-api/catalog.json`:
 
 ```json
 {
@@ -606,7 +615,7 @@ export function assertNavigationWithinTarget(session: { targetUrl?: string }, ac
 }
 ```
 
-- [ ] **Step 3: 테스트** — `tests/hci-catalog.test.ts`:
+- [x] **Step 3: 테스트** — `tests/hci-catalog.test.ts`:
 
 ```ts
 import { describe, expect, it } from 'vitest';
@@ -626,7 +635,7 @@ describe('hci api catalog', () => {
 });
 ```
 
-- [ ] **Step 4:** `pnpm exec vitest run tests/hci-catalog.test.ts` PASS → **커밋** `git commit -m "feat(hci): commit doc-contract API catalog + fixtures from official OpenAPI guide"`
+- [x] **Step 4:** `pnpm exec vitest run tests/hci-catalog.test.ts` PASS → **커밋** `git commit -m "feat(hci): commit doc-contract API catalog + fixtures from official OpenAPI guide"`
 
 ---
 
@@ -641,7 +650,7 @@ describe('hci api catalog', () => {
 - Consumes: Task 5 fixture의 응답 구조(키 이름을 그대로 재현)
 - Produces: `createMockConsoleServer(): http.Server` (server.ts), `createOpenStackMock(): { handle(req, res): Promise<boolean>; stats(): { tokensIssued: number; volumeCreates: number } }` — Task 7~13의 모든 테스트 대상 서버. 고정 자격증명 `admin` / `mock-password` / tenant `lab`. 시나리오 헤더 `X-Mock-Scenario: quota-silent-noop`(202 반환하되 미생성 — 문서의 202-무변경 함정 재현). 테스트 전용 라우트 `POST /openstack/__mock/expire-tokens`.
 
-- [ ] **Step 1: 실패 테스트** — `tests/mock-openstack.test.ts`:
+- [x] **Step 1: 실패 테스트** — `tests/mock-openstack.test.ts`:
 
 ```ts
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -755,8 +764,8 @@ describe('mock openstack: volumes', () => {
 });
 ```
 
-- [ ] **Step 2: 실패 확인** — `createMockConsoleServer` 미존재로 FAIL.
-- [ ] **Step 3: 구현** — `apps/mock-sangfor-console/src/openstack.ts`:
+- [x] **Step 2: 실패 확인** — `createMockConsoleServer` 미존재로 FAIL.
+- [x] **Step 3: 구현** — `apps/mock-sangfor-console/src/openstack.ts`:
 
 ```ts
 import type { IncomingMessage, ServerResponse } from 'node:http';
@@ -944,8 +953,8 @@ if (process.env.MOCK_NO_SERVE !== '1') {
 
 주의: 테스트는 ephemeral 포트(`listen(0)`)를 쓰므로 serviceCatalog의 publicURL 포트가 다르다 — 테스트가 rebase하는 이유. 클라이언트(Task 7)는 catalog URL을 그대로 신뢰한다(실장비 동작과 동일). 테스트에서는 클라이언트 생성 시 `identityBaseUrl`에 ephemeral 포트를 주고, mock을 고정 포트로 띄우는 e2e(Task 13)에서는 rebase가 필요 없다.
 
-- [ ] **Step 4:** `MOCK_NO_SERVE=1 pnpm exec vitest run tests/mock-openstack.test.ts` PASS. (vitest 실행 환경에 `MOCK_NO_SERVE` 불필요 — import 시점 가드가 팩토리 export만 쓰는 테스트에선 listen하지 않도록 위 가드가 처리. 단, import 부작용 방지를 위해 테스트 파일 첫 줄 전에 `process.env.MOCK_NO_SERVE = '1';`를 두는 setup도 허용.)
-- [ ] **Step 5: 커밋** — `git commit -m "feat(mock-console): openstack fixture server with idempotency + documented 202-noop trap"`
+- [x] **Step 4:** `MOCK_NO_SERVE=1 pnpm exec vitest run tests/mock-openstack.test.ts` PASS. (vitest 실행 환경에 `MOCK_NO_SERVE` 불필요 — import 시점 가드가 팩토리 export만 쓰는 테스트에선 listen하지 않도록 위 가드가 처리. 단, import 부작용 방지를 위해 테스트 파일 첫 줄 전에 `process.env.MOCK_NO_SERVE = '1';`를 두는 setup도 허용.)
+- [x] **Step 5: 커밋** — `git commit -m "feat(mock-console): openstack fixture server with idempotency + documented 202-noop trap"`
 
 ---
 
@@ -971,7 +980,7 @@ if (process.env.MOCK_NO_SERVE !== '1') {
   - `const HCI_AUTH_CONTRACT_STATUS = 'doc_contract_unverified_on_real_device'`
   - `class HciClient { constructor(tokenProvider: TokenProvider, opts?: { tlsSkipVerify?: boolean }); request(serviceType: 'identity'|'volume'|'compute'|'image', path: string, init?: { method?: string; body?: unknown; headers?: Record<string,string> }): Promise<{ status: number; json: unknown; text: string }> }`
 
-- [ ] **Step 1: 실패 테스트** — `tests/hci-client.test.ts`:
+- [x] **Step 1: 실패 테스트** — `tests/hci-client.test.ts`:
 
 ```ts
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -1033,8 +1042,8 @@ describe('HciClient', () => {
 });
 ```
 
-- [ ] **Step 2: 실패 확인** — alias 미등록/모듈 미존재로 FAIL. (paths/alias/`pnpm install`을 이 시점에 수행.)
-- [ ] **Step 3: 구현.**
+- [x] **Step 2: 실패 확인** — alias 미등록/모듈 미존재로 FAIL. (paths/alias/`pnpm install`을 이 시점에 수행.)
+- [x] **Step 3: 구현.**
 
 `src/http.ts` (무의존성 — undici/axios 추가 금지):
 
@@ -1182,8 +1191,8 @@ export class HciClient {
 
 `src/index.ts`: `export * from './http.js'; export * from './token-provider.js'; export * from './client.js';` (이후 태스크에서 파일 추가 시 재수출 확장.)
 
-- [ ] **Step 4:** `pnpm exec vitest run tests/hci-client.test.ts` PASS → 전체 스위트 + lint.
-- [ ] **Step 5: 커밋** — `git commit -m "feat(hci-client): keystone v2 doc-contract token provider + catalog-driven client"`
+- [x] **Step 4:** `pnpm exec vitest run tests/hci-client.test.ts` PASS → 전체 스위트 + lint.
+- [x] **Step 5: 커밋** — `git commit -m "feat(hci-client): keystone v2 doc-contract token provider + catalog-driven client"`
 
 ---
 
@@ -1205,7 +1214,7 @@ export class HciClient {
   - `deleteVolume(client: HciClient, volumeId: string): Promise<{ status: number }>`
   - `collectInventory(client: HciClient): Promise<{ volumes: HciVolume[]; servers: unknown[]; images: unknown[]; readOnly: true }>`
 
-- [ ] **Step 1: 실패 테스트** — `tests/hci-volumes.test.ts` (Task 7 테스트와 동일한 서버 부트 패턴):
+- [x] **Step 1: 실패 테스트** — `tests/hci-volumes.test.ts` (Task 7 테스트와 동일한 서버 부트 패턴):
 
 ```ts
 // boot/provider 헬퍼는 tests/hci-client.test.ts와 동일 패턴 (중복 허용 — 테스트 독립성 우선)
@@ -1242,8 +1251,8 @@ describe('hci volumes (read-only + single reversible write primitive)', () => {
 });
 ```
 
-- [ ] **Step 2: 실패 확인.**
-- [ ] **Step 3: 구현** — `src/volumes.ts`:
+- [x] **Step 2: 실패 확인.**
+- [x] **Step 3: 구현** — `src/volumes.ts`:
 
 ```ts
 import type { HciClient } from './client.js';
@@ -1305,8 +1314,8 @@ export async function collectInventory(client: HciClient): Promise<{ volumes: Hc
 
 주의: mock에 `/servers`, `/v2/images` 라우트가 없으면 404 → 빈 배열로 degrade(volumes만 필수). 필요 시 mock에 두 GET 라우트를 빈 배열 응답으로 추가해도 된다(선택).
 
-- [ ] **Step 4:** 테스트 PASS + 전체 스위트.
-- [ ] **Step 5: 커밋** — `git commit -m "feat(hci-client): read-only volume/inventory surface + create/delete primitives"`
+- [x] **Step 4:** 테스트 PASS + 전체 스위트.
+- [x] **Step 5: 커밋** — `git commit -m "feat(hci-client): read-only volume/inventory surface + create/delete primitives"`
 
 ---
 
@@ -1333,7 +1342,7 @@ export async function collectInventory(client: HciClient): Promise<{ volumes: Hc
 - `available` 도달 시 name·size 정확 일치 → 전부 일치해야 **PASS**, 하나라도 다르면 **FAIL**
 - 네트워크/HTTP 오류: **INDETERMINATE** (성공으로 새지 않음)
 
-- [ ] **Step 1: 실패 테스트** — `tests/hci-read-back.test.ts` (mock 서버 부트 패턴 동일):
+- [x] **Step 1: 실패 테스트** — `tests/hci-read-back.test.ts` (mock 서버 부트 패턴 동일):
 
 ```ts
 import { createVolume, readBackVolume } from '@sangfor/hci-client';
@@ -1369,8 +1378,8 @@ describe('readBackVolume — the only success oracle', () => {
 });
 ```
 
-- [ ] **Step 2: 실패 확인.**
-- [ ] **Step 3: 구현** — `src/read-back.ts`:
+- [x] **Step 2: 실패 확인.**
+- [x] **Step 3: 구현** — `src/read-back.ts`:
 
 ```ts
 import type { HciClient } from './client.js';
@@ -1429,8 +1438,8 @@ export async function readBackVolume(
 }
 ```
 
-- [ ] **Step 4:** 테스트 PASS + 전체 스위트.
-- [ ] **Step 5: 커밋** — `git commit -m "feat(hci-client): read-back oracle — GET verification is the only success signal"`
+- [x] **Step 4:** 테스트 PASS + 전체 스위트.
+- [x] **Step 5: 커밋** — `git commit -m "feat(hci-client): read-back oracle — GET verification is the only success signal"`
 
 ---
 
@@ -1450,7 +1459,7 @@ export async function readBackVolume(
   - 파일: `data/evidence/change-runs/<runId>.jsonl`, 줄 스키마 `{ seq, at, runId, kind, payload(마스킹됨), prevHash, hash, keyed }`
   - 체인: `hash = HMAC-SHA256(secret, prevHash + '\n' + seq + '\n' + kind + '\n' + JSON.stringify(payload))`, secret 없으면 SHA-256(무키) + `keyed:false` — pm 패키지와 동일한 정직성 원칙(무키는 숨기지 않고 표기)
 
-- [ ] **Step 1: 실패 테스트** — `tests/hci-audit-ledger.test.ts`:
+- [x] **Step 1: 실패 테스트** — `tests/hci-audit-ledger.test.ts`:
 
 ```ts
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -1508,8 +1517,8 @@ describe('AuditLedger', () => {
 });
 ```
 
-- [ ] **Step 2: 실패 확인.**
-- [ ] **Step 3: 구현** — `src/audit-ledger.ts`:
+- [x] **Step 2: 실패 확인.**
+- [x] **Step 3: 구현** — `src/audit-ledger.ts`:
 
 ```ts
 import { createHash, createHmac } from 'node:crypto';
@@ -1591,8 +1600,8 @@ export class AuditLedger {
 
 `.env.example` 안전 게이트 섹션: `# SANGFOR_CHANGE_LEDGER_SECRET=  # HCI 변경 원장 HMAC 키. 미설정 시 무키 체인(keyed:false)으로 정직 표기.`
 
-- [ ] **Step 4:** 테스트 PASS + 전체 스위트.
-- [ ] **Step 5: 커밋** — `git commit -m "feat(hci-client): masked JSONL audit ledger with keyed hash chain"`
+- [x] **Step 4:** 테스트 PASS + 전체 스위트.
+- [x] **Step 5: 커밋** — `git commit -m "feat(hci-client): masked JSONL audit ledger with keyed hash chain"`
 
 ---
 
@@ -1615,7 +1624,7 @@ export class AuditLedger {
 
 **불변식:** ① 202/200은 성공이 아니다 — SUCCEEDED는 read-back PASS로만 ② FAILED_HALT에서 자동 롤백 금지(사람 호출) ③ 전 단계가 원장에 기록 ④ 검증 실패 입력은 APPLYING에 진입 불가.
 
-- [ ] **Step 1: 실패 테스트** — `tests/hci-apply-machine.test.ts` (mock 부트 패턴 동일, `fast = { pollIntervalMs: 1, maxPolls: 5 }`):
+- [x] **Step 1: 실패 테스트** — `tests/hci-apply-machine.test.ts` (mock 부트 패턴 동일, `fast = { pollIntervalMs: 1, maxPolls: 5 }`):
 
 ```ts
 import { AuditLedger, applyCreateVolume, listVolumes } from '@sangfor/hci-client';
@@ -1667,8 +1676,8 @@ describe('applyCreateVolume state machine', () => {
 });
 ```
 
-- [ ] **Step 2: 실패 확인.**
-- [ ] **Step 3: 구현** — `src/apply-machine.ts`:
+- [x] **Step 2: 실패 확인.**
+- [x] **Step 3: 구현** — `src/apply-machine.ts`:
 
 ```ts
 import { nowId } from '@sangfor/shared';
@@ -1748,8 +1757,8 @@ async function createVolumeWithHeaders(client: HciClient, input: ApplyCreateVolu
 
 구현 노트: `parseVolumeSafe`는 volumes.ts의 `parseVolume`을 export 이름만 바꿔 재사용하거나(`export { parseVolume as parseVolumeSafe }`), `createVolumeWithHeaders`를 volumes.ts의 `createVolume`에 `extraHeaders?: Record<string,string>` 4번째 인자를 추가하는 방식으로 단순화해도 된다(후자 권장 — dynamic import 제거). 어느 쪽이든 테스트 계약은 동일.
 
-- [ ] **Step 4:** 테스트 PASS + 전체 스위트.
-- [ ] **Step 5: 커밋** — `git commit -m "feat(hci-client): apply state machine — 202 is never success, read-back or halt"`
+- [x] **Step 4:** 테스트 PASS + 전체 스위트.
+- [x] **Step 5: 커밋** — `git commit -m "feat(hci-client): apply state machine — 202 is never success, read-back or halt"`
 
 ---
 
@@ -1780,7 +1789,7 @@ async function createVolumeWithHeaders(client: HciClient, input: ApplyCreateVolu
 3. 대상 host가 **비-loopback**이면 추가로: `SANGFOR_ALLOW_REAL_EXECUTION==='true'` && `getCapabilitySafety('HCI_SCP','volume_create').autoAllowed===true`(delete는 `volume_delete`) — 하나라도 아니면 거부. **loopback(mock)은 이 두 조건 면제**(승인·nonce는 여전히 필수 — 전체 경로 리허설 목적)
 4. 통과 시 실행 + `AuditLedger` 기록
 
-- [ ] **Step 1: 실패 테스트** — `tests/hci-mcp-tools.test.ts`:
+- [x] **Step 1: 실패 테스트** — `tests/hci-mcp-tools.test.ts`:
 
 ```ts
 import { listTools } from '../apps/mcp-server/src/index.js'; // MCP_NO_SERVE=1 필요 — 파일 최상단에서 process.env.MCP_NO_SERVE='1' 설정 후 import (기존 mcp-tool-annotations.test.ts 패턴을 그대로 따른다)
@@ -1807,8 +1816,8 @@ describe('hci apply tool gates (mock target, loopback)', () => {
 
 (두 번째 describe의 각 케이스는 Task 1의 승인 생성 패턴과 Task 11의 mock 부트 패턴을 조합해 완전 구현한다 — handler는 `listTools()`가 아니라 내부 `tools` 레코드 접근이 필요하므로, mcp-server에 `export function getToolHandler(name: string)` 헬퍼를 추가한다.)
 
-- [ ] **Step 2: 실패 확인.**
-- [ ] **Step 3: 구현** — `apps/mcp-server/src/index.ts`에 (딥 상대경로 import — apps 규약):
+- [x] **Step 2: 실패 확인.**
+- [x] **Step 3: 구현** — `apps/mcp-server/src/index.ts`에 (딥 상대경로 import — apps 규약):
 
 ```ts
 import { HciClient, KeystoneV2TokenProvider, HCI_AUTH_CONTRACT_STATUS, collectInventory, readBackVolume, applyCreateVolume, deleteVolume, getVolume, AuditLedger, validateCreateVolumeInput } from '../../../packages/sangfor-hci-client/src/index.js';
@@ -1943,8 +1952,8 @@ console.log(JSON.stringify({ ...base, approvalToken: signApprovalToken(secret, a
 
 `.env.example` 추가: `SANGFOR_HCI_IDENTITY_URL / SANGFOR_HCI_TENANT / SANGFOR_HCI_USER / SANGFOR_HCI_PASSWORD` (주석: 기본은 로컬 mock. 실장비 값은 M4 게이트 이후에만).
 
-- [ ] **Step 4:** `tests/hci-mcp-tools.test.ts` + `tests/mcp-tool-annotations.test.ts`(71개/집합 갱신) PASS → 전체 스위트 + `pnpm run smoke:mcp`.
-- [ ] **Step 5: 커밋** — `git commit -m "feat(mcp): 5 hci tools — plan/apply/verify/delete/inventory with signed-approval + safety gates"`
+- [x] **Step 4:** `tests/hci-mcp-tools.test.ts` + `tests/mcp-tool-annotations.test.ts`(71개/집합 갱신) PASS → 전체 스위트 + `pnpm run smoke:mcp`.
+- [x] **Step 5: 커밋** — `git commit -m "feat(mcp): 5 hci tools — plan/apply/verify/delete/inventory with signed-approval + safety gates"`
 
 ---
 
@@ -1953,7 +1962,7 @@ console.log(JSON.stringify({ ...base, approvalToken: signApprovalToken(secret, a
 **Files:**
 - Test: `tests/hci-slice-e2e.test.ts`
 
-- [ ] **Step 1: e2e 테스트 작성** — mock 서버 1대를 부트하고 **MCP handler 수준**에서 전체 사이클을 관통:
+- [x] **Step 1: e2e 테스트 작성** — mock 서버 1대를 부트하고 **MCP handler 수준**에서 전체 사이클을 관통:
 
 ```ts
 // 시나리오 (전부 사람 개입 0회, handler 직접 호출):
@@ -1970,9 +1979,9 @@ console.log(JSON.stringify({ ...base, approvalToken: signApprovalToken(secret, a
 
 각 단계는 위 태스크들의 검증된 패턴 조합이므로 코드 중복을 두려워하지 말고 명시적으로 작성한다(e2e는 가독성 우선).
 
-- [ ] **Step 2~4:** FAIL 확인 → (선행 태스크가 전부 완료면 즉시 PASS여야 정상; FAIL이면 해당 태스크 회귀) → 전체 스위트.
-- [ ] **Step 5: 커밋** — `git commit -m "test(hci): vertical-slice e2e pins the M1 exit criteria"`
-- [ ] **Step 6: M1 마일스톤 기록** — `data/competency/capability-maturity.json`의 HCI_SCP volume_create 항목에 `maturity: 'mock_verified'` + evidence로 `tests/hci-slice-e2e.test.ts` 경로 기재(field_verified는 **M4 전 금지**).
+- [x] **Step 2~4:** FAIL 확인 → (선행 태스크가 전부 완료면 즉시 PASS여야 정상; FAIL이면 해당 태스크 회귀) → 전체 스위트.
+- [x] **Step 5: 커밋** — `git commit -m "test(hci): vertical-slice e2e pins the M1 exit criteria"`
+- [x] **Step 6: M1 마일스톤 기록** — `data/competency/capability-maturity.json`의 HCI_SCP volume_create 항목에 `maturity: 'mock_verified'` + evidence로 `tests/hci-slice-e2e.test.ts` 경로 기재(field_verified는 **M4 전 금지**).
 
 ---
 
@@ -1997,7 +2006,7 @@ console.log(JSON.stringify({ ...base, approvalToken: signApprovalToken(secret, a
 
 **매핑 규칙(scripts/epp-diagnose.ts의 검증된 로직을 데이터 주도로 승격 — 날조 금지 원칙):** 엔드포인트가 pool에 없으면 해당 키를 **생략**(→ 하류에서 INDETERMINATE). 절대 기본값을 채우지 않는다.
 
-- [ ] **Step 1: fixture + 실패 테스트** — `tests/fixtures/epp-pool.sample.json` (실측 pool의 최소 재현):
+- [x] **Step 1: fixture + 실패 테스트** — `tests/fixtures/epp-pool.sample.json` (실측 pool의 최소 재현):
 
 ```json
 {
@@ -2032,8 +2041,8 @@ describe('mapEppPoolToConfigState', () => {
 });
 ```
 
-- [ ] **Step 2: 실패 확인.**
-- [ ] **Step 3: 구현** — `packages/sangfor-config-state/src/index.ts`:
+- [x] **Step 2: 실패 확인.**
+- [x] **Step 3: 구현** — `packages/sangfor-config-state/src/index.ts`:
 
 ```ts
 // ConfigState extraction: captured authenticated-XHR pools → provenance-carrying
@@ -2100,8 +2109,8 @@ MCP 도구(`apps/mcp-server/src/index.ts`, read-only — WRITE/DESTRUCTIVE 등�
 
 `scripts/epp-diagnose.ts` 재작성: 파일 읽기/출력 경로만 남기고 매핑은 `mapEppPoolToConfigState` 호출로 교체(출력 동일성 유지 — 기존 산출물 `outputs/diagnosis/EPP_6.0.4_*`와 diff로 확인).
 
-- [ ] **Step 4:** 테스트 + annotations(72) + 전체 스위트.
-- [ ] **Step 5: 커밋** — `git commit -m "feat(config-state): pool→ConfigState mapping as a library + collect_device_config MCP tool"`
+- [x] **Step 4:** 테스트 + annotations(72) + 전체 스위트.
+- [x] **Step 5: 커밋** — `git commit -m "feat(config-state): pool→ConfigState mapping as a library + collect_device_config MCP tool"`
 
 ---
 
@@ -2118,7 +2127,7 @@ MCP 도구(`apps/mcp-server/src/index.ts`, read-only — WRITE/DESTRUCTIVE 등�
   - `EvaluationSummary`에 `contextDependent: number` 추가
   - 의미론: verdict가 FAIL인 항목 중 `contextDependent===true`인 것은 category `'context_dependent'`로 분류되어 misconfiguration/missing 카운트에서 제외. **result.ok 계산은 불변**(모든 항목 PASS일 때만 true — 조건부 항목도 사람 확인 전엔 ok가 될 수 없다).
 
-- [ ] **Step 1: 실패 테스트** — `tests/spec-context-dependent.test.ts`:
+- [x] **Step 1: 실패 테스트** — `tests/spec-context-dependent.test.ts`:
 
 ```ts
 import { evaluateSpec, renderAdvisoryReport, type IntendedSpec } from '@sangfor/spec';
@@ -2149,8 +2158,8 @@ describe('context_dependent classification', () => {
 
 (주의: `ItemResult`의 항목 id 필드명·`source` 구조는 실제 spec 패키지 정의에 맞춰 조정 — 계약은 "FAIL+contextDependent→context_dependent, 카운트 분리, ok 불변, 리포트 섹션".)
 
-- [ ] **Step 2: 실패 확인.**
-- [ ] **Step 3: 구현** — evaluateSpec의 category 결정 지점에서:
+- [x] **Step 2: 실패 확인.**
+- [x] **Step 3: 구현** — evaluateSpec의 category 결정 지점에서:
 
 ```ts
 // 기존: FAIL이면 severity에 따라 misconfiguration(must) | missing(recommended)
@@ -2173,8 +2182,8 @@ summary 집계에 `contextDependent` 추가. `renderAdvisoryReport`에 섹션 �
 
 DOCX 렌더러는 markdown 경유이므로 자동 반영(스모크로 확인).
 
-- [ ] **Step 4:** 신규 + 기존 spec 스위트 6종 전부 PASS(기존 분류 회귀 없음).
-- [ ] **Step 5: 커밋** — `git commit -m "feat(spec): context_dependent category — conditional findings never inflate misconfigurations"`
+- [x] **Step 4:** 신규 + 기존 spec 스위트 6종 전부 PASS(기존 분류 회귀 없음).
+- [x] **Step 5: 커밋** — `git commit -m "feat(spec): context_dependent category — conditional findings never inflate misconfigurations"`
 
 ---
 
@@ -2199,7 +2208,7 @@ DOCX 렌더러는 markdown 경유이므로 자동 반영(스모크로 확인).
 - HCI 6.11.3: 클러스터 노드 수 ≥2(contextDependent), 스토리지 리플리카, 관리망 분리
 - 하한 테스트: `listSpecCoverage()` 합계 ≥ 40 assert.
 
-- [ ] **커밋** — `git commit -m "data(specs): expand seeded spec items to 40+ with manual citations + observation hints"`
+- [x] **커밋** — `git commit -m "data(specs): expand seeded spec items to 40+ with manual citations + observation hints"`
 
 ---
 
