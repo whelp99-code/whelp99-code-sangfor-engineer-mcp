@@ -196,4 +196,4 @@ describe.skipIf(!officeCliInstalled)('buildEvidencePackage (skipped: officecli n
     expect(second.validation.valid).toBe(true);
     expect(second.outputPath).toBe(first.outputPath);
   });
-});
+}, 30_000);

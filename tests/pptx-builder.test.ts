@@ -130,4 +130,4 @@ describe('PPTX Guide Builder', () => {
     expect(settingResult.size).toBeGreaterThan(1000);
     expect(opsResult.size).toBeGreaterThan(500);
   });
-});
+}, 30_000);

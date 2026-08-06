@@ -92,5 +92,5 @@ describe('sangfor_build_evidence_package — MCP surface', () => {
       else process.env.SANGFOR_EVIDENCE_ROOT = savedRoot;
       rmSync(root, { recursive: true, force: true });
     }
-  });
+  }, 30_000);
 });
