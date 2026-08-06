@@ -26,10 +26,12 @@ describe('PR-011 learning MCP surface', () => {
   // 총합은 "도구가 조용히 늘지 않는다"는 카나리다. 표면을 늘리는 변경은 이 수를
   // 함께 갱신해야 한다 (77 baseline + PR-011 학습 8 + 플레이북 프록시 9 + 디스커버리 2 = 96
   // + W4 차별화 3 [sangfor_session_report, sangfor_search_gaps, sangfor_safety_selftest] = 99
-  // + W5 engagement 스코프 1 [sangfor_engagement_scope] = 100).
+  // + W5 engagement 스코프 1 [sangfor_engagement_scope] = 100
+  // + 콘솔 증적 캡처 2 [sangfor_console_capture_evidence, sangfor_verify_capture_ledger] = 102
+  // + 감사 체크리스트 1급 데이터화 3 [sangfor_audit_frameworks, sangfor_audit_checklist, sangfor_audit_gap_report] = 105).
   it('adds exactly eight names on top of the 77-tool baseline', () => {
     const tools = listTools();
-    expect(tools).toHaveLength(100);
+    expect(tools).toHaveLength(105);
     expect(tools.filter((tool) => EXPECTED.includes(tool.name as typeof EXPECTED[number])).map((tool) => tool.name).sort())
       .toEqual([...EXPECTED].sort());
   });

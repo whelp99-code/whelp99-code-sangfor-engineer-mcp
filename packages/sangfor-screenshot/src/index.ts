@@ -9,6 +9,10 @@
 import { existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 
+// Card B1 — read-only console evidence capture (attach to an already-open
+// Chrome, screenshot named audit evidence, hash-chain into AuditLedger).
+export * from './console-evidence.js';
+
 // ─── Types ──────────────────────────────────────────────────────────────────
 
 export interface ScreenshotOptions {
