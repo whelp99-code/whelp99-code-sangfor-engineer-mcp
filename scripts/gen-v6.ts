@@ -15,7 +15,7 @@ async function main() {
   console.log('PPTX:', JSON.stringify(pptx, null, 2));
 
   // DOCX
-  const docx = buildSettingGuideDocx({
+  const docx = await buildSettingGuideDocx({
     filePath: EXCEL,
     outputPath: `${OUT}/Sangfor_설정가이드_v6_감사항목개별표시.docx`,
   });

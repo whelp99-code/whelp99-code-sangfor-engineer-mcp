@@ -121,6 +121,9 @@
       ],
       "@sangfor/runs": [
         "packages/sangfor-runs/src/index.ts"
+      ],
+      "@sangfor/office": [
+        "packages/sangfor-office/src/index.ts"
       ]
     },
     "baseUrl": "."

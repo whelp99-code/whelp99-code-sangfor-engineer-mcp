@@ -100,6 +100,8 @@ importers:
         specifier: workspace:*
         version: link:../shared
 
+  packages/sangfor-audit: {}
+
   packages/sangfor-chrome:
     dependencies:
       playwright:
@@ -120,6 +122,18 @@ importers:
 
   packages/sangfor-evidence:
     dependencies:
+      '@sangfor/audit':
+        specifier: workspace:*
+        version: link:../sangfor-audit
+      '@sangfor/hci-client':
+        specifier: workspace:*
+        version: link:../sangfor-hci-client
+      '@sangfor/office':
+        specifier: workspace:*
+        version: link:../sangfor-office
+      '@sangfor/screenshot':
+        specifier: workspace:*
+        version: link:../sangfor-screenshot
       '@sangfor/shared':
         specifier: workspace:*
         version: link:../shared
@@ -164,6 +178,12 @@ importers:
         specifier: workspace:*
         version: link:../sangfor-collector
 
+  packages/sangfor-office:
+    dependencies:
+      '@sangfor/shared':
+        specifier: workspace:*
+        version: link:../shared
+
   packages/sangfor-operator:
     dependencies:
       '@sangfor/approval':
@@ -201,6 +221,9 @@ importers:
 
   packages/sangfor-pptx:
     dependencies:
+      '@sangfor/office':
+        specifier: workspace:*
+        version: link:../sangfor-office
       '@sangfor/product-adapters':
         specifier: workspace:*
         version: link:../sangfor-product-adapters
@@ -220,6 +243,9 @@ importers:
       '@sangfor/learning-strategy':
         specifier: workspace:*
         version: link:../sangfor-learning-strategy
+      '@sangfor/office':
+        specifier: workspace:*
+        version: link:../sangfor-office
       '@sangfor/operator':
         specifier: workspace:*
         version: link:../sangfor-operator

@@ -337,7 +337,7 @@ pnpm run dev:control-tower     # 기동 로그: 기본 플레이북 시드: N건
 **미확인(INDETERMINATE) 항목**을 별도로 싣는다 — 근거가 없어 판정하지 못한 항목을
 통과로 읽으면 안 된다.
 
-## 6. 전체 96개 도구
+## 6. 전체 98개 도구
 
 표의 필수 입력은 top-level JSON Schema의 `required`만 표시한다. optional field와 enum은 `tools/list` 결과를 확인한다.
 
@@ -374,7 +374,7 @@ pnpm run dev:control-tower     # 기동 로그: 기본 플레이북 시드: N건
 | `sangfor_verify_result` | 읽기 | - | 계획 결과의 수동 validation checklist 반환 |
 | `sangfor_generate_evidence_report` | 쓰기 | - | Markdown 증적 보고서 생성 |
 
-### 6.3 문서·보고서·스크린샷 — 8
+### 6.3 문서·보고서·스크린샷 — 10
 
 | Tool | 등급 | 필수 입력 | 기능 |
 |---|---|---|---|
@@ -386,6 +386,8 @@ pnpm run dev:control-tower     # 기동 로그: 기본 플레이북 시드: N건
 | `sangfor_generate_comprehensive_operations_guide_docx` | 쓰기 | - | 상세 운영·백업·성능·FAQ DOCX |
 | `sangfor_capture_screenshots` | 쓰기 | `product` | Chrome CDP로 제품 화면 캡처 |
 | `sangfor_generate_all_guides` | 쓰기 | `filePath` | 설정/운영 DOCX·PPTX 일괄 생성 |
+| `sangfor_validate_office_document` | 읽기 | `filePath` | officecli로 .docx/.xlsx/.pptx OpenXML 스키마 사전 검증 |
+| `sangfor_build_evidence_package` | 쓰기 | `title`, `customer`, `dateStamp`, `items` | 표지·요약표·항목별 증적 섹션을 officecli로 조립한 고객 제출용 증적 패키지 DOCX 생성 (`captureRunId` 지정 시 증적 무결성 섹션 포함) |
 
 ### 6.4 지식·RAG — 8
 

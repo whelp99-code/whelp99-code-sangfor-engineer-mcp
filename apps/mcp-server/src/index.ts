@@ -36,6 +36,8 @@ import {
   buildComprehensiveOperationsGuideDocx,
 } from '../../../packages/sangfor-product-adapters/src/index.js';
 import { buildSettingGuidePptx, buildOperationsGuidePptx } from '../../../packages/sangfor-pptx/src/index.js';
+import { isOfficeCliAvailable, validateOfficeDocument } from '../../../packages/sangfor-office/src/index.js';
+import { buildEvidencePackage, type EvidencePackageItem } from '../../../packages/sangfor-evidence/src/evidence-package.js';
 import { captureProductScreenshots, captureConsoleEvidence, verifyCaptureLedger, formatDateStamp as formatCaptureDateStamp } from '../../../packages/sangfor-screenshot/src/index.js';
 import { loadSpec, evaluateSpec, renderAdvisoryReport, renderAdvisoryReportDocx, listSpecCoverage, type IntendedSpec } from '../../../packages/sangfor-spec/src/index.js';
 import { getCapabilitySafety, listCapabilitySafety, loadMaturityPolicy } from '../../../packages/sangfor-safety/src/index.js';
@@ -591,6 +593,21 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
     inputSchema: { type: 'object', properties: { outputPath: { type: 'string', description: 'Optional output path for the .docx file' }, screenshotDir: { type: 'string', description: 'Optional directory containing product screenshots (outputs/final_images)' } } },
     handler: (args: { outputPath?: string; screenshotDir?: string }) => buildComprehensiveOperationsGuideDocx({ outputPath: args.outputPath, screenshotDir: args.screenshotDir })
   },
+  'sangfor_validate_office_document': {
+    description: 'Read-only: validate a .docx/.xlsx/.pptx against the OpenXML schema via officecli, for a pre-submission sanity check before handing a generated document to a customer. Returns {valid, errorCount, errors, note?} plus officecli availability — valid:null (not false) when officecli is not installed on this host, so a missing officecli is never mistaken for a broken document.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        filePath: { type: 'string', description: 'Path to the .docx/.xlsx/.pptx file to validate.' },
+      },
+      required: ['filePath'],
+    },
+    handler: async (args: { filePath: string }) => {
+      const availability = isOfficeCliAvailable();
+      const validation = await validateOfficeDocument(args.filePath);
+      return { ...validation, officeCli: availability };
+    },
+  },
   'sangfor_capture_screenshots': {
     description: 'Capture screenshots from Sangfor product consoles (EPP, IAG, CC) via Chrome CDP. Connects to the product console, logs in, navigates menus, and saves screenshots.',
     inputSchema: { type: 'object', properties: { product: { type: 'string', enum: ['EPP', 'IAG', 'CC'], description: 'Product to capture screenshots from' }, targetUrl: { type: 'string', description: 'Override target URL' }, username: { type: 'string', description: 'Login username' }, password: { type: 'string', description: 'Login password' }, outputDir: { type: 'string', description: 'Output directory for screenshots' }, headless: { type: 'boolean', description: 'Run Chrome in headless mode' }, dryRun: { type: 'boolean', description: 'Dry-run mode: skip Chrome and just list planned screenshots' } }, required: ['product'] },
@@ -652,7 +669,7 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
       mkdirSync(outDir, { recursive: true });
       const results: Record<string, unknown> = {};
       try {
-        results.settingDocx = buildSettingGuideDocx({ filePath: args.filePath, outputPath: join(outDir, 'Sangfor_설정가이드_MCP.docx') });
+        results.settingDocx = await buildSettingGuideDocx({ filePath: args.filePath, outputPath: join(outDir, 'Sangfor_설정가이드_MCP.docx') });
       } catch (err) { results.settingDocxError = String(err); }
       try {
         results.settingPptx = await buildSettingGuidePptx({ filePath: args.filePath, outputPath: join(outDir, 'Sangfor_설정가이드_MCP.pptx') });
@@ -661,13 +678,13 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
         results.operationsPptx = await buildOperationsGuidePptx({ outputPath: join(outDir, 'Sangfor_운영가이드_MCP.pptx') });
       } catch (err) { results.operationsPptxError = String(err); }
       try {
-        results.operationsDocx = buildOperationsGuideDocx({ outputPath: join(outDir, 'Sangfor_운영가이드_MCP.docx') });
+        results.operationsDocx = await buildOperationsGuideDocx({ outputPath: join(outDir, 'Sangfor_운영가이드_MCP.docx') });
       } catch (err) { results.operationsDocxError = String(err); }
       try {
-        results.comprehensiveSettingDocx = buildComprehensiveSettingGuideDocx({ filePath: args.filePath, outputPath: join(outDir, 'Sangfor_설정가이드_v6_종합메뉴얼.docx'), screenshotDir });
+        results.comprehensiveSettingDocx = await buildComprehensiveSettingGuideDocx({ filePath: args.filePath, outputPath: join(outDir, 'Sangfor_설정가이드_v6_종합메뉴얼.docx'), screenshotDir });
       } catch (err) { results.comprehensiveSettingDocxError = String(err); }
       try {
-        results.comprehensiveOpsDocx = buildComprehensiveOperationsGuideDocx({ outputPath: join(outDir, 'Sangfor_운영가이드_v6_종합메뉴얼.docx'), screenshotDir });
+        results.comprehensiveOpsDocx = await buildComprehensiveOperationsGuideDocx({ outputPath: join(outDir, 'Sangfor_운영가이드_v6_종합메뉴얼.docx'), screenshotDir });
       } catch (err) { results.comprehensiveOpsDocxError = String(err); }
       if (args.captureScreenshots) {
         const products = args.screenshotProducts ?? ['EPP', 'IAG', 'CC'];
@@ -1564,6 +1581,40 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
       return computeGapReport(framework, args.observations ?? []);
     },
   },
+  'sangfor_build_evidence_package': {
+    description: 'Writes a local file (not a device change): assembles a customer-submission .docx evidence package via officecli (cover page, a summary table with per-verdict counts, one section per checklist item with its evidence images embedded, and — when captureRunId is given — a "증적 무결성" section reporting AuditLedger chain + per-file hash verification). observed/verdict text is used exactly as supplied, never summarized or inferred; items with no evidence file are marked "(증적 파일 없음)" (naming the expected files when any were claimed but none found) rather than silently skipped. items is shaped to accept sangfor_audit_gap_report output nearly as-is — see @sangfor/evidence gapReportItemsToEvidenceItems for the field mapping (evidenceRefs -> evidenceFiles). Auto-validates the result via officecli and returns it under validation. Defaults outputPath to the engagement-scoped evidence root under packages/<dateStamp>/. Refuses to overwrite an existing file at outputPath (OFFICE_FILE_EXISTS) unless overwrite:true is passed — a customer submission is never silently replaced.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        frameworkId: { type: 'string', description: 'Optional audit framework id, shown on the cover page.' },
+        title: { type: 'string', description: 'Document title, e.g. "ITAC 보안 필수사항 점검 증적 패키지".' },
+        customer: { type: 'string', description: 'Customer name, shown on the cover page.' },
+        dateStamp: { type: 'string', description: 'Collection/authoring date, e.g. "20260806". Also used in the default outputPath.' },
+        items: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              itemId: { type: 'string' },
+              topic: { type: 'string' },
+              reqIds: { type: 'array', items: { type: 'string' } },
+              status: { type: 'string', description: 'Observation status, e.g. met/partial/gap/unknown — used exactly as supplied.' },
+              verdict: { type: 'string', description: 'Verdict text, e.g. O/△/X/미확인 — used exactly as supplied, not reinterpreted.' },
+              observed: { type: 'string', description: 'Measured/observed text. Omit or pass "미확인" when not confirmed — never inferred.' },
+              evidenceFiles: { type: 'array', items: { type: 'string' }, description: 'Local file paths of evidence images for this item. Missing/nonexistent files are reported honestly rather than embedded.' },
+            },
+            required: ['itemId', 'topic', 'reqIds', 'status', 'verdict'],
+          },
+        },
+        captureRunId: { type: 'string', description: 'Optional sangfor_console_capture_evidence runId — adds a "증적 무결성" section verifying the AuditLedger chain and per-file hashes for that run.' },
+        outputPath: { type: 'string', description: 'Optional output path. Defaults under the engagement-scoped evidence root at packages/<dateStamp>/.' },
+        overwrite: { type: 'boolean', description: 'Default false. When outputPath already exists, the call is refused with OFFICE_FILE_EXISTS unless this is true — protects a customer submission from being silently replaced.' },
+      },
+      required: ['title', 'customer', 'dateStamp', 'items'],
+    },
+    handler: (args: { frameworkId?: string; title: string; customer: string; dateStamp: string; items: EvidencePackageItem[]; captureRunId?: string; outputPath?: string; overwrite?: boolean }) =>
+      buildEvidencePackage(args),
+  },
 };
 
 // Tools that change customer devices or external systems — clients MUST gate these.
@@ -1591,6 +1642,7 @@ const WRITE_TOOLS = new Set([
   'sangfor_generate_evidence_report', 'sangfor_generate_excel_based_change_plan', 'sangfor_session_report',
   'sangfor_generate_operations_guide_docx', 'sangfor_generate_operations_guide_pptx',
   'sangfor_generate_product_change_plan', 'sangfor_generate_setting_guide_docx', 'sangfor_generate_setting_guide_pptx',
+  'sangfor_build_evidence_package',
   'sangfor_hci_apply_create_volume',
   'sangfor_attach_observation_session', 'sangfor_manage_learning_capture', 'sangfor_collect_facts',
   'sangfor_research_learning_strategy', 'sangfor_validate_learning_strategy', 'sangfor_promote_learning_strategy',
@@ -1607,7 +1659,7 @@ function categoryOf(name: string): string {
   if (n.startsWith('hci_')) return 'hci';
   if (n.startsWith('pm_')) return 'pm';
   if (/wiki/.test(n)) return 'wiki';
-  if (n.startsWith('generate_') || /report|guide|excel/.test(n)) return 'report';
+  if (n.startsWith('generate_') || /report|guide|excel|evidence_package/.test(n)) return 'report';
   if (/rag|search|manual|store_health|discover/.test(n)) return 'knowledge';
   if (/finetune|eval|feedback|lesson/.test(n)) return 'ml';
   if (/console|operator|session|screenshot|collect/.test(n)) return 'collect';

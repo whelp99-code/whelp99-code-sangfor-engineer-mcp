@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { cpSync, existsSync, mkdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import { validateOfficeDocument, type ValidateOfficeDocumentResult } from '@sangfor/office';
 import { generateExcelBasedChangePlan, type ExcelWorkPlanItem, type ExcelBasedChangePlan } from './index.js';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -19,6 +20,11 @@ export interface DocxBuilderResult {
   totalItems: number;
   consoleItems: number;
   manualItems: number;
+  /** officecli OpenXML schema validation of the generated docxPath. Best
+   * effort: valid:null (not false) when officecli itself is unavailable, so
+   * a customer environment without officecli never fails document
+   * generation — only this diagnostic degrades. */
+  validation: ValidateOfficeDocumentResult;
 }
 
 // ─── XML Helpers ─────────────────────────────────────────────────────────────
@@ -147,13 +153,14 @@ function table(headers: string[], rows: string[][], widths: number[]): string {
         <w:insideH w:val="single" w:sz="4" w:color="D2DAE5"/>
         <w:insideV w:val="single" w:sz="4" w:color="D2DAE5"/>
       </w:tblBorders>
+      <!-- CT_TblPrBase sequence: tblLayout must precede tblCellMar. -->
+      <w:tblLayout w:type="fixed"/>
       <w:tblCellMar>
         <w:top w:w="80" w:type="dxa"/>
         <w:left w:w="120" w:type="dxa"/>
         <w:bottom w:w="80" w:type="dxa"/>
         <w:right w:w="120" w:type="dxa"/>
       </w:tblCellMar>
-      <w:tblLayout w:type="fixed"/>
     </w:tblPr>
     <w:tblGrid>${grid}</w:tblGrid>
     ${rowXml}
@@ -165,7 +172,10 @@ function tableRow(cells: string[], widths: number[], header: boolean): string {
 }
 
 function tableCell(text: string, width: number, header: boolean): string {
-  const fill = header ? '<w:shd w:fill="E8EEF5"/>' : '';
+  // OpenXML CT_Shd requires w:val (w:fill alone is schema-invalid — officecli
+  // validate flags "required attribute 'val' is missing" on every w:shd
+  // without it). w:val="clear" is the standard "solid fill, no pattern" value.
+  const fill = header ? '<w:shd w:val="clear" w:color="auto" w:fill="E8EEF5"/>' : '';
   const bold = header ? '<w:b/>' : '';
   return `<w:tc>
     <w:tcPr><w:tcW w:type="dxa" w:w="${width}"/>${fill}<w:vAlign w:val="center"/></w:tcPr>
@@ -326,7 +336,7 @@ const contentTypesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 
 // ─── Main Export ─────────────────────────────────────────────────────────────
 
-export function buildSettingGuideDocx(input: DocxBuilderInput): DocxBuilderResult {
+export async function buildSettingGuideDocx(input: DocxBuilderInput): Promise<DocxBuilderResult> {
   const plan = generateExcelBasedChangePlan({ filePath: input.filePath, prioritizeOnly: true });
   const consoleItems = plan.workPlan.filter(item => item.product !== 'external_or_manual');
   const manualItems = plan.workPlan.filter(item => item.product === 'external_or_manual');
@@ -368,6 +378,8 @@ export function buildSettingGuideDocx(input: DocxBuilderInput): DocxBuilderResul
   // Cleanup work dir
   try { rmSync(workDir, { recursive: true, force: true }); } catch { /* ignore */ }
 
+  const validation = await validateOfficeDocument(docxPath);
+
   return {
     docxPath,
     size: stat.size,
@@ -376,6 +388,7 @@ export function buildSettingGuideDocx(input: DocxBuilderInput): DocxBuilderResul
     totalItems: plan.workPlan.length,
     consoleItems: consoleItems.length,
     manualItems: manualItems.length,
+    validation,
   };
 }
 
@@ -547,7 +560,7 @@ function buildOperationsGuideDocumentXml(): string {
 </w:document>`;
 }
 
-export function buildOperationsGuideDocx(input: { outputPath?: string }): DocxBuilderResult {
+export async function buildOperationsGuideDocx(input: { outputPath?: string }): Promise<DocxBuilderResult> {
   const outDir = input.outputPath
     ? dirname(input.outputPath)
     : join(process.cwd(), 'outputs/customer-operations-guide');
@@ -577,6 +590,8 @@ export function buildOperationsGuideDocx(input: { outputPath?: string }): DocxBu
   // Cleanup work dir
   try { rmSync(workDir, { recursive: true, force: true }); } catch { /* ignore */ }
 
+  const validation = await validateOfficeDocument(docxPath);
+
   return {
     docxPath,
     size: stat.size,
@@ -602,6 +617,7 @@ export function buildOperationsGuideDocx(input: { outputPath?: string }): DocxBu
     totalItems: 0,
     consoleItems: 0,
     manualItems: 0,
+    validation,
   };
 }
 
@@ -937,7 +953,7 @@ function buildComprehensiveDocumentXml(plan: any, screenshotDir?: string): { doc
   return { documentXml, images };
 }
 
-export function buildComprehensiveSettingGuideDocx(input: DocxBuilderInput): DocxBuilderResult {
+export async function buildComprehensiveSettingGuideDocx(input: DocxBuilderInput): Promise<DocxBuilderResult> {
   const plan = generateExcelBasedChangePlan({ filePath: input.filePath, prioritizeOnly: true });
   const outDir = input.outputPath
     ? dirname(input.outputPath)
@@ -965,6 +981,8 @@ export function buildComprehensiveSettingGuideDocx(input: DocxBuilderInput): Doc
   const consoleItems = plan.workPlan.filter((i: any) => i.product !== 'external_or_manual');
   const manualItems = plan.workPlan.filter((i: any) => i.product === 'external_or_manual');
 
+  const validation = await validateOfficeDocument(docxPath);
+
   return {
     docxPath,
     size: statSync(docxPath).size,
@@ -978,6 +996,7 @@ export function buildComprehensiveSettingGuideDocx(input: DocxBuilderInput): Doc
     totalItems: plan.workPlan.length,
     consoleItems: consoleItems.length,
     manualItems: manualItems.length,
+    validation,
   };
 }
 
@@ -1146,7 +1165,7 @@ function buildComprehensiveOpsDocumentXml(screenshotDir?: string): { documentXml
   return { documentXml, images };
 }
 
-export function buildComprehensiveOperationsGuideDocx(input: { outputPath?: string; screenshotDir?: string }): DocxBuilderResult {
+export async function buildComprehensiveOperationsGuideDocx(input: { outputPath?: string; screenshotDir?: string }): Promise<DocxBuilderResult> {
   const outDir = input.outputPath
     ? dirname(input.outputPath)
     : join(process.cwd(), 'outputs/customer-operations-guide');
@@ -1170,6 +1189,8 @@ export function buildComprehensiveOperationsGuideDocx(input: { outputPath?: stri
   if (existsSync(docxPath)) rmSync(docxPath);
   execFileSync('zip', ['-qr', docxPath, '.'], { cwd: workDir });
 
+  const validation = await validateOfficeDocument(docxPath);
+
   return {
     docxPath,
     size: statSync(docxPath).size,
@@ -1182,5 +1203,6 @@ export function buildComprehensiveOperationsGuideDocx(input: { outputPath?: stri
     totalItems: 0,
     consoleItems: 0,
     manualItems: 0,
+    validation,
   };
 }

@@ -9,6 +9,15 @@ export type {
   ChangeRunChainStatus,
 } from './change-run-report.js';
 
+export { buildEvidencePackage, gapReportItemsToEvidenceItems } from './evidence-package.js';
+export type {
+  EvidencePackageItem,
+  BuildEvidencePackageInput,
+  BuildEvidencePackageResult,
+  BuildEvidencePackageDeps,
+  EvidenceIntegritySummary,
+} from './evidence-package.js';
+
 export function generateEvidenceReport(input: { plan: ConfigPlan; verification?: unknown; format?: 'markdown' | 'json' }) {
   const plan = input.plan;
   const md = [

@@ -6,6 +6,7 @@ import PptxGenJS from 'pptxgenjs';
 import { existsSync, mkdirSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { generateExcelBasedChangePlan, type ExcelBasedChangePlan, type ExcelWorkPlanItem } from '@sangfor/product-adapters';
+import { validateOfficeDocument, type ValidateOfficeDocumentResult } from '@sangfor/office';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -25,6 +26,9 @@ export interface PptxGuideResult {
   consoleItems: number;
   manualItems: number;
   products: string[];
+  /** officecli OpenXML schema validation of the generated pptxPath. Best
+   * effort: valid:null (not false) when officecli itself is unavailable. */
+  validation: ValidateOfficeDocumentResult;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -592,6 +596,7 @@ export async function buildSettingGuidePptx(options: PptxGuideOptions): Promise<
   const buffer = await pptx.write({ outputType: 'nodebuffer' });
   writeFileSync(pptxPath, buffer);
   const size = existsSync(pptxPath) ? statSync(pptxPath).size : 0;
+  const validation = await validateOfficeDocument(pptxPath);
 
   return {
     pptxPath,
@@ -602,6 +607,7 @@ export async function buildSettingGuidePptx(options: PptxGuideOptions): Promise<
     consoleItems: consoleItems.length,
     manualItems: manualItems.length,
     products: Object.keys(byProduct),
+    validation,
   };
 }
 
@@ -641,6 +647,7 @@ export async function buildOperationsGuidePptx(options: PptxGuideOptions): Promi
   const buffer = await pptx.write({ outputType: 'nodebuffer' });
   writeFileSync(pptxPath, buffer);
   const size = existsSync(pptxPath) ? statSync(pptxPath).size : 0;
+  const validation = await validateOfficeDocument(pptxPath);
 
   return {
     pptxPath,
@@ -651,5 +658,6 @@ export async function buildOperationsGuidePptx(options: PptxGuideOptions): Promi
     consoleItems: 0,
     manualItems: 0,
     products: ['ENDPOINT_SECURE', 'IAG', 'NDR', 'HCI_SCP'],
+    validation,
   };
 }
