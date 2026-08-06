@@ -6,6 +6,7 @@ import { loadSpec, listSpecCoverage } from '../packages/sangfor-spec/src/index.j
 import { loadWorkAtoms } from '../packages/sangfor-competency/src/index.js';
 import { recommendSizing } from '../packages/sangfor-sizing/src/index.js';
 import { getCapabilitySafety } from '../packages/sangfor-safety/src/index.js';
+import { loadAuditFrameworks } from '../packages/sangfor-audit/src/index.js';
 
 const dirs: string[] = [];
 afterEach(() => { for (const d of dirs) rmSync(d, { recursive: true, force: true }); dirs.length = 0; });
@@ -81,5 +82,45 @@ describe('getCapabilitySafety — corrupt safety policy degrades to human_only d
     expect(() => { s = getCapabilitySafety('HCI', 'anything', root); }).not.toThrow();
     expect(s!.safetyClass).toBe('human_only');
     expect(s!.autoAllowed).toBe(false);
+  });
+});
+
+describe('loadAuditFrameworks — one corrupt/invalid framework file must not crash the whole load', () => {
+  const validItem = {
+    itemId: 'ITEM-01',
+    topic: 'x',
+    reqIds: ['REQ-1'],
+    group: 'G1',
+    groupLabel: 'group',
+    products: ['IAG'],
+    method: 'console_dryrun',
+    requiredEvidence: ['evidence'],
+    owner: 'engineer',
+    priority: 'P1',
+  };
+  const validFramework = { frameworkId: 'good-fw', title: 't', version: '1', sourceNote: 'n', items: [validItem] };
+
+  it('skips an unparseable JSON file and still loads the valid ones', () => {
+    const root = mk();
+    writeFileSync(join(root, 'good.json'), JSON.stringify(validFramework));
+    writeFileSync(join(root, 'bad.json'), 'NOT JSON AT ALL');
+
+    let frameworks: ReturnType<typeof loadAuditFrameworks> = [];
+    expect(() => { frameworks = loadAuditFrameworks(root); }).not.toThrow();
+    expect(frameworks.map((f) => f.frameworkId)).toEqual(['good-fw']);
+  });
+
+  it('rejects (skips) a framework file whose items violate the schema, without crashing the load', () => {
+    const root = mk();
+    writeFileSync(join(root, 'good.json'), JSON.stringify(validFramework));
+    writeFileSync(join(root, 'invalid-schema.json'), JSON.stringify({
+      ...validFramework,
+      frameworkId: 'bad-fw',
+      items: [{ ...validItem, priority: 'NOT_A_PRIORITY' }],
+    }));
+
+    let frameworks: ReturnType<typeof loadAuditFrameworks> = [];
+    expect(() => { frameworks = loadAuditFrameworks(root); }).not.toThrow();
+    expect(frameworks.map((f) => f.frameworkId)).toEqual(['good-fw']);
   });
 });
