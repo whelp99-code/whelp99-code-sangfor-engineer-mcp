@@ -92,6 +92,9 @@
       "@sangfor/competency": [
         "packages/sangfor-competency/src/index.ts"
       ],
+      "@sangfor/audit": [
+        "packages/sangfor-audit/src/index.ts"
+      ],
       "@sangfor/rca": [
         "packages/sangfor-rca/src/index.ts"
       ],

@@ -13,7 +13,7 @@ import { verifyResult } from '../../../packages/sangfor-verifier/src/index.js';
 import { generateEvidenceReport, buildChangeRunReport, listChangeRunIds, isSafeRunId } from '../../../packages/sangfor-evidence/src/index.js';
 import { submitFeedback, extractLesson } from '../../../packages/sangfor-feedback/src/index.js';
 import { createEvalCaseFromFeedback, runPlannerEval } from '../../../packages/sangfor-evals/src/index.js';
-import { PRODUCTS } from '../../../packages/shared/src/index.js';
+import { PRODUCTS, type ProductCode } from '../../../packages/shared/src/index.js';
 import { ingestDocument, ragSearch, exportRagIndexSummary, omitVectorFromHit, getRagSearchDiagnostics } from '../../../packages/sangfor-rag/src/index.js';
 import { createFineTuneDataset, createFineTuneJobSpec, validateFineTuneDataset } from '../../../packages/sangfor-finetune/src/index.js';
 import { loadEnvFile } from '../../../packages/sangfor-collector/src/load-env.js';
@@ -36,7 +36,7 @@ import {
   buildComprehensiveOperationsGuideDocx,
 } from '../../../packages/sangfor-product-adapters/src/index.js';
 import { buildSettingGuidePptx, buildOperationsGuidePptx } from '../../../packages/sangfor-pptx/src/index.js';
-import { captureProductScreenshots } from '../../../packages/sangfor-screenshot/src/index.js';
+import { captureProductScreenshots, captureConsoleEvidence, verifyCaptureLedger, formatDateStamp as formatCaptureDateStamp } from '../../../packages/sangfor-screenshot/src/index.js';
 import { loadSpec, evaluateSpec, renderAdvisoryReport, renderAdvisoryReportDocx, listSpecCoverage, type IntendedSpec } from '../../../packages/sangfor-spec/src/index.js';
 import { getCapabilitySafety, listCapabilitySafety, loadMaturityPolicy } from '../../../packages/sangfor-safety/src/index.js';
 import { loadWorkAtoms, computeReplacementCoverage } from '../../../packages/sangfor-competency/src/index.js';
@@ -71,6 +71,16 @@ import {
   type ObserverProfile,
 } from '../../../packages/sangfor-observer/src/index.js';
 import { captureKeyringFromEnv } from '../../../packages/sangfor-collector/src/capture-bundle.js';
+import {
+  getAuditFramework,
+  listAuditFrameworkSummaries,
+  filterChecklistItems,
+  computeGapReport,
+  type AuditGroup,
+  type AuditOwner,
+  type AuditPriority,
+  type AuditObservation,
+} from '../../../packages/sangfor-audit/src/index.js';
 
 const pmStore = createPmStore(); // process-lifetime PM state for the MCP session
 
@@ -585,6 +595,53 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
     description: 'Capture screenshots from Sangfor product consoles (EPP, IAG, CC) via Chrome CDP. Connects to the product console, logs in, navigates menus, and saves screenshots.',
     inputSchema: { type: 'object', properties: { product: { type: 'string', enum: ['EPP', 'IAG', 'CC'], description: 'Product to capture screenshots from' }, targetUrl: { type: 'string', description: 'Override target URL' }, username: { type: 'string', description: 'Login username' }, password: { type: 'string', description: 'Login password' }, outputDir: { type: 'string', description: 'Output directory for screenshots' }, headless: { type: 'boolean', description: 'Run Chrome in headless mode' }, dryRun: { type: 'boolean', description: 'Dry-run mode: skip Chrome and just list planned screenshots' } }, required: ['product'] },
     handler: (args: { product: 'EPP' | 'IAG' | 'CC'; targetUrl?: string; username?: string; password?: string; outputDir?: string; headless?: boolean; dryRun?: boolean }) => captureProductScreenshots(args)
+  },
+  'sangfor_console_capture_evidence': {
+    description: 'Read-only console evidence capture: attaches to a Chrome you already have open on the product console (via CDP — never launches a browser) and screenshots the listed menus/URLs as named audit evidence (REQ##_product_menu_Before_YYYYMMDD.png), hash-chained into the AuditLedger. reads console screens only; never changes device configuration. Chrome must already be running with --remote-debugging-port=<cdpPort> (default 9222). Omit outputDir to use the engagement-scoped default data/evidence/captures/<YYYYMMDD>/.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        cdpPort: { type: 'number', description: 'Chrome remote-debugging port to attach to. Default 9222.' },
+        product: { type: 'string', description: 'Product code, e.g. ENDPOINT_SECURE, IAG, CYBER_COMMAND, HCI_SCP (see sangfor_products). Aliases like EPP/CC are also accepted.' },
+        captures: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              reqId: { type: 'string', description: 'ITAC requirement id, e.g. "01" — becomes REQ01 in the filename.' },
+              menuLabel: { type: 'string', description: 'Human label for the console screen; used in the filename.' },
+              menuPath: {
+                type: 'array',
+                items: { type: 'object', properties: { menu: { type: 'string' }, submenu: { type: 'string' } }, required: ['menu'] },
+                description: 'Optional menu/submenu text-click path (read-only navigation only — no form submission).',
+              },
+              url: { type: 'string', description: 'Optional URL to navigate to before capture.' },
+            },
+            required: ['reqId', 'menuLabel'],
+          },
+        },
+        outputDir: { type: 'string', description: 'Output directory for PNGs. Omit for the engagement-scoped default.' },
+        dateStamp: { type: 'string', description: 'Override the YYYYMMDD stamp used in filenames and the default outputDir. Default: today.' },
+        engagementId: { type: 'string', description: 'Optional engagement id recorded in the ledger payload.' },
+      },
+      required: ['product', 'captures'],
+    },
+    handler: async (args: { cdpPort?: number; product: string; captures: Array<{ reqId: string; menuLabel: string; menuPath?: Array<{ menu: string; submenu?: string }>; url?: string }>; outputDir?: string; dateStamp?: string; engagementId?: string }) => {
+      const product = normalizeProduct(args.product);
+      const dateStamp = args.dateStamp ?? formatCaptureDateStamp(new Date());
+      const outputDir = args.outputDir ?? join(resolveEngagementScopedData('data/evidence', 'SANGFOR_EVIDENCE_ROOT'), 'captures', dateStamp);
+      return captureConsoleEvidence({
+        cdpPort: args.cdpPort, product, captures: args.captures, outputDir, dateStamp, engagementId: args.engagementId,
+      });
+    },
+  },
+  'sangfor_verify_capture_ledger': {
+    description: 'Read-only: verify a sangfor_console_capture_evidence run — the AuditLedger hash-chain integrity (chainOk) AND, per captured file, whether its current on-disk sha256 still matches the hash recorded at capture time (tamper detection).',
+    inputSchema: { type: 'object', properties: { runId: { type: 'string', description: 'runId returned by sangfor_console_capture_evidence.' } }, required: ['runId'] },
+    handler: (args: { runId: string }) => {
+      if (!isSafeRunId(args.runId)) return { error: `INVALID_RUN_ID: "${args.runId}" is not a safe path segment.` };
+      return verifyCaptureLedger(args.runId);
+    },
   },
   'sangfor_generate_all_guides': {
     description: 'Generate complete guide set: setting guide (docx + pptx), operations guide (docx + pptx), and optionally capture screenshots. Uses the ITAC Excel as input.',
@@ -1446,7 +1503,67 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
         ],
       };
     },
-  }
+  },
+  'sangfor_audit_frameworks': {
+    description: 'Read-only: list registered customer audit-checklist frameworks (e.g. a customer\'s security-audit master table promoted to data) — frameworkId, title, version, and item count. Use with sangfor_audit_checklist / sangfor_audit_gap_report.',
+    inputSchema: { type: 'object', properties: {} },
+    handler: () => listAuditFrameworkSummaries(),
+  },
+  'sangfor_audit_checklist': {
+    description: 'Read-only: list checklist items for one audit framework, optionally filtered by group/product/priority/owner. Sorted by itemId. Optional cursor/limit page the result; omit both for the full filtered list (default, backward-compatible).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        frameworkId: { type: 'string', description: 'Framework id from sangfor_audit_frameworks, e.g. "hyundai-supplier-2026".' },
+        group: { type: 'string', enum: ['G1', 'G2', 'G3', 'G4', 'G5', 'G6', 'G7'], description: 'Filter to one audit group.' },
+        product: { type: 'string', description: 'Filter to items whose products include this @sangfor/shared ProductCode.' },
+        priority: { type: 'string', enum: ['P1', 'P2', 'P3'], description: 'Filter to one priority.' },
+        owner: { type: 'string', enum: ['customer', 'engineer', 'vendor'], description: 'Filter to one owning role.' },
+        cursor: { type: 'string' },
+        limit: { type: 'integer', minimum: 1, maximum: 100 },
+      },
+      required: ['frameworkId'],
+    },
+    handler: (args: { frameworkId: string; group?: AuditGroup; product?: ProductCode; priority?: AuditPriority; owner?: AuditOwner; cursor?: string; limit?: number }) => {
+      const framework = getAuditFramework(args.frameworkId);
+      if (!framework) return { error: `UNKNOWN_FRAMEWORK: "${args.frameworkId}" is not registered. Call sangfor_audit_frameworks to see available ids.` };
+      const filtered = filterChecklistItems(framework.items, {
+        group: args.group,
+        product: args.product,
+        priority: args.priority,
+        owner: args.owner,
+      });
+      return paginateOptionalField(filtered, args, (i) => i.itemId, 'items');
+    },
+  },
+  'sangfor_audit_gap_report': {
+    description: 'Read-only: build a gap report for an audit framework from observations you supply — {itemId, status: met|partial|gap|unknown, observed?, evidenceRefs?}. Every item in the framework is included even with no matching observation (reported as status "unknown" / verdict "미확인" — missing coverage is never hidden). missingEvidence is requiredEvidence in full when evidenceRefs is empty/omitted, and empty when any evidenceRefs are supplied (not a substring match). Returns per-item verdict (O/△/X/미확인) plus a summary {total, met, partial, gap, unknown, observedRatio (how much of the framework has been inspected), metRatio (how much of it passes)}.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        frameworkId: { type: 'string', description: 'Framework id from sangfor_audit_frameworks.' },
+        observations: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              itemId: { type: 'string' },
+              status: { type: 'string', enum: ['met', 'partial', 'gap', 'unknown'] },
+              observed: { type: 'string' },
+              evidenceRefs: { type: 'array', items: { type: 'string' } },
+            },
+            required: ['itemId', 'status'],
+          },
+        },
+      },
+      required: ['frameworkId', 'observations'],
+    },
+    handler: (args: { frameworkId: string; observations: AuditObservation[] }) => {
+      const framework = getAuditFramework(args.frameworkId);
+      if (!framework) return { error: `UNKNOWN_FRAMEWORK: "${args.frameworkId}" is not registered. Call sangfor_audit_frameworks to see available ids.` };
+      return computeGapReport(framework, args.observations ?? []);
+    },
+  },
 };
 
 // Tools that change customer devices or external systems — clients MUST gate these.
@@ -1468,7 +1585,7 @@ const WRITE_TOOLS = new Set([
   'sangfor_propose_wiki_update', 'sangfor_approve_wiki_update',
   'sangfor_ingest_document', 'sangfor_learn_sources', 'sangfor_import_excel_requirement_list',
   'sangfor_submit_feedback', 'sangfor_extract_lesson', 'sangfor_request_approval', 'sangfor_run_planner_eval',
-  'sangfor_capture_screenshots', 'sangfor_start_operator_session', 'sangfor_kill_session',
+  'sangfor_capture_screenshots', 'sangfor_console_capture_evidence', 'sangfor_start_operator_session', 'sangfor_kill_session',
   'sangfor_generate_all_guides', 'sangfor_generate_comprehensive_operations_guide_docx',
   'sangfor_generate_comprehensive_setting_guide_docx', 'sangfor_generate_config_plan',
   'sangfor_generate_evidence_report', 'sangfor_generate_excel_based_change_plan', 'sangfor_session_report',
