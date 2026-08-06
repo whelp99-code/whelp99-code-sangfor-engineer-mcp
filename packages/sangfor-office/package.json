@@ -1,0 +1,8 @@
+{
+  "name": "@sangfor/office",
+  "type": "module",
+  "main": "src/index.ts",
+  "dependencies": {
+    "@sangfor/shared": "workspace:*"
+  }
+}

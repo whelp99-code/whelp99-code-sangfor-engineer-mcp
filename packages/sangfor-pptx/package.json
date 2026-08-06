@@ -4,6 +4,7 @@
   "type": "module",
   "main": "src/index.ts",
   "dependencies": {
+    "@sangfor/office": "workspace:*",
     "@sangfor/product-adapters": "workspace:*",
     "@sangfor/shared": "workspace:*"
   },

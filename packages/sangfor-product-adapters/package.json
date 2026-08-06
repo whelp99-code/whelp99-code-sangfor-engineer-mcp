@@ -5,6 +5,7 @@
   "dependencies": {
     "@sangfor/approval": "workspace:*",
     "@sangfor/learning-strategy": "workspace:*",
+    "@sangfor/office": "workspace:*",
     "@sangfor/operator": "workspace:*",
     "@sangfor/shared": "workspace:*"
   }
