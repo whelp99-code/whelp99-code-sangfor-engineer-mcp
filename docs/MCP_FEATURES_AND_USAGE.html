@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sangfor Engineer MCP 기능 및 활용 정의서</title>
+  <style>
+    :root { color-scheme: light; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; line-height: 1.6; }
+    body { max-width: 1100px; margin: 0 auto; padding: 2rem; color: #172033; background: #f7f9fc; }
+    main { background: #fff; padding: 2rem 2.5rem; border: 1px solid #dbe2ec; border-radius: 12px; }
+    h1, h2 { color: #102a43; }
+    h1 { margin-top: 0; }
+    h2 { margin-top: 2.2rem; border-bottom: 2px solid #d9e2ec; padding-bottom: .35rem; }
+    h3 { color: #243b53; margin-top: 1.5rem; }
+    code { background: #eef2f7; padding: .1rem .3rem; border-radius: 4px; }
+    pre { overflow-x: auto; padding: 1rem; background: #102a43; color: #f0f4f8; border-radius: 8px; }
+    table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+    th, td { border: 1px solid #cbd5e1; padding: .55rem .7rem; text-align: left; vertical-align: top; }
+    th { background: #e9f0f7; }
+    .status { border-left: 4px solid #2f855a; background: #f0fff4; padding: 1rem; }
+    .warning { border-left: 4px solid #c05621; background: #fffaf0; padding: 1rem; }
+    .muted { color: #52606d; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Sangfor Engineer MCP 기능 및 활용 정의서</h1>
+  <p class="muted">기준일: 2026-08-09 · 저장소 실행 코드와 운영 문서를 기준으로 작성</p>
+
+  <div class="status">
+    <strong>정의:</strong> Sangfor Engineer MCP는 공식 지식과 관측 증거를 기반으로 요구사항을 계획·진단·문서화하고, 사람이 인증·승인한 범위에서만 장비 read/write를 수행하는 fail-closed 현장 엔지니어 보조 시스템이다.
+  </div>
+
+  <h2>1. 현재 표면</h2>
+  <ul>
+    <li>실행 검증 도구 수: <strong>107개</strong></li>
+    <li><code>pnpm run smoke:mcp</code>: 통과</li>
+    <li>MCP scorecard: <strong>96/100, Grade A</strong></li>
+    <li>입력 schema: 107/107 통과</li>
+    <li>mutation gating: 15/15 통과</li>
+    <li>read-only annotation: 92개 중 54개 완비</li>
+  </ul>
+  <div class="warning">기존 Markdown 가이드의 96/98개 도구 수치는 현재 registry와 불일치한다. 도구 수의 정본은 <code>apps/mcp-server/src/index.ts</code>와 실제 <code>tools/list</code> 결과다.</div>
+
+  <h2>2. 핵심 기능 영역</h2>
+  <table>
+    <thead><tr><th>영역</th><th>가능한 일</th><th>현재 경계</th></tr></thead>
+    <tbody>
+      <tr><td>제품·프로젝트 분석</td><td>제품 탐색, 요구사항 분해, 설정 계획, precheck와 validation 생성</td><td>계획 생성은 실제 적용이 아니다.</td></tr>
+      <tr><td>HCI/SCP</td><td>inventory, health report, volume 계획·승인 실행·read-back 검증·삭제</td><td>mock은 검증됨. 실장비 write는 현재 <code>human_only</code>.</td></tr>
+      <tr><td>콘솔 관측</td><td>mock state, live snapshot, CDP screenshot, read-only evidence capture</td><td>실장비는 VPN·인증·기존 CDP 세션이 필요하다.</td></tr>
+      <tr><td>ConfigState</td><td>captured XHR pool을 ConfigState와 advisory report로 변환</td><td><code>sangfor_collect_device_config</code> 자체는 로그인 도구가 아니다.</td></tr>
+      <tr><td>자문·진단</td><td>spec 평가, FortiOS/Cisco read-only 자문, RCA, sizing, version check</td><td>관측값·출처·시점이 없으면 INDETERMINATE다.</td></tr>
+      <tr><td>RAG·지식</td><td>매뉴얼, Wiki, 로컬 RAG 검색과 문서 수집</td><td>검색 결과는 실장비 관측값이 아니다.</td></tr>
+      <tr><td>문서·증적</td><td>DOCX/PPTX, screenshot evidence, evidence package, Office 검증</td><td>문서 생성은 장비 적용이나 검증을 의미하지 않는다.</td></tr>
+      <tr><td>PM·감사</td><td>engagement, work item, 장비 lock, hash-chain event, 보고서</td><td>기록과 실제 작업은 별도다.</td></tr>
+      <tr><td>Learning Observer</td><td>CDP attach, passive capture, encrypted bundle, fact와 strategy lifecycle</td><td>정확한 profile, CDP, 승인과 evidence가 필요하다.</td></tr>
+      <tr><td>Control Tower</td><td>playbook draft, revision, 실행, 상태, 분석 제출</td><td>revision 승인과 write 승인, scheduler는 사람/별도 시스템 영역이다.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>3. 대표 도구</h2>
+  <h3>HCI/SCP</h3>
+  <p><code>sangfor_hci_inventory</code>, <code>sangfor_hci_health_report</code>, <code>sangfor_hci_plan_create_volume</code>, <code>sangfor_hci_apply_create_volume</code>, <code>sangfor_hci_verify_volume</code>, <code>sangfor_hci_delete_volume</code></p>
+  <h3>계획·진단</h3>
+  <p><code>sangfor_products</code>, <code>sangfor_analyze_customer_requirements</code>, <code>sangfor_generate_config_plan</code>, <code>sangfor_validate_config_plan</code>, <code>sangfor_evaluate_config</code>, <code>sangfor_suggest_rca</code>, <code>sangfor_recommend_sizing</code></p>
+  <h3>실장비·CDP</h3>
+  <p><code>sangfor_start_operator_session</code>, <code>sangfor_read_live_console_state</code>, <code>sangfor_console_capture_evidence</code>, <code>sangfor_attach_observation_session</code>, <code>sangfor_manage_learning_capture</code>, <code>sangfor_collect_device_config</code></p>
+  <h3>지식·문서·운영</h3>
+  <p><code>sangfor_search_manuals</code>, <code>sangfor_get_manual_section</code>, <code>sangfor_rag_search</code>, <code>sangfor_generate_setting_guide_docx</code>, <code>sangfor_build_evidence_package</code>, <code>sangfor_pm_report</code>, <code>sangfor_playbook_execute</code></p>
+
+  <h2>4. Aside/Chrome CDP 경로</h2>
+  <ol>
+    <li>사람이 aside/Chrome에서 장비에 로그인한다.</li>
+    <li>Chrome을 loopback CDP로 실행한다.</li>
+    <li><code>sangfor_console_capture_evidence</code> 또는 <code>sangfor_attach_observation_session</code>이 기존 page에 attach한다.</li>
+    <li>지정 메뉴를 read-only로 탐색하고 screenshot 또는 encrypted capture를 만든다.</li>
+    <li>AuditLedger 또는 capture bundle의 hash와 provenance를 검증한다.</li>
+  </ol>
+  <div class="warning"><code>sangfor_console_capture_evidence</code>는 Chrome을 대신 로그인시키지 않는다. 기존 로그인 page와 CDP endpoint가 없으면 현재 live evidence를 만들 수 없다.</div>
+
+  <h2>5. 안전·승인 모델</h2>
+  <pre>read-only → plan → dry-run → signed approval → single-use nonce
+→ safety class → real execution flag → read-back verification → audit evidence</pre>
+  <ul>
+    <li>HTTP 2xx는 성공이 아니다. 독립 read-back <code>PASS</code>만 성공이다.</li>
+    <li><code>INDETERMINATE</code>는 <code>PASS</code>가 아니다.</li>
+    <li>실패 시 자동 rollback하지 않고 <code>FAILED_HALT</code>한다.</li>
+    <li>모호한 UI target, 누락된 service catalog, 손상된 nonce/ledger는 거부한다.</li>
+    <li>secret은 persistence 전에 masking한다.</li>
+    <li>HTTP bridge remote write에는 token, signed approval, <code>SANGFOR_ALLOW_REMOTE_WRITE=true</code>가 추가로 필요하다.</li>
+  </ul>
+
+  <h2>6. 성숙도 정의</h2>
+  <table>
+    <thead><tr><th>단계</th><th>의미</th><th>현재 상태</th></tr></thead>
+    <tbody>
+      <tr><td>L0</td><td>registry·schema·tool discovery</td><td>구현·검증</td></tr>
+      <tr><td>L1</td><td>local/mock 계획·문서·RAG</td><td>구현·검증</td></tr>
+      <tr><td>L2</td><td>인증된 장비 read-only 관측</td><td>CDP/VPN/자격증명 필요</td></tr>
+      <tr><td>L3</td><td>관측 증거 기반 진단·증적</td><td>부분 구현, current live evidence 필요</td></tr>
+      <tr><td>L4</td><td>승인된 reversible write와 read-back</td><td>HCI mock 중심, 실장비 human gate 대기</td></tr>
+      <tr><td>L5</td><td>완전 자율 field engineer</td><td>미구현·의도적으로 제한</td></tr>
+    </tbody>
+  </table>
+
+  <h2>7. 다음 고도화 우선순위</h2>
+  <ol>
+    <li>107개 registry와 문서 도구 수 정합화</li>
+    <li>누락된 read-only annotations 보완</li>
+    <li>aside/CDP endpoint와 로그인 상태 health probe 표준화</li>
+    <li>product별 CDP attach 및 evidence provenance 통합</li>
+    <li>CAPTCHA OCR confidence와 local-only provider 정책 강화</li>
+    <li>EPP/CC current XHR pool과 IAG aside deep-config 확보</li>
+    <li>HCI Keystone 계약 대조와 read-only smoke</li>
+    <li>실장비 write는 read-back 증거 이후에만 maturity 승격</li>
+  </ol>
+
+  <h2>8. 정본 소스</h2>
+  <ul>
+    <li><code>apps/mcp-server/src/index.ts</code>: tool registry와 handler</li>
+    <li><code>apps/http-bridge/src/tool-guard.ts</code>: HTTP authorization</li>
+    <li><code>docs/SECURITY.md</code>: approval·nonce·masking·fail-closed 규칙</li>
+    <li><code>docs/MCP_FEATURES_AND_USAGE.md</code>: 사용자 가이드</li>
+    <li><code>docs/DEVICE_DIAGNOSIS_RUNBOOK.md</code>: 실장비 관측 절차</li>
+    <li><code>docs/LEARNING_STRATEGY_OBSERVER_RUNBOOK.md</code>: CDP passive capture 절차</li>
+  </ul>
+</main>
+</body>
+</html>

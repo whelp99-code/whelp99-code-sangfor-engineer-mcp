@@ -11,14 +11,17 @@
 
 ## 1. 로그인 (콘솔 유형별)
 
-| 콘솔 | URL | 계정 | CAPTCHA | 방법 |
-|------|-----|------|---------|------|
-| EPP (Vue SPA) | 10.80.1.106 | admin / `Itac123!@#` | randcode(있음) | `scripts/device-login.ts` — captcha PNG 저장→`.code` 대기(내가 vision으로 읽음)→입력 |
-| CC (Vue SPA) | 10.80.1.107 | admin / `Itac123!@#` | req_captcha(있음) | 동일 |
-| IAG (ExtJS) | 10.80.1.108 | admin / `Itac123#@!` | 없음 | aside repl (자체서명 인증서: "고급"+`#proceed-link`, 제출은 password `.press('Enter')`) |
-
-**CAPTCHA 처리법:** 새로고침 없이 라이브 captcha를 스크린샷 → vision(Claude)이 읽음 → 즉시 입력. captcha 오류는 계정 잠금과 무관.
-**함정:** 재시도 전 `pkill -9 -f chrome-sangfor-debug`(프로필 싱글톤 락). connectOverCDP는 `session.cdpEndpoint`(http).
+| 콘솔 | URL | 계정 주입 | CAPTCHA | 처리 방법 |
+|------|-----|----------|---------|----------|
+| EPP (Vue SPA) | 10.80.1.106 | `SANGFOR_EPP_PASSWORD` 환경변수 | randcode(있음) | `scripts/device-collect.ts` 실행 후 `/tmp/dev-captcha/EPP.png`를 사람이 확인하고 `/tmp/dev-captcha/EPP.code`에 즉시 입력 |
+| CC (Vue SPA) | 10.80.1.107 | `SANGFOR_CC_PASSWORD` 환경변수 | req_captcha(있음) | `scripts/device-collect.ts` 실행 후 `/tmp/dev-captcha/CC.png`를 사람이 확인하고 `/tmp/dev-captcha/CC.code`에 즉시 입력 |
+| IAG (ExtJS) | 10.80.1.108 | `SANGFOR_IAG_PASSWORD` 환경변수 | 없음 | 자체서명 인증서 경고를 사람이 승인한 뒤 로그인하고 aside repl로 캡처 |
+| 
+| **중요:** 이 문서와 저장소에는 실제 비밀번호를 기록하지 않는다. 런북에 남아 있던 credential-like 문자열은 즉시 폐기·교체하고, 유효한 자격증명은 사람이 보안 채널로 주입한다. |
+| **실행 전:** 로컬 `.env`에 값을 입력한 뒤 `set -a; source .env; set +a`로 현재 셸에만 주입한다. `SANGFOR_EPP_PASSWORD`, `SANGFOR_CC_PASSWORD`, `SANGFOR_IAG_PASSWORD`, `SANGFOR_DEVICE_SCOPE`, `SANGFOR_CAPTURE_BUNDLE_KEYS`, `SANGFOR_CAPTURE_BUNDLE_ACTIVE_KEY_ID`가 필요하다. `SANGFOR_DEVICE_SCOPE`는 제품명이나 IP가 아닌 lowercase non-PII UUIDv7이어야 한다(예: `018f22e2-79b0-7cc3-8c3c-0f8e5d50a2bf`). `SANGFOR_CAPTURE_BUNDLE_KEYS`는 key id별 32-byte AES key의 base64 JSON이고 active key id가 그 JSON의 key와 일치해야 한다. `.env` 값은 명령행·로그·원장에 넣지 않는다.
+| **로그인 실패 처리:** `LOGIN_FAIL`이면 CAPTCHA를 재사용하지 말고 새로고침 후 새 이미지를 확인한다. 3회 실패 시 중단하고 계정 잠금 여부와 자격증명을 사람이 확인한다. 성공 전에는 ConfigState를 생성하거나 승격하지 않는다.
+| **CAPTCHA 처리법:** `device-collect.ts`는 CAPTCHA를 새로고침 없이 캡처한 뒤 `ocrCaptcha()`의 Tesseract→LM Studio→OpenAI Vision(설정된 경우)→Hermes fallback을 먼저 사용한다. OCR backend가 없거나 실패하면 `/tmp/dev-captcha/<PRODUCT>.code`에 사람이 정확한 4자리 코드를 입력한다. 로그인 성공 URL을 확인하기 전에는 성공으로 간주하지 않는다.
+| **함정:** 재시도 전 `pkill -9 -f chrome-sangfor-debug`는 프로필 싱글톤 락이 확인된 경우에만 사람이 실행한다. connectOverCDP는 `session.cdpEndpoint`(http)를 사용한다.
 
 ## 2. ConfigState 추출 (콘솔 유형별 — 방법이 갈린다)
 
