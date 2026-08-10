@@ -65,9 +65,6 @@
       "@sangfor/store": [
         "packages/sangfor-store/src/index.ts"
       ],
-      "@sangfor/shared": [
-        "packages/shared/src/index.ts"
-      ],
       "@sangfor/pptx": [
         "packages/sangfor-pptx/src/index.ts"
       ],

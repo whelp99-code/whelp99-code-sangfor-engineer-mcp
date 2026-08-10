@@ -6,12 +6,13 @@
  *   PRODUCT=EPP pnpm exec tsx scripts/device-collect.ts
  *   PRODUCT=IAG pnpm exec tsx scripts/device-collect.ts
  */
-import { existsSync, mkdirSync, readFileSync } from 'node:fs';
+import { mkdirSync } from 'node:fs';
 import { chromium, type Page } from 'playwright';
 import { ensureChromeRunning } from '../packages/sangfor-chrome/src/index.js';
 import { isSafeNavLabel } from '../packages/sangfor-collector/src/safe-nav.js';
 import { captureKeyringFromEnv } from '../packages/sangfor-collector/src/capture-bundle.js';
 import { writeDiagnosisCaptureFromPool, type DiagnosisProduct } from './diagnosis-bundle-io.js';
+import { resolveCaptchaCode } from './captcha-handshake.js';
 
 const reqPass = (k: string): string => { const v = process.env[k]; if (!v) { console.error(`missing env: ${k}`); process.exit(1); } return v; };
 
@@ -55,17 +56,25 @@ async function main() {
   }
 
   if (!loggedIn) {
-    // capture captcha FIRST (before filling fields, to avoid triggering a reload)
+    // Capture the live CAPTCHA before filling any field so it is not refreshed.
     let captchaCode = '';
     const captcha = page.locator(c.captchaSel).first();
     if (await captcha.isVisible({ timeout: 3000 }).catch(() => false)) {
-      console.error(`[${PRODUCT}] CAPTCHA_READY: ${CAPTCHA_PNG} — waiting for ${CODE_FILE}`);
+      console.error(`[${PRODUCT}] CAPTCHA_READY: ${CAPTCHA_PNG}`);
       await captcha.screenshot({ path: CAPTCHA_PNG }).catch(async () => {
         await page.screenshot({ path: CAPTCHA_PNG });
       });
-      const deadline = Date.now() + 180000; let code = '';
-      while (Date.now() < deadline) { if (existsSync(CODE_FILE)) { code = readFileSync(CODE_FILE, 'utf8').trim(); if (code) break; } await sl(2000); }
-      captchaCode = code;
+      const result = await resolveCaptchaCode({
+        imagePath: CAPTCHA_PNG,
+        codePath: CODE_FILE,
+      });
+      if (!result) {
+        console.error(`[${PRODUCT}] CAPTCHA_UNAVAILABLE`);
+        await browser.close();
+        return;
+      }
+      console.error(`[${PRODUCT}] CAPTCHA_SOURCE=${result.source}`);
+      captchaCode = result.code;
     }
 
     // fill user, password, captcha together AFTER capturing captcha

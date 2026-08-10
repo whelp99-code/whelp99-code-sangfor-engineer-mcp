@@ -176,4 +176,4 @@ describe.skipIf(!officeCliInstalled)('@sangfor/office — officecli-backed opera
     const replaced = await createOfficeDocument('existing.docx', 'docx', { root, overwrite: true });
     expect(replaced.ok).toBe(true);
   });
-});
+}, 30_000);

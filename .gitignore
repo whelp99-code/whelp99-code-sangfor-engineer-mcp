@@ -21,6 +21,11 @@ data/sources/*storage-state*.json
 .serena/
 .omo/
 .understand-anything/
+.gjc/
+
+# Local agent/session dumps (never commit)
+omp-session-*.html
+data/evidence/session_*/
 
 # HCI change audit ledgers (runtime)
 data/evidence/change-runs/
