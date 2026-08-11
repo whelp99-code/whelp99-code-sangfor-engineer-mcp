@@ -6,7 +6,7 @@ import { spawn } from 'node:child_process';
 import { createInterface } from 'node:readline';
 
 const proc = spawn('npx', ['tsx', 'apps/mcp-server/src/index.ts'], {
-  cwd: '/Users/jmpark/Documents/Playground/whelp99-code-sangfor-engineer-mcp',
+  cwd: new URL('..', import.meta.url).pathname,
   stdio: ['pipe', 'pipe', 'pipe'],
   env: { ...process.env, PATH: `/opt/homebrew/bin:${process.env.PATH}` }
 });

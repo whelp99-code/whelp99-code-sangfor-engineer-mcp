@@ -6,7 +6,7 @@ import { mkdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
 const CDP = 'http://127.0.0.1:9333';
-const OUT = '/Users/jmpark/Documents/Playground/whelp99-code-sangfor-engineer-mcp/outputs/final_images';
+const OUT = new URL('../outputs/final_images', import.meta.url).pathname;
 const sl = (ms: number) => new Promise(r => setTimeout(r, ms));
 
 // 페이지에서 메뉴 클릭

@@ -35,7 +35,7 @@ function sendRequest(proc: any, method: string, params: any): Promise<any> {
 async function main() {
   console.log('MCP 서버 시작...');
   const proc = spawn(MCP_CMD, MCP_ARGS, { 
-    cwd: '/Users/jmpark/Documents/Playground/whelp99-code-sangfor-engineer-mcp',
+    cwd: new URL('..', import.meta.url).pathname,
     stdio: ['pipe', 'pipe', 'pipe'],
     env: { ...process.env, PATH: `/opt/homebrew/bin:${process.env.PATH}` }
   });

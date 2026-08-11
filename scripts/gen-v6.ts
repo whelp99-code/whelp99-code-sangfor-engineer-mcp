@@ -2,8 +2,8 @@ import { buildSettingGuidePptx } from '../packages/sangfor-pptx/src/index.js';
 import { buildSettingGuideDocx } from '../packages/sangfor-product-adapters/src/docx-builder.js';
 
 const EXCEL = '/Users/jmpark/Documents/개인자료/법인 - 베를로/1. Project/202601 - 일지테크 - Total infra/## ITAC Results Updated_현대차 감사_sangfor.xlsx';
-const OUT = '/Users/jmpark/Documents/Playground/whelp99-code-sangfor-engineer-mcp/outputs';
-const SCREENSHOTS = '/Users/jmpark/Documents/Playground/whelp99-code-sangfor-engineer-mcp/outputs/final_images';
+const OUT = new URL('../outputs', import.meta.url).pathname;
+const SCREENSHOTS = new URL('../outputs/final_images', import.meta.url).pathname;
 
 async function main() {
   // PPTX

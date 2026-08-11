@@ -9,7 +9,7 @@ import { join } from 'node:path';
 const reqPass = (k: string): string => { const v = process.env[k]; if (!v) { console.error(`missing env: ${k}`); process.exit(1); } return v; };
 
 const CDP_URL = 'http://127.0.0.1:9333';
-const OUT_DIR = '/Users/jmpark/Documents/Playground/whelp99-code-sangfor-engineer-mcp/outputs/final_images';
+const OUT_DIR = new URL('../outputs/final_images', import.meta.url).pathname;
 
 // Device info
 const DEVICES = {
