@@ -5,8 +5,7 @@
   "main": "src/index.ts",
   "dependencies": {
     "@sangfor/approval": "workspace:*",
-    "@sangfor/chrome": "workspace:*",
-    "@sangfor/shared": "workspace:*",
-    "playwright": "^1.52.0"
+    "@sangfor/browser-contracts": "workspace:*",
+    "@sangfor/shared": "workspace:*"
   }
 }

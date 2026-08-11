@@ -4,9 +4,8 @@
   "type": "module",
   "main": "src/index.ts",
   "dependencies": {
+    "@sangfor/browser-contracts": "workspace:*",
     "@sangfor/shared": "workspace:*",
-    "@sangfor/chrome": "workspace:*",
-    "@sangfor/planner": "workspace:*",
-    "@sangfor/approval": "workspace:*"
+    "@sangfor/planner": "workspace:*"
   }
 }

@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { requiresApprovalForText } from '@sangfor/approval';
 import { executeLiveConsoleAction, readLiveConsoleState } from '@sangfor/operator';
 import { ProductCode, RiskLevel, normalizeProduct, nowId } from '@sangfor/shared';
+import type { BrowserExecutionPort } from '../../sangfor-browser-contracts/src/index.js';
 import type {
   AdapterProductCode,
   ProductRegistryEntry,
@@ -1114,9 +1115,12 @@ export function generateExcelBasedChangePlan(input: { filePath?: string; rows?: 
   };
 }
 
-export async function dryRunProductChange(input: { plan: ProductChangePlan | ExcelBasedChangePlan; targetUrl?: string; sessionId?: string }) {
+export async function dryRunProductChange(input: { plan: ProductChangePlan | ExcelBasedChangePlan; targetUrl?: string; sessionId?: string; browserExecutionPort?: BrowserExecutionPort }) {
   const excelPlan = isExcelBasedChangePlan(input.plan) ? input.plan : undefined;
-  const operatorState = input.sessionId ? await readLiveConsoleState({ sessionId: input.sessionId }) : undefined;
+  const operatorState = input.sessionId ? await readLiveConsoleState({
+    sessionId: input.sessionId,
+    executionPort: input.browserExecutionPort,
+  }) : undefined;
   return {
     id: nowId('dryrun'),
     product: input.plan.product,
@@ -1157,7 +1161,7 @@ export type ProductChangeExecutor = (context: {
   sessionId?: string;
 }) => Promise<{ mutationPerformed: boolean; details?: unknown }>;
 
-export async function applyApprovedProductChange(input: { plan: ProductChangePlan; approval?: ApprovalPayload; environment?: 'lab' | 'poc' | 'customer' | 'production'; sessionId?: string; executor?: ProductChangeExecutor }) {
+export async function applyApprovedProductChange(input: { plan: ProductChangePlan; approval?: ApprovalPayload; environment?: 'lab' | 'poc' | 'customer' | 'production'; sessionId?: string; executor?: ProductChangeExecutor; browserExecutionPort?: BrowserExecutionPort }) {
   const missingApproval = missingApprovalFields(input.approval);
   const highRiskTasks = input.plan.tasks.filter(task => task.approvalRequired || requiresApprovalForText(`${task.requirement} ${task.capabilityId}`).required);
   if (highRiskTasks.length > 0 && missingApproval.length > 0) {
@@ -1192,7 +1196,8 @@ export async function applyApprovedProductChange(input: { plan: ProductChangePla
       sessionId: input.sessionId,
       // Dry-run screenshot for evidence only — the execution gate short-circuits
       // on dryRun before any approval is verified, so no signed approval is passed.
-      action: { type: 'screenshot', target: 'product-change-plan', dryRun: true }
+      action: { type: 'screenshot', target: 'product-change-plan', dryRun: true },
+      executionPort: input.browserExecutionPort,
     })
     : undefined;
   // Every gate above has passed. A real mutation happens ONLY through an explicitly

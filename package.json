@@ -52,6 +52,7 @@
     "smoke:mcp": "node scripts/smoke-mcp-tools.mjs",
     "check:mcp-scorecard": "node scripts/check-mcp-scorecard.mjs",
     "check:hygiene": "node scripts/check-source-hygiene.mjs",
+    "check:browser-boundary": "node scripts/check-browser-boundary.mjs",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",
@@ -61,7 +62,7 @@
     "@modelcontextprotocol/sdk": "^1.17.5",
     "@prisma/client": "^6.19.3",
     "pdf-parse": "^1.1.1",
-    "playwright": "^1.56.1",
+    "playwright": "^1.60.0",
     "tsx": "^4.19.2",
     "zod": "^3.25.76"
   },

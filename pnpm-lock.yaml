@@ -18,7 +18,7 @@ importers:
         specifier: ^1.1.1
         version: 1.1.4
       playwright:
-        specifier: ^1.56.1
+        specifier: ^1.60.0
         version: 1.60.0
       tsx:
         specifier: ^4.19.2
@@ -100,10 +100,28 @@ importers:
         specifier: workspace:*
         version: link:../shared
 
+  packages/sangfor-browser-contracts:
+    dependencies:
+      zod:
+        specifier: ^3.25.76
+        version: 3.25.76
+
   packages/sangfor-audit: {}
 
   packages/sangfor-chrome:
     dependencies:
+      playwright:
+        specifier: ^1.60.0
+        version: 1.60.0
+
+  packages/sangfor-jm-execution:
+    dependencies:
+      '@sangfor/browser-contracts':
+        specifier: workspace:*
+        version: link:../sangfor-browser-contracts
+      '@sangfor/observer':
+        specifier: workspace:*
+        version: link:../sangfor-observer
       playwright:
         specifier: ^1.60.0
         version: 1.60.0
@@ -189,15 +207,12 @@ importers:
       '@sangfor/approval':
         specifier: workspace:*
         version: link:../sangfor-approval
-      '@sangfor/chrome':
+      '@sangfor/browser-contracts':
         specifier: workspace:*
-        version: link:../sangfor-chrome
+        version: link:../sangfor-browser-contracts
       '@sangfor/shared':
         specifier: workspace:*
         version: link:../shared
-      playwright:
-        specifier: ^1.52.0
-        version: 1.60.0
 
   packages/sangfor-planner:
     dependencies:
@@ -237,6 +252,9 @@ importers:
 
   packages/sangfor-product-adapters:
     dependencies:
+      '@sangfor/browser-contracts':
+        specifier: workspace:*
+        version: link:../sangfor-browser-contracts
       '@sangfor/approval':
         specifier: workspace:*
         version: link:../sangfor-approval
@@ -271,12 +289,12 @@ importers:
 
   packages/sangfor-screenshot:
     dependencies:
-      '@sangfor/chrome':
+      '@sangfor/browser-contracts':
         specifier: workspace:*
-        version: link:../sangfor-chrome
-      '@sangfor/product-adapters':
+        version: link:../sangfor-browser-contracts
+      '@sangfor/hci-client':
         specifier: workspace:*
-        version: link:../sangfor-product-adapters
+        version: link:../sangfor-hci-client
       '@sangfor/shared':
         specifier: workspace:*
         version: link:../shared
@@ -287,12 +305,9 @@ importers:
 
   packages/sangfor-verifier:
     dependencies:
-      '@sangfor/approval':
+      '@sangfor/browser-contracts':
         specifier: workspace:*
-        version: link:../sangfor-approval
-      '@sangfor/chrome':
-        specifier: workspace:*
-        version: link:../sangfor-chrome
+        version: link:../sangfor-browser-contracts
       '@sangfor/planner':
         specifier: workspace:*
         version: link:../sangfor-planner

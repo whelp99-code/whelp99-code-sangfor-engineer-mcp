@@ -8,7 +8,8 @@ import { analyzeProject, generateConfigPlan, generateConfigPlanAsync, validateCo
 import { searchManuals, getManualSection } from '../../../packages/sangfor-knowledge/src/index.js';
 import { searchWiki, proposeWikiUpdate, approveWikiUpdate, applyWikiUpdate, applyObsidianWikiUpdate, applyGitHubWikiUpdate } from '../../../packages/sangfor-wiki/src/index.js';
 import { requiresApprovalForText, canonicalizeApprovalPayload, verifyDomainApprovalSignature, FileSingleUseNonceStore } from '../../../packages/sangfor-approval/src/index.js';
-import { startOperatorSession, readConsoleState, executeConsoleAction, readLiveConsoleState, executeLiveConsoleAction, killSession } from '../../../packages/sangfor-operator/src/index.js';
+import { startOperatorSession, readConsoleState, executeConsoleAction, readLiveConsoleState, executeLiveConsoleAction, closeOperatorSession } from '../../../packages/sangfor-operator/src/index.js';
+import type { BrowserExecutionPort } from '../../../packages/sangfor-browser-contracts/src/index.js';
 import { verifyResult } from '../../../packages/sangfor-verifier/src/index.js';
 import { generateEvidenceReport, buildChangeRunReport, listChangeRunIds, isSafeRunId } from '../../../packages/sangfor-evidence/src/index.js';
 import { submitFeedback, extractLesson } from '../../../packages/sangfor-feedback/src/index.js';
@@ -39,7 +40,7 @@ import {
 import { buildSettingGuidePptx, buildOperationsGuidePptx } from '../../../packages/sangfor-pptx/src/index.js';
 import { isOfficeCliAvailable, validateOfficeDocument } from '../../../packages/sangfor-office/src/index.js';
 import { buildEvidencePackage, type EvidencePackageItem } from '../../../packages/sangfor-evidence/src/evidence-package.js';
-import { captureProductScreenshots, captureConsoleEvidence, verifyCaptureLedger, formatDateStamp as formatCaptureDateStamp } from '../../../packages/sangfor-screenshot/src/index.js';
+import { captureProductScreenshots, captureConsoleEvidence, verifyCaptureLedger, resolveConfinedOutputDir, resolveProductScreenshotTargetUrl, DEFAULT_CONSOLE_CDP_PORT, formatDateStamp as formatCaptureDateStamp } from '../../../packages/sangfor-screenshot/src/index.js';
 import { loadSpec, evaluateSpec, renderAdvisoryReport, renderAdvisoryReportDocx, listSpecCoverage, type IntendedSpec } from '../../../packages/sangfor-spec/src/index.js';
 import { getCapabilitySafety, listCapabilitySafety, loadMaturityPolicy } from '../../../packages/sangfor-safety/src/index.js';
 import { loadWorkAtoms, computeReplacementCoverage } from '../../../packages/sangfor-competency/src/index.js';
@@ -72,7 +73,9 @@ import {
 import {
   ObserverSessionManager,
   type ObserverProfile,
+  type ObserverTransport,
 } from '../../../packages/sangfor-observer/src/index.js';
+import { createDefaultJmBrowserRuntime } from './jm-browser-runtime.js';
 import { captureKeyringFromEnv } from '../../../packages/sangfor-collector/src/capture-bundle.js';
 import {
   getAuditFramework,
@@ -95,6 +98,97 @@ const plans = new Map<string, any>();
 const learningService = new LearningStrategyService();
 const pendingLearningCaptures = new Map<string, { sessionHandle: string; durationMs?: number; firmwareVersion?: string }>();
 let observerManagerCache: { source: string; manager: ObserverSessionManager } | undefined;
+let browserExecutionPort: BrowserExecutionPort | undefined;
+let observerTransport: ObserverTransport | undefined;
+let browserArtifactMaterializer:
+  | ((artifactRef: string, destinationPath: string) => Promise<void>)
+  | undefined;
+let browserRuntimeDispose: (() => Promise<void>) | undefined;
+
+export function configureJmBrowserRuntime(deps: {
+  executionPort: BrowserExecutionPort;
+  observerTransport: ObserverTransport;
+  materializeArtifact?: (artifactRef: string, destinationPath: string) => Promise<void>;
+  dispose?: () => Promise<void>;
+}): void {
+  browserExecutionPort = deps.executionPort;
+  observerTransport = deps.observerTransport;
+  browserArtifactMaterializer = deps.materializeArtifact;
+  browserRuntimeDispose = deps.dispose;
+  observerManagerCache = undefined;
+}
+
+function requiredBrowserExecutionPort(): BrowserExecutionPort {
+  if (!browserExecutionPort) throw new Error('JM_BROWSER_RUNTIME_REQUIRED: browser execution port is not configured.');
+  return browserExecutionPort;
+}
+
+function requiredObserverTransport(): ObserverTransport {
+  if (!observerTransport) throw new Error('JM_BROWSER_RUNTIME_REQUIRED: observer transport is not configured.');
+  return observerTransport;
+}
+
+function requiredBrowserArtifactMaterializer() {
+  if (!browserArtifactMaterializer) {
+    throw new Error('JM_BROWSER_RUNTIME_REQUIRED: artifact materializer is not configured.');
+  }
+  return browserArtifactMaterializer;
+}
+
+type ProductScreenshotToolInput = {
+  product: 'EPP' | 'IAG' | 'CC';
+  targetUrl?: string;
+  username?: string;
+  password?: string;
+  outputDir?: string;
+  cdpPort?: number;
+  headless?: boolean;
+  dryRun?: boolean;
+  menus?: Array<{ menu: string; submenu?: string }>;
+};
+
+async function captureProductScreenshotsWithJm(
+  args: ProductScreenshotToolInput,
+) {
+  if (args.dryRun) {
+    return captureProductScreenshots({
+      product: args.product,
+      targetUrl: args.targetUrl,
+      outputDir: args.outputDir,
+      menus: args.menus,
+      dryRun: true,
+    });
+  }
+  const targetUrl = resolveProductScreenshotTargetUrl(args.product, args.targetUrl);
+  const session = startOperatorSession({
+    product: args.product,
+    mode: 'customer_readonly',
+    targetUrl,
+    browser: {
+      ...(args.cdpPort !== undefined
+        ? { cdpPort: args.cdpPort, useLocalBrowser: true }
+        : {}),
+      ...(args.headless !== undefined ? { headless: args.headless } : {}),
+    },
+    credentials: args.username && args.password
+      ? { username: args.username, password: args.password }
+      : undefined,
+  });
+  const executionPort = requiredBrowserExecutionPort();
+  try {
+    return await captureProductScreenshots({
+      product: args.product,
+      targetUrl,
+      outputDir: args.outputDir,
+      menus: args.menus,
+      sessionId: session.id,
+      executionPort,
+      materializeArtifact: requiredBrowserArtifactMaterializer(),
+    });
+  } finally {
+    await closeOperatorSession(session.id, executionPort);
+  }
+}
 
 function learningArgs(args: unknown, keys: readonly string[]): Record<string, any> {
   assertSafeLearningInput(args, keys);
@@ -109,7 +203,7 @@ function observerManager(): ObserverSessionManager {
   try { parsed = JSON.parse(source); } catch { throw new Error('OBSERVER_PROFILES_INVALID: profiles must be JSON.'); }
   if (!Array.isArray(parsed) || parsed.length === 0) throw new Error('OBSERVER_PROFILES_INVALID: a non-empty profile array is required.');
   for (const profile of parsed) assertSafeLearningInput(profile, ['product', 'expectedOrigin', 'cdpPort', 'firmwareTruthId', 'deviceScope']);
-  const manager = new ObserverSessionManager(parsed as ObserverProfile[]);
+  const manager = new ObserverSessionManager(parsed as ObserverProfile[], requiredObserverTransport());
   observerManagerCache = { source, manager };
   return manager;
 }
@@ -611,11 +705,11 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
   },
   'sangfor_capture_screenshots': {
     description: 'Capture screenshots from Sangfor product consoles (EPP, IAG, CC) via Chrome CDP. Connects to the product console, logs in, navigates menus, and saves screenshots.',
-    inputSchema: { type: 'object', properties: { product: { type: 'string', enum: ['EPP', 'IAG', 'CC'], description: 'Product to capture screenshots from' }, targetUrl: { type: 'string', description: 'Override target URL' }, username: { type: 'string', description: 'Login username' }, password: { type: 'string', description: 'Login password' }, outputDir: { type: 'string', description: 'Output directory for screenshots' }, headless: { type: 'boolean', description: 'Run Chrome in headless mode' }, dryRun: { type: 'boolean', description: 'Dry-run mode: skip Chrome and just list planned screenshots' } }, required: ['product'] },
-    handler: (args: { product: 'EPP' | 'IAG' | 'CC'; targetUrl?: string; username?: string; password?: string; outputDir?: string; headless?: boolean; dryRun?: boolean }) => captureProductScreenshots(args)
+    inputSchema: { type: 'object', properties: { product: { type: 'string', enum: ['EPP', 'IAG', 'CC'], description: 'Product to capture screenshots from' }, targetUrl: { type: 'string', description: 'Override target URL' }, username: { type: 'string', description: 'Login username' }, password: { type: 'string', description: 'Login password' }, outputDir: { type: 'string', description: 'Output directory for screenshots' }, cdpPort: { type: 'number', description: 'Optional loopback Chrome CDP port' }, headless: { type: 'boolean', description: 'Run Chrome in headless mode' }, dryRun: { type: 'boolean', description: 'Dry-run mode: skip Chrome and just list planned screenshots' } }, required: ['product'] },
+    handler: captureProductScreenshotsWithJm,
   },
   'sangfor_console_capture_evidence': {
-    description: 'Read-only console evidence capture: attaches to a Chrome you already have open on the product console (via CDP — never launches a browser) and screenshots the listed menus/URLs as named audit evidence (REQ##_product_menu_Before_YYYYMMDD.png), hash-chained into the AuditLedger. reads console screens only; never changes device configuration. Chrome must already be running with --remote-debugging-port=<cdpPort> (default 9222). Omit outputDir to use the engagement-scoped default data/evidence/captures/<YYYYMMDD>/.',
+    description: 'Read-only console evidence capture: attaches to a Chrome you already have open on the product console (via a trusted SANGFOR_JM_CDP_PROFILES_JSON port/origin binding; never launches a browser) and screenshots the listed menus/URLs as named audit evidence (REQ##_product_menu_Before_YYYYMMDD.png), hash-chained into the AuditLedger. reads console screens only; never changes device configuration. Chrome must already be running with --remote-debugging-port=<cdpPort> (default 9222). Omit outputDir to use the engagement-scoped default data/evidence/captures/<YYYYMMDD>/.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -648,9 +742,33 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
       const product = normalizeProduct(args.product);
       const dateStamp = args.dateStamp ?? formatCaptureDateStamp(new Date());
       const outputDir = args.outputDir ?? join(resolveEngagementScopedData('data/evidence', 'SANGFOR_EVIDENCE_ROOT'), 'captures', dateStamp);
-      return captureConsoleEvidence({
-        cdpPort: args.cdpPort, product, captures: args.captures, outputDir, dateStamp, engagementId: args.engagementId,
+      resolveConfinedOutputDir(outputDir);
+      const targetUrl = args.captures.find((capture) => capture.url)?.url
+        ?? process.env.SANGFOR_CONSOLE_URL
+        ?? 'http://127.0.0.1:3400';
+      const cdpPort = args.cdpPort ?? DEFAULT_CONSOLE_CDP_PORT;
+      const session = startOperatorSession({
+        product,
+        mode: 'customer_readonly',
+        targetUrl,
+        browser: { useLocalBrowser: true, cdpPort },
       });
+      try {
+        return await captureConsoleEvidence({
+          product,
+          captures: args.captures,
+          outputDir,
+          dateStamp,
+          engagementId: args.engagementId,
+        }, {
+          executionPort: requiredBrowserExecutionPort(),
+          sessionId: session.id,
+          origin: new URL(targetUrl).origin,
+          materializeArtifact: requiredBrowserArtifactMaterializer(),
+        });
+      } finally {
+        await closeOperatorSession(session.id, requiredBrowserExecutionPort());
+      }
     },
   },
   'sangfor_verify_capture_ledger': {
@@ -692,9 +810,11 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
         results.screenshots = {};
         for (const product of products) {
           try {
-            (results.screenshots as Record<string, unknown>)[product] = await captureProductScreenshots({
+            (results.screenshots as Record<string, unknown>)[product] = await captureProductScreenshotsWithJm({
               product: product as 'EPP' | 'IAG' | 'CC',
-              outputDir: join(outDir, 'screenshots', product),
+              outputDir: join('guide-screenshots', product),
+              username: process.env[`SANGFOR_${product}_USERNAME`],
+              password: process.env[`SANGFOR_${product}_PASSWORD`],
             });
           } catch (err) {
             (results.screenshots as Record<string, unknown>)[product] = { error: String(err) };
@@ -707,12 +827,17 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
   'sangfor_dry_run_product_change': {
     description: 'Dry-run a product change plan. WebUI route preview stops before Save/Apply/Delete; API changes produce request previews only.',
     inputSchema: { type: 'object', properties: { plan: { type: 'object' }, targetUrl: { type: 'string' }, sessionId: { type: 'string' } }, required: ['plan'] },
-    handler: dryRunProductChange
+    handler: (args) => dryRunProductChange({
+      ...args,
+      ...(args.sessionId
+        ? { browserExecutionPort: requiredBrowserExecutionPort() }
+        : {}),
+    })
   },
   'sangfor_apply_approved_product_change': {
     description: 'Apply only an approved product change. Requires approval payload and SANGFOR_ALLOW_REAL_EXECUTION; production also requires SANGFOR_ALLOW_PRODUCTION_EXECUTION.',
     inputSchema: { type: 'object', properties: { plan: { type: 'object' }, approval: { type: 'object' }, environment: { type: 'string' }, sessionId: { type: 'string' } }, required: ['plan'] },
-    handler: applyApprovedProductChange
+    handler: (args) => applyApprovedProductChange({ ...args, browserExecutionPort: requiredBrowserExecutionPort() })
   },
   'sangfor_verify_product_change': {
     description: 'Verify a product change with read-only API/WebUI re-collection checklist and evidence expectations.',
@@ -856,17 +981,20 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
   'sangfor_read_live_console_state': {
     description: 'Read live Sangfor Web Console state using Playwright. Requires targetUrl session. Read-only snapshot.',
     inputSchema: { type: 'object', properties: { sessionId: { type: 'string' } }, required: ['sessionId'] },
-    handler: readLiveConsoleState
+    handler: (args) => readLiveConsoleState({ ...args, executionPort: requiredBrowserExecutionPort() })
   },
   'sangfor_execute_console_action_live': {
     description: 'Execute a real Playwright console action. Requires SANGFOR_ALLOW_REAL_EXECUTION and approval fields for non-dry-run.',
     inputSchema: { type: 'object', properties: { sessionId: { type: 'string' }, action: { type: 'object' }, approval: { type: 'object' } }, required: ['sessionId', 'action'] },
-    handler: executeLiveConsoleAction
+    handler: (args) => executeLiveConsoleAction({ ...args, executionPort: requiredBrowserExecutionPort() })
   },
   'sangfor_kill_session': {
     description: 'Cancel an operator session.',
     inputSchema: { type: 'object', properties: { sessionId: { type: 'string' } }, required: ['sessionId'] },
-    handler: ({ sessionId }) => killSession(sessionId)
+    handler: ({ sessionId }) => closeOperatorSession(
+      sessionId,
+      requiredBrowserExecutionPort(),
+    ),
   },
   'sangfor_verify_result': {
     description: 'Verify plan/result. MVP returns manual validation checklist.',
@@ -1935,7 +2063,36 @@ export async function handle(req: JsonRpcRequest) {
 }
 
 function startStdioServer() {
+  if (!browserExecutionPort || !observerTransport) {
+    configureJmBrowserRuntime(createDefaultJmBrowserRuntime());
+  }
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout, terminal: false });
+  let shutdown: Promise<void> | undefined;
+  const disposeBrowserRuntime = () => {
+    shutdown ??= browserRuntimeDispose?.() ?? Promise.resolve();
+    return shutdown;
+  };
+  const reportShutdownFailure = (error: unknown) => {
+    process.exitCode = 1;
+    console.error('JM browser runtime shutdown failed:', error);
+  };
+  rl.once('close', () => {
+    void disposeBrowserRuntime().catch(reportShutdownFailure);
+  });
+  process.once('SIGINT', () => {
+    void (async () => {
+      process.exitCode = 130;
+      rl.close();
+      await disposeBrowserRuntime();
+    })().catch(reportShutdownFailure);
+  });
+  process.once('SIGTERM', () => {
+    void (async () => {
+      process.exitCode = 143;
+      rl.close();
+      await disposeBrowserRuntime();
+    })().catch(reportShutdownFailure);
+  });
   rl.on('line', async (line) => {
     if (!line.trim()) return;
     let req: JsonRpcRequest;

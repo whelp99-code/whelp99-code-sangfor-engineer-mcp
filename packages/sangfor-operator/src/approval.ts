@@ -22,6 +22,22 @@ import {
 export interface ApprovalActionRef {
   type: string;
   target?: string;
+  value?: string;
+  dryRun?: boolean;
+  menuPath?: ReadonlyArray<{
+    menu: string;
+    submenu?: string;
+  }>;
+  formFields?: ReadonlyArray<{
+    type: 'text' | 'password' | 'select' | 'checkbox' | 'textarea' | 'combobox' | 'radio';
+    name?: string;
+    id?: string;
+    placeholder?: string;
+    label?: string;
+    value?: string;
+    options?: readonly string[];
+    index?: number;
+  }>;
 }
 
 export interface SignedApproval {
@@ -31,6 +47,22 @@ export interface SignedApproval {
   rollbackPlanId: string;
   nonce: string;
   expiresAt: string; // ISO 8601
+}
+
+function canonicalJson(value: unknown): string {
+  if (value === null || typeof value === 'boolean' || typeof value === 'number') {
+    return JSON.stringify(value);
+  }
+  if (typeof value === 'string') return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
+  if (typeof value === 'object' && value !== null) {
+    const entries = Object.entries(value)
+      .filter(([, child]) => child !== undefined)
+      .sort(([left], [right]) => left.localeCompare(right));
+    return `{${entries.map(([key, child]) =>
+      `${JSON.stringify(key)}:${canonicalJson(child)}`).join(',')}}`;
+  }
+  throw new Error('Approval action contains a non-JSON value.');
 }
 
 export function approvalCanonicalString(
@@ -43,8 +75,7 @@ export function approvalCanonicalString(
     approval.rollbackPlanId,
     approval.nonce,
     approval.expiresAt,
-    action.type,
-    action.target ?? '',
+    canonicalJson(action),
   ]);
 }
 

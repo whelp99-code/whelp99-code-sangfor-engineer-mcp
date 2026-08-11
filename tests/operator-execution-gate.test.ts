@@ -7,7 +7,10 @@ import {
   type OperatorSession,
   type LiveExecutionApproval,
 } from '../packages/sangfor-operator/src/index.js';
-import { signApprovalToken } from '../packages/sangfor-operator/src/approval.js';
+import {
+  signApprovalToken,
+  type ApprovalActionRef,
+} from '../packages/sangfor-operator/src/approval.js';
 import type { ConsoleAction } from '@sangfor/shared';
 
 const SECRET = 'gate-test-secret';
@@ -20,7 +23,7 @@ function liveAction(): ConsoleAction {
   return { type: 'click', target: 'button#create-volume', dryRun: false } as ConsoleAction;
 }
 
-function validApproval(action: ConsoleAction): LiveExecutionApproval {
+function validApproval(action: ApprovalActionRef): LiveExecutionApproval {
   const base = {
     approvedBy: 'cm@corp',
     changeTicketId: 'CHG-9',
@@ -76,6 +79,32 @@ describe('assertRealExecutionAllowed — live-execution gate failure branches', 
     expect(() => assertRealExecutionAllowed(labSession(), liveAction(), approval)).toThrow(/signature/i);
   });
 
+  it.each([
+    ['value', { value: 'tampered-value' }],
+    ['menuPath', { menuPath: [{ menu: 'Tampered menu' }] }],
+    ['formFields', {
+      formFields: [{ type: 'text' as const, label: 'Policy name', value: 'tampered-value' }],
+    }],
+  ])('binds approval to complete action field %s', (_field, override) => {
+    process.env.SANGFOR_ALLOW_REAL_EXECUTION = 'true';
+    process.env.SANGFOR_OPERATOR_APPROVAL_SECRET = SECRET;
+    const approvedAction = {
+      type: 'type',
+      target: 'Policy name',
+      value: 'approved-value',
+      dryRun: false,
+      menuPath: [{ menu: 'Policy', submenu: 'Access Control' }],
+      formFields: [{ type: 'text' as const, label: 'Policy name', value: 'approved-value' }],
+    } satisfies ApprovalActionRef;
+    const approval = validApproval(approvedAction);
+
+    expect(() => assertRealExecutionAllowed(
+      labSession(),
+      { ...approvedAction, ...override },
+      approval,
+    )).toThrow(/signature/i);
+  });
+
   it('allows live execution with a correctly signed, unexpired approval', () => {
     process.env.SANGFOR_ALLOW_REAL_EXECUTION = 'true';
     process.env.SANGFOR_OPERATOR_APPROVAL_SECRET = SECRET;
@@ -91,5 +120,21 @@ describe('assertRealExecutionAllowed — live-execution gate failure branches', 
     expect(() => assertRealExecutionAllowed(labSession(), action, { ...valid, approvalToken: '0'.repeat(64) }))
       .toThrow(/signature/i);
     expect(() => assertRealExecutionAllowed(labSession(), action, valid)).not.toThrow();
+  });
+
+  it('requires the production gate for any non-loopback mutation target', () => {
+    process.env.SANGFOR_ALLOW_REAL_EXECUTION = 'true';
+    process.env.SANGFOR_OPERATOR_APPROVAL_SECRET = SECRET;
+    delete process.env.SANGFOR_ALLOW_PRODUCTION_EXECUTION;
+    const action = liveAction();
+
+    expect(() => assertRealExecutionAllowed(
+      {
+        ...labSession('lab'),
+        targetUrl: 'https://production-device.example/admin',
+      },
+      action,
+      validApproval(action),
+    )).toThrow(/Production execution blocked/);
   });
 });

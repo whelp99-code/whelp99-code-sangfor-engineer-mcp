@@ -17,6 +17,12 @@
       "@sangfor/shared": [
         "packages/shared/src/index.ts"
       ],
+      "@sangfor/browser-contracts": [
+        "packages/sangfor-browser-contracts/src/index.ts"
+      ],
+      "@sangfor/jm-execution": [
+        "packages/sangfor-jm-execution/src/index.ts"
+      ],
       "@sangfor/hci-client": [
         "packages/sangfor-hci-client/src/index.ts"
       ],

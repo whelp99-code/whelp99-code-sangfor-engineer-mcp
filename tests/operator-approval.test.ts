@@ -75,7 +75,7 @@ describe('verifyExecutionApproval — action-bound, time-bound, signed', () => {
     expect(result.reason).toMatch(/signature/i);
   });
 
-  it('preserves the legacy canonical field order and accepts uppercase hex tokens', () => {
+  it('canonicalizes the complete action as stable JSON and accepts uppercase hex tokens', () => {
     const approval = makeApproval(action);
     expect(approvalCanonicalString(action, approval)).toBe([
       approval.approvedBy,
@@ -83,8 +83,7 @@ describe('verifyExecutionApproval — action-bound, time-bound, signed', () => {
       approval.rollbackPlanId,
       approval.nonce,
       approval.expiresAt,
-      action.type,
-      action.target,
+      '{"target":"button#create-volume","type":"click"}',
     ].join('\n'));
     expect(verifyExecutionApproval({
       action,

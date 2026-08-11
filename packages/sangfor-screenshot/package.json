@@ -4,8 +4,8 @@
   "type": "module",
   "main": "src/index.ts",
   "dependencies": {
-    "@sangfor/chrome": "workspace:*",
-    "@sangfor/product-adapters": "workspace:*",
+    "@sangfor/browser-contracts": "workspace:*",
+    "@sangfor/hci-client": "workspace:*",
     "@sangfor/shared": "workspace:*"
   }
 }

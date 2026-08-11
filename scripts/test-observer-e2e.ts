@@ -5,7 +5,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { CHROMIUM_PATH } from '../packages/sangfor-chrome/src/index.js';
 import { readCapturePayload } from '../packages/sangfor-collector/src/capture-bundle.js';
-import { HttpCdpObserverTransport, ObserverSessionManager } from '../packages/sangfor-observer/src/index.js';
+import { ObserverSessionManager } from '../packages/sangfor-observer/src/index.js';
+import { HttpCdpObserverTransport } from '../packages/sangfor-jm-execution/src/observer-transport.js';
 
 const DEVICE_SCOPE = '018f22e2-79b0-7cc3-8c3c-0f8e5d50a2bf';
 

@@ -61,6 +61,7 @@ describe('assertRealExecutionAllowed + nonce single-use', () => {
   beforeEach(() => {
     dir = mkdtempSync(join(tmpdir(), 'nonce-gate-'));
     process.env.SANGFOR_ALLOW_REAL_EXECUTION = 'true';
+    process.env.SANGFOR_ALLOW_PRODUCTION_EXECUTION = 'true';
     process.env.SANGFOR_OPERATOR_APPROVAL_SECRET = 'test-secret';
     process.env.SANGFOR_NONCE_STORE_PATH = join(dir, 'nonces.json');
   });
@@ -73,8 +74,8 @@ describe('assertRealExecutionAllowed + nonce single-use', () => {
     const session = startOperatorSession({ mode: 'lab', product: 'HCI', targetUrl: 'https://10.80.1.9' });
     const action = { type: 'click', target: '#save', dryRun: false } as const;
     const base = { approvedBy: 'tester', changeTicketId: 'CHG-1', rollbackPlanId: 'RB-1', nonce: 'once-only', expiresAt: future() };
-    const approval = { ...base, approvalToken: signApprovalToken('test-secret', { type: action.type, target: action.target }, base) };
-    expect(() => assertRealExecutionAllowed(session, action as never, approval)).not.toThrow();
-    expect(() => assertRealExecutionAllowed(session, action as never, approval)).toThrow(/already used/);
+    const approval = { ...base, approvalToken: signApprovalToken('test-secret', action, base) };
+    expect(() => assertRealExecutionAllowed(session, action, approval)).not.toThrow();
+    expect(() => assertRealExecutionAllowed(session, action, approval)).toThrow(/already used/);
   });
 });

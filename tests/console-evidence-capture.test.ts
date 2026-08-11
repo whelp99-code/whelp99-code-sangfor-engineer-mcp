@@ -4,13 +4,17 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync,
 import { basename, join, relative } from 'node:path';
 import { tmpdir } from 'node:os';
 import { AuditLedger } from '../packages/sangfor-hci-client/src/index.js';
+import type {
+  BrowserExecutionPort,
+  BrowserExecutionRequest,
+  BrowserExecutionResult,
+} from '../packages/sangfor-browser-contracts/src/index.js';
 import {
   captureConsoleEvidence, verifyCaptureLedger, resolveConfinedOutputDir,
-  type ConsolePage,
 } from '../packages/sangfor-screenshot/src/console-evidence.js';
 
-// Card B3: verify the capture engine without any real Chrome/CDP browser —
-// the "page acquisition" seam (deps.getPage) is what makes this possible.
+// Card B3: verify the capture engine without any real browser by injecting the
+// JSON BrowserExecutionPort and local artifact materializer.
 // Every AuditLedger used here points at a scratch tmp dir; never the real
 // data/evidence root. outputDir is now confined (S1) to SANGFOR_EVIDENCE_ROOT
 // (or the real repo data/evidence root if unset), so every test that writes
@@ -38,29 +42,65 @@ afterEach(() => {
   rmSync(ledgerDir, { recursive: true, force: true });
 });
 
-function makeFakePage(opts: { failGotoUrl?: string } = {}): ConsolePage & { screenshotCalls: string[] } {
-  const screenshotCalls: string[] = [];
+function makeFakePort(
+  opts: { failNavigateUrl?: string } = {},
+): BrowserExecutionPort & { requests: BrowserExecutionRequest[] } {
+  const requests: BrowserExecutionRequest[] = [];
   return {
-    screenshotCalls,
-    async goto(url: string) {
-      if (opts.failGotoUrl && url === opts.failGotoUrl) throw new Error(`simulated navigation failure: ${url}`);
+    requests,
+    async execute(request): Promise<BrowserExecutionResult> {
+      requests.push(request);
+      if (
+        request.operation.kind === 'perform_console_action'
+        && request.operation.action.type === 'navigate'
+        && request.operation.action.target === opts.failNavigateUrl
+      ) {
+        return {
+          schemaVersion: 'browser-execution-result.v1',
+          requestId: request.requestId,
+          status: 'FAIL',
+          mutationAttempted: false,
+          evidence: [],
+          error: {
+            code: 'SIMULATED_NAVIGATION_FAILURE',
+            message: `simulated navigation failure: ${opts.failNavigateUrl}`,
+          },
+        };
+      }
+      return {
+        schemaVersion: 'browser-execution-result.v1',
+        requestId: request.requestId,
+        status: 'PASS',
+        mutationAttempted: false,
+        readBack: { status: 'PASS' },
+        evidence: request.operation.kind === 'capture_console_evidence'
+          ? [{
+              artifactRef: `artifact://test/${request.requestId}`,
+              sha256: 'a'.repeat(64),
+              mediaType: 'image/png',
+              size: 8,
+            }]
+          : [],
+      };
     },
-    async evaluate() {
-      return false; // navigateMenu's click-by-text lookups just find nothing — read-only, no throw
-    },
-    async waitForTimeout() {},
-    async screenshot(shotOpts: { path: string }) {
-      screenshotCalls.push(shotOpts.path);
-      writeFileSync(shotOpts.path, Buffer.from(`fake-png-bytes:${shotOpts.path}`));
-    },
-    url() { return ''; },
   };
 }
 
-describe('captureConsoleEvidence — fake-page injection (no real browser)', () => {
-  it('captures 3 items via an injected fake page: filenames, sha256, capturedAt, chainOk', async () => {
-    const fakePage = makeFakePage();
-    let requestedPort: number | undefined;
+function portDeps(port: BrowserExecutionPort, ledger: AuditLedger) {
+  return {
+    ledger,
+    executionPort: port,
+    sessionId: 'console-evidence-test',
+    origin: 'https://console.example',
+    materializeArtifact: async (_artifactRef: string, destinationPath: string) => {
+      writeFileSync(destinationPath, Buffer.from(`fake-png-bytes:${destinationPath}`));
+    },
+  };
+}
+
+describe('captureConsoleEvidence — browser port injection (no real browser)', () => {
+  it('captures 3 items via an injected port: filenames, sha256, capturedAt, chainOk', async () => {
+    const port = makeFakePort();
     const ledger = new AuditLedger({ dir: ledgerDir });
 
     const result = await captureConsoleEvidence(
@@ -74,13 +114,9 @@ describe('captureConsoleEvidence — fake-page injection (no real browser)', () 
           { reqId: '03', menuLabel: 'Snapshot', url: 'https://console.example/dashboard' },
         ],
       },
-      {
-        ledger,
-        getPage: async (cdpPort) => { requestedPort = cdpPort; return { page: fakePage }; },
-      },
+      portDeps(port, ledger),
     );
 
-    expect(requestedPort).toBe(9222); // default per the spec, not sangfor-chrome's own 9333 default
     expect(result.runId).toMatch(/^console_capture_/);
     expect(result.captures).toHaveLength(3);
     expect(result.chainOk).toBe(true);
@@ -105,8 +141,26 @@ describe('captureConsoleEvidence — fake-page injection (no real browser)', () 
     expect(lines.map((l: any) => l.payload.reqId)).toEqual(['01', '02', '03']);
   });
 
+  it('masks embedded secrets before filenames and ledger persistence', async () => {
+    const ledger = new AuditLedger({ dir: ledgerDir });
+    const result = await captureConsoleEvidence({
+      product: 'IAG',
+      dateStamp: '20260804',
+      outputDir: 'out',
+      captures: [{
+        reqId: 'token=abc',
+        menuLabel: 'password=xy',
+      }],
+    }, portDeps(makeFakePort(), ledger));
+
+    const persisted = readFileSync(result.ledgerPath, 'utf8');
+    expect(persisted).not.toContain('abc');
+    expect(persisted).not.toContain('xy');
+    expect(result.captures[0]?.filePath).not.toMatch(/abc|xy/);
+  });
+
   it('normalizes filename segments and blocks path traversal from untrusted reqId/menuLabel', async () => {
-    const fakePage = makeFakePage();
+    const port = makeFakePort();
     const ledger = new AuditLedger({ dir: ledgerDir });
 
     const result = await captureConsoleEvidence(
@@ -118,7 +172,7 @@ describe('captureConsoleEvidence — fake-page injection (no real browser)', () 
           { reqId: '../../etc/passwd', menuLabel: 'weird label/with spaces & slashes!' },
         ],
       },
-      { ledger, getPage: async () => ({ page: fakePage }) },
+      portDeps(port, ledger),
     );
 
     expect(result.captures).toHaveLength(1);
@@ -135,7 +189,7 @@ describe('captureConsoleEvidence — fake-page injection (no real browser)', () 
   });
 
   it('a failing capture item is recorded ok:false and does not stop the remaining items', async () => {
-    const fakePage = makeFakePage({ failGotoUrl: 'https://bad.example/fail' });
+    const port = makeFakePort({ failNavigateUrl: 'https://bad.example/fail' });
     const ledger = new AuditLedger({ dir: ledgerDir });
 
     const result = await captureConsoleEvidence(
@@ -149,7 +203,7 @@ describe('captureConsoleEvidence — fake-page injection (no real browser)', () 
           { reqId: '03', menuLabel: 'Ok Two', menuPath: [{ menu: 'Alerts' }] },
         ],
       },
-      { ledger, getPage: async () => ({ page: fakePage }) },
+      portDeps(port, ledger),
     );
 
     expect(result.captures).toHaveLength(3);
@@ -166,19 +220,16 @@ describe('captureConsoleEvidence — fake-page injection (no real browser)', () 
     expect(result.chainOk).toBe(true);
   });
 
-  it('CDP attach failure throws a clear, actionable error (no injected getPage, nothing listening on the port) — a hard failure by design, not partial', async () => {
+  it('missing BrowserExecutionPort throws a clear composition error', async () => {
     const ledger = new AuditLedger({ dir: ledgerDir });
-    const deadPort = 65533; // nothing should be listening here in CI/dev
 
     await expect(
       captureConsoleEvidence(
-        { product: 'HCI_SCP', outputDir: 'out', cdpPort: deadPort, captures: [{ reqId: '01', menuLabel: 'x' }] },
+        { product: 'HCI_SCP', outputDir: 'out', captures: [{ reqId: '01', menuLabel: 'x' }] },
         { ledger },
       ),
-    ).rejects.toThrow(
-      `CDP_ATTACH_FAILED: no Chrome listening on ${deadPort} (start Chrome with --remote-debugging-port=${deadPort})`,
-    );
-  }, 20_000);
+    ).rejects.toThrow(/BROWSER_EXECUTION_PORT_REQUIRED/);
+  });
 });
 
 describe('S1 — outputDir confinement (security)', () => {
@@ -213,23 +264,23 @@ describe('S1 — outputDir confinement (security)', () => {
     rmSync(outsideDir, { recursive: true, force: true });
   });
 
-  it('captureConsoleEvidence rejects an out-of-root outputDir before ever calling getPage', async () => {
+  it('captureConsoleEvidence rejects an out-of-root outputDir before calling the port', async () => {
     const ledger = new AuditLedger({ dir: ledgerDir });
-    let getPageCalled = false;
+    const port = makeFakePort();
 
     await expect(
       captureConsoleEvidence(
         { product: 'IAG', outputDir: join(tmpdir(), 'outside-root'), captures: [{ reqId: '01', menuLabel: 'x' }] },
-        { ledger, getPage: async () => { getPageCalled = true; return { page: makeFakePage() }; } },
+        portDeps(port, ledger),
       ),
     ).rejects.toThrow(/^CAPTURE_DIR_OUTSIDE_ROOT:/);
-    expect(getPageCalled).toBe(false);
+    expect(port.requests).toEqual([]);
   });
 });
 
 describe('S2 — destructive-label denylist (security)', () => {
   it('refuses a capture item whose menuPath clicks a denylisted label, and does not screenshot it', async () => {
-    const fakePage = makeFakePage();
+    const port = makeFakePort();
     const ledger = new AuditLedger({ dir: ledgerDir });
 
     const result = await captureConsoleEvidence(
@@ -243,7 +294,7 @@ describe('S2 — destructive-label denylist (security)', () => {
           { reqId: '03', menuLabel: 'Also Safe', menuPath: [{ menu: 'Alerts' }] },
         ],
       },
-      { ledger, getPage: async () => ({ page: fakePage }) },
+      portDeps(port, ledger),
     );
 
     expect(result.captures).toHaveLength(3);
@@ -254,12 +305,14 @@ describe('S2 — destructive-label denylist (security)', () => {
     expect(result.captures[2].ok).toBe(true);
 
     // Nothing was screenshotted for the refused item.
-    expect(fakePage.screenshotCalls.some((p: string) => p.includes('REQ02'))).toBe(false);
+    expect(port.requests.some((request) =>
+      request.operation.kind === 'capture_console_evidence'
+      && request.operation.captureId === '02')).toBe(false);
     expect(existsSync(result.captures[1].filePath)).toBe(false);
   });
 
   it('matches case-insensitively, as a substring, and in Korean', async () => {
-    const fakePage = makeFakePage();
+    const port = makeFakePort();
     const ledger = new AuditLedger({ dir: ledgerDir });
 
     const result = await captureConsoleEvidence(
@@ -271,7 +324,7 @@ describe('S2 — destructive-label denylist (security)', () => {
           { reqId: '03', menuLabel: 'x', menuPath: [{ menu: 'RESTART service' }] },
         ],
       },
-      { ledger, getPage: async () => ({ page: fakePage }) },
+      portDeps(port, ledger),
     );
 
     for (const item of result.captures) {
@@ -281,12 +334,12 @@ describe('S2 — destructive-label denylist (security)', () => {
   });
 
   it('also refuses based on menuLabel alone (defense in depth), even with no menuPath', async () => {
-    const fakePage = makeFakePage();
+    const port = makeFakePort();
     const ledger = new AuditLedger({ dir: ledgerDir });
 
     const result = await captureConsoleEvidence(
       { product: 'IAG', dateStamp: '20260804', outputDir: 'out', captures: [{ reqId: '01', menuLabel: 'Confirm Removal Screen' }] },
-      { ledger, getPage: async () => ({ page: fakePage }) },
+      portDeps(port, ledger),
     );
 
     expect(result.captures[0].ok).toBe(false);
@@ -294,12 +347,12 @@ describe('S2 — destructive-label denylist (security)', () => {
   });
 
   it('does not refuse an ordinary safe label', async () => {
-    const fakePage = makeFakePage();
+    const port = makeFakePort();
     const ledger = new AuditLedger({ dir: ledgerDir });
 
     const result = await captureConsoleEvidence(
       { product: 'IAG', dateStamp: '20260804', outputDir: 'out', captures: [{ reqId: '01', menuLabel: 'Dashboard Overview', menuPath: [{ menu: 'Dashboard' }] }] },
-      { ledger, getPage: async () => ({ page: fakePage }) },
+      portDeps(port, ledger),
     );
 
     expect(result.captures[0].ok).toBe(true);
@@ -308,12 +361,12 @@ describe('S2 — destructive-label denylist (security)', () => {
 
 describe('verifyCaptureLedger — tamper detection (read-only, S3 single-read + S4 shape guard)', () => {
   it('reports chainOk + per-file match:true right after a clean capture', async () => {
-    const fakePage = makeFakePage();
+    const port = makeFakePort();
     const ledger = new AuditLedger({ dir: ledgerDir });
 
     const result = await captureConsoleEvidence(
       { product: 'NDR', dateStamp: '20260804', outputDir: 'out', captures: [{ reqId: '01', menuLabel: 'Dashboard' }] },
-      { ledger, getPage: async () => ({ page: fakePage }) },
+      portDeps(port, ledger),
     );
 
     const verify = verifyCaptureLedger(result.runId, { ledger });
@@ -326,12 +379,12 @@ describe('verifyCaptureLedger — tamper detection (read-only, S3 single-read + 
   });
 
   it('detects a modified screenshot file after capture (match:false)', async () => {
-    const fakePage = makeFakePage();
+    const port = makeFakePort();
     const ledger = new AuditLedger({ dir: ledgerDir });
 
     const result = await captureConsoleEvidence(
       { product: 'NDR', dateStamp: '20260804', outputDir: 'out', captures: [{ reqId: '01', menuLabel: 'Dashboard' }] },
-      { ledger, getPage: async () => ({ page: fakePage }) },
+      portDeps(port, ledger),
     );
 
     // Tamper with the evidence file after the fact.
@@ -345,12 +398,12 @@ describe('verifyCaptureLedger — tamper detection (read-only, S3 single-read + 
   });
 
   it('reports match:false, currentHash:null for a missing/deleted screenshot file', async () => {
-    const fakePage = makeFakePage();
+    const port = makeFakePort();
     const ledger = new AuditLedger({ dir: ledgerDir });
 
     const result = await captureConsoleEvidence(
       { product: 'NDR', dateStamp: '20260804', outputDir: 'out', captures: [{ reqId: '01', menuLabel: 'Dashboard' }] },
-      { ledger, getPage: async () => ({ page: fakePage }) },
+      portDeps(port, ledger),
     );
 
     rmSync(result.captures[0].filePath);
@@ -362,12 +415,12 @@ describe('verifyCaptureLedger — tamper detection (read-only, S3 single-read + 
   });
 
   it('detects a broken hash chain (ledger line tampered directly)', async () => {
-    const fakePage = makeFakePage();
+    const port = makeFakePort();
     const ledger = new AuditLedger({ dir: ledgerDir });
 
     const result = await captureConsoleEvidence(
       { product: 'NDR', dateStamp: '20260804', outputDir: 'out', captures: [{ reqId: '01', menuLabel: 'Dashboard' }] },
-      { ledger, getPage: async () => ({ page: fakePage }) },
+      portDeps(port, ledger),
     );
 
     const lines = readFileSync(result.ledgerPath, 'utf8').trim().split('\n');
@@ -381,12 +434,12 @@ describe('verifyCaptureLedger — tamper detection (read-only, S3 single-read + 
   });
 
   it('S4: a ledger line with an unexpected payload shape is reported, not silently skipped', async () => {
-    const fakePage = makeFakePage();
+    const port = makeFakePort();
     const ledger = new AuditLedger({ dir: ledgerDir });
 
     const result = await captureConsoleEvidence(
       { product: 'NDR', dateStamp: '20260804', outputDir: 'out', captures: [{ reqId: '01', menuLabel: 'Dashboard' }] },
-      { ledger, getPage: async () => ({ page: fakePage }) },
+      portDeps(port, ledger),
     );
 
     // Append a well-formed ledger line (valid hash chain) but with a payload

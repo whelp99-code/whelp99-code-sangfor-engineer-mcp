@@ -1,30 +1,18 @@
-/**
- * Sangfor Screenshot Collector — Chrome CDP-based automated screenshot capture
- * for Sangfor product consoles (EPP, IAG, CC).
- *
- * Uses @sangfor/chrome for CDP lifecycle and navigation.
- * Chrome-related imports are lazy-loaded to avoid module-level failures
- * when playwright is not installed.
- */
-import { existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+import type { BrowserExecutionPort } from '../../sangfor-browser-contracts/src/index.js';
+import { resolveConfinedOutputDir } from './console-evidence-paths.js';
 
-// Card B1 — read-only console evidence capture (attach to an already-open
-// Chrome, screenshot named audit evidence, hash-chain into AuditLedger).
 export * from './console-evidence.js';
-
-// ─── Types ──────────────────────────────────────────────────────────────────
 
 export interface ScreenshotOptions {
   product: 'EPP' | 'IAG' | 'CC';
   targetUrl?: string;
-  username?: string;
-  password?: string;
   outputDir?: string;
-  cdpPort?: number;
-  headless?: boolean;
   menus?: Array<{ menu: string; submenu?: string }>;
   dryRun?: boolean;
+  sessionId?: string;
+  executionPort?: BrowserExecutionPort;
+  materializeArtifact?: (artifactRef: string, destinationPath: string) => Promise<void>;
 }
 
 export interface ScreenshotResult {
@@ -36,22 +24,14 @@ export interface ScreenshotResult {
   timestamp: string;
 }
 
-// ─── Product Defaults ───────────────────────────────────────────────────────
-
 interface ProductConfig {
   defaultUrl: string;
-  defaultUsername: string;
-  defaultPassword: string;
-  cdpPort: number;
   menus: Array<{ menu: string; submenu?: string }>;
 }
 
-const PRODUCT_CONFIGS: Record<string, ProductConfig> = {
+const PRODUCT_CONFIGS: Record<ScreenshotOptions['product'], ProductConfig> = {
   EPP: {
     defaultUrl: process.env.SANGFOR_EPP_URL ?? 'https://192.0.2.10',
-    defaultUsername: 'admin',
-    defaultPassword: process.env.SANGFOR_EPP_PASSWORD ?? 'sangfor',
-    cdpPort: 9333,
     menus: [
       { menu: 'Dashboard' },
       { menu: 'Assets', submenu: 'Endpoint/Agent List' },
@@ -66,9 +46,6 @@ const PRODUCT_CONFIGS: Record<string, ProductConfig> = {
   },
   IAG: {
     defaultUrl: process.env.SANGFOR_IAG_URL ?? 'https://192.0.2.11',
-    defaultUsername: 'admin',
-    defaultPassword: process.env.SANGFOR_IAG_PASSWORD ?? 'sangfor',
-    cdpPort: 9334,
     menus: [
       { menu: 'Dashboard' },
       { menu: 'System', submenu: 'Interfaces' },
@@ -83,9 +60,6 @@ const PRODUCT_CONFIGS: Record<string, ProductConfig> = {
   },
   CC: {
     defaultUrl: process.env.SANGFOR_CC_URL ?? 'https://192.0.2.12',
-    defaultUsername: 'admin',
-    defaultPassword: process.env.SANGFOR_CC_PASSWORD ?? 'sangfor',
-    cdpPort: 9335,
     menus: [
       { menu: 'Dashboard', submenu: 'Security Operations' },
       { menu: 'Assets', submenu: 'Sensors/Connectors' },
@@ -98,120 +72,101 @@ const PRODUCT_CONFIGS: Record<string, ProductConfig> = {
   },
 };
 
-// ─── Main Export ─────────────────────────────────────────────────────────────
+export function resolveProductScreenshotTargetUrl(
+  product: ScreenshotOptions['product'],
+  targetUrl?: string,
+): string {
+  return targetUrl ?? PRODUCT_CONFIGS[product].defaultUrl;
+}
+
+function screenshotFileStem(menu: { menu: string; submenu?: string }): string {
+  const label = `${menu.menu}${menu.submenu ? `_${menu.submenu}` : ''}`
+    .normalize('NFKC')
+    .replace(/[<>:"/\\|?*\u0000-\u001f]/g, '_')
+    .replace(/\s+/g, '_')
+    .replace(/^\.+|\.+$/g, '');
+  return label || 'capture';
+}
 
 export async function captureProductScreenshots(
   options: ScreenshotOptions,
 ): Promise<ScreenshotResult> {
-  const product = options.product;
-  const config = PRODUCT_CONFIGS[product];
-  if (!config) throw new Error(`Unknown product: ${product}`);
-
-  const targetUrl = options.targetUrl ?? config.defaultUrl;
-  const username = options.username ?? config.defaultUsername;
-  const password = options.password ?? config.defaultPassword;
-  const cdpPort = options.cdpPort ?? config.cdpPort;
+  const config = PRODUCT_CONFIGS[options.product];
+  const targetUrl = resolveProductScreenshotTargetUrl(options.product, options.targetUrl);
   const menus = options.menus ?? config.menus;
-  const outputDir = options.outputDir ?? join(process.cwd(), 'outputs', 'screenshots', product);
-  const headless = options.headless ?? false;
-
-  mkdirSync(outputDir, { recursive: true });
-
-  const captured: string[] = [];
-  const failed: Array<{ menu: string; error: string }> = [];
-
-  // Skip Chrome operations in dry-run mode
+  const outputDir = resolveConfinedOutputDir(
+    options.outputDir ?? join('screenshots', options.product),
+  );
   if (options.dryRun) {
     return {
-      product,
+      product: options.product,
       outputDir,
-      captured: menus.map(m => `[dry-run] ${m.menu}${m.submenu ? ` > ${m.submenu}` : ''}`),
+      captured: menus.map((menu) => `[dry-run] ${menu.menu}${menu.submenu ? ` > ${menu.submenu}` : ''}`),
       failed: [],
       totalScreenshots: menus.length,
       timestamp: new Date().toISOString(),
     };
   }
-
-  try {
-    // Lazy-load chrome module to avoid module-level failures
-    const chrome = await import('@sangfor/chrome');
-    const { chromium } = await import('playwright');
-
-    // Ensure Chrome is running with CDP
-    const session = chrome.ensureChromeRunning({
-      cdpPort,
-      headless,
-      ignoreCertErrors: true,
-    });
-
-    // Connect via Playwright
-    const browser = await chromium.connectOverCDP(session.wsUrl);
-    const context = browser.contexts()[0] ?? await browser.newContext({ ignoreHTTPSErrors: true });
-    const page = context.pages()[0] ?? await context.newPage();
-
-    // Login
-    const credentials = {
-      username,
-      password,
-      product: product as 'EPP' | 'IAG' | 'CC',
-      targetUrl,
+  if (!options.executionPort || !options.sessionId) {
+    return {
+      product: options.product,
+      outputDir,
+      captured: [],
+      failed: [{
+        menu: 'browser_execution_port',
+        error: 'BROWSER_EXECUTION_PORT_REQUIRED: screenshot capture requires JM runtime composition.',
+      }],
+      totalScreenshots: 0,
+      timestamp: new Date().toISOString(),
     };
-
-    try {
-      await chrome.loginToConsole(page, credentials);
-    } catch (loginErr) {
-      failed.push({ menu: 'login', error: String(loginErr) });
-      // Take login page screenshot even on failure
-      const loginPath = join(outputDir, 'login_failed.png');
-      try {
-        await chrome.takeScreenshot(page, loginPath);
-        captured.push(loginPath);
-      } catch { /* ignore */ }
-      return {
-        product,
-        outputDir,
-        captured,
-        failed,
-        totalScreenshots: 0,
-        timestamp: new Date().toISOString(),
-      };
-    }
-
-    // Capture dashboard first
-    try {
-      const dashPath = join(outputDir, 'dashboard.png');
-      await chrome.takeScreenshot(page, dashPath);
-      captured.push(dashPath);
-    } catch (err) {
-      failed.push({ menu: 'dashboard', error: String(err) });
-    }
-
-    // Navigate to each menu and capture screenshot
-    for (const menuStep of menus) {
-      try {
-        await chrome.navigateMenu(page, [menuStep]);
-        await page.waitForTimeout(2000);
-
-        const menuName = menuStep.submenu
-          ? `${menuStep.menu}_${menuStep.submenu}`.replace(/[^a-zA-Z0-9가-힣]/g, '_')
-          : menuStep.menu.replace(/[^a-zA-Z0-9가-힣]/g, '_');
-        const screenshotPath = join(outputDir, `${menuName}.png`);
-
-        await chrome.takeScreenshot(page, screenshotPath);
-        captured.push(screenshotPath);
-      } catch (err) {
-        const menuLabel = menuStep.submenu
-          ? `${menuStep.menu} > ${menuStep.submenu}`
-          : menuStep.menu;
-        failed.push({ menu: menuLabel, error: String(err) });
-      }
-    }
-  } catch (err) {
-    failed.push({ menu: 'chrome_setup', error: String(err) });
   }
-
+  const captured: string[] = [];
+  const failed: Array<{ menu: string; error: string }> = [];
+  for (const [index, menu] of menus.entries()) {
+    const result = await options.executionPort.execute({
+      schemaVersion: 'browser-execution-request.v1',
+      requestId: `product-screenshot-${options.product}-${index}`,
+      sessionId: options.sessionId,
+      origin: new URL(targetUrl).origin,
+      operation: {
+        kind: 'capture_console_evidence',
+        captureId: `${options.product}-${index}`,
+        menuPath: [menu],
+      },
+    });
+    if (result.status === 'PASS' && result.evidence.length > 0) {
+      if (!options.materializeArtifact) {
+        failed.push({
+          menu: menu.submenu ? `${menu.menu} > ${menu.submenu}` : menu.menu,
+          error: 'BROWSER_ARTIFACT_MATERIALIZER_REQUIRED: screenshot output files require JM runtime composition.',
+        });
+        continue;
+      }
+      try {
+        for (const [artifactIndex, item] of result.evidence.entries()) {
+          const suffix = result.evidence.length > 1 ? `_${artifactIndex + 1}` : '';
+          const filePath = join(
+            outputDir,
+            `${String(index + 1).padStart(2, '0')}_${screenshotFileStem(menu)}${suffix}.png`,
+          );
+          await options.materializeArtifact(item.artifactRef, filePath);
+          captured.push(filePath);
+        }
+      } catch (error) {
+        failed.push({
+          menu: menu.submenu ? `${menu.menu} > ${menu.submenu}` : menu.menu,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    } else {
+      failed.push({
+        menu: menu.submenu ? `${menu.menu} > ${menu.submenu}` : menu.menu,
+        error: result.error?.message ?? `Capture result: ${result.status}`,
+      });
+    }
+  }
   return {
-    product,
+    product: options.product,
     outputDir,
     captured,
     failed,

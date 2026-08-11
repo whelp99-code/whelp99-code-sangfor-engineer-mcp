@@ -1,10 +1,12 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
   assertNavigationWithinTarget,
+} from '../packages/sangfor-operator/src/index.js';
+import {
   clickUniqueTextTarget,
   selectUniqueTarget,
   typeUniqueInputTarget,
-} from '../packages/sangfor-operator/src/index.js';
+} from '../packages/sangfor-jm-execution/src/index.js';
 
 class FakeElement {
   value = '';
@@ -75,7 +77,7 @@ class FakePage {
 
   locator(selector: string): FakeLocator {
     if (selector === 'option') return new FakeLocator([]);
-    if (selector === 'select' || selector === '#action') return new FakeLocator(this.selects);
+    if (selector.startsWith('select') || selector === '#action') return new FakeLocator(this.selects);
     if (selector.includes('input:not') || selector.includes('textarea')) return new FakeLocator(this.inputs);
     if (selector.includes('button')) return new FakeLocator(this.clicks);
     return new FakeLocator([]);
@@ -94,7 +96,7 @@ describe('live operator fail-closed locators', () => {
     const page = new FakePage();
     page.clicks = [new FakeElement('Export'), new FakeElement('Export', {}, false)];
 
-    await clickUniqueTextTarget(page, 'Export');
+    await clickUniqueTextTarget(page as never, 'Export');
 
     expect(page.clicks[0].clicked).toBe(1);
     expect(page.clicks[1].clicked).toBe(0);
@@ -104,7 +106,7 @@ describe('live operator fail-closed locators', () => {
     const page = new FakePage();
     page.clicks = [new FakeElement('Apply'), new FakeElement('Apply')];
 
-    await expect(clickUniqueTextTarget(page, 'Apply')).rejects.toThrow(/ambiguous target/i);
+    await expect(clickUniqueTextTarget(page as never, 'Apply')).rejects.toThrow(/ambiguous target/i);
     expect(page.clicks.every((el) => el.clicked === 0)).toBe(true);
   });
 
@@ -115,7 +117,7 @@ describe('live operator fail-closed locators', () => {
       new FakeInputElement('', { id: 'comment' }),
     ];
 
-    await expect(typeUniqueInputTarget(page, 'password', 'secret')).rejects.toThrow(/no unique target/i);
+    await expect(typeUniqueInputTarget(page as never, 'password', 'secret')).rejects.toThrow(/no unique target/i);
 
     expect(page.inputs[0].value).toBe('unchanged');
     expect(page.inputs[1].value).toBe('');
@@ -128,14 +130,14 @@ describe('live operator fail-closed locators', () => {
       new FakeInputElement('', { name: 'policyName' }),
     ];
 
-    await expect(typeUniqueInputTarget(page, 'policyName', 'new policy')).rejects.toThrow(/ambiguous target/i);
+    await expect(typeUniqueInputTarget(page as never, 'policyName', 'new policy')).rejects.toThrow(/ambiguous target/i);
   });
 
   it('selects only one matching select target', async () => {
     const page = new FakePage();
     page.selects = [new FakeElement('', { id: 'action' })];
 
-    await selectUniqueTarget(page, '#action', 'block');
+    await selectUniqueTarget(page as never, '#action', 'block');
 
     expect(page.selects[0].selected).toBe('block');
   });

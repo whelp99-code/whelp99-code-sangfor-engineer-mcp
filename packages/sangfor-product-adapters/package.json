@@ -3,6 +3,7 @@
   "type": "module",
   "main": "src/index.ts",
   "dependencies": {
+    "@sangfor/browser-contracts": "workspace:*",
     "@sangfor/approval": "workspace:*",
     "@sangfor/learning-strategy": "workspace:*",
     "@sangfor/office": "workspace:*",
