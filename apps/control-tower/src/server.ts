@@ -5,6 +5,7 @@ import type { RunStatus } from '../../../packages/sangfor-runs/src/index.js';
 import type { PlaybookBlock, AgentTask } from './playbook-store.js';
 import { createApi, ApiError, type TowerOptions } from './api.js';
 import { loadEnvFile } from '../../../packages/sangfor-collector/src/load-env.js';
+import { buildLoopStatus } from '../../../packages/sangfor-loop/src/index.js';
 import { dashboardHtml } from './ui.js';
 
 loadEnvFile('.env');
@@ -61,6 +62,10 @@ export function createTowerServer(opts: TowerServerOptions = {}): http.Server {
       if (method === 'GET' && path === '/api/overview') return json(res, await api.overview());
       if (method === 'GET' && path === '/api/tools') return json(res, await api.toolGroups());
       if (method === 'GET' && path === '/api/health') return json(res, await api.health());
+      if (method === 'GET' && path === '/api/loop/status') {
+        const tailRaw = Number(url.searchParams.get('tail') ?? '');
+        return json(res, buildLoopStatus({ tail: Number.isInteger(tailRaw) && tailRaw > 0 ? tailRaw : undefined }));
+      }
       if (method === 'GET' && path === '/api/devices') return json(res, api.listDevices());
       if (method === 'POST' && path === '/api/devices') {
         const b = await readJsonBody(req);

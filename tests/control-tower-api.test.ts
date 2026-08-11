@@ -327,6 +327,16 @@ describe('Tower API — devices/sweep/overview/health (T-API-2)', () => {
     expect(health.mockConsole.ok).toBe(false);
   });
 
+  it('loop status 라우트: 선언된 그래프 요약과 게이트 목록을 반환한다 (read-only)', async () => {
+    const r = await call('GET', '/api/loop/status');
+    expect(r.status).toBe(200);
+    const body = r.body as { nodes: number; edges: number; gates: string[]; pendingByEdge: Record<string, number> };
+    expect(body.nodes).toBeGreaterThan(0);
+    expect(body.edges).toBeGreaterThan(0);
+    expect(Array.isArray(body.gates)).toBe(true);
+    expect(typeof body.pendingByEdge).toBe('object');
+  });
+
   it('mint 라우트: 시크릿 있으면 SignedApproval 반환, 필수 필드 누락 400', async () => {
     const r = await call('POST', '/api/approvals/mint', {
       actionType: 'hci.create-volume', actionTarget: '127.0.0.1:vol-a',
