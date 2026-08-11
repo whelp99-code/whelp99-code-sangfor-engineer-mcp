@@ -94,6 +94,22 @@ stateDiagram-v2
 
 `data/rag/index.json`은 14개 모듈이 접근하는 최대 공유 자산(단일 쓰기 락으로 보호됨), `data/sources/raw`는 7개, `data/evidence`는 6개. 이 세 파일/디렉터리가 그래프 시각화·모니터링 1순위다.
 
+접근자 3개 이상인 자산 8개 전체를 모듈→자산 이분 그래프로 생성해 두었다: [graphs/data-assets.mmd](graphs/data-assets.mmd) · [렌더 SVG](graphs/data-assets.svg).
+
+## 3-1. 생성된 그래프 아티팩트 (전량 실측 에지)
+
+위 다이어그램은 요약본이고, 채굴된 원본 에지 전체는 `docs/analysis/graphs/`에 소스(`.mmd`)와 렌더(`.svg`) 쌍으로 생성해 두었다:
+
+| 파일 | 내용 | 규모 |
+|------|------|------|
+| `package-deps-full.{mmd,svg}` | apps·packages 간 실측 임포트 에지 전체 | 28 owner / 98 에지 |
+| `data-assets.{mmd,svg}` | 접근자 3+ 데이터 자산의 모듈→자산 그래프 | 자산 8개 |
+| `learning-dag.{mmd,svg}` | G1 학습 파이프라인 DAG | — |
+| `package-deps-condensed.{mmd,svg}` | G2 계층 축약판 | — |
+| `feedback-states.{mmd,svg}` | G3 피드백·승인 상태기계 | — |
+
+재생성은 정적 채굴(임포트 `from '...'` 스캔 + `'data/...'` 문자열 스캔)이며, kroki.io mermaid 렌더러로 SVG를 검증했다.
+
 ## 4. 이 분석과 함께 처리된 운영 문제
 
 - 저장소 내 11개 스크립트가 구식 macOS 체크아웃 절대경로(`/Users/jmpark/Documents/Playground/...`)를 하드코딩하고 있었음 → 스크립트 위치 기준 상대경로로 전부 치환 (예약 자동화가 어느 체크아웃에서 돌아도 자기 저장소를 가리킴).

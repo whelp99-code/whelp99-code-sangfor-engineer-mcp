@@ -1,0 +1,26 @@
+flowchart TD
+  subgraph apps
+    MCP[mcp-server<br/>33개 패키지 의존]
+    OC[operator-console]
+    CT[control-tower]
+    HB[http-bridge]
+  end
+  subgraph domain["도메인 패키지"]
+    RAGP[sangfor-rag]
+    COL[sangfor-collector]
+    FB[sangfor-feedback]
+    EV[sangfor-evals]
+    LS[sangfor-learning-strategy]
+    OP[sangfor-operator]
+    HCI[sangfor-hci-client]
+    STORE[sangfor-store]
+    EVID[sangfor-evidence]
+  end
+  SH[shared — 리프]
+  MCP --> RAGP & COL & FB & EV & LS & OP & HCI & STORE
+  OC --> RAGP & FB & STORE
+  CT --> COL & OP
+  HB --> OP
+  EVID --> HCI
+  LS --> SH
+  RAGP & COL & FB & EV & OP & HCI & STORE --> SH

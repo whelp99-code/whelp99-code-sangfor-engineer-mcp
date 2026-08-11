@@ -1,0 +1,142 @@
+flowchart LR
+  subgraph APPS[apps]
+    app_control_tower["control-tower"]
+    app_http_bridge["http-bridge"]
+    app_mcp_server["mcp-server"]
+    app_operator_console["operator-console"]
+  end
+  package_cisco_client["cisco-client"]
+  package_cisco_spec["cisco-spec"]
+  package_fortios_client["fortios-client"]
+  package_fortios_spec["fortios-spec"]
+  package_sangfor_approval["sangfor-approval"]
+  package_sangfor_audit["sangfor-audit"]
+  package_sangfor_chrome["sangfor-chrome"]
+  package_sangfor_collector["sangfor-collector"]
+  package_sangfor_competency["sangfor-competency"]
+  package_sangfor_config_state["sangfor-config-state"]
+  package_sangfor_evals["sangfor-evals"]
+  package_sangfor_evidence["sangfor-evidence"]
+  package_sangfor_feedback["sangfor-feedback"]
+  package_sangfor_finetune["sangfor-finetune"]
+  package_sangfor_hci_client["sangfor-hci-client"]
+  package_sangfor_integration["sangfor-integration"]
+  package_sangfor_knowledge["sangfor-knowledge"]
+  package_sangfor_learning_strategy["sangfor-learning-strategy"]
+  package_sangfor_observer["sangfor-observer"]
+  package_sangfor_office["sangfor-office"]
+  package_sangfor_operator["sangfor-operator"]
+  package_sangfor_planner["sangfor-planner"]
+  package_sangfor_pm["sangfor-pm"]
+  package_sangfor_pptx["sangfor-pptx"]
+  package_sangfor_product_adapters["sangfor-product-adapters"]
+  package_sangfor_rag["sangfor-rag"]
+  package_sangfor_rca["sangfor-rca"]
+  package_sangfor_runs["sangfor-runs"]
+  package_sangfor_safety["sangfor-safety"]
+  package_sangfor_screenshot["sangfor-screenshot"]
+  package_sangfor_sizing["sangfor-sizing"]
+  package_sangfor_spec["sangfor-spec"]
+  package_sangfor_store["sangfor-store"]
+  package_sangfor_verifier["sangfor-verifier"]
+  package_sangfor_version["sangfor-version"]
+  package_sangfor_wiki["sangfor-wiki"]
+  package_shared["shared"]
+  app_control_tower --> package_sangfor_collector
+  app_control_tower --> package_sangfor_operator
+  app_control_tower --> package_sangfor_runs
+  app_control_tower --> package_shared
+  app_http_bridge --> package_sangfor_operator
+  app_mcp_server --> package_cisco_client
+  app_mcp_server --> package_cisco_spec
+  app_mcp_server --> package_fortios_client
+  app_mcp_server --> package_fortios_spec
+  app_mcp_server --> package_sangfor_approval
+  app_mcp_server --> package_sangfor_audit
+  app_mcp_server --> package_sangfor_collector
+  app_mcp_server --> package_sangfor_competency
+  app_mcp_server --> package_sangfor_config_state
+  app_mcp_server --> package_sangfor_evals
+  app_mcp_server --> package_sangfor_evidence
+  app_mcp_server --> package_sangfor_feedback
+  app_mcp_server --> package_sangfor_finetune
+  app_mcp_server --> package_sangfor_hci_client
+  app_mcp_server --> package_sangfor_integration
+  app_mcp_server --> package_sangfor_knowledge
+  app_mcp_server --> package_sangfor_learning_strategy
+  app_mcp_server --> package_sangfor_observer
+  app_mcp_server --> package_sangfor_office
+  app_mcp_server --> package_sangfor_operator
+  app_mcp_server --> package_sangfor_planner
+  app_mcp_server --> package_sangfor_pm
+  app_mcp_server --> package_sangfor_pptx
+  app_mcp_server --> package_sangfor_product_adapters
+  app_mcp_server --> package_sangfor_rag
+  app_mcp_server --> package_sangfor_rca
+  app_mcp_server --> package_sangfor_safety
+  app_mcp_server --> package_sangfor_screenshot
+  app_mcp_server --> package_sangfor_sizing
+  app_mcp_server --> package_sangfor_spec
+  app_mcp_server --> package_sangfor_store
+  app_mcp_server --> package_sangfor_verifier
+  app_mcp_server --> package_sangfor_version
+  app_mcp_server --> package_sangfor_wiki
+  app_mcp_server --> package_shared
+  app_operator_console --> package_sangfor_collector
+  app_operator_console --> package_sangfor_competency
+  app_operator_console --> package_sangfor_feedback
+  app_operator_console --> package_sangfor_knowledge
+  app_operator_console --> package_sangfor_planner
+  app_operator_console --> package_sangfor_product_adapters
+  app_operator_console --> package_sangfor_rag
+  app_operator_console --> package_sangfor_safety
+  app_operator_console --> package_sangfor_spec
+  app_operator_console --> package_sangfor_store
+  app_operator_console --> package_sangfor_wiki
+  app_operator_console --> package_shared
+  package_cisco_spec --> package_sangfor_spec
+  package_fortios_spec --> package_sangfor_spec
+  package_sangfor_approval --> package_shared
+  package_sangfor_collector --> package_shared
+  package_sangfor_evals --> package_shared
+  package_sangfor_evidence --> package_sangfor_audit
+  package_sangfor_evidence --> package_sangfor_hci_client
+  package_sangfor_evidence --> package_sangfor_office
+  package_sangfor_evidence --> package_sangfor_screenshot
+  package_sangfor_evidence --> package_shared
+  package_sangfor_feedback --> package_shared
+  package_sangfor_finetune --> package_shared
+  package_sangfor_hci_client --> package_shared
+  package_sangfor_knowledge --> package_shared
+  package_sangfor_learning_strategy --> package_sangfor_approval
+  package_sangfor_learning_strategy --> package_sangfor_version
+  package_sangfor_learning_strategy --> package_shared
+  package_sangfor_observer --> package_sangfor_collector
+  package_sangfor_office --> package_shared
+  package_sangfor_operator --> package_sangfor_approval
+  package_sangfor_operator --> package_sangfor_chrome
+  package_sangfor_operator --> package_shared
+  package_sangfor_planner --> package_sangfor_approval
+  package_sangfor_planner --> package_sangfor_knowledge
+  package_sangfor_planner --> package_sangfor_rag
+  package_sangfor_planner --> package_sangfor_wiki
+  package_sangfor_planner --> package_shared
+  package_sangfor_pptx --> package_sangfor_office
+  package_sangfor_pptx --> package_sangfor_product_adapters
+  package_sangfor_product_adapters --> package_sangfor_approval
+  package_sangfor_product_adapters --> package_sangfor_learning_strategy
+  package_sangfor_product_adapters --> package_sangfor_office
+  package_sangfor_product_adapters --> package_sangfor_operator
+  package_sangfor_product_adapters --> package_shared
+  package_sangfor_rag --> package_shared
+  package_sangfor_runs --> package_shared
+  package_sangfor_screenshot --> package_sangfor_chrome
+  package_sangfor_screenshot --> package_sangfor_hci_client
+  package_sangfor_screenshot --> package_shared
+  package_sangfor_store --> package_shared
+  package_sangfor_verifier --> package_sangfor_approval
+  package_sangfor_verifier --> package_sangfor_chrome
+  package_sangfor_verifier --> package_sangfor_planner
+  package_sangfor_verifier --> package_shared
+  package_sangfor_version --> package_shared
+  package_sangfor_wiki --> package_shared

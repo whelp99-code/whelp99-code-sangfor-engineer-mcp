@@ -1,0 +1,82 @@
+flowchart LR
+  data_rag_index_json[("data/rag/index.json")]
+  apps_operator_console["apps/operator-console"]
+  apps_operator_console --> data_rag_index_json
+  packages_sangfor_collector["packages/sangfor-collector"]
+  packages_sangfor_collector --> data_rag_index_json
+  packages_sangfor_planner["packages/sangfor-planner"]
+  packages_sangfor_planner --> data_rag_index_json
+  packages_sangfor_rag["packages/sangfor-rag"]
+  packages_sangfor_rag --> data_rag_index_json
+  scripts_finalize_learning_ts["scripts/finalize-learning.ts"]
+  scripts_finalize_learning_ts --> data_rag_index_json
+  scripts_ingest_all_seeds_ts["scripts/ingest-all-seeds.ts"]
+  scripts_ingest_all_seeds_ts --> data_rag_index_json
+  scripts_ingest_browser_crawl_ts["scripts/ingest-browser-crawl.ts"]
+  scripts_ingest_browser_crawl_ts --> data_rag_index_json
+  scripts_ingest_product_tables_ts["scripts/ingest-product-tables.ts"]
+  scripts_ingest_product_tables_ts --> data_rag_index_json
+  scripts_ingest_support_docs_ts["scripts/ingest-support-docs.ts"]
+  scripts_ingest_support_docs_ts --> data_rag_index_json
+  scripts_learn_kb_full_site_ts["scripts/learn-kb-full-site.ts"]
+  scripts_learn_kb_full_site_ts --> data_rag_index_json
+  scripts_rag_reembed_ts["scripts/rag-reembed.ts"]
+  scripts_rag_reembed_ts --> data_rag_index_json
+  scripts_reingest_all_raw_ts["scripts/reingest-all-raw.ts"]
+  scripts_reingest_all_raw_ts --> data_rag_index_json
+  scripts_seed_demo_knowledge_ts["scripts/seed-demo-knowledge.ts"]
+  scripts_seed_demo_knowledge_ts --> data_rag_index_json
+  scripts_sync_db_ts["scripts/sync-db.ts"]
+  scripts_sync_db_ts --> data_rag_index_json
+  data_sources_raw[("data/sources/raw")]
+  packages_sangfor_collector --> data_sources_raw
+  scripts_crawl_kb_with_storage_ts["scripts/crawl-kb-with-storage.ts"]
+  scripts_crawl_kb_with_storage_ts --> data_sources_raw
+  scripts_crawl_one_portal_ts["scripts/crawl-one-portal.ts"]
+  scripts_crawl_one_portal_ts --> data_sources_raw
+  scripts_ingest_browser_crawl_ts --> data_sources_raw
+  scripts_ingest_product_tables_ts --> data_sources_raw
+  scripts_rag_reembed_ts --> data_sources_raw
+  scripts_reingest_all_raw_ts --> data_sources_raw
+  data_evidence[("data/evidence")]
+  apps_mcp_server["apps/mcp-server"]
+  apps_mcp_server --> data_evidence
+  packages_sangfor_evidence["packages/sangfor-evidence"]
+  packages_sangfor_evidence --> data_evidence
+  packages_sangfor_hci_client["packages/sangfor-hci-client"]
+  packages_sangfor_hci_client --> data_evidence
+  packages_sangfor_office["packages/sangfor-office"]
+  packages_sangfor_office --> data_evidence
+  packages_sangfor_screenshot["packages/sangfor-screenshot"]
+  packages_sangfor_screenshot --> data_evidence
+  packages_sangfor_verifier["packages/sangfor-verifier"]
+  packages_sangfor_verifier --> data_evidence
+  data_sources[("data/sources")]
+  packages_sangfor_collector --> data_sources
+  scripts_ingest_product_tables_ts --> data_sources
+  scripts_kb_login_capture_ts["scripts/kb-login-capture.ts"]
+  scripts_kb_login_capture_ts --> data_sources
+  scripts_learn_kb_full_site_ts --> data_sources
+  data_captures[("data/captures")]
+  apps_mcp_server --> data_captures
+  scripts_device_collect_ts["scripts/device-collect.ts"]
+  scripts_device_collect_ts --> data_captures
+  scripts_diagnosis_bundle_io_ts["scripts/diagnosis-bundle-io.ts"]
+  scripts_diagnosis_bundle_io_ts --> data_captures
+  scripts_observe_cli_ts["scripts/observe-cli.ts"]
+  scripts_observe_cli_ts --> data_captures
+  data_runs[("data/runs")]
+  apps_control_tower["apps/control-tower"]
+  apps_control_tower --> data_runs
+  apps_mcp_server --> data_runs
+  packages_sangfor_runs["packages/sangfor-runs"]
+  packages_sangfor_runs --> data_runs
+  data_runtime_learning_captures[("data/runtime/learning-captures")]
+  apps_mcp_server --> data_runtime_learning_captures
+  scripts_device_collect_ts --> data_runtime_learning_captures
+  scripts_observe_cli_ts --> data_runtime_learning_captures
+  data_sources_manifest_json[("data/sources/manifest.json")]
+  scripts_finalize_learning_ts --> data_sources_manifest_json
+  scripts_rebuild_finetune_ts["scripts/rebuild-finetune.ts"]
+  scripts_rebuild_finetune_ts --> data_sources_manifest_json
+  scripts_sync_db_ts --> data_sources_manifest_json

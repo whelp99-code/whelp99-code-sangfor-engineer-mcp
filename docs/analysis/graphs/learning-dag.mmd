@@ -1,0 +1,9 @@
+flowchart LR
+  SRC[커뮤니티/KB/문서 소스] -->|learn-pipeline collect| RAW[data/sources/raw]
+  RAW -->|ingestDocument| RAG[(data/rag/index.json)]
+  RAW -->|createFineTuneDataset| FT[data/finetune/*.jsonl]
+  RAG -->|exportRagIndexSummary| SUM[data/sources/learning-complete.json]
+  RAG -->|rag_search| ANS[엔지니어 답변]
+  ANS -->|약한 결과 <0.15| GAP[search-gaps.jsonl]
+  GAP -.->|수동: 재수집 대상 선정| SRC
+  style GAP stroke-dasharray: 5 5

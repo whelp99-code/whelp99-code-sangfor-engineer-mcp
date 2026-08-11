@@ -1,0 +1,8 @@
+stateDiagram-v2
+  [*] --> submitted: submit_feedback (JSONL append)
+  submitted --> lesson: extract_lesson
+  lesson --> proposed: propose_wiki_update
+  proposed --> approved: approve_wiki_update (HMAC 사람 승인)
+  approved --> applied: apply_wiki_update
+  lesson --> evalCase: create_eval_case_from_feedback
+  evalCase --> regression: run_planner_eval (수동)
