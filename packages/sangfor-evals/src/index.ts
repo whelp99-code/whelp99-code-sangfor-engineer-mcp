@@ -17,7 +17,8 @@ const SEED_EVAL_CASES: EvalCase[] = [
 
 const evalsFile = () => join(resolveRepoData('data/evals', 'SANGFOR_EVALS_ROOT'), 'eval-cases.jsonl');
 
-function allEvalCases(): EvalCase[] {
+/** Seeds + feedback-derived cases. Exported for the loop runtime's P3 regression executor. */
+export function allEvalCases(): EvalCase[] {
   return [...SEED_EVAL_CASES, ...foldJsonlById<EvalCase>(evalsFile()).values()];
 }
 
