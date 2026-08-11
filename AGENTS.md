@@ -25,7 +25,7 @@ See **[ARCHITECTURE.md](ARCHITECTURE.md)** for the domain map, package layering,
 
 ## Project structure
 - `apps/*` — thin transport adapters, each with a boundary `AGENTS.md`:
-  - `apps/mcp-server` — MCP stdio JSON-RPC server (77 `sangfor.*` tools; no port)
+  - `apps/mcp-server` — MCP stdio JSON-RPC server (108 `sangfor.*` tools; no port)
   - `apps/http-bridge` — REST façade over the MCP server (`:3600`, fail-closed tool-guard)
   - `apps/control-tower` — ops dashboard, run/approval/registry + playbook engine (`:3700`)
   - `apps/operator-console` — engineer web console, in-process (`:3502`)
@@ -45,11 +45,16 @@ pnpm run build   # tsc
 Run an app: `pnpm run dev:mcp | dev:http-bridge | dev:control-tower | dev:web | dev:mock-console`.
 
 ## Quick rules (every agent must know)
-1. **Read-only by default.** Non-dry-run live writes need `SANGFOR_ALLOW_REAL_EXECUTION` (+ `SANGFOR_ALLOW_PRODUCTION_EXECUTION` in prod) **and** a signed, action-bound, single-use approval. Never weaken a gate to make a test pass — see [SECURITY.md](docs/SECURITY.md).
+1. **Read-only by default.** Non-dry-run live writes need
+   `SANGFOR_ALLOW_REAL_EXECUTION`
+   (`SANGFOR_ALLOW_PRODUCTION_EXECUTION` for production mode or any
+   non-loopback mutation target) **and** a signed, action-bound, single-use
+   approval. Never weaken a gate to make a test pass — see
+   [SECURITY.md](docs/SECURITY.md).
 2. **INDETERMINATE is never PASS**, and a 2xx is never success — only a read-back PASS is. No fabrication: unknown → null/empty/`unsourced`, never a guessed value.
 3. **Fail closed.** Missing approval secret, missing service in catalog, corrupt safety/nonce/ledger file, ambiguous UI target, non-loopback bind without token → refuse.
 4. **Mask secrets before persistence**; irreversible/customer-facing acts stay human.
-5. Dependency imports point **downward only** (see ARCHITECTURE.md layering); `@sangfor/shared` is the leaf.
+5. Dependency imports point **downward only** (see ARCHITECTURE.md layering); `@sangfor/shared` and `@sangfor/browser-contracts` are the L0 leaves, with `shared` the universal dependency.
 
 ## Working doctrine (Fable F1–F14)
 How every agent thinks, executes, and reports here. The project-specific safety instantiation of F6/F7/F13 is the "Quick rules" above and [SECURITY.md](docs/SECURITY.md); this section is the general discipline.

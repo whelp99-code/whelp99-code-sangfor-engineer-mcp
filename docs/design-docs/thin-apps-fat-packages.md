@@ -6,8 +6,11 @@
 There are multiple surfaces onto the same domain: an MCP stdio server, a REST bridge, an ops dashboard, and an engineer web console. If each app reimplemented planning/approval/execution, the safety logic would fork and drift — a fatal outcome for a security-critical product.
 
 ## Decision
-- **All domain logic lives in `packages/*`.** Apps (`apps/*`) are thin transport adapters: they parse a request, call a package function, and shape a response. `apps/mcp-server` is the widest consumer (imports ~27 packages to expose 77 tools); `operator-console` calls packages in-process; `control-tower` and `http-bridge` mostly call *over HTTP* to other apps.
-- **Dependency graph is layered and points downward** (see ARCHITECTURE.md): `L0 shared` (leaf) → `L1 domain/data` → `L2 execution` (operator, planner) → `L3 orchestration` (verifier, product-adapters) → apps. No L1 package imports an L2/L3 package.
+- **All domain logic lives in `packages/*`.** Apps (`apps/*`) are thin transport adapters: they parse a request, call a package function, and shape a response. `apps/mcp-server` is the widest consumer (imports packages to expose 108 tools); `operator-console` calls packages in-process; `control-tower` and `http-bridge` mostly call *over HTTP* to other apps.
+- **Dependency graph is layered and points downward** (see ARCHITECTURE.md):
+  `L0 shared + browser-contracts` (leaves) → `L1 domain/data` → `L2
+  execution` (operator, planner, JM runtime edge) → `L3 orchestration`
+  (verifier, product-adapters) → apps. No L1 package imports an L2/L3 package.
 - **Loose coupling at the top**: `collector` receives `rag`/`finetune` via injected function params rather than importing them, so the learning orchestrator doesn't hard-wire the heavy deps.
 - **Run from source**: apps and tests run TypeScript directly via `tsx`/Vitest aliases; no build artifact is needed to run or test.
 

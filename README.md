@@ -4,17 +4,17 @@ Sangfor product-specific senior engineer MCP server — advises, plans, and (beh
 gates) executes Sangfor/FortiOS/Cisco device work. Read-only by default; irreversible
 acts always require a human-signed, single-use approval.
 
-**MCP scorecard: 96/100 — grade A** (`pnpm run check:mcp-scorecard`). 96 tools, snake_case
+**MCP scorecard: 96/100 — grade A** (`pnpm run check:mcp-scorecard`). 108 tools, snake_case
 `sangfor_*` naming, agent self-onboarding (`sangfor_agent_manifest` / `sangfor_capabilities`),
 MCP resources, and documented mutation gating on every write tool.
 
-현재 96개 MCP 도구의 전체 기능 목록, Cursor/stdio/HTTP 연결법, 승인 흐름과 예제는 **[MCP 기능 및 사용 가이드](docs/MCP_FEATURES_AND_USAGE.md)**를 참고하세요.
+현재 108개 MCP 도구의 전체 기능 목록, Cursor/stdio/HTTP 연결법, 승인 흐름과 예제는 **[MCP 기능 및 사용 가이드](docs/MCP_FEATURES_AND_USAGE.md)**를 참고하세요.
 
 ## Quickstart (customer / first run)
 
 ```bash
 corepack enable && pnpm install
-pnpm test                 # 689 tests — all green
+pnpm test                 # full Vitest suite
 pnpm run check:mcp-scorecard   # objective MCP quality gate (grade A)
 pnpm run dev:mcp          # MCP stdio server for Cursor / any MCP client
 ```
@@ -63,7 +63,9 @@ pnpm run dev:mcp      # MCP stdio — Cursor 등 외부 클라이언트
 pnpm run dev:web      # 웹 UI http://localhost:3502
 ```
 
-`npm install` works with `package-lock.json`, but **pnpm is recommended** (`packageManager` in `package.json`, workspaces in `pnpm-workspace.yaml`). See `AGENTS.md` for agent/CI notes.
+Use **pnpm only** (`packageManager` in `package.json`, workspaces in
+`pnpm-workspace.yaml`, lock state in `pnpm-lock.yaml`). The npm lockfile is not
+maintained. See `AGENTS.md` for agent/CI notes.
 
 ## Real execution gates
 
@@ -76,7 +78,7 @@ export SANGFOR_ALLOW_REAL_EXECUTION=true
 export SANGFOR_OPERATOR_APPROVAL_SECRET='set-a-strong-server-side-secret'
 ```
 
-Production mode additionally requires:
+Production mode or any non-loopback mutation target additionally requires:
 
 ```bash
 export SANGFOR_ALLOW_PRODUCTION_EXECUTION=true

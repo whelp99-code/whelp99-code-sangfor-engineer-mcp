@@ -1,7 +1,7 @@
 # Sangfor Engineer MCP 기능 및 사용 가이드
 
 기준: `feat/customer-ready-mcp-scorecard` (2026-07-31, 도구명 `sangfor_*` snake_case 전환 + 디스커버리 2종 추가)
-MCP 표면: **96 tools = 읽기 47 + 로컬 쓰기/장비 읽기 42 + 파괴적 7** · mcp-scorecard **96/100 (grade A)**
+MCP 표면: **108 tools** · mcp-scorecard **96/100 (grade A)**
 
 이 문서는 현재 실행 코드의 `listTools()` 결과를 기준으로 작성한 사용자용 가이드다. 도구 이름·입력 스키마·안전 분류의 정본은 [MCP server registry](../apps/mcp-server/src/index.ts)이며, HTTP 동작의 정본은 [HTTP bridge](../apps/http-bridge/src/server.ts)와 [tool guard](../apps/http-bridge/src/tool-guard.ts)다.
 
@@ -14,7 +14,7 @@ Sangfor Engineer MCP는 다음 업무를 하나의 MCP 서버에서 제공한다
 - FortiOS 및 Cisco IOS-XE read-only 자문
 - 매뉴얼·Wiki·로컬 RAG 검색과 문서 수집
 - Excel 요구사항을 기반으로 설정/운영 가이드 DOCX·PPTX 생성
-- Mock/Playwright 운영 세션, dry-run, 승인된 live action
+- Mock/JM `BrowserExecutionPort` 운영 세션, dry-run, 승인된 live action
 - 설정 스펙 평가, RCA, sizing, 버전·통합 가이드, 대체율 계산
 - PM engagement, 작업 항목, 장비 잠금, 감사 이벤트와 보고서
 - 피드백→lesson→Wiki proposal→eval/fine-tune 데이터 흐름
@@ -87,7 +87,7 @@ HTTP bridge는 전용 제품 REST API가 아니라 MCP의 범용 프록시다. �
 | Method | Route | 설명 |
 |---|---|---|
 | `GET` | `/health` | MCP child 연결 상태. 인증 없음 |
-| `GET` | `/tools` | 96-tool schema/annotation 조회 |
+| `GET` | `/tools` | 108-tool schema/annotation 조회 |
 | `POST` | `/tools/call` | `{name, arguments, approval?}` 호출 |
 
 실행:
@@ -120,8 +120,8 @@ curl -X POST http://127.0.0.1:3600/tools/call \
 
 | 등급 | 수 | 의미 |
 |---|---:|---|
-| 읽기 | 45 | annotation `readOnlyHint:true`; 원칙상 외부 상태를 변경하지 않음 |
-| 쓰기 | 42 | 로컬 파일·세션·데이터셋 변경 또는 장비 read/capture를 동반함 |
+| 읽기 | 56 | annotation `readOnlyHint:true`; 원칙상 외부 상태를 변경하지 않음 |
+| 쓰기 | 45 | 로컬 파일·세션·데이터셋 변경 또는 장비 read/capture를 동반함 |
 | 파괴적 | 7 | 장비·외부 Wiki·실행 상태를 변경할 수 있음 |
 
 실장비 non-dry-run write는 [Security](./SECURITY.md)의 모든 조건을 통과해야 한다.
@@ -130,7 +130,7 @@ curl -X POST http://127.0.0.1:3600/tools/call \
 export SANGFOR_ALLOW_REAL_EXECUTION=true
 export SANGFOR_OPERATOR_APPROVAL_SECRET='<server-side-hmac-secret>'
 
-# production session에서만 추가
+# production mode 또는 모든 non-loopback mutation target에 추가
 export SANGFOR_ALLOW_PRODUCTION_EXECUTION=true
 ```
 
@@ -337,7 +337,7 @@ pnpm run dev:control-tower     # 기동 로그: 기본 플레이북 시드: N건
 **미확인(INDETERMINATE) 항목**을 별도로 싣는다 — 근거가 없어 판정하지 못한 항목을
 통과로 읽으면 안 된다.
 
-## 6. 전체 98개 도구
+## 6. 전체 108개 도구
 
 표의 필수 입력은 top-level JSON Schema의 `required`만 표시한다. optional field와 enum은 `tools/list` 결과를 확인한다.
 
@@ -384,7 +384,7 @@ pnpm run dev:control-tower     # 기동 로그: 기본 플레이북 시드: N건
 | `sangfor_generate_operations_guide_docx` | 쓰기 | - | 운영·장애·보안 절차 DOCX |
 | `sangfor_generate_comprehensive_setting_guide_docx` | 쓰기 | `filePath` | 상세 설정·복구·FAQ DOCX |
 | `sangfor_generate_comprehensive_operations_guide_docx` | 쓰기 | - | 상세 운영·백업·성능·FAQ DOCX |
-| `sangfor_capture_screenshots` | 쓰기 | `product` | Chrome CDP로 제품 화면 캡처 |
+| `sangfor_capture_screenshots` | 쓰기 | `product` | JM browser port로 제품 화면 캡처 |
 | `sangfor_generate_all_guides` | 쓰기 | `filePath` | 설정/운영 DOCX·PPTX 일괄 생성 |
 | `sangfor_validate_office_document` | 읽기 | `filePath` | officecli로 .docx/.xlsx/.pptx OpenXML 스키마 사전 검증 |
 | `sangfor_build_evidence_package` | 쓰기 | `title`, `customer`, `dateStamp`, `items` | 표지·요약표·항목별 증적 섹션을 officecli로 조립한 고객 제출용 증적 패키지 DOCX 생성 (`captureRunId` 지정 시 증적 무결성 섹션 포함) |
@@ -409,8 +409,8 @@ pnpm run dev:control-tower     # 기동 로그: 기본 플레이북 시드: N건
 | `sangfor_start_operator_session` | 쓰기 | `product` | mock/lab/poc/customer session 생성 |
 | `sangfor_read_console_state` | 읽기 | `sessionId` | mock console state 조회 |
 | `sangfor_execute_console_action` | 파괴적 | `sessionId`, `action` | mock action 실행 또는 dry-run |
-| `sangfor_read_live_console_state` | 읽기 | `sessionId` | Playwright live console snapshot |
-| `sangfor_execute_console_action_live` | 파괴적 | `sessionId`, `action` | 승인된 real Playwright action |
+| `sangfor_read_live_console_state` | 읽기 | `sessionId` | JM browser port live console snapshot |
+| `sangfor_execute_console_action_live` | 파괴적 | `sessionId`, `action` | 승인된 JM browser port action |
 | `sangfor_kill_session` | 쓰기 | `sessionId` | operator session 취소 |
 
 ### 6.6 피드백·Wiki·eval·fine-tune — 12
@@ -509,6 +509,21 @@ pnpm run dev:control-tower     # 기동 로그: 기본 플레이북 시드: N건
 | `sangfor_agent_manifest` | 읽기 | - | 추천 첫 호출 + 표준 도구 그룹 + 안전 posture |
 | `sangfor_capabilities` | 읽기 | - | 카테고리별 도구 수, 벤더/제품, 실행 posture, 게이트 |
 
+### 6.12 감사·세션·안전 보조 도구 — 10
+
+| Tool | 등급 | 필수 입력 | 기능 |
+|---|---|---|---|
+| `sangfor_console_capture_evidence` | 쓰기 | `product`, `captures` | 기존 Chrome/CDP 세션에서 read-only 콘솔 증거 캡처와 ledger 기록 |
+| `sangfor_verify_capture_ledger` | 읽기 | `runId` | 캡처 ledger chain과 파일 sha256 재검증 |
+| `sangfor_session_report` | 쓰기 | - | 현재 세션 보고서 산출 |
+| `sangfor_search_gaps` | 읽기 | - | 지식·증거 coverage gap 검색 |
+| `sangfor_loop_status` | 읽기 | - | 운영 loop 상태 조회 |
+| `sangfor_safety_selftest` | 읽기 | - | fail-closed safety posture self-test |
+| `sangfor_engagement_scope` | 읽기 | - | 현재 engagement scope 조회 |
+| `sangfor_audit_frameworks` | 읽기 | - | 지원 audit framework 목록 |
+| `sangfor_audit_checklist` | 읽기 | `frameworkId` | framework checklist 조회 |
+| `sangfor_audit_gap_report` | 읽기 | `frameworkId`, `observations` | observed evidence 기준 audit gap report |
+
 ## 7. 환경변수 요약
 
 전체 목록과 빈 template은 [.env.example](../.env.example)을 사용한다.
@@ -519,6 +534,7 @@ pnpm run dev:control-tower     # 기동 로그: 기본 플레이북 시드: N건
 | 실실행 | `SANGFOR_ALLOW_REAL_EXECUTION`, `SANGFOR_ALLOW_PRODUCTION_EXECUTION`, `SANGFOR_OPERATOR_APPROVAL_SECRET`, `SANGFOR_NONCE_STORE_PATH` |
 | HCI | `SANGFOR_HCI_IDENTITY_URL`, `SANGFOR_HCI_TENANT`, `SANGFOR_HCI_USER`, `SANGFOR_HCI_PASSWORD` |
 | Observer | `SANGFOR_OBSERVER_PROFILES_JSON`, `SANGFOR_CAPTURE_ROOT`, `SANGFOR_CAPTURE_STAGING_ROOT` |
+| JM borrowed browser | `SANGFOR_JM_CDP_PROFILES_JSON` (exact loopback port + expected origin ownership) |
 | 장비 수집 | `SANGFOR_EPP_URL/PASSWORD`, `SANGFOR_IAG_URL/PASSWORD`, `SANGFOR_CC_URL/PASSWORD`, `SANGFOR_DEVICE_SCOPE` |
 | Knowledge | `SANGFOR_ONE_ACCESS_TOKEN`, `SANGFOR_KB_TOKEN`, `SANGFOR_RAG_INDEX_PATH` |
 | Embedding | `SANGFOR_EMBEDDING_PROVIDER`, `SANGFOR_LITELLM_*`, `SANGFOR_RAPID_MLX_*`, `SANGFOR_ALLOW_CLOUD_RAG` |
@@ -531,7 +547,7 @@ pnpm run dev:control-tower     # 기동 로그: 기본 플레이북 시드: N건
 ## 8. 운영 점검
 
 ```bash
-pnpm run smoke:mcp          # 96 tools
+pnpm run smoke:mcp          # 108 tools
 pnpm run check:mcp-scorecard
 pnpm run lint
 pnpm run build

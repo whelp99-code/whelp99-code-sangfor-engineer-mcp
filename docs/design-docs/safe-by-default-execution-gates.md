@@ -10,12 +10,14 @@ Live execution is unlocked only when **every** layer passes, checked in order in
 
 1. **Dry-run default** — `action.dryRun !== false`; any dry-run returns before mutation. The mock path refuses to fabricate an "Executed" result and points to the signed path.
 2. **`SANGFOR_ALLOW_REAL_EXECUTION=true`** (lab/customer) — else throw.
-3. **`SANGFOR_ALLOW_PRODUCTION_EXECUTION=true`** — additionally required when `session.mode === 'production'`.
-4. **Signed, action-bound, time-bound HMAC approval** — `approvalToken = HMAC-SHA256(SANGFOR_OPERATOR_APPROVAL_SECRET, approvedBy·changeTicketId·rollbackPlanId·nonce·expiresAt·action.type·action.target)`, verified in constant time. Missing secret → fail closed. Because the action type+target are inside the HMAC, a token minted for one action cannot be reused for another.
-5. **Single-use nonce** — a durable `FileNonceStore` consumes `(nonce, expiresAt)` (atomic tmp+rename); replay within the window is rejected. Any store error refuses execution.
+3. **`SANGFOR_ALLOW_PRODUCTION_EXECUTION=true`** — additionally required
+   when `session.mode === 'production'` or the mutation target is
+   non-loopback.
+4. **Signed, complete-action-bound, time-bound HMAC approval** — `approvalToken = HMAC-SHA256(SANGFOR_OPERATOR_APPROVAL_SECRET, approvedBy·changeTicketId·rollbackPlanId·nonce·expiresAt·canonicalActionJson)`, verified in constant time. Canonical JSON recursively sorts keys and binds every supplied action field; browser writes bind `type`, `target`, `value`, `dryRun`, `menuPath`, and `formFields`. Missing secret → fail closed.
+5. **Single-use nonce** — a durable `FileNonceStore` consumes `(nonce, expiresAt)` (atomic tmp+rename); replay within the window is rejected. Browser execution validates target/origin/request and requires an authoritative read-only preflight before consuming the nonce immediately before mutation dispatch. Any store error refuses execution.
 6. **Origin lock** — `assertNavigationWithinTarget` refuses a cross-origin navigate even under dry-run.
 
-The HTTP bridge (`apps/http-bridge/tool-guard.ts`) is a second, independent gate: it refuses `destructiveHint` tools always, refuses write tools on a non-loopback bind unless `SANGFOR_ALLOW_REMOTE_WRITE`, and verifies the same signed approval (nonce consumed **last**).
+The HTTP bridge (`apps/http-bridge/tool-guard.ts`) is a second, independent gate: it refuses `destructiveHint` tools without a valid single-use approval, refuses write tools on a non-loopback bind unless `SANGFOR_ALLOW_REMOTE_WRITE`, and verifies the same signed approval (nonce consumed **last**).
 
 ## Rationale
 - **Defense in depth**: env flags gate the *environment*, the HMAC gates the *specific action*, the nonce gates *replay*. Each layer fails closed independently.

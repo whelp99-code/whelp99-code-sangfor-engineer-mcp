@@ -15,8 +15,11 @@ npm run build
 
 1. Real Sangfor device execution
    - Confirm non-dry-run live execution is blocked without `SANGFOR_ALLOW_REAL_EXECUTION=true`.
-   - Confirm production execution is blocked without `SANGFOR_ALLOW_PRODUCTION_EXECUTION=true`.
-   - Confirm approval token, approver, change ticket, and rollback plan are required.
+   - Confirm production mode and every non-loopback mutation target are blocked
+     without `SANGFOR_ALLOW_PRODUCTION_EXECUTION=true`.
+   - Confirm the approval binds the complete action (including value,
+     menuPath, and formFields), approver, change ticket, rollback plan, expiry,
+     and single-use nonce.
    - Confirm no credentials are stored.
 
 2. PDF/RAG

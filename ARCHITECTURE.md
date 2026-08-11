@@ -2,7 +2,7 @@
 
 > Sangfor "senior field engineer" MCP monorepo: an AI that advises, plans, and (behind hard gates) executes Sangfor/FortiOS/Cisco device work — read-only by default, irreversible acts always human-signed.
 
-pnpm workspace (`apps/*` + `packages/*`), run directly from TypeScript source via `tsx` (no build artifacts needed to run). Principle: **thin apps, fat packages** — apps are transport adapters; all domain logic lives in `packages/*`, rooted at the leaf `@sangfor/shared`.
+pnpm workspace (`apps/*` + `packages/*`), run directly from TypeScript source via `tsx` (no build artifacts needed to run). Principle: **thin apps, fat packages** — apps are transport adapters; all domain logic lives in `packages/*`, rooted at the L0 leaves `@sangfor/shared` and `@sangfor/browser-contracts`.
 
 ## Domain map
 
@@ -15,7 +15,10 @@ pnpm workspace (`apps/*` + `packages/*`), run directly from TypeScript source vi
 ## Runtime topology
 
 ```
-Cursor / MCP client ──stdio JSON-RPC──► apps/mcp-server        (77 sangfor.* tools; no port)
+Cursor / MCP client ──stdio JSON-RPC──► apps/mcp-server        (108 sangfor.* tools; no port)
+                                          │ pure JSON BrowserExecutionPort
+                                          ▼
+                                      JM local runtime ──► Playwright / loopback CDP
 AIOSv2 portal ──HTTP──► apps/http-bridge (:3600) ──spawns──► apps/mcp-server (stdio)
 Remote MCP client ──HTTP POST /mcp──► apps/http-bridge (:3600) (stateless, Bearer-gated; see docs/adapters/remote-http.md)
 apps/control-tower (:3700) ──HTTP──► http-bridge (:3600), mock-console (:3400)
@@ -29,11 +32,12 @@ Apps import packages by **relative path** (`../../../packages/<pkg>/src/index.js
 
 ```
 L3 orchestration : verifier, product-adapters, screenshot, pptx  ── apps
-L2 execution     : operator (→approval,chrome), planner (→approval,knowledge,rag,wiki)
+L2 execution     : operator (→approval,browser-contracts), planner (→approval,knowledge,rag,wiki)
+JM runtime edge  : jm-execution (→observer,browser-contracts; only maintained Playwright/CDP behavior)
 L1 domain/data   : approval · safety · runs · evidence · config-state · hci-client · spec
                    version · sizing · rca · pm · store · integration · knowledge · rag
-                   feedback · finetune · evals · wiki · competency · collector · chrome
-L0 foundation    : @sangfor/shared   (leaf — no internal deps; everything imports it)
+                   feedback · finetune · evals · wiki · competency · collector · observer
+L0 foundation    : @sangfor/shared · @sangfor/browser-contracts
 ```
 
 Enforced invariants of the graph: no L1 package imports an L2/L3 package; `operator` is pulled in only by `product-adapters`; `planner` only by `verifier`; `collector` receives `rag`/`finetune` by **dependency injection** (function params), not import. `shared` is the only universal dependency.
@@ -43,6 +47,7 @@ Enforced invariants of the graph: no L1 package imports an L2/L3 package; `opera
 | Package | Layer | Owns |
 |---|---|---|
 | `@sangfor/shared` | L0 | domain types, product catalog, `resolveRepoData`/`nowId`, HTTP-bind safety (`assertBindSafety`, `checkAuth`) |
+| `@sangfor/browser-contracts` | L0 | strict JSON-serializable `BrowserExecutionPort` request/result schemas; no browser runtime or credentials |
 | `@sangfor/approval` | L1 | keyword risk classifier → is-approval-required (the risk brain) |
 | `@sangfor/safety` | L1 | data-driven capability safety/maturity oracle; fail-safe deny |
 | `@sangfor/runs` | L1 | append-only JSONL run ledger + secret masking |
@@ -60,7 +65,9 @@ Enforced invariants of the graph: no L1 package imports an L2/L3 package; `opera
 | `@sangfor/wiki` | L1 | review-gated proposal→approve→apply to Obsidian/GitHub-wiki adapters |
 | `@sangfor/competency` | L1 | WorkAtom taxonomy + honest "1인 대체율" replacement-rate metric |
 | `@sangfor/collector` | L1 | scrape Sangfor KB/community → normalized docs → learn pipeline |
-| `@sangfor/chrome` | L1 | Chrome CDP + Playwright driver for ExtJS consoles, CAPTCHA OCR |
+| `@sangfor/observer` | L1 | fail-closed, read-only structural observation policy with injected transport |
+| `@sangfor/jm-execution` | JM runtime edge | local session resolution, Playwright/CDP execution, screenshots, and observer transport behind `BrowserExecutionPort` |
+| `@sangfor/chrome` | legacy | retained compatibility helpers; not part of the maintained MCP/operator/verifier/evidence browser path |
 | `@sangfor/operator` | L2 | mock/live console execution + the signed-approval write gate |
 | `@sangfor/planner` | L2 | ProjectInput → cited, risk-classified ConfigPlan |
 | `@sangfor/verifier` | L3 | run a plan's validationPlan read-only (never mutates) |
@@ -75,8 +82,8 @@ Not an OO device interface — a **data contract + shared engine**. Each vendor 
 
 ## Execution & approval flow (the safety spine)
 
-1. Every action defaults to **dry-run**; a non-dry-run live write must clear, in order: `SANGFOR_ALLOW_REAL_EXECUTION=true` → (production) `SANGFOR_ALLOW_PRODUCTION_EXECUTION=true` → a valid **HMAC action-bound approval** (`SANGFOR_OPERATOR_APPROVAL_SECRET` signs `approvedBy·changeTicketId·rollbackPlanId·nonce·expiresAt·action.type·action.target`) → **single-use nonce** consumed durably → origin-lock. Any missing piece **fails closed**. Central gate: `assertRealExecutionAllowed()` in `@sangfor/operator`.
-2. Control Tower playbooks pause at a write block, mint a bridge approval on human approve, and resume (`continueFromApprove`). The HTTP bridge (`tool-guard.ts`) independently refuses destructive tools always and write tools on non-loopback binds without `SANGFOR_ALLOW_REMOTE_WRITE`.
+1. Every action defaults to **dry-run**. A non-dry-run live write requires the execution flags, a valid complete-action-bound HMAC approval, origin/request validation, an authoritative read-only preflight, and a durable single-use nonce consumed immediately before mutation dispatch. `SANGFOR_OPERATOR_APPROVAL_SECRET` signs `approvedBy·changeTicketId·rollbackPlanId·nonce·expiresAt·canonicalActionJson`; the canonical JSON includes all supplied action fields, including browser `value`, `menuPath`, and `formFields`. Any missing piece **fails closed**. Central gate: `assertRealExecutionAllowed()` in `@sangfor/operator`.
+2. Control Tower playbooks pause at a write block, mint a bridge approval on human approve, and resume (`continueFromApprove`). The HTTP bridge (`tool-guard.ts`) refuses destructive tools without a valid single-use approval and refuses write tools on non-loopback binds without `SANGFOR_ALLOW_REMOTE_WRITE`.
 3. Apply never trusts a 2xx — only a **PASS read-back** is success; INDETERMINATE ≠ PASS; failure **halts for a human** (no auto-rollback). Every step lands in a hash-chained audit ledger.
 
 ## Data flow (learning pipeline)

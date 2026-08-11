@@ -6,7 +6,13 @@ The operating principles that define how work is done in this repo. These are no
 The product replaces a *trusted* field engineer, so **false confidence is the cardinal sin**. `INDETERMINATE` must never be reported as `PASS`. Unknown inputs return `null` / empty / `unsourced` — never a fabricated value. Uncaptured config keys are omitted (so downstream treats them as indeterminate), never defaulted. Every advisory cites its source.
 
 ## 2. Safe by default; live mutation is opt-in and gated
-Every action previews (dry-run) unless explicitly unlocked. Real device writes require, together: `SANGFOR_ALLOW_REAL_EXECUTION`, a signed **action-bound single-use** approval, and (in production) `SANGFOR_ALLOW_PRODUCTION_EXECUTION`. Blocking the feature forever would make the product incomplete; shipping it ungated would make it unsafe — so it exists but the default runtime is safe. See [safe-by-default-execution-gates](safe-by-default-execution-gates.md).
+Every action previews (dry-run) unless explicitly unlocked. Real device writes
+require, together: `SANGFOR_ALLOW_REAL_EXECUTION`, a signed **action-bound
+single-use** approval, and (for production mode or any non-loopback mutation
+target) `SANGFOR_ALLOW_PRODUCTION_EXECUTION`. Blocking the feature forever
+would make the product incomplete; shipping it ungated would make it unsafe —
+so it exists but the default runtime is safe. See
+[safe-by-default-execution-gates](safe-by-default-execution-gates.md).
 
 ## 3. Fail closed, always
 Missing approval secret, a service absent from the catalog, a corrupt safety/nonce/ledger file, an ambiguous UI locator (0 or >1 matches), a cross-origin navigate, a non-loopback bind without a token → **refuse**. The safe path is the one taken when anything is uncertain.
@@ -20,8 +26,12 @@ Physical installs, irreversible applies, and customer-facing risk decisions are 
 ## 6. Everything is evidenced and tamper-evident
 Runs, changes, and PM events are append-only and hash-chained; secrets are masked before any persistence; approvals are single-use to prevent replay. If it happened, there is a ledger line for it.
 
-## 7. Thin apps, fat packages, one leaf
-Domain logic lives in `packages/*`; apps are transport adapters. Imports point downward through the layers to the single leaf `@sangfor/shared`. New behavior goes in a package with a test, not in an app handler. See [thin-apps-fat-packages](thin-apps-fat-packages.md).
+## 7. Thin apps, fat packages, two L0 leaves
+Domain logic lives in `packages/*`; apps are transport adapters. Imports point
+downward through the layers to the L0 leaves `@sangfor/shared` and
+`@sangfor/browser-contracts`, with `shared` the universal dependency. New
+behavior goes in a package with a test, not in an app handler. See
+[thin-apps-fat-packages](thin-apps-fat-packages.md).
 
 ## 8. Local-first knowledge
 RAG and embeddings run locally by default with a deterministic hash fallback, so ingest and search work offline. Cloud embeddings/rerank and customer-trust-level documents are behind explicit gates.

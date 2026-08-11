@@ -17,9 +17,11 @@ Do not remove these capabilities. Implement and harden them.
 1. All real console write actions must remain blocked unless:
    - `SANGFOR_ALLOW_REAL_EXECUTION=true`
    - `SANGFOR_OPERATOR_APPROVAL_SECRET` set (server-side HMAC key)
-   - `approval.approvalToken` is a valid action-bound HMAC signature (over approvedBy/changeTicketId/rollbackPlanId/nonce/expiresAt + action type+target), unexpired, with an unused `nonce`
+   - `approval.approvalToken` is a valid action-bound HMAC signature (over
+     approvedBy/changeTicketId/rollbackPlanId/nonce/expiresAt + complete action
+     type/target/value/menuPath/formFields), unexpired, with an unused `nonce`
    - `approval.approvedBy`, `approval.changeTicketId`, `approval.rollbackPlanId`, `approval.nonce`, `approval.expiresAt` all exist
-2. Production mode additionally requires:
+2. Production mode or any non-loopback mutation target additionally requires:
    - `SANGFOR_ALLOW_PRODUCTION_EXECUTION=true`
 3. No password, OTP, MFA code, license key, customer secret, or private certificate may be stored.
 4. Before/after screenshots must be written to `data/evidence/{sessionId}`.

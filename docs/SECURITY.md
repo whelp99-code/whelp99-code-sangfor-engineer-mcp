@@ -14,9 +14,11 @@ Security is the defining property of this repo — it drives real device changes
 A non-dry-run live write passes `assertRealExecutionAllowed()` only if **all** hold, in order:
 1. Not a dry-run (`action.dryRun !== false` means dry-run → returns before mutation).
 2. `SANGFOR_ALLOW_REAL_EXECUTION=true`.
-3. `SANGFOR_ALLOW_PRODUCTION_EXECUTION=true` **when** `session.mode === 'production'`.
-4. **Action-bound HMAC approval** — `approvalToken = HMAC-SHA256(SANGFOR_OPERATOR_APPROVAL_SECRET, approvedBy · changeTicketId · rollbackPlanId · nonce · expiresAt · action.type · action.target)`, verified with `timingSafeEqual`. Missing secret → **fail closed**. Action type+target are inside the MAC, so a token cannot be reused for a different action.
-5. **Single-use nonce** — a durable `FileNonceStore` (`data/runtime/approval-nonces.json`, atomic tmp+rename) consumes `(nonce, expiresAt)`; replay within the window is rejected. Store error → refuse.
+3. `SANGFOR_ALLOW_PRODUCTION_EXECUTION=true` for `production` mode **or any
+   non-loopback mutation target**. Caller-selected `lab`/`poc` labels never
+   downgrade a remote target.
+4. **Complete-action-bound HMAC approval** — `approvalToken = HMAC-SHA256(SANGFOR_OPERATOR_APPROVAL_SECRET, approvedBy · changeTicketId · rollbackPlanId · nonce · expiresAt · canonicalActionJson)`, verified with `timingSafeEqual`. Canonical JSON recursively sorts keys and includes every supplied action field; browser writes therefore bind `type`, `target`, `value`, `dryRun`, `menuPath`, and `formFields`. Missing secret → **fail closed**. A token cannot be reused after changing any action value or browser field.
+5. **Single-use nonce** — a durable `FileNonceStore` (`data/runtime/approval-nonces.json`, atomic tmp+rename) consumes `(nonce, expiresAt)`; replay within the window is rejected. Store error → refuse. Browser writes consume the nonce only after target/origin/request validation and an authoritative read-only preflight, immediately before mutation dispatch.
 6. **Origin lock** — `assertNavigationWithinTarget` refuses a cross-origin navigate even under dry-run.
 
 Mandatory approval fields: `approvedBy`, `approvalToken`, `changeTicketId`, `rollbackPlanId`, `nonce`, `expiresAt` (+ optional `maintenanceWindow`). No rollback plan → no approval.
