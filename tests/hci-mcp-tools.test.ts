@@ -42,6 +42,11 @@ describe('hci apply tool gates (mock target, loopback)', () => {
     nonceDir = mkdtempSync(join(tmpdir(), 'mcp-nonce-'));
     process.env.SANGFOR_OPERATOR_APPROVAL_SECRET = SECRET;
     process.env.SANGFOR_NONCE_STORE_PATH = join(nonceDir, 'nonces.json');
+    // Pin the mock console's credentials so a developer .env (real device
+    // SANGFOR_HCI_* values) can never leak into this hermetic test.
+    process.env.SANGFOR_HCI_TENANT = 'lab';
+    process.env.SANGFOR_HCI_USER = 'admin';
+    process.env.SANGFOR_HCI_PASSWORD = 'mock-password';
   });
   afterEach(() => {
     process.env = { ...saved };

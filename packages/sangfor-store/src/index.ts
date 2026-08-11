@@ -1,4 +1,5 @@
-import { PrismaClient } from '@prisma/client';
+import { createRequire } from 'node:module';
+import type { PrismaClient } from '@prisma/client';
 import type { ConfigPlan } from '@sangfor/shared';
 import {
   syncStrategyMirror,
@@ -10,6 +11,8 @@ import {
 
 let client: PrismaClient | undefined;
 
+const requireModule = createRequire(import.meta.url);
+
 export function isStoreEnabled(): boolean {
   if (process.env.SANGFOR_DB_ENABLED === '0') return false;
   return Boolean(process.env.DATABASE_URL?.trim());
@@ -17,7 +20,14 @@ export function isStoreEnabled(): boolean {
 
 export function getPrisma(): PrismaClient | null {
   if (!isStoreEnabled()) return null;
-  client ??= new PrismaClient();
+  // Lazy-require, never a top-level import: loading @prisma/client eagerly runs
+  // its dotenv side effect, which loads the repo-root .env into process.env for
+  // EVERY importer of this package (the MCP server pulls sangfor-store at module
+  // scope). That silently defeated the "honor .env only for a SERVING process"
+  // guard in apps/mcp-server and leaked real SANGFOR_HCI_* credentials into the
+  // hermetic HCI mock tests (Keystone 401). Load Prisma only when the store is
+  // actually enabled and first used.
+  client ??= new (requireModule('@prisma/client') as typeof import('@prisma/client')).PrismaClient();
   return client;
 }
 
