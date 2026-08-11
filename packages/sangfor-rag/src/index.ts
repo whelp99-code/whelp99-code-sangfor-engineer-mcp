@@ -44,6 +44,36 @@ export interface RagIndex {
   updatedAt: string;
 }
 
+/**
+ * On-disk chunk shape. Vectors are stored as base64-encoded little-endian
+ * float32 (`vectorB64`) instead of a JSON number array: 384 floats serialize
+ * to ~2KB base64 vs ~9KB pretty-printed JSON, which cut the real index from
+ * 16.5MB to ~4MB at 1,249 chunks. Legacy indexes with a plain `vector`
+ * number[] load unchanged; in memory every chunk always carries `vector`.
+ */
+type StoredRagChunk = Omit<RagDocumentChunk, 'vector'> & { vector?: number[]; vectorB64?: string };
+
+function encodeVectorB64(vector: number[]): string {
+  return Buffer.from(new Float32Array(vector).buffer).toString('base64');
+}
+
+function decodeVectorB64(b64: string): number[] {
+  const buf = Buffer.from(b64, 'base64');
+  // Copy before viewing: Buffer.from() may return a view into Node's shared
+  // pool at an offset that is not 4-byte aligned for Float32Array.
+  const f32 = new Float32Array(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength));
+  return Array.from(f32);
+}
+
+function hydrateStoredChunk(chunk: StoredRagChunk): RagDocumentChunk {
+  if (Array.isArray(chunk.vector)) {
+    const { vectorB64, ...rest } = chunk;
+    return { ...rest, vector: chunk.vector };
+  }
+  const { vectorB64, ...rest } = chunk;
+  return { ...rest, vector: vectorB64 ? decodeVectorB64(vectorB64) : [] };
+}
+
 export interface RagSearchInput {
   product?: string;
   version?: string;
@@ -129,7 +159,8 @@ export function loadRagIndex(indexPath = DEFAULT_INDEX_PATH): RagIndex {
   }
   let index: RagIndex;
   try {
-    index = JSON.parse(raw) as RagIndex;
+    const parsed = JSON.parse(raw) as Omit<RagIndex, 'chunks'> & { chunks: StoredRagChunk[] };
+    index = { ...parsed, chunks: parsed.chunks.map(hydrateStoredChunk) };
   } catch {
     // Fail loud. A silent empty-index fallback here would look identical to
     // "nothing has been ingested yet" and quietly discard whatever was in the
@@ -153,7 +184,13 @@ function ragIndexLockPath(indexPath: string): string {
 // section would just wait out its own holder and throw DirLockTimeoutError.
 function saveRagIndexUnlocked(index: RagIndex, indexPath: string): void {
   const payload: RagIndex = { ...index, updatedAt: new Date().toISOString() };
-  writeFileAtomicSync(indexPath, JSON.stringify(payload, null, 2));
+  // Compact JSON + base64-f32 vectors on disk (see StoredRagChunk); the cache
+  // keeps the hydrated in-memory form so readers never see the stored shape.
+  const stored = {
+    ...payload,
+    chunks: payload.chunks.map(({ vector, ...rest }): StoredRagChunk => ({ ...rest, vectorB64: encodeVectorB64(vector) })),
+  };
+  writeFileAtomicSync(indexPath, JSON.stringify(stored));
   const stat = statSync(indexPath);
   ragIndexCache.set(indexPath, { mtimeMs: stat.mtimeMs, index: payload });
 }
