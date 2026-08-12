@@ -153,10 +153,18 @@ describe('captureConsoleEvidence — browser port injection (no real browser)', 
       }],
     }, portDeps(makeFakePort(), ledger));
 
+    // Assert the masking property itself, not a bare 3-char literal: the ledger
+    // also carries random sha256 digests and a random mkdtemp path segment, and
+    // 'abc' is valid hex, so scanning the whole file for 'abc'/'xy' failed ~1.8%
+    // of runs for reasons that had nothing to do with masking.
     const persisted = readFileSync(result.ledgerPath, 'utf8');
-    expect(persisted).not.toContain('abc');
-    expect(persisted).not.toContain('xy');
-    expect(result.captures[0]?.filePath).not.toMatch(/abc|xy/);
+    expect(persisted).not.toContain('token=abc');
+    expect(persisted).not.toContain('password=xy');
+    expect(persisted).toContain('token=***');
+    expect(persisted).toContain('password=***');
+    // The filename is built only from masked values, so its basename is fully
+    // deterministic — unlike the absolute path, which embeds the temp root.
+    expect(basename(result.captures[0]!.filePath)).not.toMatch(/abc|xy/);
   });
 
   it('normalizes filename segments and blocks path traversal from untrusted reqId/menuLabel', async () => {
