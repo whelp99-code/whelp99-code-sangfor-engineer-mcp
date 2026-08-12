@@ -1,7 +1,7 @@
 import { createHash, createHmac } from 'node:crypto';
 import { appendFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { resolveRepoData, withDirLock } from '@sangfor/shared';
+import { resolveEngagementScopedData, withDirLock } from '@sangfor/shared';
 
 // Masked, append-only JSONL ledger with a hash chain. Every HCI change request,
 // response, state transition, and verdict is recorded with secrets masked. When
@@ -36,7 +36,9 @@ export class AuditLedger {
   private readonly secret: string | undefined;
 
   constructor(opts: { dir?: string; secret?: string } = {}) {
-    this.dir = opts.dir ?? join(resolveRepoData('data/evidence'), 'change-runs');
+    // Engagement-scoped: change-run audit lines are per-project evidence, so an
+    // unscoped root would pool several projects' audit chains in one partition.
+    this.dir = opts.dir ?? join(resolveEngagementScopedData('data/evidence'), 'change-runs');
     this.secret = opts.secret ?? process.env.SANGFOR_CHANGE_LEDGER_SECRET;
   }
 

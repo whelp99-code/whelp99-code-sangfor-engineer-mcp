@@ -12,7 +12,7 @@
       "id": "gap-queries",
       "kind": "internal",
       "src": ["packages/sangfor-loop/src/executors/gap-queries.ts"],
-      "reads": ["data/feedback/search-gaps.jsonl"],
+      "reads": ["data/feedback"],
       "writes": ["data/sources/gap-queries.json"]
     },
     {

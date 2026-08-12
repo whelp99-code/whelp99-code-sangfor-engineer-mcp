@@ -1,12 +1,20 @@
 import { existsSync, readFileSync } from 'node:fs';
-import { resolveRepoData, writeFileAtomicSync } from '../../../shared/src/index.js';
+import { join } from 'node:path';
+import { resolveEngagementScopedData, resolveRepoData, writeFileAtomicSync } from '../../../shared/src/index.js';
 
 // P1 — turn captured search gaps into a deduplicated collection queue.
 // Reads new SearchGapEvent JSONL lines (delivered by the tick engine) and
 // merges them into data/sources/gap-queries.json, which learn:sources can
 // consume as KB search terms (consumption wiring is the planned e2 edge).
 
-export const GAP_QUERIES_WATCH = () => resolveRepoData('data/feedback/search-gaps.jsonl', 'SANGFOR_SEARCH_GAPS_PATH');
+// Engagement-scoped, and resolved as <scoped feedback dir>/<file> rather than
+// scoping the file path itself: resolveEngagementScopedData appends the segment
+// at the END, so scoping a file path would yield a DIRECTORY named after the
+// file. An explicit SANGFOR_SEARCH_GAPS_PATH is an absolute override and is
+// deliberately never scoped. Mirrors apps/mcp-server searchGapFile().
+export const GAP_QUERIES_WATCH = () =>
+  process.env.SANGFOR_SEARCH_GAPS_PATH
+  ?? join(resolveEngagementScopedData('data/feedback', 'SANGFOR_FEEDBACK_ROOT'), 'search-gaps.jsonl');
 export const GAP_QUERIES_OUT = () => resolveRepoData('data/sources/gap-queries.json', 'SANGFOR_GAP_QUERIES_PATH');
 
 interface GapEventLine {

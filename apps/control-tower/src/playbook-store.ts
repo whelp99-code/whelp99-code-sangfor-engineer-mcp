@@ -1,6 +1,6 @@
 import { appendFileSync, mkdirSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { nowId, resolveRepoData, withDirLock, writeFileAtomicSync } from '../../../packages/shared/src/index.js';
+import { nowId, resolveEngagementScopedData, resolveRepoData, withDirLock, writeFileAtomicSync } from '../../../packages/shared/src/index.js';
 import { maskSecrets } from '../../../packages/sangfor-runs/src/index.js';
 
 // ── 플레이북 정의 ────────────────────────────────────────────────────────────
@@ -210,7 +210,9 @@ export class AnalysisStore {
   private readonly dir: string;
 
   constructor(dir?: string) {
-    const root = dir ?? resolveRepoData('data/runs', 'SANGFOR_RUNS_ROOT');
+    // Engagement-scoped, matching RunStore: both write under data/runs, so an
+    // unscoped root here would split one project's runs across two partitions.
+    const root = dir ?? resolveEngagementScopedData('data/runs', 'SANGFOR_RUNS_ROOT');
     this.dir = join(root, 'analyses');
   }
 

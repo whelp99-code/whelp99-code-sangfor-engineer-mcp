@@ -1,4 +1,4 @@
-import { nowId, normalizeProduct, resolveRepoData, appendJsonl, foldJsonlById } from '@sangfor/shared';
+import { nowId, normalizeProduct, resolveEngagementScopedData, appendJsonl, foldJsonlById } from '@sangfor/shared';
 import { join } from 'node:path';
 
 export interface FeedbackEvent {
@@ -23,7 +23,10 @@ export interface LessonLearned {
   approvalStatus: 'pending_review' | 'approved' | 'rejected';
 }
 
-const dir = () => resolveRepoData('data/feedback', 'SANGFOR_FEEDBACK_ROOT');
+// Engagement-scoped: apps/mcp-server reads this same root through
+// resolveEngagementScopedData, so resolving it unscoped here would make the
+// package write into a different partition than the server reads.
+const dir = () => resolveEngagementScopedData('data/feedback', 'SANGFOR_FEEDBACK_ROOT');
 const feedbackFile = () => join(dir(), 'feedback.jsonl');
 const lessonsFile = () => join(dir(), 'lessons.jsonl');
 

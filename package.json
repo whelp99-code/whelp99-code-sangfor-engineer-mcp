@@ -53,6 +53,7 @@
     "check:mcp-scorecard": "node scripts/check-mcp-scorecard.mjs",
     "check:hygiene": "node scripts/check-source-hygiene.mjs",
     "check:browser-boundary": "node scripts/check-browser-boundary.mjs",
+    "check:data-scope-boundary": "node scripts/check-data-scope-boundary.mjs",
     "jm:endpoint:preflight": "node scripts/jm-endpoint-preflight.mjs",
     "jm:endpoint:doctor": "node scripts/jm-endpoint-install.mjs --doctor",
     "jm:endpoint:install": "node scripts/jm-endpoint-install.mjs --run",

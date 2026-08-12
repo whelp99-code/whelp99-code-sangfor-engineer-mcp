@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { AuditLedger, maskSecrets } from '@sangfor/hci-client';
-import { resolveRepoData } from '@sangfor/shared';
+import { resolveEngagementScopedData } from '@sangfor/shared';
 
 // Path-segment safety for runId, same precedent as the product/version segment
 // guard in packages/sangfor-spec/src/index.ts:137-190 (isSafeSpecPathSegment) —
@@ -149,7 +149,8 @@ export function buildChangeRunReport(input: { runId: string; ledgerRoot?: string
   if (!isSafeRunId(input.runId)) {
     throw new Error(`INVALID_RUN_ID: "${String(input.runId)}" is not a safe path segment.`);
   }
-  const evidenceRoot = input.ledgerRoot ?? resolveRepoData('data/evidence', 'SANGFOR_EVIDENCE_ROOT');
+  // Engagement-scoped, matching AuditLedger (the writer of these change-runs).
+  const evidenceRoot = input.ledgerRoot ?? resolveEngagementScopedData('data/evidence', 'SANGFOR_EVIDENCE_ROOT');
   const ledger = new AuditLedger({ dir: join(evidenceRoot, 'change-runs') });
   // Defense in depth: AuditLedger.append already masks secret-bearing fields
   // at write time, but this render path re-applies the identical rule
@@ -220,7 +221,7 @@ export function buildChangeRunReport(input: { runId: string; ledgerRoot?: string
 
 /** List change-run ids that have a ledger file, for a runId-less discovery call. */
 export function listChangeRunIds(ledgerRoot?: string): string[] {
-  const dir = join(ledgerRoot ?? resolveRepoData('data/evidence', 'SANGFOR_EVIDENCE_ROOT'), 'change-runs');
+  const dir = join(ledgerRoot ?? resolveEngagementScopedData('data/evidence', 'SANGFOR_EVIDENCE_ROOT'), 'change-runs');
   let entries;
   try {
     entries = readdirSync(dir, { withFileTypes: true });
