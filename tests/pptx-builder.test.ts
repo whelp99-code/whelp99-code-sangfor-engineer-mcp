@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { buildSettingGuidePptx, buildOperationsGuidePptx } from '../packages/sangfor-pptx/src/index.js';
@@ -105,11 +105,26 @@ describe('PPTX Guide Builder', () => {
 
   it('generates PPTX with default output path', async () => {
     const filePath = createItacFixtureXlsx();
-    const result = await buildSettingGuidePptx({ filePath });
+    // The default path is `<cwd>/outputs/...`, and `outputs/` holds COMMITTED
+    // customer deliverables — writing there would silently overwrite a shipped
+    // guide on every test run (it did). Move the cwd instead of skipping the
+    // assertion, so the default-path contract is still exercised for real.
+    // Vitest isolates each test file in its own forked process, so this chdir
+    // cannot leak into another file.
+    const sandbox = mkdtempSync(join(tmpdir(), 'pptx-default-cwd-'));
+    const originalCwd = process.cwd();
+    try {
+      process.chdir(sandbox);
+      const result = await buildSettingGuidePptx({ filePath });
 
-    expect(existsSync(result.pptxPath)).toBe(true);
-    expect(result.pptxPath).toContain('outputs');
-    expect(result.pptxPath).toContain('.pptx');
+      expect(existsSync(result.pptxPath)).toBe(true);
+      expect(result.pptxPath).toContain('outputs');
+      expect(result.pptxPath).toContain('.pptx');
+      expect(result.pptxPath.startsWith(realpathSync(sandbox)), 'the default path must stay inside the sandbox cwd').toBe(true);
+    } finally {
+      process.chdir(originalCwd);
+      rmSync(sandbox, { recursive: true, force: true });
+    }
   });
 
   it('generates PPTX files with reasonable sizes', async () => {
