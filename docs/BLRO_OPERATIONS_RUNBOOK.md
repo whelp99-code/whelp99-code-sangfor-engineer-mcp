@@ -43,6 +43,12 @@ These run in-process and are operable now:
 Bind policy is fail-closed: any non-loopback bind requires `SANGFOR_API_TOKEN`. A missing token on
 a non-loopback bind is refused at startup, not warned about.
 
+## 2b. Local development database
+
+For a rootless PostgreSQL to develop and verify RLS against, see
+[BLRO Local Database](BLRO_LOCAL_DATABASE.md). RLS isolation is proven there with
+`pnpm run verify:rls` (expects `BLRO_RLS_ISOLATION_PASS`).
+
 ## 3. Deploy and upgrade
 
 ```bash
