@@ -1,4 +1,6 @@
 export { createLocalJmExecutionPort } from './local-port.js';
+export { createInProcessJobExecutionPort } from './in-process-job-port.js';
+export type { InProcessJobExecutionOptions } from './in-process-job-port.js';
 export { createPlaywrightJmBrowserDriver } from './playwright-driver.js';
 export { createJmObserverTransport } from './observer-transport.js';
 export {

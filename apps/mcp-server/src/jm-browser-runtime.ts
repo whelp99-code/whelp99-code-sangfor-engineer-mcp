@@ -1,6 +1,7 @@
 import { join } from 'node:path';
 import { getOperatorSession } from '../../../packages/sangfor-operator/src/index.js';
 import {
+  createInProcessJobExecutionPort,
   createJmObserverTransport,
   createLocalJmExecutionPort,
   createPlaywrightJmBrowserDriver,
@@ -33,7 +34,11 @@ export function createDefaultJmBrowserRuntime() {
     driver,
   });
   return {
-    executionPort,
+    executionPort: createInProcessJobExecutionPort(executionPort, {
+      tenantId: 'mcp-local',
+      projectId: 'mcp-local',
+      capability: 'in-process-opaque',
+    }),
     observerTransport: createJmObserverTransport(),
     materializeArtifact: driver.materializeArtifact,
     dispose: driver.closeAll,

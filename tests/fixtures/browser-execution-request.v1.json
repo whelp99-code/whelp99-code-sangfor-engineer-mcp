@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "browser-execution-request.v1",
+  "requestId": "request-compatibility-1",
+  "sessionId": "session-local-1",
+  "origin": "http://127.0.0.1:3400",
+  "profileRef": "profile-lab-1",
+  "authRef": "auth-lab-1",
+  "operation": {
+    "kind": "observe_console",
+    "includeSnapshot": true
+  }
+}
