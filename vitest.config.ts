@@ -7,6 +7,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@sangfor/approval': fromRoot('./packages/sangfor-approval/src/index.ts'),
+      '@sangfor/authority': fromRoot('./packages/sangfor-authority/src/index.ts'),
       '@sangfor/config-state': fromRoot('./packages/sangfor-config-state/src/index.ts'),
       '@sangfor/hci-client': fromRoot('./packages/sangfor-hci-client/src/index.ts'),
       '@sangfor/identity': fromRoot('./packages/sangfor-identity/src/index.ts'),

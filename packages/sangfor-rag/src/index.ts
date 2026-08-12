@@ -4,6 +4,7 @@ import { readFileSync, statSync } from 'node:fs';
 import { basename, extname } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { KnowledgeChunk, ProductCode, normalizeProduct, nowId, resolveRepoData, withDirLock, writeFileAtomicSync } from '@sangfor/shared';
+import type { AuthorizationResult } from '@sangfor/identity';
 import { getEmbeddingProvider, resolveEmbeddingModelFromEnv, wasEmbeddingFallback } from './embedding-provider.js';
 import { isMimoViaLitellm } from './litellm-config.js';
 import type { EmbeddingBackend, EmbeddingProvider } from './embedding-provider-types.js';
@@ -19,6 +20,12 @@ export { computeBm25Scores, tokenize } from './bm25.js';
 const require = createRequire(import.meta.url);
 const DEFAULT_INDEX_PATH = resolveRepoData('data/rag/index.json', 'SANGFOR_RAG_INDEX_PATH');
 
+export function assertLocalRagAuthorityAllowed(_indexPath?: string): void {
+  if (process.env.SANGFOR_BLRO_AUTHORITY_STORE === 'postgres') {
+    throw new Error('JM_LOCAL_RAG_INDEX_SUPERSEDED: use BlroAuthorityStore');
+  }
+}
+
 export interface IngestDocumentInput {
   filePath: string;
   product: string;
@@ -33,6 +40,12 @@ export interface RagDocumentChunk extends KnowledgeChunk {
   vector: number[];
   contentHash: string;
   filePath: string;
+  /** Mandatory on BLRO-authoritative chunks. Optional only for reading the superseded v1 JM index. */
+  tenantId?: string;
+  /** Mandatory on BLRO-authoritative chunks. Unscoped legacy chunks are never eligible for scoped search. */
+  projectId?: string;
+  /** Empty means every authorized member of the project; otherwise actor ids are an additional allow-list. */
+  aclActorIds?: string[];
   embeddingBackend?: EmbeddingBackend;
   embeddingModel?: string;
   vectorDims?: number;
@@ -80,6 +93,19 @@ export interface RagSearchInput {
   query: string;
   limit?: number;
   indexPath?: string;
+}
+
+export type AuthorizedRagScope = Extract<AuthorizationResult, { readonly ok: true }>;
+
+export interface ScopedRagSearchInput {
+  readonly authorization: AuthorizationResult;
+  readonly query: string;
+  readonly chunks: readonly RagDocumentChunk[];
+  readonly product?: string;
+  readonly version?: string;
+  readonly limit?: number;
+  /** Test/telemetry seam invoked after ACL filtering and immediately before ranking. */
+  readonly onCandidates?: (candidates: readonly RagDocumentChunk[]) => void;
 }
 
 export interface RagSearchHit extends RagDocumentChunk {
@@ -134,6 +160,7 @@ export function omitVectorFromHit<T extends { vector: number[] }>(hit: T): Omit<
 const ragIndexCache = new Map<string, { mtimeMs: number; index: RagIndex }>();
 
 export function loadRagIndex(indexPath = DEFAULT_INDEX_PATH): RagIndex {
+  assertLocalRagAuthorityAllowed(indexPath);
   let stat: ReturnType<typeof statSync>;
   try {
     stat = statSync(indexPath);
@@ -196,6 +223,7 @@ function saveRagIndexUnlocked(index: RagIndex, indexPath: string): void {
 }
 
 export function saveRagIndex(index: RagIndex, indexPath = DEFAULT_INDEX_PATH): void {
+  assertLocalRagAuthorityAllowed(indexPath);
   withDirLock(ragIndexLockPath(indexPath), () => saveRagIndexUnlocked(index, indexPath));
 }
 
@@ -419,6 +447,7 @@ export async function ingestDocument(input: IngestDocumentInput): Promise<{ docu
     };
   });
   const indexPath = input.indexPath ?? DEFAULT_INDEX_PATH;
+  assertLocalRagAuthorityAllowed(indexPath);
   // Hold the same lock saveRagIndex uses across the whole load→dedupe→mutate→
   // save sequence — without it, two concurrent ingestDocument calls can both
   // load the pre-mutation index, each append their own chunks on top of that
@@ -486,6 +515,38 @@ export async function ragSearch(input: RagSearchInput): Promise<RagSearchHit[]> 
   }
 
   return pool.slice(0, finalLimit);
+}
+
+/**
+ * BLRO scope filter. This is intentionally a separate operation from ranking:
+ * callers can prove the candidate collection itself contains no foreign row.
+ * Missing scope metadata is refused by exclusion, never treated as public.
+ */
+export function filterScopedRagCandidates(
+  chunks: readonly RagDocumentChunk[],
+  authorization: AuthorizationResult,
+): RagDocumentChunk[] {
+  if (!authorization.ok || authorization.scope.permission !== 'rag:read') {
+    throw new Error('RAG_SCOPE_UNAUTHORIZED');
+  }
+  const scope = authorization.scope;
+  return chunks.filter((chunk) =>
+    chunk.tenantId === scope.tenantId
+    && chunk.projectId === scope.projectId
+    && (!chunk.aclActorIds || chunk.aclActorIds.length === 0 || chunk.aclActorIds.includes(scope.actorId))
+  );
+}
+
+/** Scope-first local search used for migration QA and derived JM caches. */
+export function ragSearchScopedSync(input: ScopedRagSearchInput): RagSearchHit[] {
+  const product = input.product ? normalizeProduct(input.product) : undefined;
+  const authorized = filterScopedRagCandidates(input.chunks, input.authorization)
+    .filter((chunk) => !product || chunk.product === product)
+    .filter((chunk) => !input.version || !chunk.version || chunk.version === input.version);
+  input.onCandidates?.(authorized);
+  return rankHybrid(authorized, hashEmbedding(input.query), input.query)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, input.limit ?? 8);
 }
 
 /** Hash-only sync search for tests without network. Still hybrid (BM25+cosine) — only the embedding backend is fixed to hash. */

@@ -16,6 +16,12 @@ export class ApiError extends Error {
   }
 }
 
+export function assertLocalApprovalAuthorityAllowed(): void {
+  if (process.env.SANGFOR_BLRO_AUTHORITY_STORE === 'postgres') {
+    throw new ApiError(503, 'JM_LOCAL_APPROVAL_SUPERSEDED: use BlroAuthorityStore');
+  }
+}
+
 export interface TowerOptions {
   bridgeUrl?: string;
   token?: string;
@@ -308,6 +314,7 @@ export function createApi(opts: TowerOptions = {}) {
         const record = store.createRun({ toolId: tool.name, toolSafety, args, deviceId: input.deviceId, initialStatus: 'running' });
         return execute(record.runId, tool.name, args);
       }
+      assertLocalApprovalAuthorityAllowed();
       const record = store.createRun({ toolId: tool.name, toolSafety, args, deviceId: input.deviceId, initialStatus: 'pending_approval' });
       originalArgs.set(record.runId, args);
       return record;
@@ -327,6 +334,7 @@ export function createApi(opts: TowerOptions = {}) {
       runId: string,
       input: { approvedBy: string; changeTicketId?: string; rollbackPlanId?: string },
     ): Promise<RunRecord> {
+      assertLocalApprovalAuthorityAllowed();
       const record = store.getRun(runId);
       if (!record) throw new ApiError(404, `unknown run: ${runId}`);
       if (record.status !== 'pending_approval') throw new ApiError(409, `run is not pending_approval: ${record.status}`);
@@ -358,6 +366,7 @@ export function createApi(opts: TowerOptions = {}) {
     },
 
     rejectRun(runId: string, input: { reason?: string }): RunRecord {
+      assertLocalApprovalAuthorityAllowed();
       const record = store.getRun(runId);
       if (!record) throw new ApiError(404, `unknown run: ${runId}`);
       if (record.status !== 'pending_approval') throw new ApiError(409, `run is not pending_approval: ${record.status}`);

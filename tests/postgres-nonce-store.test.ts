@@ -1,4 +1,6 @@
 import { describe, expect, it, beforeAll, afterAll, beforeEach } from 'vitest';
+import { randomUUID } from 'node:crypto';
+import { PrismaClient } from '@prisma/client';
 import { PostgresSingleUseNonceStore } from '../packages/sangfor-approval/src/postgres-nonce-store.js';
 
 /**
@@ -18,8 +20,10 @@ import { PostgresSingleUseNonceStore } from '../packages/sangfor-approval/src/po
 const DATABASE_URL = process.env.DATABASE_URL;
 const describeDb = DATABASE_URL ? describe : describe.skip;
 
-const PROJECT_A = 'proj-a';
-const PROJECT_B = 'proj-b';
+const TEST_ID = randomUUID();
+const TENANT_ID = `nonce-tenant-${TEST_ID}`;
+const PROJECT_A = `nonce-project-a-${TEST_ID}`;
+const PROJECT_B = `nonce-project-b-${TEST_ID}`;
 
 function future(minutes = 60): string {
   return new Date(Date.now() + minutes * 60_000).toISOString();
@@ -27,17 +31,49 @@ function future(minutes = 60): string {
 
 describeDb('PostgresSingleUseNonceStore', () => {
   let store: PostgresSingleUseNonceStore;
+  let prisma: PrismaClient;
 
-  beforeAll(() => {
+  beforeAll(async () => {
     store = new PostgresSingleUseNonceStore({ connectionString: DATABASE_URL as string });
+    prisma = new PrismaClient({
+      datasources: { db: { url: DATABASE_URL as string } },
+    });
+    await prisma.$executeRawUnsafe(
+      `INSERT INTO "BlroTenant" ("id","name") VALUES ($1,$2)`,
+      TENANT_ID,
+      'Nonce store integration test',
+    );
+    for (const [projectId, name] of [
+      [PROJECT_A, 'Nonce project A'],
+      [PROJECT_B, 'Nonce project B'],
+    ] as const) {
+      await prisma.$transaction(async (tx) => {
+        await tx.$executeRawUnsafe(`SELECT set_config('app.project_id', $1, true)`, projectId);
+        await tx.$executeRawUnsafe(
+          `INSERT INTO "BlroProject" ("id","tenantId","name") VALUES ($1,$2,$3)`,
+          projectId,
+          TENANT_ID,
+          name,
+        );
+      });
+    }
   });
 
   afterAll(async () => {
+    await store.purgeForTest([PROJECT_A, PROJECT_B]);
     await store.close();
+    for (const projectId of [PROJECT_A, PROJECT_B]) {
+      await prisma.$transaction(async (tx) => {
+        await tx.$executeRawUnsafe(`SELECT set_config('app.project_id', $1, true)`, projectId);
+        await tx.$executeRawUnsafe(`DELETE FROM "BlroProject" WHERE "id" = $1`, projectId);
+      });
+    }
+    await prisma.$executeRawUnsafe(`DELETE FROM "BlroTenant" WHERE "id" = $1`, TENANT_ID);
+    await prisma.$disconnect();
   });
 
   beforeEach(async () => {
-    await store.purgeForTest();
+    await store.purgeForTest([PROJECT_A, PROJECT_B]);
   });
 
   it('consumes an unused nonce exactly once', async () => {
@@ -65,11 +101,12 @@ describeDb('PostgresSingleUseNonceStore', () => {
     expect((await store.consume('', 'n', future())).ok).toBe(false);
   });
 
-  it('scopes a nonce to its project: the same value is independent elsewhere', async () => {
+  it('refuses the same signed-approval nonce in another project', async () => {
     const inA = await store.consume(PROJECT_A, 'shared-value', future());
     const inB = await store.consume(PROJECT_B, 'shared-value', future());
     expect(inA.ok).toBe(true);
-    expect(inB.ok, 'a nonce consumed in project A must not block project B').toBe(true);
+    expect(inB.ok, 'a nonce consumed in project A must be blocked globally').toBe(false);
+    expect(inB.reason ?? '').toContain('approval nonce already used:');
   });
 
   it('elects exactly one winner when two consumers race the same nonce', async () => {

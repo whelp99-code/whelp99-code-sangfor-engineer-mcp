@@ -102,6 +102,12 @@ importers:
 
   packages/sangfor-audit: {}
 
+  packages/sangfor-authority:
+    dependencies:
+      '@sangfor/identity':
+        specifier: workspace:*
+        version: link:../sangfor-identity
+
   packages/sangfor-browser-contracts:
     dependencies:
       zod:
@@ -278,6 +284,9 @@ importers:
 
   packages/sangfor-rag:
     dependencies:
+      '@sangfor/identity':
+        specifier: workspace:*
+        version: link:../sangfor-identity
       '@sangfor/shared':
         specifier: workspace:*
         version: link:../shared

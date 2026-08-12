@@ -18,8 +18,9 @@
  *  - a replay refuses with the caller-visible `approval nonce already used:`
  *    prefix that the operator and learning adapters match on.
  *
- * The nonce is scoped by project: the same nonce value in another project is a
- * different nonce, matching the RLS row scope.
+ * Nonce uniqueness is global. Approval signatures do not yet carry project
+ * scope, so allowing the same value in another project would permit replay of
+ * the same signed approval when deployments share an approval secret.
  */
 
 export interface NonceConsumeResult {
@@ -62,8 +63,8 @@ export class PostgresSingleUseNonceStore {
   }
 
   /**
-   * Consume `nonce` for `projectId`. Returns ok exactly once per (project,
-   * nonce) while unexpired; every other outcome refuses.
+   * Consume `nonce` for `projectId`. Returns ok exactly once globally while
+   * unexpired; every other outcome refuses.
    */
   async consume(
     projectId: string,
@@ -101,9 +102,11 @@ export class PostgresSingleUseNonceStore {
       }) => {
         await tx.$executeRawUnsafe(`SELECT set_config('app.project_id', $1, true)`, projectId);
         return (await tx.$queryRawUnsafe(
-          `INSERT INTO "BlroApprovalNonce" ("id", "projectId", "nonce", "expiresAt", "consumedAt")
-           VALUES ($1, $2, $3, $4::timestamptz, $5::timestamptz)
-           ON CONFLICT ("projectId", "nonce") DO NOTHING
+          `INSERT INTO "BlroApprovalNonce" ("id", "tenantId", "projectId", "nonce", "expiresAt", "consumedAt")
+           SELECT $1, p."tenantId", p."id", $3, $4::timestamptz, $5::timestamptz
+           FROM "BlroProject" p
+           WHERE p."id" = $2
+           ON CONFLICT ("nonce") DO NOTHING
            RETURNING "id"`,
           `${projectId}:${nonce}`,
           projectId,

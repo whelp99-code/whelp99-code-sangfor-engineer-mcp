@@ -20,6 +20,12 @@
       "@sangfor/browser-contracts": [
         "packages/sangfor-browser-contracts/src/index.ts"
       ],
+      "@sangfor/identity": [
+        "packages/sangfor-identity/src/index.ts"
+      ],
+      "@sangfor/authority": [
+        "packages/sangfor-authority/src/index.ts"
+      ],
       "@sangfor/jm-execution": [
         "packages/sangfor-jm-execution/src/index.ts"
       ],

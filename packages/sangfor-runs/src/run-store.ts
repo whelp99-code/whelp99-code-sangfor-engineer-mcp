@@ -62,6 +62,9 @@ export class RunStore {
   private readonly dir: string;
 
   constructor(dir?: string) {
+    if (process.env.SANGFOR_BLRO_AUTHORITY_STORE === 'postgres') {
+      throw new Error('JM_LOCAL_RUN_STORE_SUPERSEDED: use BlroAuthorityStore');
+    }
     this.dir = dir ?? resolveEngagementScopedData('data/runs', 'SANGFOR_RUNS_ROOT');
   }
 

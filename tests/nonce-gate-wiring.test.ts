@@ -1,8 +1,9 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { randomUUID } from 'node:crypto';
+import { PrismaClient } from '@prisma/client';
 import {
   consumeApprovalNonce,
   consumeApprovalNonceAsync,
@@ -217,10 +218,43 @@ describe('one store backs every call site (C1)', () => {
 });
 
 describe.runIf(DATABASE_URL)('the selected postgres store is what the gate actually consumes (C1/C4, live database)', () => {
+  const fixtureId = randomUUID();
+  const tenantId = `wiring-tenant-${fixtureId}`;
+  const projectId = `wiring-project-${fixtureId}`;
+  let prisma: PrismaClient;
+
+  beforeAll(async () => {
+    prisma = new PrismaClient({ datasources: { db: { url: DATABASE_URL as string } } });
+    await prisma.$executeRawUnsafe(
+      `INSERT INTO "BlroTenant" ("id","name") VALUES ($1,$2)`,
+      tenantId,
+      'Nonce wiring integration test',
+    );
+    await prisma.$transaction(async (tx) => {
+      await tx.$executeRawUnsafe(`SELECT set_config('app.project_id', $1, true)`, projectId);
+      await tx.$executeRawUnsafe(
+        `INSERT INTO "BlroProject" ("id","tenantId","name") VALUES ($1,$2,$3)`,
+        projectId,
+        tenantId,
+        'Nonce wiring project',
+      );
+    });
+  });
+
+  afterAll(async () => {
+    await prisma.$transaction(async (tx) => {
+      await tx.$executeRawUnsafe(`SELECT set_config('app.project_id', $1, true)`, projectId);
+      await tx.$executeRawUnsafe(`DELETE FROM "BlroApprovalNonce" WHERE "projectId"=$1`, projectId);
+      await tx.$executeRawUnsafe(`DELETE FROM "BlroProject" WHERE "id"=$1`, projectId);
+    });
+    await prisma.$executeRawUnsafe(`DELETE FROM "BlroTenant" WHERE "id"=$1`, tenantId);
+    await prisma.$disconnect();
+  });
+
   beforeEach(() => {
     process.env.SANGFOR_NONCE_STORE = 'postgres';
     process.env.DATABASE_URL = DATABASE_URL;
-    process.env.SANGFOR_PROJECT_ID = 'proj-a';
+    process.env.SANGFOR_PROJECT_ID = projectId;
     process.env.SANGFOR_ALLOW_REAL_EXECUTION = 'true';
     process.env.SANGFOR_ALLOW_PRODUCTION_EXECUTION = 'true';
     process.env.SANGFOR_OPERATOR_APPROVAL_SECRET = 'wiring-secret';

@@ -59,7 +59,8 @@ import { randomBytes } from 'node:crypto';
 import {
   HciClient, KeystoneV2TokenProvider, HCI_AUTH_CONTRACT_STATUS,
   collectInventory, readBackVolume, applyCreateVolume, deleteVolume, getVolume,
-  AuditLedger, validateCreateVolumeInput, summarizeHciHealth, renderHciHealthReport,
+  AuditLedger, assertLocalAuditAuthorityAllowed, validateCreateVolumeInput,
+  summarizeHciHealth, renderHciHealthReport,
   httpJson,
 } from '../../../packages/sangfor-hci-client/src/index.js';
 import { TowerClient } from './tower-client.js';
@@ -233,6 +234,7 @@ async function hciWriteGate(
   approval: unknown,
   capabilityId: 'volume_create' | 'volume_delete',
 ): Promise<{ ok: boolean; error?: string }> {
+  assertLocalAuditAuthorityAllowed();
   const verdict = verifyExecutionApproval({ action: { type: kind, target }, approval: approval as never, secret: process.env.SANGFOR_OPERATOR_APPROVAL_SECRET });
   if (!verdict.ok) return { ok: false, error: `approval rejected: ${verdict.reason}` };
   const a = approval as { nonce: string; expiresAt: string };

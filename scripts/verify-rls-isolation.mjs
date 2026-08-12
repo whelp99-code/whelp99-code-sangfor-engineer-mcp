@@ -1,26 +1,22 @@
 #!/usr/bin/env node
 /**
- * BLRO Phase 3 — RLS isolation verifier (D3).
+ * BLRO Phase 3 RLS isolation verifier (D3).
  *
- * Proves two things against a REAL Postgres:
- *   1. every scoped table has row-level security FORCEd (introspection, so a
- *      table added six months from now is covered automatically);
- *   2. a connection scoped to project A reads ZERO rows written for project B.
- *
- * It must never "pass" without a database. A verifier that silently succeeds
- * when it verified nothing is worse than no verifier: it converts an unknown
- * into a false assurance. With no DATABASE_URL this exits non-zero and says
- * exactly what is missing.
- *
- *   node scripts/verify-rls-isolation.mjs
+ * This verifier is deliberately non-vacuous: inside a transaction that is
+ * always rolled back, it creates complete project A and B lineages, proves A
+ * can see every A sentinel, and proves A cannot see any B sentinel.
  */
+import { randomUUID } from 'node:crypto';
 import process from 'node:process';
 
 const SENTINEL_PASS = 'BLRO_RLS_ISOLATION_PASS';
 const SENTINEL_UNVERIFIABLE = 'BLRO_RLS_NOT_VERIFIABLE';
 
-/** Tables that must never be readable outside their project scope. */
-const SCOPED_TABLES = ['BlroProject', 'BlroApprovalNonce', 'BlroAuditEvent'];
+const SCOPED_TABLES = [
+  'BlroProject', 'BlroMembership', 'BlroApprovalNonce', 'BlroAuditEvent',
+  'BlroDevice', 'BlroRun', 'BlroRunStep', 'BlroApproval',
+  'BlroEvidenceManifest', 'BlroRagDocument', 'BlroRagChunk',
+];
 
 function refuse(reason, detail) {
   process.stdout.write(`${SENTINEL_UNVERIFIABLE}: ${reason}\n`);
@@ -34,8 +30,7 @@ if (!databaseUrl) {
     'DATABASE_URL is not set',
     [
       'RLS enforcement is a property of a running Postgres and cannot be inferred',
-      'from source. Point DATABASE_URL at a database with the',
-      '20260812101700_blro_scope_rls migration applied, then re-run:',
+      'from source. Point DATABASE_URL at a database with all migrations applied, then re-run:',
       '',
       '  export DATABASE_URL=postgresql://user:pass@host:5432/db',
       '  pnpm exec prisma migrate deploy',
@@ -54,16 +49,73 @@ if (!databaseUrl) {
 
   if (PrismaClient) {
     const prisma = new PrismaClient();
+    const gaps = [];
+    const leaks = [];
+    const rollbackProbe = new Error('BLRO_RLS_PROBE_ROLLBACK');
+    const suffix = randomUUID();
+    const tenantId = `rls-tenant-${suffix}`;
+    const roleId = `rls-role-${suffix}`;
+    const projectA = `rls-project-a-${suffix}`;
+    const projectB = `rls-project-b-${suffix}`;
+    const actorA = `rls-actor-a-${suffix}`;
+    const actorB = `rls-actor-b-${suffix}`;
+
+    const seedProject = async (tx, projectId, actorId, label) => {
+      await tx.$executeRawUnsafe(`SELECT set_config('app.project_id', $1, true)`, projectId);
+      await tx.$executeRawUnsafe(
+        `INSERT INTO "BlroProject" ("id","tenantId","name") VALUES ($1,$2,$3)`,
+        projectId, tenantId, `RLS probe ${label}`,
+      );
+      await tx.$executeRawUnsafe(
+        `INSERT INTO "BlroMembership" ("id","tenantId","projectId","actorId","roleId") VALUES ($1,$2,$3,$4,$5)`,
+        `membership-${label}-${suffix}`, tenantId, projectId, actorId, roleId,
+      );
+      await tx.$executeRawUnsafe(
+        `INSERT INTO "BlroApprovalNonce" ("id","tenantId","projectId","nonce","expiresAt","consumedAt") VALUES ($1,$2,$3,$4,now() + interval '1 hour',now())`,
+        `nonce-${label}-${suffix}`, tenantId, projectId, `nonce-value-${label}-${suffix}`,
+      );
+      await tx.$executeRawUnsafe(
+        `INSERT INTO "BlroAuditEvent" ("id","tenantId","projectId","seq","actorId","kind","payload","prevHash","hash") VALUES ($1,$2,$3,0,$4,'rls.probe','{}','GENESIS',$5)`,
+        `audit-${label}-${suffix}`, tenantId, projectId, actorId, `hash-${label}-${suffix}`,
+      );
+      await tx.$executeRawUnsafe(
+        `INSERT INTO "BlroDevice" ("id","tenantId","projectId","createdByActorId","name","product","host","metadata") VALUES ($1,$2,$3,$4,$5,'probe','127.0.0.1','{}')`,
+        `device-${label}-${suffix}`, tenantId, projectId, actorId, `device-${label}-${suffix}`,
+      );
+      await tx.$executeRawUnsafe(
+        `INSERT INTO "BlroRun" ("id","tenantId","projectId","actorId","status","toolProfileVersion","sourceSystem") VALUES ($1,$2,$3,$4,'created','probe-v1','rls-verifier')`,
+        `run-${label}-${suffix}`, tenantId, projectId, actorId,
+      );
+      await tx.$executeRawUnsafe(
+        `INSERT INTO "BlroRunStep" ("id","tenantId","projectId","runId","actorId","ordinal","status","payload") VALUES ($1,$2,$3,$4,$5,0,'created','{}')`,
+        `step-${label}-${suffix}`, tenantId, projectId, `run-${label}-${suffix}`, actorId,
+      );
+      await tx.$executeRawUnsafe(
+        `INSERT INTO "BlroApproval" ("id","tenantId","projectId","actorId","actionHash","expiresAt","status") VALUES ($1,$2,$3,$4,$5,now() + interval '1 hour','approved')`,
+        `approval-${label}-${suffix}`, tenantId, projectId, actorId, `action-${label}-${suffix}`,
+      );
+      await tx.$executeRawUnsafe(
+        `INSERT INTO "BlroEvidenceManifest" ("id","tenantId","projectId","actorId","runId","contentHash","manifest") VALUES ($1,$2,$3,$4,$5,$6,'{}')`,
+        `evidence-${label}-${suffix}`, tenantId, projectId, actorId, `run-${label}-${suffix}`, `evidence-hash-${label}-${suffix}`,
+      );
+      await tx.$executeRawUnsafe(
+        `INSERT INTO "BlroRagDocument" ("id","tenantId","projectId","actorId","title","sourceRef","contentHash","provenance") VALUES ($1,$2,$3,$4,$5,$6,$7,'{}')`,
+        `document-${label}-${suffix}`, tenantId, projectId, actorId, `document ${label}`, `probe:${label}`, `document-hash-${label}-${suffix}`,
+      );
+      await tx.$executeRawUnsafe(
+        `INSERT INTO "BlroRagChunk" ("id","tenantId","projectId","documentId","text","contentHash","aclActorIds") VALUES ($1,$2,$3,$4,$5,$6,'{}')`,
+        `chunk-${label}-${suffix}`, tenantId, projectId, `document-${label}-${suffix}`, `chunk ${label}`, `chunk-hash-${label}-${suffix}`,
+      );
+    };
+
     try {
-      // 1. Introspection: every scoped table must have RLS enabled AND forced.
       const rows = await prisma.$queryRawUnsafe(
         `SELECT c.relname AS table, c.relrowsecurity AS enabled, c.relforcerowsecurity AS forced
            FROM pg_class c
            JOIN pg_namespace n ON n.oid = c.relnamespace
           WHERE n.nspname = current_schema() AND c.relkind = 'r'`,
       );
-      const byName = new Map(rows.map((r) => [r.table, r]));
-      const gaps = [];
+      const byName = new Map(rows.map((row) => [row.table, row]));
       for (const table of SCOPED_TABLES) {
         const row = byName.get(table);
         if (!row) gaps.push(`${table}: table missing (migration not applied?)`);
@@ -71,18 +123,65 @@ if (!databaseUrl) {
         else if (!row.forced) gaps.push(`${table}: FORCE ROW LEVEL SECURITY missing`);
       }
 
-      // 2. Behavioral: a scope set to project A must not observe project B.
-      const leaks = [];
+      const nonceIndexes = await prisma.$queryRawUnsafe(
+        `SELECT i.relname AS indexname,
+                ix.indisunique,
+                array_agg(a.attname ORDER BY key.ordinality) AS columns
+           FROM pg_index ix
+           JOIN pg_class t ON t.oid = ix.indrelid
+           JOIN pg_class i ON i.oid = ix.indexrelid
+           JOIN pg_namespace n ON n.oid = t.relnamespace
+           CROSS JOIN LATERAL unnest(ix.indkey) WITH ORDINALITY AS key(attnum, ordinality)
+           JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = key.attnum
+          WHERE n.nspname = current_schema() AND t.relname = 'BlroApprovalNonce'
+          GROUP BY i.relname, ix.indisunique`,
+      );
+      if (!nonceIndexes.some((row) =>
+        row.indisunique
+        && Array.isArray(row.columns)
+        && row.columns.length === 1
+        && row.columns[0] === 'nonce'
+      )) {
+        gaps.push('BlroApprovalNonce: global nonce UNIQUE index missing');
+      }
+      if (nonceIndexes.some((row) => row.indexname === 'BlroApprovalNonce_projectId_nonce_key')) {
+        gaps.push('BlroApprovalNonce: obsolete project-scoped nonce UNIQUE index remains');
+      }
+
       await prisma.$transaction(async (tx) => {
-        await tx.$executeRawUnsafe(`SELECT set_config('app.project_id', 'rls-probe-a', true)`);
+        await tx.$executeRawUnsafe(
+          `INSERT INTO "BlroTenant" ("id","name") VALUES ($1,$2)`, tenantId, `RLS probe ${suffix}`,
+        );
+        await tx.$executeRawUnsafe(
+          `INSERT INTO "BlroActor" ("id","tenantId","displayName","actorType") VALUES ($1,$2,'Probe A','service'),($3,$2,'Probe B','service')`,
+          actorA, tenantId, actorB,
+        );
+        await tx.$executeRawUnsafe(
+          `INSERT INTO "BlroRole" ("id","tenantId","name","permissions") VALUES ($1,$2,'probe',ARRAY['probe:read'])`,
+          roleId, tenantId,
+        );
+        await seedProject(tx, projectA, actorA, 'a');
+        await seedProject(tx, projectB, actorB, 'b');
+
+        await tx.$executeRawUnsafe(`SELECT set_config('app.project_id', $1, true)`, projectA);
         for (const table of SCOPED_TABLES) {
-          const scopedRows = await tx.$queryRawUnsafe(
-            `SELECT count(*)::int AS n FROM "${table}" WHERE "projectId" = 'rls-probe-b'`,
-          ).catch(() => [{ n: 0 }]);
-          if ((scopedRows?.[0]?.n ?? 0) > 0) {
-            leaks.push(`${table}: rows from another project were visible under scope 'rls-probe-a'`);
+          const projectColumn = table === 'BlroProject' ? 'id' : 'projectId';
+          const ownRows = await tx.$queryRawUnsafe(
+            `SELECT count(*)::int AS n FROM "${table}" WHERE "${projectColumn}" = $1`, projectA,
+          );
+          const foreignRows = await tx.$queryRawUnsafe(
+            `SELECT count(*)::int AS n FROM "${table}" WHERE "${projectColumn}" = $1`, projectB,
+          );
+          if ((ownRows?.[0]?.n ?? 0) !== 1) {
+            leaks.push(`${table}: project A sentinel was not visible (probe was vacuous)`);
+          }
+          if ((foreignRows?.[0]?.n ?? 0) !== 0) {
+            leaks.push(`${table}: project B sentinel was visible under project A scope`);
           }
         }
+        throw rollbackProbe;
+      }).catch((error) => {
+        if (error !== rollbackProbe) throw error;
       });
 
       const problems = [...gaps, ...leaks];
@@ -90,7 +189,7 @@ if (!databaseUrl) {
         process.stdout.write(`BLRO_RLS_ISOLATION_FAIL:\n${problems.join('\n')}\n`);
         process.exitCode = 1;
       } else {
-        process.stdout.write(`${SENTINEL_PASS} (${SCOPED_TABLES.length} scoped tables)\n`);
+        process.stdout.write(`${SENTINEL_PASS} (${SCOPED_TABLES.length} non-vacuously scoped tables)\n`);
       }
     } catch (error) {
       refuse('verification query failed', String(error instanceof Error ? error.message : error));

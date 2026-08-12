@@ -41,9 +41,13 @@ export type NonceStoreSelection =
  */
 export function resolveNonceStoreSelection(env: Env = process.env): NonceStoreSelection {
   const raw = env.SANGFOR_NONCE_STORE?.trim();
-  const kind = raw === undefined || raw === '' ? 'file' : raw;
+  const blroPostgres = env.SANGFOR_BLRO_AUTHORITY_STORE === 'postgres';
+  const kind = raw === undefined || raw === '' ? (blroPostgres ? 'postgres' : 'file') : raw;
 
-  if (kind === 'file') return { ok: true, kind: 'file', path: defaultNonceStorePath(env) };
+  if (kind === 'file') {
+    if (blroPostgres) return { ok: false, reason: `${FAIL_CLOSED}: JM-local nonce store is superseded in BLRO postgres mode` };
+    return { ok: true, kind: 'file', path: defaultNonceStorePath(env) };
+  }
   if (kind !== 'postgres') {
     return {
       ok: false,

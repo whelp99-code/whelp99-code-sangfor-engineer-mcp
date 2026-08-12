@@ -206,3 +206,258 @@ model LearningMirrorReceipt {
   mirroredAt    DateTime
   updatedAt     DateTime @updatedAt
 }
+
+model BlroTenant {
+  id        String   @id
+  name      String
+  createdAt DateTime @default(now())
+  projects  BlroProject[]
+  actors    BlroActor[]
+  roles     BlroRole[]
+  approvalNonces BlroApprovalNonce[]
+  auditEvents BlroAuditEvent[]
+  devices BlroDevice[]
+  runs BlroRun[]
+  steps BlroRunStep[]
+  approvals BlroApproval[]
+  evidenceManifests BlroEvidenceManifest[]
+  ragDocuments BlroRagDocument[]
+  ragChunks BlroRagChunk[]
+}
+
+model BlroProject {
+  id                 String   @id
+  tenantId           String
+  legacyEngagementId String?  @unique
+  name               String
+  status             String   @default("active")
+  createdAt          DateTime @default(now())
+  tenant              BlroTenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  memberships         BlroMembership[]
+  nonces              BlroApprovalNonce[]
+  auditEvents         BlroAuditEvent[]
+  devices             BlroDevice[]
+  runs                BlroRun[]
+  steps               BlroRunStep[]
+  approvals           BlroApproval[]
+  evidenceManifests   BlroEvidenceManifest[]
+  ragDocuments        BlroRagDocument[]
+  ragChunks           BlroRagChunk[]
+
+  @@unique([id, tenantId])
+  @@index([tenantId])
+}
+
+model BlroActor {
+  id             String    @id
+  tenantId       String
+  displayName    String
+  actorType      String
+  apiKeyDigest   String?   @unique
+  apiKeyIssuedAt DateTime?
+  revokedAt      DateTime?
+  createdAt      DateTime  @default(now())
+  tenant         BlroTenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  memberships BlroMembership[]
+
+  @@unique([id, tenantId])
+  @@index([tenantId])
+}
+
+model BlroRole {
+  id          String   @id
+  tenantId    String
+  name        String
+  permissions String[]
+  createdAt   DateTime @default(now())
+  tenant      BlroTenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  memberships BlroMembership[]
+
+  @@unique([id, tenantId])
+  @@unique([tenantId, name])
+}
+
+model BlroMembership {
+  id                 String    @id
+  tenantId           String
+  projectId          String
+  actorId            String
+  roleId             String
+  createdAt          DateTime  @default(now())
+  revokedAt          DateTime?
+  project            BlroProject @relation(fields: [projectId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  actor              BlroActor @relation(fields: [actorId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  role               BlroRole @relation(fields: [roleId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  consumedNonces     BlroApprovalNonce[]
+  auditEvents        BlroAuditEvent[]
+  createdDevices     BlroDevice[]
+  runs               BlroRun[]
+  steps              BlroRunStep[]
+  approvals          BlroApproval[]
+  evidenceManifests  BlroEvidenceManifest[]
+  ragDocuments       BlroRagDocument[]
+
+  @@unique([projectId, actorId])
+  @@index([actorId])
+}
+
+model BlroApprovalNonce {
+  id                String    @id
+  tenantId          String
+  projectId         String
+  nonce             String    @unique
+  expiresAt         DateTime
+  consumedAt        DateTime?
+  consumedByActorId String?
+  createdAt         DateTime  @default(now())
+  tenant            BlroTenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  project           BlroProject @relation(fields: [projectId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  consumedByMembership BlroMembership? @relation(fields: [projectId, consumedByActorId], references: [projectId, actorId], onDelete: Restrict)
+  @@index([expiresAt])
+}
+
+model BlroAuditEvent {
+  id        String   @id
+  tenantId  String
+  projectId String
+  seq       BigInt
+  at        DateTime @default(now())
+  actorId   String?
+  kind      String
+  payload   Json
+  prevHash  String
+  hash      String
+  keyed     Boolean  @default(false)
+  tenant    BlroTenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  project   BlroProject @relation(fields: [projectId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  actorMembership BlroMembership? @relation(fields: [projectId, actorId], references: [projectId, actorId], onDelete: Restrict)
+
+  @@unique([projectId, seq])
+}
+
+model BlroDevice {
+  id               String   @id
+  tenantId         String
+  projectId        String
+  createdByActorId String
+  name             String
+  product          String
+  host             String
+  metadata         Json
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  tenant           BlroTenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  project          BlroProject @relation(fields: [projectId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  createdByMembership BlroMembership @relation(fields: [projectId, createdByActorId], references: [projectId, actorId], onDelete: Restrict)
+
+  @@unique([projectId, name])
+}
+
+model BlroRun {
+  id                 String   @id
+  tenantId           String
+  projectId          String
+  actorId            String
+  status             String
+  toolProfileVersion String
+  sourceSystem       String
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  tenant             BlroTenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  project            BlroProject @relation(fields: [projectId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  actorMembership    BlroMembership @relation(fields: [projectId, actorId], references: [projectId, actorId], onDelete: Restrict)
+  steps              BlroRunStep[]
+  evidence           BlroEvidenceManifest[]
+
+  @@unique([id, projectId])
+  @@index([projectId, createdAt])
+}
+
+model BlroRunStep {
+  id        String   @id
+  tenantId  String
+  projectId String
+  runId     String
+  actorId   String
+  ordinal   Int
+  status    String
+  payload   Json
+  createdAt DateTime @default(now())
+  tenant    BlroTenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  project   BlroProject @relation(fields: [projectId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  run       BlroRun @relation(fields: [runId, projectId], references: [id, projectId], onDelete: Restrict)
+  actorMembership BlroMembership @relation(fields: [projectId, actorId], references: [projectId, actorId], onDelete: Restrict)
+
+  @@unique([runId, ordinal])
+  @@index([projectId, createdAt])
+}
+
+model BlroApproval {
+  id         String   @id
+  tenantId   String
+  projectId  String
+  actorId    String
+  actionHash String
+  expiresAt  DateTime
+  status     String
+  createdAt  DateTime @default(now())
+  tenant     BlroTenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  project    BlroProject @relation(fields: [projectId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  actorMembership BlroMembership @relation(fields: [projectId, actorId], references: [projectId, actorId], onDelete: Restrict)
+
+  @@index([projectId, actionHash])
+}
+
+model BlroEvidenceManifest {
+  id          String   @id
+  tenantId    String
+  projectId   String
+  actorId     String
+  runId       String
+  contentHash String
+  manifest    Json
+  createdAt   DateTime @default(now())
+  tenant      BlroTenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  project     BlroProject @relation(fields: [projectId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  actorMembership BlroMembership @relation(fields: [projectId, actorId], references: [projectId, actorId], onDelete: Restrict)
+  run         BlroRun @relation(fields: [runId, projectId], references: [id, projectId], onDelete: Restrict)
+
+  @@unique([projectId, contentHash])
+}
+
+model BlroRagDocument {
+  id          String   @id
+  tenantId    String
+  projectId   String
+  actorId     String
+  title       String
+  sourceRef   String
+  contentHash String
+  provenance  Json
+  createdAt   DateTime @default(now())
+  tenant      BlroTenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  project     BlroProject @relation(fields: [projectId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  actorMembership BlroMembership @relation(fields: [projectId, actorId], references: [projectId, actorId], onDelete: Restrict)
+  chunks      BlroRagChunk[]
+
+  @@unique([id, projectId])
+  @@unique([projectId, contentHash])
+}
+
+model BlroRagChunk {
+  id          String   @id
+  tenantId    String
+  projectId   String
+  documentId  String
+  text        String
+  contentHash String
+  vector      Json?
+  aclActorIds String[]
+  createdAt   DateTime @default(now())
+  tenant      BlroTenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  project     BlroProject @relation(fields: [projectId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  document    BlroRagDocument @relation(fields: [documentId, projectId], references: [id, projectId], onDelete: Restrict)
+
+  @@unique([projectId, contentHash])
+  @@index([projectId, documentId])
+}

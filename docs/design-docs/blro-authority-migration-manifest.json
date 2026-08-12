@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "cutover": "phase3",
+  "entries": [
+    { "aggregate": "device_registry", "authoritativeWriter": "BlroAuthorityStore", "supersededLocalStore": "data/registry/devices.json", "jmTreatment": "derived bounded execution snapshot" },
+    { "aggregate": "run_step", "authoritativeWriter": "BlroAuthorityStore", "supersededLocalStore": "data/runs/*.jsonl", "jmTreatment": "disposable active-job cache" },
+    { "aggregate": "approval", "authoritativeWriter": "BlroAuthorityStore", "supersededLocalStore": "in-memory Control Tower approval state", "jmTreatment": "none; presented capability only" },
+    { "aggregate": "approval_nonce", "authoritativeWriter": "PostgresSingleUseNonceStore", "supersededLocalStore": "data/runtime/approval-nonces.json", "jmTreatment": "none; consume centrally" },
+    { "aggregate": "audit_chain", "authoritativeWriter": "BlroAuthorityStore", "supersededLocalStore": "data/evidence/change-runs/*.jsonl", "jmTreatment": "temporary delivery buffer until acknowledged" },
+    { "aggregate": "evidence_manifest", "authoritativeWriter": "BlroAuthorityStore", "supersededLocalStore": "data/evidence manifests and capture ledgers", "jmTreatment": "temporary bytes plus upload receipt" },
+    { "aggregate": "rag_document_chunk", "authoritativeWriter": "BlroAuthorityStore", "supersededLocalStore": "data/rag/index.json", "jmTreatment": "derived disposable encrypted cache" }
+  ]
+}

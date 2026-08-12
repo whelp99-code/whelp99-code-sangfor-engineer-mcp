@@ -10,6 +10,12 @@ import { resolveEngagementScopedData, withDirLock } from '@sangfor/shared';
 
 const SECRET_KEY_RE = /password|secret|token|authorization|cookie/i;
 
+export function assertLocalAuditAuthorityAllowed(): void {
+  if (process.env.SANGFOR_BLRO_AUTHORITY_STORE === 'postgres') {
+    throw new Error('JM_LOCAL_AUDIT_SUPERSEDED: use BlroAuthorityStore');
+  }
+}
+
 export function maskSecrets<T>(value: T): T {
   if (Array.isArray(value)) return value.map((v) => maskSecrets(v)) as unknown as T;
   if (value !== null && typeof value === 'object') {
@@ -36,6 +42,7 @@ export class AuditLedger {
   private readonly secret: string | undefined;
 
   constructor(opts: { dir?: string; secret?: string } = {}) {
+    assertLocalAuditAuthorityAllowed();
     // Engagement-scoped: change-run audit lines are per-project evidence, so an
     // unscoped root would pool several projects' audit chains in one partition.
     this.dir = opts.dir ?? join(resolveEngagementScopedData('data/evidence'), 'change-runs');

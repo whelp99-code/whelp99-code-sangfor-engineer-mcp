@@ -9,8 +9,9 @@
  *      can supervise it;
  *   2. **isolate** that work to one project.
  *
- * It is not an IAM system: no roles, no permissions matrix, no org chart, no
- * billing. Anything beyond attribution and isolation belongs elsewhere.
+ * It is not a general IAM system: roles exist only to bind project membership
+ * to the narrow permissions BLRO services consume. Org charts and billing
+ * belong elsewhere.
  *
  * Fail-closed by construction. The legacy `SANGFOR_ENGAGEMENT_ID` path helper is
  * fail-OPEN (unset means the shared root); this resolver is the opposite — an
@@ -24,6 +25,90 @@
 export const ACTOR_TYPES = ['human_pm', 'ai_engineer', 'service'] as const;
 
 export type ActorType = (typeof ACTOR_TYPES)[number];
+
+export interface TenantIdentity { readonly id: string; readonly active: boolean }
+export interface ProjectIdentity { readonly id: string; readonly tenantId: string; readonly active: boolean }
+export interface ActorIdentity { readonly id: string; readonly tenantId: string; readonly actorType: ActorType; readonly active: boolean }
+export interface RoleIdentity { readonly id: string; readonly tenantId: string; readonly permissions: readonly string[] }
+export interface ProjectMembership { readonly actorId: string; readonly projectId: string; readonly roleId: string; readonly active: boolean }
+
+/** Read model supplied by the BLRO identity database writer. */
+export interface IdentityDirectory {
+  readonly tenants: readonly TenantIdentity[];
+  readonly projects: readonly ProjectIdentity[];
+  readonly actors: readonly ActorIdentity[];
+  readonly roles: readonly RoleIdentity[];
+  readonly memberships: readonly ProjectMembership[];
+}
+
+export interface AuthorizationRequest {
+  readonly tenantId: string;
+  readonly projectId: string;
+  readonly actorId: string;
+  readonly permission: string;
+}
+
+export type AuthorizationResult =
+  | { readonly ok: true; readonly scope: AuthorizationRequest; readonly roleId: string; readonly actorType: ActorType }
+  | { readonly ok: false; readonly reason: 'SCOPE_INVALID' | 'TENANT_NOT_AUTHORIZED' | 'PROJECT_NOT_AUTHORIZED' | 'ACTOR_NOT_AUTHORIZED' | 'MEMBERSHIP_NOT_AUTHORIZED' | 'ROLE_NOT_AUTHORIZED' };
+
+export interface AuthorizationDirectoryRow {
+  readonly tenantActive?: boolean;
+  readonly projectActive?: boolean;
+  readonly actorType?: ActorType;
+  readonly actorActive?: boolean;
+  readonly roleId?: string;
+  readonly roleActive?: boolean;
+  readonly permissions?: readonly string[];
+  readonly membershipActive?: boolean;
+}
+
+export function decideAuthorization(
+  request: AuthorizationRequest,
+  row: AuthorizationDirectoryRow,
+): AuthorizationResult {
+  if (!row.tenantActive) return { ok: false, reason: 'TENANT_NOT_AUTHORIZED' };
+  if (!row.projectActive) return { ok: false, reason: 'PROJECT_NOT_AUTHORIZED' };
+  if (!row.actorActive || !row.actorType) return { ok: false, reason: 'ACTOR_NOT_AUTHORIZED' };
+  if (!row.membershipActive) return { ok: false, reason: 'MEMBERSHIP_NOT_AUTHORIZED' };
+  if (!row.roleActive || !row.roleId || !row.permissions?.includes(request.permission)) {
+    return { ok: false, reason: 'ROLE_NOT_AUTHORIZED' };
+  }
+  return { ok: true, scope: request, roleId: row.roleId, actorType: row.actorType };
+}
+
+/**
+ * Tenant/project authorization choke point. It never infers a tenant, project,
+ * role, or membership and never treats actor existence as project membership.
+ */
+export class IdentityScopeService {
+  constructor(private readonly directory: IdentityDirectory) {}
+
+  authorize(request: AuthorizationRequest): AuthorizationResult {
+    const ids = [request.tenantId, request.projectId, request.actorId];
+    if (ids.some((value) => !value.trim() || !ID_PATTERN.test(value) || value === '.' || value === '..' || value.includes('..'))
+      || !/^[a-z][a-z0-9_.-]*:[a-z][a-z0-9_.-]*$/u.test(request.permission)) {
+      return { ok: false, reason: 'SCOPE_INVALID' };
+    }
+    const tenant = this.directory.tenants.find((item) => item.id === request.tenantId);
+    const project = this.directory.projects.find((item) => item.id === request.projectId && item.tenantId === request.tenantId);
+    const actor = this.directory.actors.find((item) => item.id === request.actorId && item.tenantId === request.tenantId);
+    const membership = this.directory.memberships.find((item) => item.actorId === request.actorId && item.projectId === request.projectId);
+    const role = this.directory.roles.find((item) =>
+      item.id === membership?.roleId && item.tenantId === request.tenantId
+    );
+    return decideAuthorization(request, {
+      tenantActive: tenant?.active,
+      projectActive: project?.active,
+      actorType: actor?.actorType,
+      actorActive: actor?.active,
+      roleId: role?.id,
+      roleActive: Boolean(role),
+      permissions: role?.permissions,
+      membershipActive: membership?.active,
+    });
+  }
+}
 
 /** Where the project id came from, so a migration can be audited. */
 export type ProjectIdSource = 'project_id' | 'engagement_id';

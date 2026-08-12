@@ -50,6 +50,9 @@ export class Registry {
   private readonly dir: string;
 
   constructor(dir?: string) {
+    if (process.env.SANGFOR_BLRO_AUTHORITY_STORE === 'postgres') {
+      throw new Error('JM_LOCAL_REGISTRY_SUPERSEDED: use BlroAuthorityStore');
+    }
     this.dir = dir ?? resolveRepoData('data/registry', 'SANGFOR_REGISTRY_ROOT');
   }
 

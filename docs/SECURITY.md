@@ -44,6 +44,11 @@ A destructive HCI tool therefore needs **two independent approvals** over HTTP: 
 
 ## Tamper-evidence
 - Change runs (`data/evidence/change-runs/*.jsonl`), the run ledger (`data/runs/*.jsonl`), and PM events are **append-only and hash-chained**. Keyed HMAC chains when `SANGFOR_CHANGE_LEDGER_SECRET` / `SANGFOR_PM_CHAIN_SECRET` are set; otherwise unkeyed SHA-256 and `verify()` honestly reports `keyed:false`.
+- After a project is cut over with `SANGFOR_BLRO_AUTHORITY_STORE=postgres`, the
+  superseded JM registry, run, approval, nonce, audit/evidence, and RAG writers
+  fail closed. They never fall back to local files or in-memory state. Configure
+  `SANGFOR_NONCE_STORE=postgres`, `DATABASE_URL`, and `SANGFOR_PROJECT_ID`
+  together; a partial configuration is a refusal.
 
 ## Knowledge/data trust
 - RAG runs local-first; cloud embeddings/rerank need `SANGFOR_ALLOW_CLOUD_RAG`; customer-trust docs excluded from results unless `SANGFOR_ALLOW_CLOUD_RAG_CUSTOMER=1`.
@@ -56,4 +61,4 @@ A destructive HCI tool therefore needs **two independent approvals** over HTTP: 
 - When in doubt, **refuse and surface** rather than proceed.
 
 ## Security env vars (gates & secrets)
-`SANGFOR_ALLOW_REAL_EXECUTION`, `SANGFOR_ALLOW_PRODUCTION_EXECUTION`, `SANGFOR_OPERATOR_APPROVAL_SECRET`, `SANGFOR_ALLOW_REMOTE_WRITE`, `SANGFOR_API_TOKEN`, `SANGFOR_NONCE_STORE_PATH`, `SANGFOR_CHANGE_LEDGER_SECRET`, `SANGFOR_PM_CHAIN_SECRET`, `SANGFOR_WIKI_APPROVAL_SECRET`, `SANGFOR_ALLOW_CLOUD_RAG`, `SANGFOR_ALLOW_CLOUD_RAG_CUSTOMER`. See `.env.example` for the full set.
+`SANGFOR_ALLOW_REAL_EXECUTION`, `SANGFOR_ALLOW_PRODUCTION_EXECUTION`, `SANGFOR_OPERATOR_APPROVAL_SECRET`, `SANGFOR_ALLOW_REMOTE_WRITE`, `SANGFOR_API_TOKEN`, `SANGFOR_BLRO_AUTHORITY_STORE`, `SANGFOR_NONCE_STORE`, `SANGFOR_NONCE_STORE_PATH`, `SANGFOR_PROJECT_ID`, `DATABASE_URL`, `SANGFOR_CHANGE_LEDGER_SECRET`, `SANGFOR_PM_CHAIN_SECRET`, `SANGFOR_WIKI_APPROVAL_SECRET`, `SANGFOR_ALLOW_CLOUD_RAG`, `SANGFOR_ALLOW_CLOUD_RAG_CUSTOMER`. See `.env.example` for the full set.

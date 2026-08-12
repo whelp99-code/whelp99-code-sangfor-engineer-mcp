@@ -15,6 +15,15 @@ const proposeWikiUpdateMock = vi.fn(
 );
 const applyWikiUpdateWithAdapterMock = vi.fn();
 const approveWikiUpdateMock = vi.fn();
+const persistFeedbackEventMock = vi.fn(async () => null);
+
+vi.mock('../packages/sangfor-store/src/index.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../packages/sangfor-store/src/index.js')>();
+  return {
+    ...actual,
+    persistFeedbackEvent: persistFeedbackEventMock
+  };
+});
 
 vi.mock('../packages/sangfor-wiki/src/index.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../packages/sangfor-wiki/src/index.js')>();
@@ -44,6 +53,7 @@ afterEach(() => {
   proposeWikiUpdateMock.mockClear();
   applyWikiUpdateWithAdapterMock.mockClear();
   approveWikiUpdateMock.mockClear();
+  persistFeedbackEventMock.mockClear();
 });
 
 describe('postCaseResolution', () => {
