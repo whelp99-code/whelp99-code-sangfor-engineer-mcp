@@ -20,6 +20,12 @@ export interface CaptureConsoleEvidenceInput {
   outputDir: string;
   dateStamp?: string;
   engagementId?: string;
+  /**
+   * Which appliance these captures came from, e.g. `iag-hq-01`. Separates two
+   * devices of the same product inside one customer engagement. Omit when the
+   * device is unknown: filenames then keep their pre-device form.
+   */
+  deviceId?: string;
 }
 
 export interface ConsoleCaptureItemResult {

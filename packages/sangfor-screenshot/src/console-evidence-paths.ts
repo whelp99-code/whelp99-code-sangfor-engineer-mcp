@@ -28,14 +28,50 @@ export function normalizeCaptureSegment(raw: string): string {
   return value || 'unnamed';
 }
 
+/**
+ * A device identifier reduced to ONE safe path/filename token, or undefined
+ * when no device was supplied.
+ *
+ * Blank input returns undefined rather than the `unnamed` placeholder that
+ * normalizeCaptureSegment produces: a capture with no known device must look
+ * exactly like it did before this dimension existed, not like it belongs to a
+ * device literally called "unnamed".
+ */
+export function normalizeDeviceSegment(raw: string | undefined): string | undefined {
+  if (raw === undefined || String(raw).trim() === '') return undefined;
+  const normalized = normalizeCaptureSegment(raw);
+  return normalized === 'unnamed' ? undefined : normalized;
+}
+
+/**
+ * Evidence is separated by customer / device / date:
+ *   <engagement-scoped evidence root>/captures/<YYYYMMDD>/<device>/
+ *
+ * The customer dimension comes from the engagement-scoped root and the date is
+ * this folder; the device segment is appended here. Omitting the device yields
+ * the pre-existing `captures/<YYYYMMDD>` path so captures already on disk stay
+ * findable and older callers keep working.
+ */
+export function buildCaptureRelativeDir(dateStamp: string, deviceId?: string): string {
+  const base = join('captures', normalizeCaptureSegment(dateStamp));
+  const device = normalizeDeviceSegment(deviceId);
+  return device ? join(base, device) : base;
+}
+
 export function buildCaptureFilePath(
   outputDir: string,
   reqId: string,
   product: string,
   menuLabel: string,
   dateStamp: string,
+  deviceId?: string,
 ): string {
-  const fileName = `REQ${normalizeCaptureSegment(reqId)}_${normalizeCaptureSegment(product)}_${normalizeCaptureSegment(menuLabel)}_Before_${normalizeCaptureSegment(dateStamp)}.png`;
+  // The device token sits next to the product so the filename stays
+  // self-describing when a single image is copied out of its folder into a
+  // customer report.
+  const device = normalizeDeviceSegment(deviceId);
+  const devicePart = device ? `${device}_` : '';
+  const fileName = `REQ${normalizeCaptureSegment(reqId)}_${normalizeCaptureSegment(product)}_${devicePart}${normalizeCaptureSegment(menuLabel)}_Before_${normalizeCaptureSegment(dateStamp)}.png`;
   return join(outputDir, fileName);
 }
 

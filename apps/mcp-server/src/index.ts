@@ -40,7 +40,7 @@ import {
 import { buildSettingGuidePptx, buildOperationsGuidePptx } from '../../../packages/sangfor-pptx/src/index.js';
 import { isOfficeCliAvailable, validateOfficeDocument } from '../../../packages/sangfor-office/src/index.js';
 import { buildEvidencePackage, type EvidencePackageItem } from '../../../packages/sangfor-evidence/src/evidence-package.js';
-import { captureProductScreenshots, captureConsoleEvidence, verifyCaptureLedger, resolveConfinedOutputDir, resolveProductScreenshotTargetUrl, DEFAULT_CONSOLE_CDP_PORT, formatDateStamp as formatCaptureDateStamp } from '../../../packages/sangfor-screenshot/src/index.js';
+import { captureProductScreenshots, captureConsoleEvidence, verifyCaptureLedger, resolveConfinedOutputDir, resolveProductScreenshotTargetUrl, buildCaptureRelativeDir, DEFAULT_CONSOLE_CDP_PORT, formatDateStamp as formatCaptureDateStamp } from '../../../packages/sangfor-screenshot/src/index.js';
 import { loadSpec, evaluateSpec, renderAdvisoryReport, renderAdvisoryReportDocx, listSpecCoverage, type IntendedSpec } from '../../../packages/sangfor-spec/src/index.js';
 import { getCapabilitySafety, listCapabilitySafety, loadMaturityPolicy } from '../../../packages/sangfor-safety/src/index.js';
 import { loadWorkAtoms, computeReplacementCoverage } from '../../../packages/sangfor-competency/src/index.js';
@@ -734,14 +734,16 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
         },
         outputDir: { type: 'string', description: 'Output directory for PNGs. Omit for the engagement-scoped default.' },
         dateStamp: { type: 'string', description: 'Override the YYYYMMDD stamp used in filenames and the default outputDir. Default: today.' },
+        deviceId: { type: 'string', description: 'Which appliance these captures came from, e.g. iag-hq-01. Separates two devices of the same product within one customer engagement: adds a <deviceId> folder under the date and a device token to each filename. Omit when unknown.' },
         engagementId: { type: 'string', description: 'Optional engagement id recorded in the ledger payload.' },
       },
       required: ['product', 'captures'],
     },
-    handler: async (args: { cdpPort?: number; product: string; captures: Array<{ reqId: string; menuLabel: string; menuPath?: Array<{ menu: string; submenu?: string }>; url?: string }>; outputDir?: string; dateStamp?: string; engagementId?: string }) => {
+    handler: async (args: { cdpPort?: number; product: string; captures: Array<{ reqId: string; menuLabel: string; menuPath?: Array<{ menu: string; submenu?: string }>; url?: string }>; outputDir?: string; dateStamp?: string; engagementId?: string; deviceId?: string }) => {
       const product = normalizeProduct(args.product);
       const dateStamp = args.dateStamp ?? formatCaptureDateStamp(new Date());
-      const outputDir = args.outputDir ?? join(resolveEngagementScopedData('data/evidence', 'SANGFOR_EVIDENCE_ROOT'), 'captures', dateStamp);
+      // customer (engagement-scoped root) / date / device
+      const outputDir = args.outputDir ?? join(resolveEngagementScopedData('data/evidence', 'SANGFOR_EVIDENCE_ROOT'), buildCaptureRelativeDir(dateStamp, args.deviceId));
       resolveConfinedOutputDir(outputDir);
       const targetUrl = args.captures.find((capture) => capture.url)?.url
         ?? process.env.SANGFOR_CONSOLE_URL
@@ -758,6 +760,7 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
           product,
           captures: args.captures,
           outputDir,
+          deviceId: args.deviceId,
           dateStamp,
           engagementId: args.engagementId,
         }, {

@@ -22,9 +22,11 @@ import type {
 } from './console-evidence-types.js';
 
 export {
+  buildCaptureRelativeDir,
   CAPTURE_EVIDENCE_ROOT_ENV_VAR,
   DEFAULT_CONSOLE_CDP_PORT,
   formatDateStamp,
+  normalizeDeviceSegment,
   resolveConfinedOutputDir,
 } from './console-evidence-paths.js';
 export * from './console-evidence-types.js';
@@ -86,6 +88,7 @@ export async function captureConsoleEvidence(
       input.product,
       maskedMenuLabel,
       dateStamp,
+      input.deviceId,
     );
     const safeRequestId = normalizeCaptureSegment(maskedReqId);
     const capturedAt = new Date().toISOString();
