@@ -13,6 +13,7 @@ See **[ARCHITECTURE.md](ARCHITECTURE.md)** for the domain map, package layering,
 - [References](docs/references/index.md) — external-library reference candidates
 
 ## Domain guides
+- [Start Here Today](docs/START_HERE_TODAY.md) — what is live now, verified doc-authoring path, and what is deliberately unfinished
 - [Security](docs/SECURITY.md) — **read first before touching any write/execution path**: gates, HMAC approvals, nonces, masking, fail-closed rules
 - [JM Endpoint Install](docs/JM_ENDPOINT_INSTALL.md) — client-side endpoint setup/run (`pnpm run jm:endpoint:doctor`)
 - [BLRO Operations Runbook](docs/BLRO_OPERATIONS_RUNBOOK.md) — server-side deploy, secrets, backup/restore, incident

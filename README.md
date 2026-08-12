@@ -67,6 +67,12 @@ Use **pnpm only** (`packageManager` in `package.json`, workspaces in
 `pnpm-workspace.yaml`, lock state in `pnpm-lock.yaml`). The npm lockfile is not
 maintained. See `AGENTS.md` for agent/CI notes.
 
+## Using it today
+
+New here, or need it working right now? **[Start Here — using it today](docs/START_HERE_TODAY.md)**
+lists what is live, the verified document-authoring path, the safety posture you run with,
+and what is deliberately not finished.
+
 ## Deployment roles (JM endpoint / BLRO server)
 
 JM is the client-side browser execution edge; BLRO is the server-side authority for MCP, RAG,
