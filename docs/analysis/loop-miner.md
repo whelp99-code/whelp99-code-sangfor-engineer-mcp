@@ -114,3 +114,7 @@ stateDiagram-v2
 
 - 저장소 내 11개 스크립트가 구식 macOS 체크아웃 절대경로(`/Users/jmpark/Documents/Playground/...`)를 하드코딩하고 있었음 → 스크립트 위치 기준 상대경로로 전부 치환 (예약 자동화가 어느 체크아웃에서 돌아도 자기 저장소를 가리킴).
 - 머신 외부라 여기서 해결 불가(보고만): macOS launchd 예약 잡 자체의 대상 경로 갱신, `data/runtime/needs-glass.flag`의 `glass_cdp_unreachable` (VPN/CDP 가용성 필요).
+
+## 후속 실측
+
+2026-08-12 실측 기준 개선 후보: [loop-miner-improvements-20260812.md](loop-miner-improvements-20260812.md)
