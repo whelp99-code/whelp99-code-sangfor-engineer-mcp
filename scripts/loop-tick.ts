@@ -12,6 +12,7 @@ import { runLoopTick } from '../packages/sangfor-loop/src/index.js';
 import { runGapQueriesExecutor } from '../packages/sangfor-loop/src/executors/gap-queries.js';
 import { runEmbeddingDriftExecutor } from '../packages/sangfor-loop/src/executors/embedding-drift.js';
 import { runRagEvalExecutor } from '../packages/sangfor-loop/src/executors/rag-eval.js';
+import { runLearnSourcesExecutor } from '../packages/sangfor-loop/src/executors/learn-sources.js';
 import { resolveEmbeddingModelFromEnv } from '../packages/sangfor-rag/src/embedding-provider.js';
 
 loadEnvFile('.env');
@@ -29,6 +30,13 @@ async function main(): Promise<void> {
           return { detail: `${drift.detail}; auto-reembed executed (SANGFOR_LOOP_AUTO_REEMBED=1)` };
         }
         return drift;
+      },
+      'learn-sources': () => {
+        // Outbound collection is provider-dependent work with real cost and rate
+        // limits, so the same opt-in shape as auto-reembed applies: queue by
+        // default, dispatch only when explicitly enabled.
+        const learn = runLearnSourcesExecutor({});
+        return { detail: learn.detail };
       },
       'rag-eval': () => {
         const evalRun = runRagEvalExecutor({});

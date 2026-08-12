@@ -5,30 +5,51 @@
       "id": "search-gap-capture",
       "kind": "producer",
       "reads": [],
-      "writes": ["data/feedback/search-gaps.jsonl"],
+      "writes": [
+        "data/feedback/search-gaps.jsonl"
+      ],
       "note": "declared-only: lives in apps/mcp-server/src/index.ts (broad multi-concern file); weak rag_search hits append SearchGapEvent lines"
     },
     {
       "id": "gap-queries",
       "kind": "internal",
-      "src": ["packages/sangfor-loop/src/executors/gap-queries.ts"],
-      "reads": ["data/feedback"],
-      "writes": ["data/sources/gap-queries.json"]
+      "src": [
+        "packages/sangfor-loop/src/executors/gap-queries.ts"
+      ],
+      "reads": [
+        "data/feedback"
+      ],
+      "writes": [
+        "data/sources/gap-queries.json"
+      ]
     },
     {
       "id": "learn-sources",
       "kind": "script",
       "run": "learn:sources",
-      "reads": [],
-      "writes": ["data/sources/raw", "data/rag/index.json"],
-      "note": "declared-only: packages/sangfor-collector/src/learn-pipeline.ts; consuming data/sources/gap-queries.json as KB search terms is planned (needs glass CDP)"
+      "reads": [
+        "data/sources/gap-queries.json",
+        "data/runtime",
+        "data/feedback"
+      ],
+      "writes": [],
+      "note": "executor queues gap terms and surfaces the KB collector precondition. The outbound crawl (which writes data/sources/raw + data/rag/index.json) runs via the learn:sources script behind SANGFOR_LOOP_AUTO_COLLECT=1 and still needs glass CDP for the KB half.",
+      "src": [
+        "packages/sangfor-loop/src/executors/learn-sources.ts"
+      ]
     },
     {
       "id": "embedding-drift",
       "kind": "internal",
-      "src": ["packages/sangfor-loop/src/executors/embedding-drift.ts"],
-      "reads": ["data/rag/index.json"],
-      "writes": ["data/runtime/needs-reembed.flag"]
+      "src": [
+        "packages/sangfor-loop/src/executors/embedding-drift.ts"
+      ],
+      "reads": [
+        "data/rag/index.json"
+      ],
+      "writes": [
+        "data/runtime/needs-reembed.flag"
+      ]
     },
     {
       "id": "rag-eval",
@@ -37,15 +58,40 @@
         "packages/sangfor-loop/src/executors/rag-eval.ts",
         "packages/sangfor-evals/src/index.ts"
       ],
-      "reads": ["data/evals"],
+      "reads": [
+        "data/evals"
+      ],
       "writes": [],
       "note": "the rag index itself is the e4 trigger watch, not a direct read of this executor"
     }
   ],
   "edges": [
-    { "id": "e1-gaps-to-queries", "from": "search-gap-capture", "to": "gap-queries", "on": "new-jsonl-lines", "watch": "data/feedback/search-gaps.jsonl" },
-    { "id": "e2-queries-to-learn", "from": "gap-queries", "to": "learn-sources", "on": "manual", "watch": "data/sources/gap-queries.json" },
-    { "id": "e3-drift-check", "from": "learn-sources", "to": "embedding-drift", "on": "every-tick" },
-    { "id": "e4-index-to-eval", "from": "learn-sources", "to": "rag-eval", "on": "file-changed", "watch": "data/rag/index.json" }
+    {
+      "id": "e1-gaps-to-queries",
+      "from": "search-gap-capture",
+      "to": "gap-queries",
+      "on": "new-jsonl-lines",
+      "watch": "data/feedback/search-gaps.jsonl"
+    },
+    {
+      "id": "e2-queries-to-learn",
+      "from": "gap-queries",
+      "to": "learn-sources",
+      "on": "file-changed",
+      "watch": "data/sources/gap-queries.json"
+    },
+    {
+      "id": "e3-drift-check",
+      "from": "learn-sources",
+      "to": "embedding-drift",
+      "on": "every-tick"
+    },
+    {
+      "id": "e4-index-to-eval",
+      "from": "learn-sources",
+      "to": "rag-eval",
+      "on": "file-changed",
+      "watch": "data/rag/index.json"
+    }
   ]
 }
