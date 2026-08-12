@@ -67,6 +67,21 @@ Use **pnpm only** (`packageManager` in `package.json`, workspaces in
 `pnpm-workspace.yaml`, lock state in `pnpm-lock.yaml`). The npm lockfile is not
 maintained. See `AGENTS.md` for agent/CI notes.
 
+## Deployment roles (JM endpoint / BLRO server)
+
+JM is the client-side browser execution edge; BLRO is the server-side authority for MCP, RAG,
+database, approvals, audit, and evidence.
+
+```bash
+pnpm run jm:endpoint:doctor      # read-only endpoint diagnosis + fail-closed readiness
+pnpm run jm:endpoint:install     # run the safe install steps
+pnpm run jm:endpoint:preflight   # readiness only; non-zero exit names the reason code
+```
+
+- [JM Endpoint Installation and Run Guide](docs/JM_ENDPOINT_INSTALL.md)
+- [BLRO Operations Runbook](docs/BLRO_OPERATIONS_RUNBOOK.md)
+- [BLRO Authority Architecture](docs/BLRO_AUTHORITY_ARCHITECTURE.md)
+
 ## Real execution gates
 
 Non-dry-run live action requires:

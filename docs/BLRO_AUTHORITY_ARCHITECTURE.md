@@ -47,3 +47,9 @@ platform remains authoritative, with tenant/project/provenance/ACL isolation.
 
 The detailed topology, extraction phases, and trust boundaries are maintained
 in [Unified BLRO Platform](design-docs/unified-blro-platform.md).
+
+## Operating the two roles
+
+- Server side: [BLRO Operations Runbook](BLRO_OPERATIONS_RUNBOOK.md).
+- Client side: [JM Endpoint Installation and Run Guide](JM_ENDPOINT_INSTALL.md).
+- Sequencing: [BLRO separation work plan](design-docs/blro-separation-and-operations.md).

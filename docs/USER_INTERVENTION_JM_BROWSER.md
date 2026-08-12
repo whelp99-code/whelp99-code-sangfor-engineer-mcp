@@ -4,6 +4,10 @@ This document lists actions that require the operator tomorrow. JM is the **clie
 browser/runtime. BLRO is the future **server-side** MCP/RAG/DB authority. Do not install browser
 profiles or customer credentials on BLRO.
 
+For one-time endpoint setup and its scripted readiness check, use
+[JM Endpoint Installation and Run Guide](JM_ENDPOINT_INSTALL.md)
+(`pnpm run jm:endpoint:doctor`). This document is the per-change-window checklist.
+
 ## Morning decisions and inputs
 
 Provide or confirm:

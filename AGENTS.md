@@ -14,6 +14,8 @@ See **[ARCHITECTURE.md](ARCHITECTURE.md)** for the domain map, package layering,
 
 ## Domain guides
 - [Security](docs/SECURITY.md) — **read first before touching any write/execution path**: gates, HMAC approvals, nonces, masking, fail-closed rules
+- [JM Endpoint Install](docs/JM_ENDPOINT_INSTALL.md) — client-side endpoint setup/run (`pnpm run jm:endpoint:doctor`)
+- [BLRO Operations Runbook](docs/BLRO_OPERATIONS_RUNBOOK.md) — server-side deploy, secrets, backup/restore, incident
 - [Reliability](docs/RELIABILITY.md) — read-back-verified apply, audit ledgers, idempotency, no-auto-rollback
 - [Product Sense](docs/PRODUCT-SENSE.md) — the honest replacement-rate model and what stays human
 - [Multi-vendor](docs/MULTIVENDOR.md) — how to add a vendor (spec + client + mock + tool)
