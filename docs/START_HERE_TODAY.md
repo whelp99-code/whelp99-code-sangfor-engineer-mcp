@@ -117,17 +117,42 @@ Being explicit so you do not rely on something that is not there.
 |---|---|
 | Tenant/project/actor scope model | **shipped**, fail-closed, `ai_engineer` work flagged for PM supervision |
 | Postgres RLS isolation | **proven** on a live cluster — see [BLRO Local Database](BLRO_LOCAL_DATABASE.md) |
-| Postgres single-use nonce store | **built and verified** (race elects exactly one winner), **not wired** into the JM execution gate — see below |
+| Postgres single-use nonce store | **built, verified, and wired** into all three execution-gate call sites — see below |
 | Audit chain / registry / run-step / evidence / RAG in Postgres | **not migrated** — still file-backed |
 | Remote JM↔BLRO protocol, enrollment | **not implemented** |
 
-**Why the nonce store is not wired:** the execution gate (`consumeApprovalNonce`) is synchronous
-and used by three call sites across operator, mcp-server, and http-bridge. The Postgres store is
-async, so wiring it means converting a security gate's concurrency model across three apps. Wiring
-it for only some call sites would split the single-use control across two stores, which is worse
-than leaving it unwired. That conversion deserves its own increment, not a deadline-day change.
-Today the file-backed store is used, exactly as before — single-process safe, which matches how you
-are running it.
+### Choosing the single-use nonce store
+
+The execution gate consumes an approval's single-use nonce through one selected store. All three
+call sites — the operator gate, the MCP server's HCI write gate, and the http-bridge tool guard —
+go through the same selection, so "single use" never means "once per call site".
+
+| `SANGFOR_NONCE_STORE` | Store | Use it when |
+|---|---|---|
+| unset (default) or `file` | JSON file at `SANGFOR_NONCE_STORE_PATH` | one process, which is how you are running it today |
+| `postgres` | `BlroApprovalNonce` table, scoped by `project_id` under RLS | BLRO has more than one replica |
+
+```bash
+# replica-safe selection; BOTH values are required
+export SANGFOR_NONCE_STORE=postgres
+export DATABASE_URL="postgresql://blro_app:...@host:5432/blro"   # or SANGFOR_BLRO_DATABASE_URL
+export SANGFOR_PROJECT_ID=<project>                              # SANGFOR_ENGAGEMENT_ID is its legacy seed
+```
+
+Selection is fail-closed and never silently downgrades. Each of these **refuses** the execution
+rather than falling back to the file store: `postgres` with no connection string, `postgres` with
+no resolvable project scope, an unknown store name, and an unreachable database. A refusal reason
+never echoes the connection password. The synchronous entry point refuses outright while a
+non-file store is selected, so a straggler cannot burn the same nonce in a second store.
+
+Verified on the local cluster (see [BLRO Local Database](BLRO_LOCAL_DATABASE.md)): a nonce consumed
+through the wired gate survives a brand-new empty file store, eight concurrent consumers of one
+nonce elect exactly one winner, and a nonce burned by the operator gate is then refused by both the
+http-bridge guard and the HCI write gate.
+
+**Still unproven:** this ran against the single-node development cluster only. The multi-replica
+behaviour it is designed for has not been exercised against two live BLRO replicas, because there
+is no such deployment yet.
 
 **Why the remaining stores are not migrated:** they hold live data (`data/rag` 4.4 MB,
 `data/evidence` 3.4 MB) and touch every store and all 108 tools. A half-migrated data layer on the
