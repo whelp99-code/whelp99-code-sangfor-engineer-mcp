@@ -100,28 +100,16 @@ importers:
         specifier: workspace:*
         version: link:../shared
 
+  packages/sangfor-audit: {}
+
   packages/sangfor-browser-contracts:
     dependencies:
       zod:
         specifier: ^3.25.76
         version: 3.25.76
 
-  packages/sangfor-audit: {}
-
   packages/sangfor-chrome:
     dependencies:
-      playwright:
-        specifier: ^1.60.0
-        version: 1.60.0
-
-  packages/sangfor-jm-execution:
-    dependencies:
-      '@sangfor/browser-contracts':
-        specifier: workspace:*
-        version: link:../sangfor-browser-contracts
-      '@sangfor/observer':
-        specifier: workspace:*
-        version: link:../sangfor-observer
       playwright:
         specifier: ^1.60.0
         version: 1.60.0
@@ -170,7 +158,21 @@ importers:
 
   packages/sangfor-hci-client: {}
 
+  packages/sangfor-identity: {}
+
   packages/sangfor-integration: {}
+
+  packages/sangfor-jm-execution:
+    dependencies:
+      '@sangfor/browser-contracts':
+        specifier: workspace:*
+        version: link:../sangfor-browser-contracts
+      '@sangfor/observer':
+        specifier: workspace:*
+        version: link:../sangfor-observer
+      playwright:
+        specifier: ^1.60.0
+        version: 1.60.0
 
   packages/sangfor-knowledge:
     dependencies:
@@ -252,12 +254,12 @@ importers:
 
   packages/sangfor-product-adapters:
     dependencies:
-      '@sangfor/browser-contracts':
-        specifier: workspace:*
-        version: link:../sangfor-browser-contracts
       '@sangfor/approval':
         specifier: workspace:*
         version: link:../sangfor-approval
+      '@sangfor/browser-contracts':
+        specifier: workspace:*
+        version: link:../sangfor-browser-contracts
       '@sangfor/learning-strategy':
         specifier: workspace:*
         version: link:../sangfor-learning-strategy
