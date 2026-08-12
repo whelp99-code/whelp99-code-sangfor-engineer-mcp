@@ -35,7 +35,7 @@ describe('T-INT-1 — 타워 민팅 → 실제 bridge guard → 실행 → 이�
     process.env.SANGFOR_NONCE_STORE_PATH = join(dir, 'nonces.json');
     process.env.SANGFOR_OPERATOR_APPROVAL_SECRET = SECRET;
 
-    // 실제 authorizeToolCall(승인 분기 포함)을 쓰는 미니 bridge — 실행부만 stub.
+    // 실제 (await authorizeToolCall(승인 분기 포함))을 쓰는 미니 bridge — 실행부만 stub.
     bridgeServer = http.createServer(async (req, res) => {
       const respond = (status: number, body: unknown) => {
         res.writeHead(status, { 'content-type': 'application/json' });
@@ -48,13 +48,13 @@ describe('T-INT-1 — 타워 민팅 → 실제 bridge guard → 실행 → 이�
         for await (const c of req) chunks.push(c as Buffer);
         const body = JSON.parse(Buffer.concat(chunks).toString('utf8'));
         lastCallBody = body;
-        const decision = authorizeToolCall({
+        const decision = (await authorizeToolCall({
           name: body.name,
           toolListResult: TOOL_LIST,
           enforceWhitelist: true,
           approval: body.approval,
           approvalSecret: process.env.SANGFOR_OPERATOR_APPROVAL_SECRET,
-        });
+        }));
         if (!decision.allow) return respond(decision.status ?? 403, { error: decision.error });
         const payload = { echo: body.name, args: body.arguments };
         return respond(200, { result: { content: [{ type: 'text', text: JSON.stringify(payload) }], structuredContent: payload, isError: false } });
@@ -130,7 +130,7 @@ describe('T-INT-2 — 시드 advisorTools가 실제 MCP에 존재하고 전부 r
     byName = new Map((listTools() as Array<{ name: string; annotations: { readOnlyHint: boolean; destructiveHint: boolean }; inputSchema: { properties?: Record<string, unknown> } }>).map((t) => [t.name, t]));
   });
 
-  it('모든 시드 advisorTool이 존재하고 readOnly:true / destructive:false', () => {
+  it('모든 시드 advisorTool이 존재하고 readOnly:true / destructive:false', async () => {
     for (const vendor of SEED_VENDORS) {
       for (const toolName of vendor.advisorTools) {
         const tool = byName.get(toolName);
@@ -141,7 +141,7 @@ describe('T-INT-2 — 시드 advisorTools가 실제 MCP에 존재하고 전부 r
     }
   });
 
-  it('모든 credentialField가 해당 벤더 모든 advisorTool의 inputSchema 속성에 존재 (시드 오타 방지)', () => {
+  it('모든 credentialField가 해당 벤더 모든 advisorTool의 inputSchema 속성에 존재 (시드 오타 방지)', async () => {
     for (const vendor of SEED_VENDORS) {
       for (const toolName of vendor.advisorTools) {
         const properties = Object.keys(byName.get(toolName)!.inputSchema.properties ?? {});

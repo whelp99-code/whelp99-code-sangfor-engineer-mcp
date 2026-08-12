@@ -6,6 +6,7 @@
   "dependencies": {
     "@sangfor/approval": "workspace:*",
     "@sangfor/browser-contracts": "workspace:*",
+    "@sangfor/identity": "workspace:*",
     "@sangfor/shared": "workspace:*"
   }
 }

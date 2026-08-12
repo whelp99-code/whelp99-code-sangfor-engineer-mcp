@@ -228,7 +228,7 @@ export function createBridgeServer(deps: BridgeServerDeps = {}): http.Server {
 
         const enforceWhitelist = process.env.WHELP99_ENFORCE_SAFE_TOOLS !== "false";
         const list = await mcpRequest("tools/list");
-        const decision = authorizeToolCall({
+        const decision = await authorizeToolCall({
           name,
           toolListResult: list.error ? null : list.result,
           enforceWhitelist,
@@ -275,7 +275,7 @@ export function createBridgeServer(deps: BridgeServerDeps = {}): http.Server {
           // Do not duplicate or weaken this logic; call the shared function.
           const enforceWhitelist = process.env.WHELP99_ENFORCE_SAFE_TOOLS !== "false";
           const list = await mcpRequest("tools/list");
-          const decision = authorizeToolCall({
+          const decision = await authorizeToolCall({
             name,
             toolListResult: list.error ? null : list.result,
             enforceWhitelist,

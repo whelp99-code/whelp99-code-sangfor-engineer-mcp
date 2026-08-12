@@ -51,32 +51,37 @@ describe('assertRealExecutionAllowed — live-execution gate failure branches', 
     rmSync(nonceDir, { recursive: true, force: true });
   });
 
-  it('is a no-op for dry-run actions (default safe path)', () => {
+  it('is a no-op for dry-run actions (default safe path)', async () => {
     const action = { type: 'click', target: 'x' } as ConsoleAction; // dryRun undefined
-    expect(() => assertRealExecutionAllowed(labSession(), action, undefined)).not.toThrow();
+    await expect(assertRealExecutionAllowed(labSession(), action, undefined))
+      .resolves.toBeUndefined();
   });
 
-  it('blocks live execution when SANGFOR_ALLOW_REAL_EXECUTION is not set', () => {
-    expect(() => assertRealExecutionAllowed(labSession(), liveAction(), undefined)).toThrow(/blocked/i);
+  it('blocks live execution when SANGFOR_ALLOW_REAL_EXECUTION is not set', async () => {
+    await expect(assertRealExecutionAllowed(labSession(), liveAction(), undefined))
+      .rejects.toThrow(/blocked/i);
   });
 
-  it('blocks production live execution without SANGFOR_ALLOW_PRODUCTION_EXECUTION', () => {
+  it('blocks production live execution without SANGFOR_ALLOW_PRODUCTION_EXECUTION', async () => {
     process.env.SANGFOR_ALLOW_REAL_EXECUTION = 'true';
-    expect(() => assertRealExecutionAllowed(labSession('production'), liveAction(), undefined)).toThrow(/production/i);
+    await expect(assertRealExecutionAllowed(labSession('production'), liveAction(), undefined))
+      .rejects.toThrow(/production/i);
   });
 
-  it('rejects a missing/unsigned approval even when the real-execution flag is set', () => {
+  it('rejects a missing/unsigned approval even when the real-execution flag is set', async () => {
     process.env.SANGFOR_ALLOW_REAL_EXECUTION = 'true';
     process.env.SANGFOR_OPERATOR_APPROVAL_SECRET = SECRET;
-    expect(() => assertRealExecutionAllowed(labSession(), liveAction(), undefined)).toThrow();
+    await expect(assertRealExecutionAllowed(labSession(), liveAction(), undefined))
+      .rejects.toThrow();
   });
 
-  it('rejects an approval whose signature was minted for a different action', () => {
+  it('rejects an approval whose signature was minted for a different action', async () => {
     process.env.SANGFOR_ALLOW_REAL_EXECUTION = 'true';
     process.env.SANGFOR_OPERATOR_APPROVAL_SECRET = SECRET;
     const otherAction = { type: 'click', target: 'button#delete-volume', dryRun: false } as ConsoleAction;
     const approval = validApproval(otherAction); // signed for delete, presented for create
-    expect(() => assertRealExecutionAllowed(labSession(), liveAction(), approval)).toThrow(/signature/i);
+    await expect(assertRealExecutionAllowed(labSession(), liveAction(), approval))
+      .rejects.toThrow(/signature/i);
   });
 
   it.each([
@@ -85,7 +90,7 @@ describe('assertRealExecutionAllowed — live-execution gate failure branches', 
     ['formFields', {
       formFields: [{ type: 'text' as const, label: 'Policy name', value: 'tampered-value' }],
     }],
-  ])('binds approval to complete action field %s', (_field, override) => {
+  ])('binds approval to complete action field %s', async (_field, override) => {
     process.env.SANGFOR_ALLOW_REAL_EXECUTION = 'true';
     process.env.SANGFOR_OPERATOR_APPROVAL_SECRET = SECRET;
     const approvedAction = {
@@ -98,43 +103,47 @@ describe('assertRealExecutionAllowed — live-execution gate failure branches', 
     } satisfies ApprovalActionRef;
     const approval = validApproval(approvedAction);
 
-    expect(() => assertRealExecutionAllowed(
+    await expect(assertRealExecutionAllowed(
       labSession(),
       { ...approvedAction, ...override },
       approval,
-    )).toThrow(/signature/i);
+    ))
+      .rejects.toThrow(/signature/i);
   });
 
-  it('allows live execution with a correctly signed, unexpired approval', () => {
+  it('allows live execution with a correctly signed, unexpired approval', async () => {
     process.env.SANGFOR_ALLOW_REAL_EXECUTION = 'true';
     process.env.SANGFOR_OPERATOR_APPROVAL_SECRET = SECRET;
     const action = liveAction();
-    expect(() => assertRealExecutionAllowed(labSession(), action, validApproval(action))).not.toThrow();
+    await expect(assertRealExecutionAllowed(labSession(), action, validApproval(action)))
+      .resolves.toBeUndefined();
   });
 
-  it('does not consume a nonce when the signature gate fails first', () => {
+  it('does not consume a nonce when the signature gate fails first', async () => {
     process.env.SANGFOR_ALLOW_REAL_EXECUTION = 'true';
     process.env.SANGFOR_OPERATOR_APPROVAL_SECRET = SECRET;
     const action = liveAction();
     const valid = validApproval(action);
-    expect(() => assertRealExecutionAllowed(labSession(), action, { ...valid, approvalToken: '0'.repeat(64) }))
-      .toThrow(/signature/i);
-    expect(() => assertRealExecutionAllowed(labSession(), action, valid)).not.toThrow();
+    await expect(assertRealExecutionAllowed(labSession(), action, { ...valid, approvalToken: '0'.repeat(64) }))
+      .rejects.toThrow(/signature/i);
+    await expect(assertRealExecutionAllowed(labSession(), action, valid))
+      .resolves.toBeUndefined();
   });
 
-  it('requires the production gate for any non-loopback mutation target', () => {
+  it('requires the production gate for any non-loopback mutation target', async () => {
     process.env.SANGFOR_ALLOW_REAL_EXECUTION = 'true';
     process.env.SANGFOR_OPERATOR_APPROVAL_SECRET = SECRET;
     delete process.env.SANGFOR_ALLOW_PRODUCTION_EXECUTION;
     const action = liveAction();
 
-    expect(() => assertRealExecutionAllowed(
+    await expect(assertRealExecutionAllowed(
       {
         ...labSession('lab'),
         targetUrl: 'https://production-device.example/admin',
       },
       action,
       validApproval(action),
-    )).toThrow(/Production execution blocked/);
+    ))
+      .rejects.toThrow(/Production execution blocked/);
   });
 });

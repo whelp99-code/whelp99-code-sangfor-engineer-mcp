@@ -13,7 +13,7 @@ describe('FileNonceStore', () => {
   beforeEach(() => { dir = mkdtempSync(join(tmpdir(), 'nonce-')); });
   afterEach(() => { rmSync(dir, { recursive: true, force: true }); });
 
-  it('rejects the second consumption of the same nonce (replay)', () => {
+  it('rejects the second consumption of the same nonce (replay)', async () => {
     const store = new FileNonceStore(join(dir, 'nonces.json'));
     expect(store.consume('n1', future()).ok).toBe(true);
     const replay = store.consume('n1', future());
@@ -21,20 +21,20 @@ describe('FileNonceStore', () => {
     expect(replay.reason).toMatch(/already used/);
   });
 
-  it('allows distinct nonces', () => {
+  it('allows distinct nonces', async () => {
     const store = new FileNonceStore(join(dir, 'nonces.json'));
     expect(store.consume('n1', future()).ok).toBe(true);
     expect(store.consume('n2', future()).ok).toBe(true);
   });
 
-  it('garbage-collects expired records (an expired nonce may be re-consumed; expiry itself is rejected upstream)', () => {
+  it('garbage-collects expired records (an expired nonce may be re-consumed; expiry itself is rejected upstream)', async () => {
     const path = join(dir, 'nonces.json');
     writeFileSync(path, JSON.stringify({ consumed: [{ nonce: 'old', expiresAt: new Date(Date.now() - 1000).toISOString(), consumedAt: new Date().toISOString() }] }));
     const store = new FileNonceStore(path);
     expect(store.consume('old', future()).ok).toBe(true);
   });
 
-  it('fails closed when the store file is corrupt', () => {
+  it('fails closed when the store file is corrupt', async () => {
     const path = join(dir, 'nonces.json');
     writeFileSync(path, 'not-json');
     const result = new FileNonceStore(path).consume('n1', future());
@@ -42,7 +42,7 @@ describe('FileNonceStore', () => {
     expect(result.reason).toMatch(/fail-closed/);
   });
 
-  it('keeps operator error meaning while using the shared lock and 0600 store', () => {
+  it('keeps operator error meaning while using the shared lock and 0600 store', async () => {
     const path = join(dir, 'locked.json');
     const store = new FileNonceStore(path);
     expect(store.consume('n1', future()).ok).toBe(true);
@@ -70,12 +70,14 @@ describe('assertRealExecutionAllowed + nonce single-use', () => {
     rmSync(dir, { recursive: true, force: true });
   });
 
-  it('rejects a verified approval when its nonce was already consumed', () => {
+  it('rejects a verified approval when its nonce was already consumed', async () => {
     const session = startOperatorSession({ mode: 'lab', product: 'HCI', targetUrl: 'https://10.80.1.9' });
     const action = { type: 'click', target: '#save', dryRun: false } as const;
     const base = { approvedBy: 'tester', changeTicketId: 'CHG-1', rollbackPlanId: 'RB-1', nonce: 'once-only', expiresAt: future() };
     const approval = { ...base, approvalToken: signApprovalToken('test-secret', action, base) };
-    expect(() => assertRealExecutionAllowed(session, action, approval)).not.toThrow();
-    expect(() => assertRealExecutionAllowed(session, action, approval)).toThrow(/already used/);
+    await expect(assertRealExecutionAllowed(session, action, approval))
+      .resolves.toBeUndefined();
+    await expect(assertRealExecutionAllowed(session, action, approval))
+      .rejects.toThrow(/already used/);
   });
 });

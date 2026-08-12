@@ -65,7 +65,7 @@ import {
 import { TowerClient } from './tower-client.js';
 import { authorizeToolCall } from '../../http-bridge/src/tool-guard.js';
 import { verifyExecutionApproval } from '../../../packages/sangfor-operator/src/approval.js';
-import { consumeApprovalNonce } from '../../../packages/sangfor-operator/src/nonce-store.js';
+import { consumeApprovalNonceAsync } from '../../../packages/sangfor-operator/src/nonce-store.js';
 import {
   LearningStrategyService,
   assertSafeLearningInput,
@@ -226,17 +226,17 @@ function hciClientFor(args: Record<string, unknown> = {}) {
   return { client: new HciClient(new KeystoneV2TokenProvider(cfg), { tlsSkipVerify: cfg.tlsSkipVerify }), cfg };
 }
 
-function hciWriteGate(
+async function hciWriteGate(
   kind: 'hci.create-volume' | 'hci.delete-volume',
   target: string,
   host: string,
   approval: unknown,
   capabilityId: 'volume_create' | 'volume_delete',
-): { ok: boolean; error?: string } {
+): Promise<{ ok: boolean; error?: string }> {
   const verdict = verifyExecutionApproval({ action: { type: kind, target }, approval: approval as never, secret: process.env.SANGFOR_OPERATOR_APPROVAL_SECRET });
   if (!verdict.ok) return { ok: false, error: `approval rejected: ${verdict.reason}` };
   const a = approval as { nonce: string; expiresAt: string };
-  const consumed = consumeApprovalNonce({ nonce: a.nonce, expiresAt: a.expiresAt });
+  const consumed = await consumeApprovalNonceAsync({ nonce: a.nonce, expiresAt: a.expiresAt });
   if (!consumed.ok) return { ok: false, error: `approval rejected: ${consumed.reason}` };
   // Loopback (mock) rehearses the full gate but is exempt from real-exec + safety-class;
   // a non-loopback (real device) target additionally needs the real-exec flag AND an
@@ -407,14 +407,22 @@ function checkOperatorExecutionGate(opts: { timeoutMs?: number } = {}): SafetySe
       `import { assertRealExecutionAllowed } from ${JSON.stringify(operatorIndexPath)};`,
       `const session = { id: 'selftest-subprocess', product: 'HCI', mode: 'lab', status: 'running' };`,
       `const action = { type: 'click', target: 'selftest-probe', dryRun: false };`,
-      `try {`,
-      `  assertRealExecutionAllowed(session, action, undefined);`,
-      `  process.stdout.write('ALLOWED\\n');`,
-      `  process.exit(3);`,
-      `} catch (err) {`,
-      `  process.stdout.write('REFUSED: ' + (err instanceof Error ? err.message : String(err)) + '\\n');`,
-      `  process.exit(0);`,
+      // The gate is async. It MUST be awaited inside an async main(): calling it
+      // without awaiting resolves nothing, prints ALLOWED, and surfaces the real
+      // refusal later as an unhandled rejection — a check that reports fail-OPEN
+      // while the gate is in fact closed. tsx compiles this file to CJS, where
+      // top-level await is unavailable, so the await lives in a function.
+      `async function main() {`,
+      `  try {`,
+      `    await assertRealExecutionAllowed(session, action, undefined);`,
+      `    process.stdout.write('ALLOWED\\n');`,
+      `    process.exit(3);`,
+      `  } catch (err) {`,
+      `    process.stdout.write('REFUSED: ' + (err instanceof Error ? err.message : String(err)) + '\\n');`,
+      `    process.exit(0);`,
+      `  }`,
       `}`,
+      `main();`,
     ].join('\n');
     writeFileSync(scriptPath, script);
 
@@ -471,7 +479,7 @@ function checkOperatorExecutionGate(opts: { timeoutMs?: number } = {}): SafetySe
 // handler below) so tests can pass operatorGateTimeoutMs to exercise the
 // spawn-timeout fallback deterministically — the MCP tool's own inputSchema
 // takes no properties, so this override is not reachable over the wire.
-export function runSafetySelftest(opts: { operatorGateTimeoutMs?: number } = {}): { checks: SafetySelftestCheck[]; skippedCount: number; allPass: boolean } {
+export async function runSafetySelftest(opts: { operatorGateTimeoutMs?: number } = {}): Promise<{ checks: SafetySelftestCheck[]; skippedCount: number; allPass: boolean }> {
   const checks: SafetySelftestCheck[] = [];
 
   checks.push(checkOperatorExecutionGate({ timeoutMs: opts.operatorGateTimeoutMs }));
@@ -479,7 +487,7 @@ export function runSafetySelftest(opts: { operatorGateTimeoutMs?: number } = {})
   // (2) http-bridge's tool-guard must refuse a destructive tool call with no approval.
   try {
     const toolListResult = { tools: [{ name: 'sangfor_selftest_destructive_probe', annotations: { readOnlyHint: false, destructiveHint: true } }] };
-    const decision = authorizeToolCall({ name: 'sangfor_selftest_destructive_probe', toolListResult, enforceWhitelist: true });
+    const decision = await authorizeToolCall({ name: 'sangfor_selftest_destructive_probe', toolListResult, enforceWhitelist: true });
     const refused = decision.allow === false && decision.status === 403;
     checks.push({
       name: 'http-bridge.authorizeToolCall',
@@ -592,7 +600,7 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
     inputSchema: { type: 'object', properties: { name: { type: 'string' }, sizeGb: { type: 'number' }, description: { type: 'string' }, clientToken: { type: 'string' }, approval: { type: 'object' }, identityBaseUrl: { type: 'string' } }, required: ['name', 'sizeGb', 'clientToken', 'approval'] },
     handler: async (args: { name: string; sizeGb: number; description?: string; clientToken: string; approval: unknown; identityBaseUrl?: string }) => {
       const { client, cfg } = hciClientFor(args as Record<string, unknown>);
-      const gate = hciWriteGate('hci.create-volume', `${cfg.host}:${args.name}`, cfg.host, args.approval, 'volume_create');
+      const gate = await hciWriteGate('hci.create-volume', `${cfg.host}:${args.name}`, cfg.host, args.approval, 'volume_create');
       if (!gate.ok) return { ok: false, mutationPerformed: false, error: gate.error };
       const result = await applyCreateVolume(client, { name: args.name, sizeGb: args.sizeGb, description: args.description, clientToken: args.clientToken }, new AuditLedger());
       return { ...result, mutationPerformed: result.finalState === 'SUCCEEDED' || Boolean(result.volumeId), ledger: new AuditLedger().pathFor(result.runId) };
@@ -611,7 +619,7 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
     inputSchema: { type: 'object', properties: { volumeId: { type: 'string' }, approval: { type: 'object' }, identityBaseUrl: { type: 'string' } }, required: ['volumeId', 'approval'] },
     handler: async (args: { volumeId: string; approval: unknown; identityBaseUrl?: string }) => {
       const { client, cfg } = hciClientFor(args as Record<string, unknown>);
-      const gate = hciWriteGate('hci.delete-volume', `${cfg.host}:${args.volumeId}`, cfg.host, args.approval, 'volume_delete');
+      const gate = await hciWriteGate('hci.delete-volume', `${cfg.host}:${args.volumeId}`, cfg.host, args.approval, 'volume_delete');
       if (!gate.ok) return { ok: false, mutationPerformed: false, error: gate.error };
       const before = await getVolume(client, args.volumeId);
       if (!before) return { ok: false, mutationPerformed: false, error: `volume ${args.volumeId} not found` };

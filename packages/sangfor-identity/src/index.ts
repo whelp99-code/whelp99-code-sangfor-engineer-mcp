@@ -45,6 +45,16 @@ export type ScopeResolution =
   | { readonly ok: true; readonly value: BlroScope }
   | { readonly ok: false; readonly reasons: readonly string[] };
 
+/**
+ * Just the project half of the scope, for callers that isolate data but do not
+ * attribute it — the RLS row scope is `project_id` alone. Kept here so the D1
+ * precedence rule (explicit project id wins, engagement id is its seed) and the
+ * id validation have exactly one definition.
+ */
+export type ProjectIdResolution =
+  | { readonly ok: true; readonly projectId: string; readonly source: ProjectIdSource }
+  | { readonly ok: false; readonly reason: string };
+
 export interface ResolveScopeInput {
   readonly env: Readonly<Record<string, string | undefined>>;
 }
@@ -82,18 +92,38 @@ function validateId(
  * result: an API key or approval secret authenticates the actor elsewhere and
  * must not travel inside an attribution record.
  */
+/**
+ * Resolve only the project id. Fail-closed: an absent or malformed value
+ * REFUSES and never falls back to a shared scope.
+ */
+export function resolveProjectId(
+  env: Readonly<Record<string, string | undefined>>,
+): ProjectIdResolution {
+  // D1: an explicit project id wins; the legacy engagement id is its seed.
+  const explicitProject = env.SANGFOR_PROJECT_ID?.trim();
+  const legacyEngagement = env.SANGFOR_ENGAGEMENT_ID?.trim();
+  const source: ProjectIdSource = explicitProject ? 'project_id' : 'engagement_id';
+  const reasons: string[] = [];
+  const projectId = validateId(
+    explicitProject || legacyEngagement,
+    'PROJECT_ID_MISSING',
+    'PROJECT_ID_INVALID',
+    reasons,
+  );
+  if (!projectId) return { ok: false, reason: reasons[0] ?? 'PROJECT_ID_MISSING' };
+  return { ok: true, projectId, source };
+}
+
 export function resolveBlroScope(input: ResolveScopeInput): ScopeResolution {
   const env = input.env;
   const reasons: string[] = [];
 
   const tenantId = validateId(env.SANGFOR_TENANT_ID, 'TENANT_ID_MISSING', 'TENANT_ID_INVALID', reasons);
 
-  // D1: an explicit project id wins; the legacy engagement id is its seed.
-  const explicitProject = env.SANGFOR_PROJECT_ID?.trim();
-  const legacyEngagement = env.SANGFOR_ENGAGEMENT_ID?.trim();
-  const projectIdSource: ProjectIdSource = explicitProject ? 'project_id' : 'engagement_id';
-  const projectRaw = explicitProject || legacyEngagement;
-  const projectId = validateId(projectRaw, 'PROJECT_ID_MISSING', 'PROJECT_ID_INVALID', reasons);
+  const project = resolveProjectId(env);
+  if (!project.ok) reasons.push(project.reason);
+  const projectIdSource: ProjectIdSource = project.ok ? project.source : 'engagement_id';
+  const projectId = project.ok ? project.projectId : undefined;
 
   const actorId = validateId(env.SANGFOR_ACTOR_ID, 'ACTOR_ID_MISSING', 'ACTOR_ID_INVALID', reasons);
 

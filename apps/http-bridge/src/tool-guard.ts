@@ -1,5 +1,5 @@
 import { verifyExecutionApproval, type SignedApproval } from '../../../packages/sangfor-operator/src/approval.js';
-import { consumeApprovalNonce } from '../../../packages/sangfor-operator/src/nonce-store.js';
+import { consumeApprovalNonceAsync } from '../../../packages/sangfor-operator/src/nonce-store.js';
 
 type ToolListResult = {
   tools?: Array<{
@@ -53,8 +53,11 @@ export const BRIDGE_APPROVAL_ACTION_TYPE = 'bridge.tool-call';
  *    against the server-side secret permits write AND destructive tools for this one call.
  *  - the nonce is consumed LAST, immediately before allow — a refused call must not burn
  *    a single-use approval.
+ *
+ * Asynchronous because the selected single-use nonce store may be the database;
+ * every refusal above the consumption is still decided without awaiting it.
  */
-export function authorizeToolCall(params: {
+export async function authorizeToolCall(params: {
   name: string;
   toolListResult: unknown;
   enforceWhitelist: boolean;
@@ -62,7 +65,7 @@ export function authorizeToolCall(params: {
   allowRemoteWrite?: boolean;  // SANGFOR_ALLOW_REMOTE_WRITE === 'true'
   approval?: SignedApproval;   // signed, action-bound, single-use (control tower)
   approvalSecret?: string;     // SANGFOR_OPERATOR_APPROVAL_SECRET
-}): ToolAuthDecision {
+}): Promise<ToolAuthDecision> {
   const {
     name, toolListResult, enforceWhitelist,
     remoteBind = false, allowRemoteWrite = false,
@@ -85,7 +88,7 @@ export function authorizeToolCall(params: {
     if (isWrite && remoteBind && !allowRemoteWrite) {
       return { allow: false, status: 403, error: `Write tool refused on a remote (non-loopback) bind: ${name}. Set SANGFOR_ALLOW_REMOTE_WRITE=true only for an authorized deployment.` };
     }
-    const consumed = consumeApprovalNonce({ nonce: approval.nonce, expiresAt: approval.expiresAt });
+    const consumed = await consumeApprovalNonceAsync({ nonce: approval.nonce, expiresAt: approval.expiresAt });
     if (!consumed.ok) {
       return { allow: false, status: 403, error: `bridge approval rejected: ${consumed.reason}` };
     }

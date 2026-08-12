@@ -80,7 +80,7 @@ export async function executeLiveConsoleAction(
     if (!isAuthoritativePass(preflight)) {
       throw new Error(preflight.error?.message ?? `Live execution preflight failed: ${preflight.status}`);
     }
-    consumeRealExecutionApprovalNonce(approvalAction, input.approval);
+    await consumeRealExecutionApprovalNonce(approvalAction, input.approval);
   }
   const result = await input.executionPort.execute(actionRequest);
   const passed = isAuthoritativePass(result);

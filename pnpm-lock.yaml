@@ -212,6 +212,9 @@ importers:
       '@sangfor/browser-contracts':
         specifier: workspace:*
         version: link:../sangfor-browser-contracts
+      '@sangfor/identity':
+        specifier: workspace:*
+        version: link:../sangfor-identity
       '@sangfor/shared':
         specifier: workspace:*
         version: link:../shared

@@ -1,7 +1,7 @@
 import type { ConsoleAction } from '../../shared/src/index.js';
 import { isLoopbackBrowserTarget } from '../../sangfor-browser-contracts/src/index.js';
 import { verifyExecutionApproval } from './approval.js';
-import { consumeApprovalNonce } from './nonce-store.js';
+import { consumeApprovalNonceAsync } from './nonce-store.js';
 import type { ApprovalActionRef } from './approval.js';
 import type { LiveExecutionApproval, OperatorSession } from './types.js';
 
@@ -28,26 +28,29 @@ export function verifyRealExecutionAllowed(
   if (!verdict.ok) throw new Error(`Live execution approval rejected: ${verdict.reason}.`);
 }
 
-export function consumeRealExecutionApprovalNonce(
+// Asynchronous because the selected nonce store may be the database (see
+// nonce-store.ts). The consumption stays the LAST step of the gate so a call
+// refused for any other reason never burns a single-use approval.
+export async function consumeRealExecutionApprovalNonce(
   action: ApprovalActionRef,
   approval?: LiveExecutionApproval,
-): void {
+): Promise<void> {
   if (action.dryRun !== false) return;
   if (!approval) throw new Error('Live execution approval rejected: missing approval fields.');
-  const consumed = consumeApprovalNonce({
+  const consumed = await consumeApprovalNonceAsync({
     nonce: approval.nonce,
     expiresAt: approval.expiresAt,
   });
   if (!consumed.ok) throw new Error(`Live execution approval rejected: ${consumed.reason}.`);
 }
 
-export function assertRealExecutionAllowed(
+export async function assertRealExecutionAllowed(
   session: OperatorSession,
   action: ApprovalActionRef,
   approval?: LiveExecutionApproval,
-): void {
+): Promise<void> {
   verifyRealExecutionAllowed(session, action, approval);
-  consumeRealExecutionApprovalNonce(action, approval);
+  await consumeRealExecutionApprovalNonce(action, approval);
 }
 
 export function assertNavigationWithinTarget(
