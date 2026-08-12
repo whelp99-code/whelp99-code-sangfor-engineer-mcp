@@ -76,19 +76,47 @@ human action for a specific change window.
 pnpm run jm:endpoint:install
 ```
 
-This executes the safe steps in order and stops at the first failure with
+This executes the safe steps in order and **stops at the first failure**, printing
 `JM_ENDPOINT_INSTALL_FAILED: <step> exited <code>`. On success it prints
-`JM_ENDPOINT_INSTALL_COMPLETE`.
+`JM_ENDPOINT_INSTALL_COMPLETE` and exits 0. Observed tail of a successful run:
+
+```text
+=== run: preflight ===
+$ node scripts/jm-endpoint-preflight.mjs --json
+{
+  "ready": true,
+  …
+  "summary": "JM_ENDPOINT_PREFLIGHT_READY"
+}
+
+JM_ENDPOINT_INSTALL_COMPLETE
+```
 
 The mock-console smoke is intentionally **not** auto-started: it needs two terminals, so it stays
 operator-driven and is reported as step 5 instead.
 
-If Playwright cannot install a browser on this host, provide an approved executable and re-run:
+### If step 3 fails because Playwright does not support this OS
+
+This is the most common first-run failure. Observed on an `ubuntu26.04-x64` host:
+
+```text
+=== run: install_browser ===
+$ pnpm exec playwright install --with-deps chromium
+BEWARE: your OS is not officially supported by Playwright; installing dependencies for ubuntu26.04-x64 as a fallback.
+Cannot install dependencies for ubuntu26.04-x64 with Playwright 1.60.0!
+Error: ERROR: Playwright does not support chromium on ubuntu26.04-x64
+
+JM_ENDPOINT_INSTALL_FAILED: install_browser exited 1
+```
+
+The abort is deliberate: without a resolvable browser there is no execution edge, so the run stops
+instead of continuing to the readiness check. Supply an approved executable and re-run — step 3
+then reports `[SKIP]` and verifies your path instead of downloading one:
 
 ```bash
 export SANGFOR_CHROMIUM_PATH=/absolute/path/to/chrome
 test -x "$SANGFOR_CHROMIUM_PATH"
-pnpm run jm:endpoint:doctor
+pnpm run jm:endpoint:install
 ```
 
 The plan then reports step 3 as `[SKIP] Use the operator-provided browser executable` and verifies
