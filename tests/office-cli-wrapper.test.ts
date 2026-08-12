@@ -108,7 +108,16 @@ describe('@sangfor/office — officecli availability fallback', () => {
       // filesystem, so a nonexistent path is fine here — the fallback fires
       // without ever calling officecli.
       const result = await mod.validateOfficeDocument('/tmp/does-not-matter.docx');
-      expect(result).toEqual({ valid: null, errorCount: 0, errors: [], note: 'officecli unavailable' });
+      // Still exactly the degraded shape, now carrying the machine-readable code
+      // a caller branches on instead of parsing the prose note.
+      expect(result).toEqual({
+        valid: null,
+        errorCount: 0,
+        errors: [],
+        note: 'officecli unavailable',
+        code: 'OFFICECLI_UNAVAILABLE',
+      });
+      expect(mod.isDocumentSchemaValidated(result)).toBe(false);
     } finally {
       if (saved === undefined) delete process.env.SANGFOR_OFFICECLI_BIN;
       else process.env.SANGFOR_OFFICECLI_BIN = saved;

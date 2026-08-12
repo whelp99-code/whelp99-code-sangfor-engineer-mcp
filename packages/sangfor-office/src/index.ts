@@ -117,11 +117,41 @@ function extractOfficeCliError(parsed: unknown): string | undefined {
 
 // ─── validate ────────────────────────────────────────────────────────────────
 
+/**
+ * Why a validation result that did not run carries a CODE, not just a note:
+ * `valid: null` alone cannot tell "officecli is absent" apart from "a different
+ * binary named officecli is on PATH and cannot validate". That second case is
+ * real — the npm package `officecli` is an unrelated AI document-generation TUI
+ * whose `--version` probe succeeds, so availability looks true while every
+ * validation silently degrades. A caller that must refuse shipping an
+ * unvalidated customer document cannot branch on a prose sentence.
+ */
+export type OfficeValidationCode =
+  /** No usable officecli on this host. */
+  | 'OFFICECLI_UNAVAILABLE'
+  /** A binary answered --version but does not implement `validate --json`. */
+  | 'OFFICECLI_INCOMPATIBLE'
+  /** officecli ran but its output could not be parsed as the expected JSON. */
+  | 'OFFICECLI_VALIDATE_NON_JSON_OUTPUT';
+
 export interface ValidateOfficeDocumentResult {
   valid: boolean | null;
   errorCount: number;
   errors: string[];
   note?: string;
+  /** Present exactly when `valid` is null, i.e. nothing was actually validated. */
+  code?: OfficeValidationCode;
+}
+
+/**
+ * The single predicate a caller uses to decide whether a document's OpenXML
+ * schema was actually checked. `null` (degraded) and `false` (invalid) are both
+ * "not validated clean" — only an explicit `true` is.
+ */
+export function isDocumentSchemaValidated(
+  result: Pick<ValidateOfficeDocumentResult, 'valid'>,
+): boolean {
+  return result.valid === true;
 }
 
 /**
@@ -135,7 +165,13 @@ function parseValidateOutput(stdout: string): ValidateOfficeDocumentResult {
   try {
     parsed = JSON.parse(stdout);
   } catch {
-    return { valid: null, errorCount: 0, errors: [], note: 'OFFICECLI_VALIDATE_NON_JSON_OUTPUT' };
+    return {
+      valid: null,
+      errorCount: 0,
+      errors: [],
+      note: 'OFFICECLI_VALIDATE_NON_JSON_OUTPUT',
+      code: 'OFFICECLI_VALIDATE_NON_JSON_OUTPUT',
+    };
   }
   const p = parsed as Record<string, unknown>;
   if (p?.success === true) {
@@ -185,13 +221,35 @@ function parseValidateOutput(stdout: string): ValidateOfficeDocumentResult {
 export async function validateOfficeDocument(path: string): Promise<ValidateOfficeDocumentResult> {
   const availability = isOfficeCliAvailable();
   if (!availability.available) {
-    return { valid: null, errorCount: 0, errors: [], note: 'officecli unavailable' };
+    return {
+      valid: null,
+      errorCount: 0,
+      errors: [],
+      note: 'officecli unavailable',
+      code: 'OFFICECLI_UNAVAILABLE',
+    };
   }
   try {
     const { stdout } = await runOfficeCliRaw(['validate', path, '--json']);
-    return parseValidateOutput(stdout);
+    const parsed = parseValidateOutput(stdout);
+    // A binary that answered --version but cannot validate is INCOMPATIBLE, not
+    // missing: reporting both the same way hides a wrong tool on PATH.
+    if (parsed.valid === null && parsed.code === 'OFFICECLI_VALIDATE_NON_JSON_OUTPUT') {
+      return {
+        ...parsed,
+        note: `officecli incompatible: \`validate --json\` did not return JSON (version probe reported ${availability.version ?? 'unknown'})`,
+        code: 'OFFICECLI_INCOMPATIBLE',
+      };
+    }
+    return parsed;
   } catch (error) {
-    return { valid: null, errorCount: 0, errors: [], note: `officecli unavailable: ${errMsg(error)}` };
+    return {
+      valid: null,
+      errorCount: 0,
+      errors: [],
+      note: `officecli unavailable: ${errMsg(error)}`,
+      code: 'OFFICECLI_UNAVAILABLE',
+    };
   }
 }
 
