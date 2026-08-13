@@ -22,6 +22,19 @@ const opaqueEnvelopeValueSchema = z.string()
     'Opaque value must not contain path traversal segments.',
   );
 
+const capabilitySchema = z.string()
+  .trim()
+  .min(1)
+  .max(8192)
+  .regex(
+    /^[A-Za-z0-9][A-Za-z0-9._:@+=-]*$/u,
+    'Capability must be opaque transport data without paths or whitespace.',
+  )
+  .refine(
+    (value) => !value.includes('..'),
+    'Capability must not contain path traversal segments.',
+  );
+
 const timestampSchema = z.string().datetime({ offset: true });
 
 export const jobEnvelopeSchema = z.object({
@@ -33,7 +46,7 @@ export const jobEnvelopeSchema = z.object({
   stepId: opaqueEnvelopeValueSchema,
   issuedAt: timestampSchema,
   expiresAt: timestampSchema,
-  capability: opaqueEnvelopeValueSchema,
+  capability: capabilitySchema,
   request: browserExecutionRequestSchema,
 }).strict().superRefine((envelope, context) => {
   if (Date.parse(envelope.expiresAt) <= Date.parse(envelope.issuedAt)) {

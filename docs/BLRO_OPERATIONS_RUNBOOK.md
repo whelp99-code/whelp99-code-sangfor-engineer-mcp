@@ -3,10 +3,10 @@
 How to operate **BLRO**, the server-side authority for MCP, RAG, database, approvals, audit, and
 evidence.
 
-**Status:** first version. BLRO's remote transport, enrollment, and authoritative stores are
-sequenced in [the separation plan](design-docs/blro-separation-and-operations.md); this
-runbook covers what is operable today and states plainly what is not yet implemented. Nothing here
-describes a running production system unless it names the shipped command that produces it.
+**Status:** Phase 4 library transport is shipped and lab-verified. Enrollment lifecycle,
+Ed25519-signed single-use capabilities, exact certificate pinning, mutual TLS, idempotent job
+handling, and fail-closed disconnect semantics are available. Production CA, host, and secret
+manager wiring remain deployment-specific and are not implied by this document.
 
 Boundary reminder: JM is the client-side browser execution edge
 ([install guide](JM_ENDPOINT_INSTALL.md)). BLRO never holds browser profiles, customer cookies, or
@@ -101,18 +101,32 @@ never been restored is a hypothesis, not a backup.
 
 ## 6. Revoking a JM endpoint
 
-Until enrollment ships (Phase 4), revocation is operational:
+1. Call `EnrollmentRegistry.revoke(installationId, reason)` in the BLRO enrollment authority.
+2. Confirm `evaluateForJob(installationId)` returns `ENROLLMENT_REVOKED`.
+3. Confirm the JM certificate fingerprint is absent from the mTLS server's authorized-client set.
+4. Remove the endpoint's console credentials at the customer console.
+5. Have the operator run the teardown in the
+   [install guide](JM_ENDPOINT_INSTALL.md#8-teardown-after-the-window).
 
-1. Rotate `SANGFOR_OPERATOR_APPROVAL_SECRET` so the endpoint can no longer present valid approvals.
-2. Remove the endpoint's console credentials at the customer console.
-3. Have the operator run the teardown in the [install guide](JM_ENDPOINT_INSTALL.md#8-teardown-after-the-window)
-   and delete project profiles.
-4. Record the revocation in the audit ledger.
+Rotation uses `EnrollmentRegistry.rotate()`. The prior serial becomes `superseded` immediately.
+A revoked identity is refused before capability verification or browser execution.
 
-After Phase 4, revocation becomes a single identity revocation on BLRO, and a revoked identity is
-refused before any job is issued.
+## 7. Remote JM configuration
 
-## 7. Monitoring and alerting
+BLRO uses the normal in-process runtime unless `SANGFOR_REMOTE_BROWSER_URL` is set. Remote mode
+fails closed unless every setting below is present:
+
+- tenant/project, installation identity, and client identity;
+- BLRO Ed25519 capability signing private-key **file path**;
+- BLRO mTLS client certificate/key **file paths**;
+- trusted CA certificate path;
+- exact JM server-certificate SHA-256 fingerprint.
+
+The private signing key stays on BLRO. JM receives only the public verify key during enrollment.
+The transport performs one POST and never retries. A lost or malformed response after dispatch is
+`INDETERMINATE`, not `PASS`.
+
+## 8. Monitoring and alerting
 
 Alert on:
 
@@ -128,7 +142,7 @@ Alert on:
 `INDETERMINATE` is never auto-resolved and never retried automatically. It is escalated to a human
 who verifies the device state directly.
 
-## 8. Incident response
+## 9. Incident response
 
 1. **Contain.** Unset `SANGFOR_ALLOW_REAL_EXECUTION` and `SANGFOR_ALLOW_PRODUCTION_EXECUTION`
    across the fleet. The system returns to read-only; no further mutation can be dispatched.
@@ -141,7 +155,7 @@ who verifies the device state directly.
 6. **Report.** Name the blast radius, the unprovable set, and the follow-ups. Do not round an
    unknown to "fine".
 
-## 9. Capacity and scaling
+## 10. Capacity and scaling
 
 JM endpoints scale horizontally by adding endpoints; each holds its own browser and profiles and
 carries no shared state. BLRO scales its stateless request path first; the approval/nonce service
@@ -151,12 +165,12 @@ so it is never sharded for throughput.
 RAG retrieval scales by index, but scope filtering happens **before** ranking. Never move ACL
 filtering after ranking to save a query; that leaks scores and identifiers across projects.
 
-## 10. Not yet implemented
+## 11. Not yet implemented
 
 Stated plainly so nobody operates on an assumption:
 
-- remote JM↔BLRO protocol, enrollment, certificate rotation, signed job tickets;
 - multi-JM routing, queueing, retry semantics;
+- durable production enrollment and JM receipt-store adapters;
 - authoritative store migration and backfill;
 - production Postgres / object-store / vector-store topology;
 - active-active BLRO storage.

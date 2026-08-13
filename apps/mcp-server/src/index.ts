@@ -77,6 +77,7 @@ import {
   type ObserverTransport,
 } from '../../../packages/sangfor-observer/src/index.js';
 import { createDefaultJmBrowserRuntime } from './jm-browser-runtime.js';
+import { createRemoteBrowserExecutionPortFromEnv } from './remote-browser-runtime.js';
 import { captureKeyringFromEnv } from '../../../packages/sangfor-collector/src/capture-bundle.js';
 import {
   getAuditFramework,
@@ -2077,7 +2078,12 @@ export async function handle(req: JsonRpcRequest) {
 
 function startStdioServer() {
   if (!browserExecutionPort || !observerTransport) {
-    configureJmBrowserRuntime(createDefaultJmBrowserRuntime());
+    const localRuntime = createDefaultJmBrowserRuntime();
+    const remoteExecutionPort = createRemoteBrowserExecutionPortFromEnv();
+    configureJmBrowserRuntime({
+      ...localRuntime,
+      executionPort: remoteExecutionPort ?? localRuntime.executionPort,
+    });
   }
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout, terminal: false });
   let shutdown: Promise<void> | undefined;
