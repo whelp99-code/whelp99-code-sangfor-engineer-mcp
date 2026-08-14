@@ -112,4 +112,21 @@ describe('Included real integration surfaces', () => {
     expect(validateFineTuneDataset(dataset.path).ok).toBe(true);
     expect(createFineTuneJobSpec({ datasetPath: dataset.path, product: 'HCI', taskType: 'config_planning' }).status).toBe('ready_for_review');
   });
+
+  it('flags a sensitive topic in any form but does not flag an innocent substring', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'ft-sensitive-'));
+    const build = (expectedOutput: string) => createFineTuneDataset({
+      product: 'HCI',
+      taskType: 'config_planning',
+      outputPath: join(dir, `${Buffer.from(expectedOutput).toString('hex').slice(0, 16)}.jsonl`),
+      examples: [{ input: 'Summarize the change', expectedOutput }]
+    }).path;
+
+    // "footprint" contains "otp" — a boundary-less validator used to reject it and
+    // fail an otherwise clean corpus at the final gate.
+    expect(validateFineTuneDataset(build('Reduced data center footprint after consolidation.')).ok).toBe(true);
+    // Plurals must still fail closed.
+    expect(validateFineTuneDataset(build('Rotate the admin passwords on every node.')).ok).toBe(false);
+    expect(validateFineTuneDataset(build('Import the license keys before adding a node.')).ok).toBe(false);
+  });
 });

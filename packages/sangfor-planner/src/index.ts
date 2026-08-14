@@ -79,7 +79,8 @@ function buildKnowledgeQueries(product: ProductCode, projectType: ProjectType): 
     IAG: ['access policy design', 'authentication integration', 'internet access control logging', 'policy rollback'],
     ENDPOINT_SECURE: ['agent deployment pilot group', 'EDR policy baseline', 'exception policy', 'rollback uninstall package'],
     NDR: ['event source onboarding', 'SOAR playbook validation', 'alert incident validation', 'third party API integration'],
-    CYBER_COMMAND: ['event source onboarding', 'NTP validation', 'alert rule mapping', 'dashboard report validation']
+    CYBER_COMMAND: ['event source onboarding', 'NTP validation', 'alert rule mapping', 'dashboard report validation'],
+    OTHER: ['official product documentation', 'version compatibility', 'deployment prerequisites', 'support escalation']
   };
   return base[product].map(query => `${query} ${projectType}`);
 }

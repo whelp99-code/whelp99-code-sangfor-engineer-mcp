@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { ProductCode, normalizeProduct, nowId, resolveRepoData } from '@sangfor/shared';
+import { ProductCode, containsSensitiveLearningTopic, normalizeProduct, nowId, resolveRepoData } from '@sangfor/shared';
 
 export type FineTuneTaskType = 'config_planning' | 'risk_classification' | 'lesson_extraction' | 'wiki_update_writing';
 
@@ -15,7 +15,7 @@ export interface FineTuneExample {
 export interface FineTuneDatasetInput {
   product: string;
   taskType: FineTuneTaskType;
-  examples: Array<{ input: string; expectedOutput: string; source?: string }>;
+  examples: Array<{ product?: string; input: string; expectedOutput: string; source?: string }>;
   outputPath?: string;
 }
 
@@ -63,13 +63,20 @@ export function createFineTuneDataset(input: FineTuneDatasetInput): { path: stri
     ?? join(resolveRepoData('data/finetune', 'SANGFOR_FINETUNE_ROOT'), `${product.toLowerCase()}-${input.taskType}.jsonl`);
   ensureParent(outputPath);
   const examples = input.examples.map(example => buildFineTuneExample({
-    product,
+    product: example.product ?? product,
     taskType: input.taskType,
     userInput: example.input,
     expectedOutput: example.expectedOutput,
     source: example.source
   }));
-  writeFileSync(outputPath, examples.map(example => JSON.stringify({ messages: example.messages, metadata: { ...example.metadata, product, taskType: input.taskType } })).join('\n') + '\n');
+  writeFileSync(outputPath, examples.map(example => JSON.stringify({
+    messages: example.messages,
+    metadata: {
+      ...example.metadata,
+      product: example.product,
+      taskType: input.taskType
+    }
+  })).join('\n') + '\n');
   return { path: outputPath, count: examples.length, examples };
 }
 
@@ -81,8 +88,9 @@ export function validateFineTuneDataset(path: string): { ok: boolean; count: num
     try {
       const row = JSON.parse(line) as { messages?: unknown };
       if (!Array.isArray(row.messages) || row.messages.length < 3) errors.push(`line ${idx + 1}: messages must include system/user/assistant`);
-      const text = JSON.stringify(row).toLowerCase();
-      if (/(password|otp|mfa|license key|secret)/i.test(text)) errors.push(`line ${idx + 1}: possible sensitive information`);
+      if (containsSensitiveLearningTopic(JSON.stringify(row))) {
+        errors.push(`line ${idx + 1}: possible sensitive information`);
+      }
     } catch (error) {
       errors.push(`line ${idx + 1}: invalid JSONL`);
     }

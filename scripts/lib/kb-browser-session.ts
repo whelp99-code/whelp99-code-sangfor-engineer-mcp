@@ -174,6 +174,8 @@ export interface KbBrowserHandle {
   close: () => Promise<void>;
 }
 
+type KbBrowserLauncher = (tokens: KbBrowserTokens) => Promise<KbBrowserHandle>;
+
 const CHROME_PROFILE = process.env.CHROME_USER_DATA ?? (
   process.platform === 'darwin'
     ? `${process.env.HOME}/Library/Application Support/Google/Chrome`
@@ -181,6 +183,13 @@ const CHROME_PROFILE = process.env.CHROME_USER_DATA ?? (
 );
 
 const DEFAULT_CDP_URL = 'http://127.0.0.1:9222';
+
+export function resolveKbPersistentLaunchOptions(
+  env: NodeJS.ProcessEnv = process.env
+): { executablePath: string } | { channel: 'chrome' } {
+  const executablePath = env.SANGFOR_CHROMIUM_PATH?.trim();
+  return executablePath ? { executablePath } : { channel: 'chrome' };
+}
 
 export function kbStorageStatePath(): string {
   const repo = process.env.SANGFOR_REPO_DIR?.trim() || process.cwd();
@@ -212,7 +221,7 @@ export async function launchKbBrowser(tokens: KbBrowserTokens): Promise<KbBrowse
 
   if (useChromeProfile && existsSync(CHROME_PROFILE)) {
     const context = await chromium.launchPersistentContext(CHROME_PROFILE, {
-      channel: 'chrome',
+      ...resolveKbPersistentLaunchOptions(),
       headless: false,
       args: ['--profile-directory=Default'],
       ignoreHTTPSErrors: true
@@ -265,6 +274,19 @@ export async function launchKbBrowser(tokens: KbBrowserTokens): Promise<KbBrowse
       await browser.close();
     }
   };
+}
+
+export async function withKbBrowser<T>(
+  tokens: KbBrowserTokens,
+  operation: (handle: KbBrowserHandle) => Promise<T>,
+  launcher: KbBrowserLauncher = launchKbBrowser
+): Promise<T> {
+  const handle = await launcher(tokens);
+  try {
+    return await operation(handle);
+  } finally {
+    await handle.close();
+  }
 }
 
 export async function prepareKbPage(tokens: KbBrowserTokens, page: Page): Promise<boolean> {

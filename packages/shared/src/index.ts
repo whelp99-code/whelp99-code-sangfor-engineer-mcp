@@ -280,7 +280,14 @@ export function resolveEngagementScopedData(subdir: string, envVar?: string): st
   return engagementId ? join(base, engagementId) : base;
 }
 
-export type ProductCode = 'HCI_SCP' | 'HCI' | 'IAG' | 'ENDPOINT_SECURE' | 'NDR' | 'CYBER_COMMAND';
+export type ProductCode =
+  | 'HCI_SCP'
+  | 'HCI'
+  | 'IAG'
+  | 'ENDPOINT_SECURE'
+  | 'NDR'
+  | 'CYBER_COMMAND'
+  | 'OTHER';
 
 export const PRODUCT_PRIORITY: ProductCode[] = [
   'HCI_SCP',
@@ -288,7 +295,8 @@ export const PRODUCT_PRIORITY: ProductCode[] = [
   'ENDPOINT_SECURE',
   'NDR',
   'HCI',
-  'CYBER_COMMAND'
+  'CYBER_COMMAND',
+  'OTHER'
 ];
 
 export interface SangforProduct {
@@ -341,6 +349,13 @@ export const PRODUCTS: SangforProduct[] = [
     priority: 6,
     aliases: ['Cyber Command legacy', 'Sangfor Cyber Command legacy'],
     mvpScope: ['event collection planning', 'alert policy planning', 'dashboard/report validation', 'integration readiness']
+  },
+  {
+    code: 'OTHER',
+    name: 'Other Sangfor Product',
+    priority: 99,
+    aliases: ['OTHER'],
+    mvpScope: ['source-preserving knowledge retrieval']
   }
 ];
 
@@ -443,6 +458,23 @@ export function normalizeProduct(input?: string): ProductCode {
     })) return product.code;
   }
   return 'HCI';
+}
+
+/**
+ * Single source of truth for "this text touches a sensitive topic and must stay out
+ * of fine-tuning". The collector uses it to drop paragraphs/documents on the way in,
+ * and the fine-tune validator uses it as the fail-closed gate on the way out. Both
+ * sides MUST share this matcher: when they drifted apart the producer let plurals
+ * through ("passwords", "license keys") while the validator flagged innocent
+ * substrings ("footprint" contains "otp"), which failed a completed corpus at the
+ * last step. Word boundaries keep the substring accidents out; the plural forms are
+ * spelled explicitly so morphology cannot slip past the producer.
+ */
+const SENSITIVE_LEARNING_TOPIC =
+  /\b(?:passwords?|otps?|mfa|license keys?|secrets?|privacy polic(?:y|ies)|personal information)\b/i;
+
+export function containsSensitiveLearningTopic(text: string): boolean {
+  return SENSITIVE_LEARNING_TOPIC.test(text);
 }
 
 export function nowId(prefix: string): string {

@@ -40,6 +40,7 @@
     "ingest:product-tables": "tsx scripts/ingest-product-tables.ts",
     "ingest:attachments": "tsx scripts/ingest-attachment-folder.ts",
     "learn:kb:full": "tsx scripts/learn-kb-full-site.ts",
+    "learn:sites:full": "tsx scripts/learn-support-community-sites.ts",
     "check:glass-cdp": "tsx scripts/check-glass-cdp.ts",
     "check:embedding-providers": "tsx scripts/check-embedding-providers.ts",
     "rag:reembed": "tsx scripts/rag-reembed.ts",

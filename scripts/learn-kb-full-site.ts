@@ -24,6 +24,7 @@ import {
   prepareKbPage,
   readSafariLibraryTree,
   resolveKbBrowserTokens,
+  withKbBrowser,
   type KbBrowserTokens
 } from './lib/kb-browser-session.js';
 import {
@@ -352,33 +353,66 @@ async function main() {
   const seeds = loadProductTableSeeds(seedPaths);
   console.error(`Seed URLs from product tables: ${seeds.length}`);
 
-  let entries: KbPageEntry[] = [];
+  const { entries, saved } = await withKbBrowser(tokens, async ({ page }) => {
+    let sessionEntries: KbPageEntry[] = [];
 
-  if (skipDiscover && existsSync(mapPath)) {
-    entries = JSON.parse(readFileSync(mapPath, 'utf8')) as KbPageEntry[];
-  } else {
-    const { browser, page, close } = await launchKbBrowser(tokens);
-    const ready = await prepareKbPage(tokens, page);
-    if (!ready) {
-      console.error(
-        'KB session not ready in Playwright (still on Login). Try: SANGFOR_KB_HEADED=1 pnpm run learn:kb:full, or log in via Glass and set SANGFOR_CDP_URL.'
-      );
-      if (seeds.length) {
-        console.error(`Falling back to ${seeds.length} seeded URLs only.`);
-        entries = dedupeEntries(seeds);
-      } else {
-        await close();
-        process.exit(2);
-      }
+    if (skipDiscover && existsSync(mapPath)) {
+      sessionEntries = JSON.parse(readFileSync(mapPath, 'utf8')) as KbPageEntry[];
     } else {
-      entries = await discoverSiteMap(page, seeds);
-      await close();
+      const ready = await prepareKbPage(tokens, page);
+      if (!ready) {
+        console.error(
+          'KB session not ready in Playwright (still on Login). Try: SANGFOR_KB_HEADED=1 pnpm run learn:kb:full, or log in via Glass and set SANGFOR_CDP_URL.'
+        );
+        if (seeds.length) {
+          console.error(`Falling back to ${seeds.length} seeded URLs only.`);
+          sessionEntries = dedupeEntries(seeds);
+        } else {
+          throw new Error('KB session is not ready and no seeded URLs are available.');
+        }
+      } else {
+        sessionEntries = await discoverSiteMap(page, seeds);
+      }
+
+      if (sessionEntries.length === 0 && seeds.length) {
+        sessionEntries = dedupeEntries(seeds);
+      }
+
+      writeFileSync(mapPath, JSON.stringify(sessionEntries, null, 2), 'utf8');
+      if (sessionEntries.length > 0) {
+        writeProductTablesMd(sessionEntries, tablesPath);
+        writeFileSync(
+          join(dataDir, 'product-tables-urls.json'),
+          JSON.stringify(sessionEntries.map(e => ({ href: e.url, text: e.title, product: e.product })), null, 2),
+          'utf8'
+        );
+      }
     }
 
-    if (entries.length === 0 && seeds.length) {
-      entries = dedupeEntries(seeds);
+    console.error(`Site map: ${sessionEntries.length} unique articles`);
+
+    if (discoverOnly) {
+      return { entries: sessionEntries, saved: 0 };
     }
 
+    if (sessionEntries.length === 0) {
+      throw new Error('No articles to crawl.');
+    }
+
+    const crawled = await crawlPageBodies(page, sessionEntries, rawDir, maxPages);
+    return { entries: sessionEntries, saved: crawled };
+  });
+
+  if (discoverOnly) {
+    console.log(JSON.stringify({
+      siteMapArticles: entries.length,
+      siteMapFile: mapPath,
+      tablesFile: tablesPath
+    }, null, 2));
+    return;
+  }
+
+  if (entries.length > 0 && !existsSync(mapPath)) {
     writeFileSync(mapPath, JSON.stringify(entries, null, 2), 'utf8');
     if (entries.length > 0) {
       writeProductTablesMd(entries, tablesPath);
@@ -389,23 +423,6 @@ async function main() {
       );
     }
   }
-
-  console.error(`Site map: ${entries.length} unique articles`);
-
-  if (discoverOnly) {
-    console.log(JSON.stringify({ siteMapArticles: entries.length, siteMapFile: mapPath, tablesFile: tablesPath }, null, 2));
-    return;
-  }
-
-  if (entries.length === 0) {
-    console.error('No articles to crawl.');
-    process.exit(1);
-  }
-
-  const { page: crawlPage, close: closeCrawl } = await launchKbBrowser(tokens);
-  await prepareKbPage(tokens, crawlPage);
-  const saved = await crawlPageBodies(crawlPage, entries, rawDir, maxPages);
-  await closeCrawl();
 
   let chunks = 0;
   const indexPath = 'data/rag/index.json';

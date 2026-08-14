@@ -16,6 +16,16 @@ function defaultChromeLevelDbDir(): string {
   return join(home, '.config/google-chrome/Default/Local Storage/leveldb');
 }
 
+export function extractTokenByKey(
+  text: string,
+  key: 'access_pp_token' | 'library_token',
+): string | undefined {
+  const keyIndex = text.lastIndexOf(key);
+  if (keyIndex < 0) return undefined;
+  const tail = text.slice(keyIndex + key.length, keyIndex + key.length + 16_384);
+  return tail.match(/[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{16,}/)?.[0];
+}
+
 /** Scan .log/.ldb files (newest first) when CHROME_LEVELDB_LOG is unset or points at a directory. */
 function resolveLevelDbScanPaths(): string[] {
   const explicit = process.env.CHROME_LEVELDB_LOG?.trim();
@@ -35,10 +45,15 @@ function resolveLevelDbScanPaths(): string[] {
 }
 
 function extractTokensFromLog(path: string): Record<string, string> {
+  const binary = readFileSync(path).toString('latin1');
   const raw = execSync(`strings ${JSON.stringify(path)}`, { encoding: 'utf8', maxBuffer: 10_000_000 });
   const lines = raw.split('\n').map(l => l.trim()).filter(Boolean);
   const found: Record<string, string> = {};
   const jwtRe = /^eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
+  const accessToken = extractTokenByKey(binary, 'access_pp_token');
+  const libraryToken = extractTokenByKey(binary, 'library_token');
+  if (accessToken) found.access_pp_token = accessToken;
+  if (libraryToken) found.library_token = libraryToken;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
@@ -122,7 +137,9 @@ async function main() {
   }, null, 2));
 }
 
-main().catch(err => {
-  console.error(err);
-  process.exit(1);
-});
+if (process.env.NODE_ENV !== 'test') {
+  main().catch(err => {
+    console.error(err);
+    process.exit(1);
+  });
+}

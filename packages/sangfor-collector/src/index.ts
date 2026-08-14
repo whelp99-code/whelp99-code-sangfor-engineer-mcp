@@ -4,7 +4,12 @@ import { join } from 'node:path';
 import type { ProductCode } from '@sangfor/shared';
 import { normalizeProduct } from '@sangfor/shared';
 
-export type SourceKind = 'knowledge' | 'community' | 'knowledge_catalog';
+export type SourceKind =
+  | 'knowledge'
+  | 'community'
+  | 'knowledge_catalog'
+  | 'support_site'
+  | 'community_site';
 
 export interface CollectedDocument {
   id: string;
@@ -331,6 +336,8 @@ export {
 
 export { loadEnvFile, parseCollectionLimit } from './load-env.js';
 export { listDemoDocTargets, DEMO_DOCS_DIR, DEMO_DOC_PRODUCTS } from './demo-docs.js';
+export * from './learning-sites.js';
+export * from './site-learning-crawler.js';
 
 // PR-004: T-H2 통합 encrypted bundle
 export * from './capture-bundle.js';
