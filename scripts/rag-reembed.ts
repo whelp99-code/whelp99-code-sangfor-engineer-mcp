@@ -8,15 +8,16 @@ import {
   chunkText,
   extractTextFromFile,
   loadRagIndex,
+  ragChunkContentHash,
   saveRagIndex,
   type RagDocumentChunk
 } from '../packages/sangfor-rag/src/index.js';
 import {
   getEmbeddingProvider,
   resetEmbeddingProviderCache,
-  resolveEmbeddingModelFromEnv
+  resolveEmbeddingModelFromEnv,
+  wasEmbeddingFallback
 } from '../packages/sangfor-rag/src/embedding-provider.js';
-import { createHash } from 'node:crypto';
 import { normalizeProduct } from '../packages/shared/src/index.js';
 
 loadEnvFile('.env');
@@ -26,6 +27,9 @@ async function main() {
   const indexPath = process.argv[2] ?? 'data/rag/index.json';
   const rawDir = process.argv[3] ?? 'data/sources/raw';
   const provider = await getEmbeddingProvider();
+  if ((provider.name === 'hash' || wasEmbeddingFallback()) && process.env.SANGFOR_ALLOW_HASH_REEMBED !== '1') {
+    throw new Error('Refusing to re-embed with hash fallback. Restore the semantic embedding provider or set SANGFOR_ALLOW_HASH_REEMBED=1 for an explicit hash-only rebuild.');
+  }
   console.error(`Re-embed with ${provider.name} (dims probe...)`);
 
   const index = loadRagIndex(indexPath);
@@ -41,11 +45,13 @@ async function main() {
     const raw = readFileSync(filePath, 'utf8');
     const product = (raw.match(/^product:\s*(\w+)/m)?.[1] ?? 'HCI');
     const title = raw.match(/^#\s+(.+)/m)?.[1] ?? file;
-    const body = raw.replace(/^---[\s\S]*?---\n/, '').trim();
-    const parts = chunkText(body);
+    // Chunk exactly as ingestion did — from the whole file, front matter included.
+    // Stripping it here re-cut every chunk, so no contentHash matched an indexed row
+    // and a "re-embed" appended a second copy of the corpus next to the stale one.
+    const parts = chunkText(await extractTextFromFile(filePath));
     const vectors = await provider.embed(parts);
     parts.forEach((text, i) => {
-      const contentHash = createHash('sha256').update(`${filePath}:${i}:${text}`).digest('hex');
+      const contentHash = ragChunkContentHash(filePath, i, text);
       const vector = vectors[i];
       if (!vector) return;
       const existing = byHash.get(contentHash);
@@ -79,6 +85,9 @@ async function main() {
     index.chunks.forEach((c, i) => {
       c.vector = vectors[i] ?? c.vector;
       c.embeddingBackend = provider.name;
+      // Provenance must move with the vector: leaving the previous model name on a
+      // freshly embedded row makes the index claim vectors it no longer holds.
+      c.embeddingModel = resolveEmbeddingModelFromEnv();
       c.vectorDims = c.vector.length;
     });
     updated = index.chunks.length;

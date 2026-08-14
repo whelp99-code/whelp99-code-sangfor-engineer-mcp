@@ -121,6 +121,12 @@ export interface RagSearchHit extends RagDocumentChunk {
 export interface RagSearchDiagnostics {
   degraded: boolean;
   degradedReason?: string;
+  queryBackend?: EmbeddingBackend;
+  queryVectorDims?: number;
+  indexVectorDims?: Record<string, number>;
+  embeddingModelCounts?: Record<string, number>;
+  vectorDimensionMismatches?: number;
+  mixedEmbeddingModels?: boolean;
 }
 
 let lastRagSearchDiagnostics: RagSearchDiagnostics = { degraded: false };
@@ -130,16 +136,50 @@ export function getRagSearchDiagnostics(): RagSearchDiagnostics {
   return lastRagSearchDiagnostics;
 }
 
-function computeRagSearchDiagnostics(index: RagIndex, queryWasHashFallback: boolean): RagSearchDiagnostics {
+function countBy<T extends string | number>(items: readonly T[]): Record<string, number> {
+  return items.reduce<Record<string, number>>((acc, item) => {
+    const key = String(item);
+    acc[key] = (acc[key] ?? 0) + 1;
+    return acc;
+  }, {});
+}
+
+function computeRagSearchDiagnostics(
+  index: RagIndex,
+  queryWasHashFallback: boolean,
+  queryBackend?: EmbeddingBackend,
+  queryVectorDims?: number,
+): RagSearchDiagnostics {
   const reasons: string[] = [];
   const semanticChunks = index.chunks.filter((c) => (c.embeddingBackend ?? 'hash') !== 'hash').length;
+  const indexVectorDims = countBy(index.chunks.map((chunk) => chunk.vectorDims ?? chunk.vector.length));
+  const embeddingModelCounts = countBy(index.chunks.map((chunk) => chunk.embeddingModel ?? `${chunk.embeddingBackend ?? 'hash'}:unknown`));
+  const vectorDimensionMismatches = typeof queryVectorDims === 'number'
+    ? index.chunks.filter((chunk) => chunk.vector.length !== queryVectorDims).length
+    : 0;
+  const mixedEmbeddingModels = Object.keys(embeddingModelCounts).length > 1;
   if (index.chunks.length > 0 && semanticChunks === 0) {
     reasons.push('RAG index is hash-only (no semantic embeddings ingested) — ranking is lexical/hashed, not semantic');
   }
   if (queryWasHashFallback) {
     reasons.push('query embedding fell back to the hash backend (configured semantic provider unavailable)');
   }
-  return reasons.length > 0 ? { degraded: true, degradedReason: reasons.join('; ') } : { degraded: false };
+  if (vectorDimensionMismatches > 0) {
+    reasons.push(`${vectorDimensionMismatches} indexed chunks have vector dimensions that do not match the query vector`);
+  }
+  if (mixedEmbeddingModels) {
+    reasons.push('RAG index contains mixed embedding model cohorts; semantic scores may be incomparable');
+  }
+  const base = {
+    degraded: reasons.length > 0,
+    queryBackend,
+    queryVectorDims,
+    indexVectorDims,
+    embeddingModelCounts,
+    vectorDimensionMismatches,
+    mixedEmbeddingModels
+  };
+  return reasons.length > 0 ? { ...base, degradedReason: reasons.join('; ') } : base;
 }
 
 /**
@@ -349,6 +389,15 @@ export function chunkText(text: string, options: { maxChars?: number; overlapCha
   return chunks.filter(Boolean);
 }
 
+/**
+ * Identity of an indexed chunk. Ingestion and re-embedding MUST derive it the same
+ * way from the same chunk text, or re-embedding stops recognising the rows it is
+ * meant to refresh and appends duplicates alongside the stale ones instead.
+ */
+export function ragChunkContentHash(filePath: string, chunkIndex: number, text: string): string {
+  return createHash('sha256').update(`${filePath}:${chunkIndex}:${text}`).digest('hex');
+}
+
 function vectorForSearch(chunk: RagDocumentChunk, queryVector: number[]): number {
   if (chunk.vector.length === queryVector.length) return cosineSimilarity(queryVector, chunk.vector);
   return cosineSimilarity(queryVector, hashEmbedding(chunk.text, queryVector.length));
@@ -424,7 +473,7 @@ export async function ingestDocument(input: IngestDocumentInput): Promise<{ docu
   const provider = await getEmbeddingProvider();
   const vectors = await provider.embed(textChunks);
   const chunks = textChunks.map((chunkTextValue, index): RagDocumentChunk => {
-    const contentHash = createHash('sha256').update(`${input.filePath}:${index}:${chunkTextValue}`).digest('hex');
+    const contentHash = ragChunkContentHash(input.filePath, index, chunkTextValue);
     const vector = vectors[index] ?? hashEmbedding(chunkTextValue);
     return {
       id: `${documentId}_chunk_${index + 1}`,
@@ -470,6 +519,71 @@ export async function ingestDocument(input: IngestDocumentInput): Promise<{ docu
   return { documentId, chunkCount: newChunks.length, indexPath, chunks: newChunks, embeddingBackend: provider.name };
 }
 
+export async function ingestDocumentsBatch(inputs: IngestDocumentInput[]): Promise<{
+  documentCount: number;
+  chunkCount: number;
+  indexPath: string;
+  embeddingBackend: EmbeddingBackend;
+}> {
+  if (inputs.length === 0) {
+    return {
+      documentCount: 0,
+      chunkCount: 0,
+      indexPath: DEFAULT_INDEX_PATH,
+      embeddingBackend: 'hash'
+    };
+  }
+  const indexPath = inputs[0].indexPath ?? DEFAULT_INDEX_PATH;
+  if (inputs.some((input) => (input.indexPath ?? DEFAULT_INDEX_PATH) !== indexPath)) {
+    throw new Error('BATCH_RAG_INDEX_PATH_MISMATCH');
+  }
+  assertLocalRagAuthorityAllowed(indexPath);
+  const provider = await getEmbeddingProvider();
+  const chunks: RagDocumentChunk[] = [];
+  for (const input of inputs) {
+    const text = await extractTextFromFile(input.filePath);
+    const title = input.title ?? basename(input.filePath);
+    const sourceType = input.sourceType ?? 'manual';
+    const trustLevel = input.trustLevel ?? (sourceType === 'manual' ? 'official' : 'internal');
+    const product = normalizeProduct(input.product);
+    const textChunks = chunkText(text);
+    const vectors = await provider.embed(textChunks);
+    const documentId = nowId('doc');
+    chunks.push(...textChunks.map((chunkTextValue, index): RagDocumentChunk => ({
+      id: `${documentId}_chunk_${index + 1}`,
+      sourceType,
+      product,
+      version: input.version,
+      title,
+      section: `chunk-${index + 1}`,
+      text: chunkTextValue,
+      trustLevel,
+      vector: vectors[index] ?? hashEmbedding(chunkTextValue),
+      contentHash: ragChunkContentHash(input.filePath, index, chunkTextValue),
+      filePath: input.filePath,
+      embeddingBackend: provider.name,
+      embeddingModel: actualEmbeddingModelName(provider),
+      vectorDims: (vectors[index] ?? hashEmbedding(chunkTextValue)).length
+    })));
+  }
+  const { chunkCount } = withDirLock(ragIndexLockPath(indexPath), () => {
+    const index = loadRagIndex(indexPath);
+    const existingHashes = new Set(index.chunks.map((chunk) => chunk.contentHash));
+    const newChunks = chunks.filter((chunk) => !existingHashes.has(chunk.contentHash));
+    if (newChunks.length === 0) return { chunkCount: 0 };
+    if (newChunks.some((chunk) => chunk.embeddingBackend !== 'hash')) index.version = 2;
+    index.chunks.push(...newChunks);
+    saveRagIndexUnlocked(index, indexPath);
+    return { chunkCount: newChunks.length };
+  });
+  return {
+    documentCount: inputs.length,
+    chunkCount,
+    indexPath,
+    embeddingBackend: provider.name
+  };
+}
+
 export async function ragSearch(input: RagSearchInput): Promise<RagSearchHit[]> {
   const index = loadRagIndex(input.indexPath);
   const product = input.product ? normalizeProduct(input.product) : undefined;
@@ -484,7 +598,7 @@ export async function ragSearch(input: RagSearchInput): Promise<RagSearchHit[]> 
     .filter(chunk => !input.version || !chunk.version || chunk.version === input.version)
     .filter(chunk => allowCustomer || chunk.trustLevel !== 'customer');
 
-  lastRagSearchDiagnostics = computeRagSearchDiagnostics(index, wasEmbeddingFallback());
+  lastRagSearchDiagnostics = computeRagSearchDiagnostics(index, wasEmbeddingFallback(), provider.name, queryVector.length);
 
   let pool = rankHybrid(filtered, queryVector, input.query)
     .sort((a, b) => b.score - a.score)
