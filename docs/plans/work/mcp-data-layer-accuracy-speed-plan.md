@@ -87,6 +87,17 @@ This slice is safe and non-destructive:
   overridden.
 - Add retrieval metric helpers and tests to support future benchmark CLI work.
 
+## Operational commands
+
+- `pnpm run rag:profile` prints the active embedding backend, requested model,
+  served model, dimensions, fallback state, health detail, and role-prefix
+  profile. Use it before any A/B run or re-embed.
+- `pnpm run rag:eval -- <eval-input.json>` scores stable qrels/run artifacts
+  without using chunk IDs as labels.
+- `pnpm run rag:export-shards -- <index.json> <output-dir>` writes a
+  non-destructive product-sharded JSONL copy plus manifest. It does **not**
+  switch production readers; cutover remains a separate evaluated step.
+
 ## Non-goals for this slice
 
 - No destructive index migration.
