@@ -13,6 +13,7 @@ import {
   type RagDocumentChunk
 } from '../packages/sangfor-rag/src/index.js';
 import {
+  embedForRole,
   getEmbeddingProvider,
   resetEmbeddingProviderCache,
   resolveEmbeddingModelFromEnv,
@@ -49,7 +50,7 @@ async function main() {
     // Stripping it here re-cut every chunk, so no contentHash matched an indexed row
     // and a "re-embed" appended a second copy of the corpus next to the stale one.
     const parts = chunkText(await extractTextFromFile(filePath));
-    const vectors = await provider.embed(parts);
+    const vectors = await embedForRole(provider, parts, 'document');
     parts.forEach((text, i) => {
       const contentHash = ragChunkContentHash(filePath, i, text);
       const vector = vectors[i];
@@ -81,7 +82,7 @@ async function main() {
 
   if (!files.length) {
     const texts = index.chunks.map(c => c.text);
-    const vectors = await provider.embed(texts);
+    const vectors = await embedForRole(provider, texts, 'document');
     index.chunks.forEach((c, i) => {
       c.vector = vectors[i] ?? c.vector;
       c.embeddingBackend = provider.name;

@@ -6,7 +6,7 @@ import { spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { analyzeProject, generateConfigPlan, generateConfigPlanAsync, validateConfigPlan } from '../../../packages/sangfor-planner/src/index.js';
 import { searchManuals, getManualSection } from '../../../packages/sangfor-knowledge/src/index.js';
-import { searchWiki, proposeWikiUpdate, approveWikiUpdate, applyWikiUpdate, applyObsidianWikiUpdate, applyGitHubWikiUpdate } from '../../../packages/sangfor-wiki/src/index.js';
+import { searchWiki, proposeWikiUpdate, approveWikiUpdate, applyWikiUpdate, applyObsidianWikiUpdate, applyGitHubWikiUpdate, listKnowledgeCards, upsertKnowledgeCard } from '../../../packages/sangfor-wiki/src/index.js';
 import { requiresApprovalForText, canonicalizeApprovalPayload, verifyDomainApprovalSignature, FileSingleUseNonceStore } from '../../../packages/sangfor-approval/src/index.js';
 import { startOperatorSession, readConsoleState, executeConsoleAction, readLiveConsoleState, executeLiveConsoleAction, closeOperatorSession } from '../../../packages/sangfor-operator/src/index.js';
 import type { BrowserExecutionPort } from '../../../packages/sangfor-browser-contracts/src/index.js';
@@ -878,6 +878,16 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
       const hits = searchWiki(args);
       return args.privacy_mode === 'summary' ? summarizeSearchHits(hits) : hits;
     }
+  },
+  'sangfor_list_knowledge_cards': {
+    description: 'List source-cited structured knowledge cards used by the internal wiki/card retrieval layer.',
+    inputSchema: { type: 'object', properties: {} },
+    handler: () => listKnowledgeCards()
+  },
+  'sangfor_upsert_knowledge_card': {
+    description: 'Create or update a source-cited structured knowledge card. Requires at least one citation; does not write to devices.',
+    inputSchema: { type: 'object', properties: { card: { type: 'object' } }, required: ['card'] },
+    handler: ({ card }: { card: Parameters<typeof upsertKnowledgeCard>[0] }) => upsertKnowledgeCard(card)
   },
 
   'sangfor_ingest_document': {
@@ -1781,7 +1791,7 @@ const DESTRUCTIVE_TOOLS = new Set([
 const WRITE_TOOLS = new Set([
   'sangfor_pm_create_engagement', 'sangfor_pm_add_work_item', 'sangfor_pm_acquire_device', 'sangfor_pm_release_device',
   'sangfor_create_eval_case_from_feedback', 'sangfor_create_finetune_dataset', 'sangfor_create_finetune_job_spec',
-  'sangfor_propose_wiki_update', 'sangfor_approve_wiki_update',
+  'sangfor_propose_wiki_update', 'sangfor_approve_wiki_update', 'sangfor_upsert_knowledge_card',
   'sangfor_ingest_document', 'sangfor_learn_sources', 'sangfor_import_excel_requirement_list',
   'sangfor_submit_feedback', 'sangfor_extract_lesson', 'sangfor_request_approval', 'sangfor_run_planner_eval',
   'sangfor_capture_screenshots', 'sangfor_console_capture_evidence', 'sangfor_start_operator_session', 'sangfor_kill_session',

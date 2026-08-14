@@ -5,7 +5,7 @@ import { basename, extname } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { KnowledgeChunk, ProductCode, normalizeProduct, nowId, resolveRepoData, withDirLock, writeFileAtomicSync } from '@sangfor/shared';
 import type { AuthorizationResult } from '@sangfor/identity';
-import { getEmbeddingProvider, resolveEmbeddingModelFromEnv, wasEmbeddingFallback } from './embedding-provider.js';
+import { embedForRole, getEmbeddingProvider, resolveEmbeddingModelFromEnv, wasEmbeddingFallback } from './embedding-provider.js';
 import { isMimoViaLitellm } from './litellm-config.js';
 import type { EmbeddingBackend, EmbeddingProvider } from './embedding-provider-types.js';
 import { createMimoRerankFromEnv } from './mimo-rerank-provider.js';
@@ -16,6 +16,17 @@ export { hashEmbedding, cosineSimilarity } from './hash-embedding.js';
 export { getEmbeddingProvider, resetEmbeddingProviderCache, wasEmbeddingFallback } from './embedding-provider.js';
 export type { EmbeddingBackend, EmbeddingProvider, RerankProvider } from './embedding-provider-types.js';
 export { computeBm25Scores, tokenize } from './bm25.js';
+export { extractDocumentBlocks, type DocumentBlock, type DocumentBlockType } from './document-ir.js';
+export {
+  JsonRagIndexStore,
+  listShardedJsonlProducts,
+  loadShardedJsonlIndex,
+  recommendStorageMigration,
+  saveShardedJsonlIndex,
+  type RagIndexStore,
+  type ShardedJsonlManifest,
+  type StorageMigrationPlan
+} from './storage.js';
 
 const require = createRequire(import.meta.url);
 const DEFAULT_INDEX_PATH = resolveRepoData('data/rag/index.json', 'SANGFOR_RAG_INDEX_PATH');
@@ -471,7 +482,7 @@ export async function ingestDocument(input: IngestDocumentInput): Promise<{ docu
   const documentId = nowId('doc');
   const textChunks = chunkText(text);
   const provider = await getEmbeddingProvider();
-  const vectors = await provider.embed(textChunks);
+  const vectors = await embedForRole(provider, textChunks, 'document');
   const chunks = textChunks.map((chunkTextValue, index): RagDocumentChunk => {
     const contentHash = ragChunkContentHash(input.filePath, index, chunkTextValue);
     const vector = vectors[index] ?? hashEmbedding(chunkTextValue);
@@ -588,7 +599,7 @@ export async function ragSearch(input: RagSearchInput): Promise<RagSearchHit[]> 
   const index = loadRagIndex(input.indexPath);
   const product = input.product ? normalizeProduct(input.product) : undefined;
   const provider = await getEmbeddingProvider();
-  const [queryVector] = await provider.embed([input.query]);
+  const [queryVector] = await embedForRole(provider, [input.query], 'query');
   const candidateLimit = Number(process.env.SANGFOR_MIMO_RERANK_CANDIDATES ?? 40);
   const finalLimit = input.limit ?? 8;
 

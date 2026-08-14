@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { KnowledgeChunk, normalizeProduct, nowId, resolveRepoData, appendJsonl, foldJsonlById } from '@sangfor/shared';
+import { KnowledgeChunk, ProductCode, normalizeProduct, nowId, resolveRepoData, appendJsonl, foldJsonlById } from '@sangfor/shared';
 
 const WIKI_CHUNKS: KnowledgeChunk[] = [
   {
@@ -99,6 +99,34 @@ export interface WikiUpdateProposal {
   reviewer?: string;
 }
 
+export type KnowledgeCardType = 'procedure' | 'troubleshooting' | 'known_issue' | 'config_recipe' | 'compatibility_note';
+
+export interface KnowledgeCardCitation {
+  sourceId: string;
+  sourceRevision?: string;
+  headingPath?: string[];
+  spanText: string;
+  quoteHash: string;
+}
+
+export interface KnowledgeCard {
+  id: string;
+  type: KnowledgeCardType;
+  product: ProductCode;
+  version?: string;
+  title: string;
+  symptom?: string;
+  cause?: string;
+  prerequisites: string[];
+  steps: string[];
+  warnings: string[];
+  verification: string[];
+  rollback: string[];
+  citations: KnowledgeCardCitation[];
+  trustLevel: KnowledgeChunk['trustLevel'];
+  updatedAt: string;
+}
+
 export interface WikiAdapter {
   readPage(path: string): Promise<string>;
   writePage(path: string, content: string, message: string): Promise<{ ok: boolean; path: string; message: string }>;
@@ -160,17 +188,54 @@ export class GitHubWikiGitAdapter implements WikiAdapter {
 }
 
 const proposalsFile = () => join(resolveRepoData('data/wiki', 'SANGFOR_WIKI_ROOT'), 'proposals.jsonl');
+const cardsFile = () => join(resolveRepoData('data/wiki', 'SANGFOR_WIKI_ROOT'), 'knowledge-cards.jsonl');
 const getProposal = (id: string) => foldJsonlById<WikiUpdateProposal>(proposalsFile()).get(id);
 const saveProposal = (proposal: WikiUpdateProposal) => appendJsonl(proposalsFile(), proposal);
+const saveCard = (card: KnowledgeCard) => appendJsonl(cardsFile(), card);
 
 export function listSeedWiki(): KnowledgeChunk[] {
   return [...WIKI_CHUNKS];
 }
 
+export function listKnowledgeCards(): KnowledgeCard[] {
+  return [...foldJsonlById<KnowledgeCard>(cardsFile()).values()];
+}
+
+export function upsertKnowledgeCard(input: Omit<KnowledgeCard, 'id' | 'updatedAt'> & { id?: string }): KnowledgeCard {
+  if (input.citations.length === 0) {
+    throw new Error('KnowledgeCard requires at least one source citation.');
+  }
+  const card: KnowledgeCard = {
+    ...input,
+    id: input.id ?? nowId('knowledge_card'),
+    updatedAt: new Date().toISOString()
+  };
+  saveCard(card);
+  return card;
+}
+
 export function searchWiki(input: { product?: string; version?: string; query?: string; limit?: number }): KnowledgeChunk[] {
   const product = normalizeProduct(input.product);
   const query = (input.query ?? '').toLowerCase();
-  return WIKI_CHUNKS
+  const cardChunks: KnowledgeChunk[] = listKnowledgeCards().map((card) => ({
+    id: card.id,
+    sourceType: 'wiki',
+    product: card.product,
+    version: card.version,
+    title: card.title,
+    section: card.type,
+    text: [
+      card.symptom,
+      card.cause,
+      ...card.prerequisites,
+      ...card.steps,
+      ...card.warnings,
+      ...card.verification,
+      ...card.rollback
+    ].filter(Boolean).join('\n'),
+    trustLevel: card.trustLevel
+  }));
+  return [...WIKI_CHUNKS, ...cardChunks]
     .filter(chunk => chunk.product === product)
     .map(chunk => {
       const text = `${chunk.title} ${chunk.section ?? ''} ${chunk.text}`.toLowerCase();
