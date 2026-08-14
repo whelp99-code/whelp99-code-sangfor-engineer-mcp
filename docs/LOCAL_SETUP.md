@@ -194,6 +194,7 @@ SANGFOR_LITELLM_API_KEY=sk-local-master-key-2026
 SANGFOR_LITELLM_EMBEDDING_MODEL=openai/local-rapid
 SANGFOR_MIMO_VIA_LITELLM=1
 SANGFOR_LITELLM_CHAT_MODEL=openai/cloud-mimo
+SANGFOR_EMBEDDING_FAILBACK_RETRY_MS=30000
 
 # 방법 2 — ~/.zshrc만 써도 base/key는 자동 fallback
 # export OPENAI_API_BASE="http://localhost:4000/v1"
@@ -211,6 +212,31 @@ pnpm run rag:reembed
 
 ```bash
 pnpm run rag:reembed
+```
+
+### Linux CPU 임베딩 서버 (MLX 대체)
+
+MLX는 Apple Silicon 전용이라 Linux에서는 `rapid-mlx` 헬스체크가 실패하고 **조용히 hash 폴백**으로
+색인됩니다(검색 품질이 키워드 수준으로 떨어지며 에러는 나지 않음). 같은 모델을 CPU로 서빙하는
+동등 엔드포인트가 `automation/embedding-server/`에 있습니다.
+
+```bash
+uv venv --python 3.12 .venv-embed
+uv pip install --python .venv-embed/bin/python torch --index-url https://download.pytorch.org/whl/cpu
+uv pip install --python .venv-embed/bin/python sentence-transformers fastapi 'uvicorn[standard]'
+
+automation/embedding-server/start.sh &          # 127.0.0.1:8000/v1 (rapid-mlx 기본 URL)
+pnpm run check:embedding-providers              # embeddingProvider: rapid-mlx 확인
+```
+
+인덱스에 이미 들어있는 청크를 제자리에서 다시 임베딩하려면 raw 디렉터리 인자로 **빈 디렉터리**를
+넘깁니다. raw 디렉터리를 넘기면 파일에서 청크를 다시 잘라내는데, front matter의 `fetchedAt`이
+청크 본문에 포함되어 있어 재크롤 때마다 청크 정체성이 바뀌고 기존 행을 갱신하는 대신 새 행이
+추가됩니다.
+
+```bash
+SANGFOR_RAPID_MLX_BATCH_SIZE=64 pnpm run rag:reembed data/rag/index.json "$(mktemp -d)"
+pnpm run learn:finalize
 ```
 | `pnpm run login:one:safari` | Safari ONE/KB 토큰 → `.env` |
 | `pnpm run login:kb:chrome` | Chrome에서 KB 열고 `library_token` 캡처 |

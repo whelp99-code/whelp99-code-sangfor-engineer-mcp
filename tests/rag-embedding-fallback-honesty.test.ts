@@ -8,7 +8,9 @@ const ENV_KEYS = [
   'SANGFOR_EMBEDDING_FORCE_HASH',
   'SANGFOR_EMBEDDING_PROVIDER',
   'SANGFOR_RAPID_MLX_BASE_URL',
+  'SANGFOR_RAPID_MLX_EMBEDDING_MODEL',
   'SANGFOR_EMBEDDING_INIT_TIMEOUT_MS',
+  'SANGFOR_EMBEDDING_FAILBACK_RETRY_MS',
 ] as const;
 const savedEnv = new Map<string, string | undefined>();
 
@@ -27,9 +29,20 @@ afterEach(() => {
     if (value === undefined) delete process.env[key]; else process.env[key] = value;
   }
   savedEnv.clear();
+  vi.unstubAllGlobals();
   for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true });
 });
 const mk = () => { const d = mkdtempSync(join(tmpdir(), 'rag-fallback-')); dirs.push(d); return d; };
+
+function embeddingResponse(): Response {
+  return new Response(JSON.stringify({
+    data: [{ embedding: [0.1, 0.2, 0.3], index: 0 }],
+    model: 'configured-rapid'
+  }), {
+    status: 200,
+    headers: { 'content-type': 'application/json' }
+  });
+}
 
 describe('embedding provider fallback honesty', () => {
   it('falls back to hash and reports it via wasEmbeddingFallback() when the configured backend is unreachable', async () => {
@@ -56,6 +69,34 @@ describe('embedding provider fallback honesty', () => {
       expect(wasEmbeddingFallback()).toBe(false);
     } finally {
       delete process.env.SANGFOR_EMBEDDING_PROVIDER;
+    }
+  });
+
+  it('automatically fails back to the configured provider when it recovers', async () => {
+    resetEmbeddingProviderCache();
+    for (const key of ENV_KEYS) savedEnv.set(key, process.env[key]);
+    delete process.env.SANGFOR_EMBEDDING_FORCE_HASH;
+    process.env.SANGFOR_EMBEDDING_PROVIDER = 'rapid-mlx';
+    process.env.SANGFOR_RAPID_MLX_BASE_URL = 'http://rapid.local/v1';
+    process.env.SANGFOR_RAPID_MLX_EMBEDDING_MODEL = 'configured-rapid';
+    process.env.SANGFOR_EMBEDDING_FAILBACK_RETRY_MS = '0';
+
+    const fetchMock = vi.fn()
+      .mockRejectedValueOnce(new Error('rapid down'))
+      .mockResolvedValue(embeddingResponse());
+    vi.stubGlobal('fetch', fetchMock);
+    const writeSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
+    try {
+      const fallbackProvider = await getEmbeddingProvider();
+      expect(fallbackProvider.name).toBe('hash');
+      expect(wasEmbeddingFallback()).toBe(true);
+
+      const recoveredProvider = await getEmbeddingProvider();
+      expect(recoveredProvider.name).toBe('rapid-mlx');
+      expect(wasEmbeddingFallback()).toBe(false);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    } finally {
+      writeSpy.mockRestore();
     }
   });
 
