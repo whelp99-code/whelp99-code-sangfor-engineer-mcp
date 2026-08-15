@@ -1,0 +1,35 @@
+name: Bug
+description: Something broken in product, CI, or ops.
+title: "fix: "
+labels: ["bug", "agent", "status:backlog", "tracker:github"]
+body:
+  - type: textarea
+    id: symptom
+    attributes:
+      label: Symptom
+      description: What you saw vs expected.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Repro
+      description: Exact commands, URLs, or UI path.
+    validations:
+      required: true
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where
+      options:
+        - JM local
+        - GitHub Actions
+        - BLRO runtime
+        - Unknown
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Logs, screenshots paths, PR links.

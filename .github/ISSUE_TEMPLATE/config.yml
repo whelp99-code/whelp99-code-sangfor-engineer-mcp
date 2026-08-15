@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Tracker standard
+    url: https://github.com/whelp99-code/sangfor-os/blob/main/docs/TRACKER.md
+    about: How we plan and execute work (GitHub Issues + Actions + BLRO).

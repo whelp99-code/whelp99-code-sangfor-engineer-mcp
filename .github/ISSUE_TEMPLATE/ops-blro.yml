@@ -1,0 +1,52 @@
+name: BLRO ops
+description: Runtime work on BLRO (migrate, deploy, import, smoke).
+title: "ops(blro): "
+labels: ["ops", "blro", "ready-for-blro", "agent", "tracker:github"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Run on **BLRO** via `ssh blro` and `/home/blro/sangfor-os`.
+        Do not treat JM local DB as production.
+  - type: input
+    id: sha
+    attributes:
+      label: Target git SHA / PR
+      description: Merged commit to apply (or `origin/main`).
+      placeholder: "abc1234 or PR #198"
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Ops steps
+      description: Ordered commands / checklist.
+      value: |
+        1. `ssh blro`
+        2. `cd /home/blro/sangfor-os && git fetch && git status`
+        3. Fast-forward to target SHA (no force)
+        4. `docker ps` / compose project check (do not touch unrelated stacks)
+        5. migrate status → migrate deploy (if required)
+        6. smoke: `https://blro.alpines-goldeye.ts.net/`
+        7. Paste evidence on this issue; remove `ready-for-blro`; close when Done
+    validations:
+      required: true
+  - type: dropdown
+    id: risk
+    attributes:
+      label: Risk class
+      options:
+        - "read-only smoke"
+        - "migrate deploy"
+        - "data import / seed"
+        - "container recreate / deploy script"
+    validations:
+      required: true
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety
+      options:
+        - label: Unrelated compose projects on BLRO will not be stopped
+        - label: Evidence (command output / URL) will be posted on the issue
+        - label: Irreversible steps only with approval or explicit delegation

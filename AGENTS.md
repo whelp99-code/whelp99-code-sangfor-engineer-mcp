@@ -1,5 +1,11 @@
 # sangfor-engineer-mcp
 
+## Work tracking (mandatory)
+- **Primary tracker: GitHub Issues + labels** (not Linear). See [docs/TRACKER.md](docs/TRACKER.md).
+- JM = code/PRs · GitHub Actions = verify · BLRO = `ssh blro` runtime when needed.
+- Orca **Linear** tab / Workspace board = reference/sessions only.
+- Every plan/execution unit is a GitHub Issue; PRs use `Closes #N`.
+
 > Sangfor product-specific senior field-engineer MCP monorepo: stdio MCP server, guarded live-execution spine, planner/advisory, local-first RAG + learning, and multi-vendor (Sangfor/FortiOS/Cisco) advisory.
 
 ## Architecture

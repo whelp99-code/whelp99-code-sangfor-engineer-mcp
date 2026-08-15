@@ -1,0 +1,42 @@
+name: Feature / change
+description: Product or code change implemented on JM, verified by CI.
+title: "feat: "
+labels: ["enhancement", "agent", "status:backlog", "tracker:github"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Primary tracker is **GitHub Issues** (not Linear).
+        JM = code, GitHub Actions = verify, BLRO = runtime apply.
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Outcome
+      description: What done looks like (observable).
+      placeholder: "Users can … / API returns … / BLRO serves …"
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: Paths, surfaces, out-of-scope.
+    validations:
+      required: true
+  - type: dropdown
+    id: blro_needed
+    attributes:
+      label: BLRO apply needed after merge?
+      options:
+        - "no — code/docs/CI only"
+        - "yes — migrate/deploy/import/smoke on BLRO"
+    validations:
+      required: true
+  - type: checkboxes
+    id: gates
+    attributes:
+      label: Gates
+      options:
+        - label: PR will link this issue (`Closes #N`)
+        - label: CI green required before Ready for BLRO
+        - label: No prod migrate/import without explicit approval (unless already delegated)
