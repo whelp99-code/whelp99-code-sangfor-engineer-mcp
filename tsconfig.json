@@ -35,6 +35,9 @@
       "@sangfor/config-state": [
         "packages/sangfor-config-state/src/index.ts"
       ],
+      "@sangfor/chronicle": [
+        "packages/sangfor-chronicle/src/index.ts"
+      ],
       "@sangfor/knowledge": [
         "packages/sangfor-knowledge/src/index.ts"
       ],
