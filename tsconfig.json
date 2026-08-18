@@ -38,6 +38,24 @@
       "@sangfor/chronicle": [
         "packages/sangfor-chronicle/src/index.ts"
       ],
+      "@sangfor/engineer-report": [
+        "packages/sangfor-engineer-report/src/index.ts"
+      ],
+      "@sangfor/saga": [
+        "packages/sangfor-saga/src/index.ts"
+      ],
+      "@sangfor/first-line": [
+        "packages/sangfor-first-line/src/index.ts"
+      ],
+      "@sangfor/acquisition": [
+        "packages/sangfor-acquisition/src/index.ts"
+      ],
+      "@sangfor/intent-graph": [
+        "packages/sangfor-intent-graph/src/index.ts"
+      ],
+      "@sangfor/scorecard": [
+        "packages/sangfor-scorecard/src/index.ts"
+      ],
       "@sangfor/knowledge": [
         "packages/sangfor-knowledge/src/index.ts"
       ],
