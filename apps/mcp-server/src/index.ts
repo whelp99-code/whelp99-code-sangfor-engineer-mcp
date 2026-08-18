@@ -1,5 +1,5 @@
 import readline from 'node:readline';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
@@ -15,7 +15,9 @@ import { generateEvidenceReport, buildChangeRunReport, listChangeRunIds, isSafeR
 import { submitFeedback, extractLesson } from '../../../packages/sangfor-feedback/src/index.js';
 import { createEvalCaseFromFeedback, runPlannerEval } from '../../../packages/sangfor-evals/src/index.js';
 import { PRODUCTS, type ProductCode } from '../../../packages/shared/src/index.js';
-import { findUnapprovedDrift, getDiff as getChronicleDiff, getHead as getChronicleHead } from '../../../packages/sangfor-chronicle/src/index.js';
+import { findUnapprovedDrift, getDiff as getChronicleDiff, getHead as getChronicleHead, listSnapshots as listChronicleSnapshots } from '../../../packages/sangfor-chronicle/src/index.js';
+import { queryDevices, computeTier, autonomyAllowed, type TierThresholds, type ScorecardMetrics } from '../../../packages/sangfor-scorecard/src/index.js';
+import { verifyReportChain } from '../../../packages/sangfor-engineer-report/src/index.js';
 import { ingestDocument, ragSearch, exportRagIndexSummary, omitVectorFromHit, getRagSearchDiagnostics } from '../../../packages/sangfor-rag/src/index.js';
 import { createFineTuneDataset, createFineTuneJobSpec, validateFineTuneDataset } from '../../../packages/sangfor-finetune/src/index.js';
 import { loadEnvFile } from '../../../packages/sangfor-collector/src/load-env.js';
@@ -1321,6 +1323,44 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
       const dir = args.dir ?? resolveRepoData('data/chronicle', 'SANGFOR_CHRONICLE_DIR');
       const findings = findUnapprovedDrift({ deviceId: args.deviceId, dir, approvals: args.approvals ?? [] });
       return { deviceId: args.deviceId, approvalsSupplied: (args.approvals ?? []).length, findings };
+    }
+  },
+  'sangfor_snapshot_query': {
+    description: 'Read-only: point-in-time query over local Config Chronicle chains — "which devices satisfy <key op value> (optionally as of a past timestamp)". Devices without an eligible snapshot are reported under noData, never matched; an empty chronicle dir is an error, never an empty fabricated answer.',
+    inputSchema: { type: 'object', properties: { dir: { type: 'string' }, where: { type: 'object', properties: { key: { type: 'string' }, op: { type: 'string', enum: ['eq', 'neq', 'lt', 'gte', 'exists'] }, value: {} }, required: ['key', 'op'] }, asOf: { type: 'string' } }, required: ['where'] },
+    handler: (args: { dir?: string; where: { key: string; op: 'eq' | 'neq' | 'lt' | 'gte' | 'exists'; value?: unknown }; asOf?: string }) => {
+      const dir = args.dir ?? resolveRepoData('data/chronicle', 'SANGFOR_CHRONICLE_DIR');
+      let deviceIds: string[] = [];
+      try {
+        deviceIds = readdirSync(dir).filter((name) => name.endsWith('.json')).map((name) => name.slice(0, -'.json'.length));
+      } catch {
+        return { error: `chronicle dir unreadable: ${dir}` };
+      }
+      if (deviceIds.length === 0) return { error: `no chronicle chains under ${dir} — nothing has been recorded` };
+      const chains = Object.fromEntries(deviceIds.map((deviceId) => [
+        deviceId,
+        listChronicleSnapshots(deviceId, dir).map((snapshot) => ({ capturedAt: snapshot.capturedAt, observed: snapshot.observed })),
+      ]));
+      return queryDevices({ chains, where: { key: args.where.key, op: args.where.op, value: args.where.value ?? null }, ...(args.asOf ? { asOf: args.asOf } : {}) });
+    }
+  },
+  'sangfor_report_chain_verify': {
+    description: 'Read-only: verify the hash-chained EngineerReport ledger in a directory — detects edited verdicts, deleted records, and unparseable lines. Reports the honest chain state; it never repairs anything.',
+    inputSchema: { type: 'object', properties: { dir: { type: 'string' } } },
+    handler: (args: { dir?: string }) => verifyReportChain(args.dir ?? resolveRepoData('data/engineer-reports', 'SANGFOR_ENGINEER_REPORT_DIR'))
+  },
+  'sangfor_scorecard_tier': {
+    description: 'Read-only advisory: compute a device acquisition-quality tier (bronze/silver/gold with dwell hysteresis) from caller-supplied metrics and thresholds, plus which autonomy capabilities that tier permits (auto-close and cross-device specs are gold-only, fail-closed).',
+    inputSchema: { type: 'object', properties: { metrics: { type: 'object' }, thresholds: { type: 'object' }, previous: { type: 'object' } }, required: ['metrics', 'thresholds'] },
+    handler: (args: { metrics: ScorecardMetrics; thresholds: TierThresholds; previous?: { tier: 'bronze' | 'silver' | 'gold'; sinceAt: string; candidateTier: 'bronze' | 'silver' | 'gold'; candidateSinceAt: string } }) => {
+      const result = computeTier(args.metrics, args.thresholds, args.previous);
+      return {
+        ...result,
+        autonomy: {
+          'auto-close': autonomyAllowed(result.tier, 'auto-close'),
+          'cross-device-spec': autonomyAllowed(result.tier, 'cross-device-spec'),
+        },
+      };
     }
   },
   'sangfor_capability_safety': {
