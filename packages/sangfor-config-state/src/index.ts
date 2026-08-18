@@ -2,7 +2,69 @@
 // observed maps for the advisory evaluator. Keys whose endpoint was not captured
 // are OMITTED (they must surface as INDETERMINATE downstream, never as defaults).
 
-export interface ObservedFactJson { value: unknown; source: { endpoint: string; collectedAt: string; collector: string }; }
+import {
+  MAPPER_VERSION,
+  assertFactProvenance,
+  type FactProvenance,
+  type FactTransport,
+} from './provenance.js';
+
+export {
+  MAPPER_VERSION,
+  MissingProvenanceError,
+  assertFactProvenance,
+  isFactProvenance,
+  type FactProvenance,
+  type FactTransport,
+} from './provenance.js';
+
+/** An observed fact: the value plus the provenance envelope describing how it was
+ *  obtained. The wrapper stays `{ value, source }` so @sangfor/spec keeps unwrapping it;
+ *  `source` IS the envelope (endpoint/collectedAt/collector remain, transport and
+ *  mapperVersion are added). */
+export interface ObservedFactJson { value: unknown; source: FactProvenance; }
+
+/** Build an observed fact. Fails closed: without a complete provenance envelope the
+ *  fact is unauditable, so it is refused rather than stamped with defaults. */
+export function createObservedFact(value: unknown, provenance: FactProvenance): ObservedFactJson {
+  assertFactProvenance(provenance);
+  return { value, source: provenance };
+}
+
+/** Collector-supplied envelope fields shared by both pool mappers. */
+export interface PoolMapperOptions {
+  collectedAt?: string;
+  collector?: string;
+  /** Captured XHR pools come off the console browser by default. */
+  transport?: FactTransport;
+  menuPath?: string[];
+  firmwareVersion?: string;
+  /** Measured collection latency; must be > 0 when supplied. */
+  latencyMs?: number;
+  authPrincipal?: string;
+}
+
+/** Validate the collector-supplied envelope fields once, before any fact is produced,
+ *  so a bad envelope is refused even when the pool maps nothing. */
+function assertMapperOptions(opts: PoolMapperOptions, collectedAt: string, collector: string): void {
+  envelopeFor('POST /__envelope_precheck__', opts, collectedAt, collector);
+}
+
+function envelopeFor(endpoint: string, opts: PoolMapperOptions, collectedAt: string, collector: string): FactProvenance {
+  const provenance: FactProvenance = {
+    transport: opts.transport ?? 'browser',
+    endpoint,
+    mapperVersion: MAPPER_VERSION,
+    collectedAt,
+    collector,
+    ...(opts.menuPath ? { menuPath: [...opts.menuPath] } : {}),
+    ...(opts.firmwareVersion !== undefined ? { firmwareVersion: opts.firmwareVersion } : {}),
+    ...(opts.latencyMs !== undefined ? { latencyMs: opts.latencyMs } : {}),
+    ...(opts.authPrincipal !== undefined ? { authPrincipal: opts.authPrincipal } : {}),
+  };
+  assertFactProvenance(provenance);
+  return provenance;
+}
 
 const EPP_PREFIX = 'POST /api/edrgoweb/v1/';
 
@@ -24,17 +86,18 @@ const EPP_KEYMAP: Array<{ key: string; endpoint?: string; full?: string; pick: (
 
 export function mapEppPoolToConfigState(
   pool: Record<string, any>,
-  opts: { collectedAt?: string; collector?: string } = {},
+  opts: PoolMapperOptions = {},
 ): { product: 'EPP'; observed: Record<string, ObservedFactJson>; endpointsCaptured: number; mappedKeys: string[]; unmappedNote: string } {
   const collectedAt = opts.collectedAt ?? new Date().toISOString();
   const collector = opts.collector ?? 'live-xhr-pool';
+  assertMapperOptions(opts, collectedAt, collector);
   const observed: Record<string, ObservedFactJson> = {};
   for (const { key, endpoint, full: fullEndpoint, pick } of EPP_KEYMAP) {
     const full = fullEndpoint ?? `${EPP_PREFIX}${endpoint}`;
     if (!(full in pool)) continue; // uncaptured → omitted → INDETERMINATE downstream
     const value = pick(pool[full]);
     if (value === undefined) continue;
-    observed[key] = { value, source: { endpoint: full, collectedAt, collector } };
+    observed[key] = createObservedFact(value, envelopeFor(full, opts, collectedAt, collector));
   }
   return {
     product: 'EPP',
@@ -62,16 +125,17 @@ const CC_KEYMAP: Array<{ key: string; endpoint: string; pick: (d: any) => unknow
 
 export function mapCcPoolToConfigState(
   pool: Record<string, any>,
-  opts: { collectedAt?: string; collector?: string } = {},
+  opts: PoolMapperOptions = {},
 ): { product: 'CC'; observed: Record<string, ObservedFactJson>; endpointsCaptured: number; mappedKeys: string[]; unmappedNote: string } {
   const collectedAt = opts.collectedAt ?? new Date().toISOString();
   const collector = opts.collector ?? 'live-xhr-pool';
+  assertMapperOptions(opts, collectedAt, collector);
   const observed: Record<string, ObservedFactJson> = {};
   for (const { key, endpoint, pick } of CC_KEYMAP) {
     if (!(endpoint in pool)) continue; // uncaptured → omitted
     const value = pick(pool[endpoint]);
     if (value === undefined) continue;
-    observed[key] = { value, source: { endpoint, collectedAt, collector } };
+    observed[key] = createObservedFact(value, envelopeFor(endpoint, opts, collectedAt, collector));
   }
   return {
     product: 'CC',
