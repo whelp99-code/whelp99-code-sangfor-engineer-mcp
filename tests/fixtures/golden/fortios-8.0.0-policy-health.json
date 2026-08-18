@@ -1,0 +1,202 @@
+{
+  "vendor": "fortios",
+  "firmware": "8.0.0",
+  "allowlist": [
+    "name",
+    "action",
+    "logtraffic",
+    "ssl-ssh-profile",
+    "type",
+    "mode",
+    "state",
+    "signature_database"
+  ],
+  "rawPayload": {
+    "policy": {
+      "results": [
+        {
+          "policyid": 1,
+          "name": "policy-1",
+          "action": "accept",
+          "logtraffic": "all",
+          "ssl-ssh-profile": "certificate-inspection",
+          "srcintf": "REDACTED_5989b943ed93",
+          "dstintf": "REDACTED_3d52f894bc56"
+        },
+        {
+          "policyid": 2,
+          "name": "policy-2",
+          "action": "accept",
+          "logtraffic": "utm",
+          "srcintf": "REDACTED_5989b943ed93",
+          "dstintf": "REDACTED_3d52f894bc56"
+        },
+        {
+          "policyid": 3,
+          "name": "policy-3",
+          "action": "deny",
+          "logtraffic": "all",
+          "srcintf": "REDACTED_5989b943ed93",
+          "dstintf": "REDACTED_4f4404d385e0"
+        }
+      ]
+    },
+    "interfaces": {
+      "results": [
+        {
+          "name": "port1",
+          "type": "physical",
+          "ip": "REDACTED_5720660e0fd2"
+        },
+        {
+          "name": "port2",
+          "type": "physical",
+          "ip": "REDACTED_37e611c338ea"
+        },
+        {
+          "name": "internal",
+          "type": "vlan",
+          "ip": "REDACTED_57e3bf176a08"
+        }
+      ]
+    },
+    "status": {
+      "results": [
+        {
+          "cpu": 42,
+          "mem": 58,
+          "disk": 35,
+          "uptime": 864000,
+          "version": "REDACTED_35de6730b543",
+          "serial": "REDACTED_0dbe8b827de3",
+          "hostname": "REDACTED_df16ec113cc0"
+        }
+      ]
+    },
+    "npu": {
+      "results": [
+        {
+          "cpu": 65,
+          "packets_received": 1500000,
+          "packets_dropped": 1200
+        }
+      ]
+    },
+    "ha": {
+      "results": [
+        {
+          "mode": "a-p",
+          "state": "master",
+          "priority": 100,
+          "group_id": 1,
+          "remote_ip": "REDACTED_a3c64fb012b2"
+        }
+      ]
+    }
+  },
+  "expectedObserved": {
+    "policyCount": 3,
+    "sslInspectionEnabled": true,
+    "threatLoggingEnabled": true,
+    "wanInterfaceCount": 2,
+    "systemCpuUsage": 42,
+    "systemMemoryUsage": 58,
+    "systemDiskUsage": 35,
+    "npuCpuUsage": 65,
+    "haMode": "active-passive",
+    "haPrimaryUnit": true
+  },
+  "evaluatedAt": "2026-08-18T00:00:00.000Z",
+  "spec": {
+    "id": "golden_fortios_8_0_0",
+    "product": "FORTIOS",
+    "version": "8.0.0",
+    "items": [
+      {
+        "id": "ssl_inspection_enabled",
+        "capabilityId": "internet_policy",
+        "label": "SSL/TLS 검사 활성",
+        "observedKey": "sslInspectionEnabled",
+        "op": "eq",
+        "expected": true,
+        "severity": "must",
+        "source": {
+          "manual": "FortiOS 8.0.0 Administration Guide",
+          "section": "SSL Inspection"
+        }
+      },
+      {
+        "id": "threat_logging_enabled",
+        "capabilityId": "internet_policy",
+        "label": "위협 로깅 활성",
+        "observedKey": "threatLoggingEnabled",
+        "op": "eq",
+        "expected": true,
+        "severity": "must",
+        "source": {
+          "manual": "FortiOS 8.0.0 Administration Guide",
+          "section": "Logging"
+        }
+      },
+      {
+        "id": "ha_mode_active_passive",
+        "capabilityId": "high_availability",
+        "label": "HA 모드 active-passive",
+        "observedKey": "haMode",
+        "op": "eq",
+        "expected": "active-passive",
+        "severity": "must",
+        "source": {
+          "manual": "FortiOS 8.0.0 Administration Guide",
+          "section": "High Availability"
+        }
+      },
+      {
+        "id": "wan_interface_count",
+        "capabilityId": "connectivity",
+        "label": "WAN 물리 인터페이스 ≥ 3",
+        "observedKey": "wanInterfaceCount",
+        "op": "gte",
+        "expected": 3,
+        "severity": "recommended",
+        "source": {
+          "manual": "FortiOS 8.0.0 Administration Guide",
+          "section": "Interfaces"
+        }
+      },
+      {
+        "id": "system_cpu_headroom",
+        "capabilityId": "capacity",
+        "label": "시스템 CPU 사용률 ≤ 80%",
+        "observedKey": "systemCpuUsage",
+        "op": "lte",
+        "expected": 80,
+        "severity": "recommended",
+        "source": {
+          "manual": "FortiOS 8.0.0 Administration Guide",
+          "section": "System Resources"
+        }
+      },
+      {
+        "id": "ips_signature_freshness",
+        "capabilityId": "threat_protection",
+        "label": "IPS 시그니처 버전 확인",
+        "observedKey": "ipsSignatureVersion",
+        "op": "exists",
+        "severity": "must",
+        "source": {
+          "manual": "FortiOS 8.0.0 Administration Guide",
+          "section": "IPS"
+        }
+      }
+    ]
+  },
+  "expectedVerdicts": {
+    "ssl_inspection_enabled": "PASS",
+    "threat_logging_enabled": "PASS",
+    "ha_mode_active_passive": "PASS",
+    "wan_interface_count": "FAIL",
+    "system_cpu_headroom": "PASS",
+    "ips_signature_freshness": "INDETERMINATE"
+  }
+}

@@ -1,0 +1,246 @@
+{
+  "vendor": "cisco",
+  "firmware": "17.0.0",
+  "allowlist": [
+    "name",
+    "type",
+    "oper-status",
+    "rule-database-version"
+  ],
+  "rawPayload": {
+    "interfaces": {
+      "ietf-interfaces:interface": [
+        {
+          "name": "GigabitEthernet0/0/0",
+          "description": "REDACTED_fd82023f6f41",
+          "enabled": true,
+          "ipv4": {
+            "address": [
+              {
+                "ip": "REDACTED_4e7ef2a78306",
+                "netmask": "REDACTED_9f3368ad860c"
+              }
+            ]
+          }
+        },
+        {
+          "name": "GigabitEthernet0/0/1",
+          "description": "REDACTED_43d73eb1f666",
+          "enabled": true,
+          "ipv4": {
+            "address": [
+              {
+                "ip": "REDACTED_9bc8e813d671",
+                "netmask": "REDACTED_9f3368ad860c"
+              }
+            ]
+          }
+        },
+        {
+          "name": "Loopback0",
+          "description": "REDACTED_f58edebf721b",
+          "enabled": true,
+          "ipv4": {
+            "address": [
+              {
+                "ip": "REDACTED_a1301f46f7b5",
+                "netmask": "REDACTED_53feb92b244a"
+              }
+            ]
+          }
+        },
+        {
+          "name": "Loopback1",
+          "enabled": true,
+          "ipv4": {
+            "address": [
+              {
+                "ip": "REDACTED_cc58b9fb4517",
+                "netmask": "REDACTED_53feb92b244a"
+              }
+            ]
+          }
+        }
+      ],
+      "ietf-routing:routing": {
+        "static-routes": {
+          "static": [
+            {
+              "destination_prefix": "REDACTED_b6550beb038f",
+              "next_hop": {
+                "next_hop_address": "REDACTED_026faaab002e"
+              }
+            },
+            {
+              "destination_prefix": "REDACTED_19c6da618aa9",
+              "next_hop": {
+                "next_hop_address": "REDACTED_026faaab002e"
+              }
+            }
+          ]
+        },
+        "control-plane-protocols": {
+          "control-plane-protocol": [
+            {
+              "type": "ospf",
+              "name": "ospf_1",
+              "ospf": {
+                "global": {
+                  "router_id": "REDACTED_a1301f46f7b5"
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "zonePolicy": {
+      "Cisco-IOS-XE-zone-based-firewall:zone-pair": [
+        {
+          "source_zone": "REDACTED_d388558204c9",
+          "destination_zone": "REDACTED_1e530000ef6b",
+          "service_policy": "REDACTED_28d2ae5407e9"
+        },
+        {
+          "source_zone": "REDACTED_2d2f50271cb4",
+          "destination_zone": "REDACTED_1e530000ef6b",
+          "service_policy": "REDACTED_b2eef80b56fa"
+        }
+      ]
+    },
+    "acl": {
+      "Cisco-IOS-XE-acl:ip": {
+        "access-lists": {
+          "access-list": [
+            {
+              "name": "ACL-HQ-IN",
+              "access-list-entries": {
+                "access-list-entry": [
+                  {
+                    "rule": "REDACTED_91e4f12516d5"
+                  },
+                  {
+                    "rule": "REDACTED_db4dc276e0dc"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    "snort": {
+      "Cisco-IOS-XE-snort:snort": {
+        "snort-config": {
+          "rule-database-version": "20250703",
+          "enabled": true,
+          "threat-detection": true
+        }
+      }
+    }
+  },
+  "expectedObserved": {
+    "interfaceCount": 4,
+    "loopbackCount": 2,
+    "staticRouteCount": 2,
+    "ospfEnabled": true,
+    "zonePairPolicyCount": 2,
+    "aclRuleCount": 2,
+    "snortSignatureVersion": "20250703",
+    "snortInspectionEnabled": true
+  },
+  "evaluatedAt": "2026-08-18T00:00:00.000Z",
+  "spec": {
+    "id": "golden_cisco_iosxe_17_0_0",
+    "product": "CISCO_IOSXE",
+    "version": "17.0.0",
+    "items": [
+      {
+        "id": "loopback_present",
+        "capabilityId": "routing_baseline",
+        "label": "Loopback 인터페이스 ≥ 1",
+        "observedKey": "loopbackCount",
+        "op": "gte",
+        "expected": 1,
+        "severity": "must",
+        "source": {
+          "manual": "Cisco IOS-XE 17.x Configuration Guide",
+          "section": "Interfaces"
+        }
+      },
+      {
+        "id": "ospf_enabled",
+        "capabilityId": "routing_baseline",
+        "label": "OSPF 활성",
+        "observedKey": "ospfEnabled",
+        "op": "eq",
+        "expected": true,
+        "severity": "must",
+        "source": {
+          "manual": "Cisco IOS-XE 17.x Configuration Guide",
+          "section": "OSPF"
+        }
+      },
+      {
+        "id": "zone_pair_policy_present",
+        "capabilityId": "zone_firewall",
+        "label": "존 페어 정책 ≥ 2",
+        "observedKey": "zonePairPolicyCount",
+        "op": "gte",
+        "expected": 2,
+        "severity": "must",
+        "source": {
+          "manual": "Cisco IOS-XE 17.x Security Guide",
+          "section": "Zone-Based Firewall"
+        }
+      },
+      {
+        "id": "snort_inspection_enabled",
+        "capabilityId": "threat_protection",
+        "label": "SNORT 검사 활성",
+        "observedKey": "snortInspectionEnabled",
+        "op": "eq",
+        "expected": true,
+        "severity": "must",
+        "source": {
+          "manual": "Cisco IOS-XE 17.x Security Guide",
+          "section": "SNORT IPS"
+        }
+      },
+      {
+        "id": "acl_rule_floor",
+        "capabilityId": "access_control",
+        "label": "ACL 규칙 ≥ 5",
+        "observedKey": "aclRuleCount",
+        "op": "gte",
+        "expected": 5,
+        "severity": "recommended",
+        "source": {
+          "manual": "Cisco IOS-XE 17.x Security Guide",
+          "section": "Access Lists"
+        }
+      },
+      {
+        "id": "vrf_segmentation",
+        "capabilityId": "segmentation",
+        "label": "VRF 분리 구성 확인",
+        "observedKey": "vrfCount",
+        "op": "gte",
+        "expected": 2,
+        "severity": "must",
+        "source": {
+          "manual": "Cisco IOS-XE 17.x Configuration Guide",
+          "section": "VRF"
+        }
+      }
+    ]
+  },
+  "expectedVerdicts": {
+    "loopback_present": "PASS",
+    "ospf_enabled": "PASS",
+    "zone_pair_policy_present": "PASS",
+    "snort_inspection_enabled": "PASS",
+    "acl_rule_floor": "FAIL",
+    "vrf_segmentation": "INDETERMINATE"
+  }
+}
