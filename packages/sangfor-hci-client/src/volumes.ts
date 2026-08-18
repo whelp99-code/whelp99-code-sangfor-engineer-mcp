@@ -1,4 +1,11 @@
 import type { HciClient } from './client.js';
+import {
+  createHciObservedFact,
+  measureRestRead,
+  type HciCollectionOptions,
+  type HciFactProvenance,
+  type HciObservedFact,
+} from './provenance.js';
 
 export interface HciVolume { id: string; name: string; status: string; size: number; description: string | null; }
 export interface CreateVolumeInput { name: string; sizeGb: number; description?: string; }
@@ -22,6 +29,20 @@ export async function listVolumes(client: HciClient): Promise<HciVolume[]> {
   const raw = (res.json as { volumes?: unknown[] })?.volumes;
   if (!Array.isArray(raw)) throw new Error('listVolumes: response missing volumes[]');
   return raw.map(parseVolume);
+}
+
+/** The provenance-carrying read surface: the same `/volumes/detail` collection as
+ *  `listVolumes`, with a measured envelope stamped on the run and on every fact. */
+export async function listVolumesObserved(
+  client: HciClient,
+  opts: HciCollectionOptions = {},
+): Promise<{ volumes: HciObservedFact[]; provenance: HciFactProvenance }> {
+  const { result, provenance } = await measureRestRead(
+    'GET /volumes/detail',
+    () => listVolumes(client),
+    opts,
+  );
+  return { volumes: result.map((v) => createHciObservedFact(v, provenance)), provenance };
 }
 
 export async function getVolume(client: HciClient, volumeId: string): Promise<HciVolume | null> {

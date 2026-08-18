@@ -1290,7 +1290,10 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
       // outcome, refusals included, so collection cost is never invisible.
       const collectStartedAt = Date.now();
       const pool = JSON.parse(readFileSync(args.poolPath, 'utf8'));
-      const mapped = norm === 'ENDPOINT_SECURE' ? mapEppPoolToConfigState(pool) : mapCcPoolToConfigState(pool);
+      // Issue #23 step 2/3: the call site owns the collection context, so it stamps
+      // the firmware version into every fact's provenance envelope here.
+      const mapperOptions = { firmwareVersion: args.version };
+      const mapped = norm === 'ENDPOINT_SECURE' ? mapEppPoolToConfigState(pool, mapperOptions) : mapCcPoolToConfigState(pool, mapperOptions);
       const collectionLoad = { apiCallCount: mapped.endpointsCaptured, collectDurationMs: Date.now() - collectStartedAt };
       const spec = loadSpec(norm, args.version);
       if (!spec) return { error: `no IntendedSpec for ${norm} ${args.version}. Coverage: ${JSON.stringify(listSpecCoverage())}`, collectionLoad };
