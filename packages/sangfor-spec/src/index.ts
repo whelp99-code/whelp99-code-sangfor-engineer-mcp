@@ -51,6 +51,11 @@ export interface SpecItem {
    *  (size, segmentation, compliance, business apps). Such a FAIL is classified
    *  'context_dependent' — never asserted as a misconfiguration — pending human review. */
   contextDependent?: boolean;
+  /** A1 freshness SLO: maximum age (seconds) of the observed evidence for this key.
+   *  Declared budgets can only DEMOTE a would-be PASS to INDETERMINATE
+   *  ('evidence-expired') when the evidence is older than the budget, missing its
+   *  collectedAt, or unparseable. FAIL is never masked; undeclared keys are unchanged. */
+  maxAgeSec?: number;
 }
 
 export interface IntendedSpec {
@@ -260,7 +265,33 @@ export function listSpecCoverage(root: string = specRoot()): Array<{ product: st
   return out;
 }
 
-export function evaluateSpec(spec: IntendedSpec, observed: Record<string, unknown>): EvaluationResult {
+export interface EvaluateOptions {
+  /** Evaluation time for freshness checks. Defaults to wall clock. */
+  now?: string | Date;
+}
+
+/** A1 freshness SLO. Returns a demotion reason when the item declares maxAgeSec and
+ *  the evidence cannot be proven fresh; null when the item has no budget or the
+ *  evidence is within it. Only ever consulted on a would-be PASS — demotion-only. */
+function freshnessDemotion(item: SpecItem, source: ObservedSource | undefined, nowMs: number): string | null {
+  if (item.maxAgeSec === undefined) return null;
+  const collectedAt = source?.collectedAt;
+  if (!collectedAt) {
+    return 'evidence-expired: 신선도 입증 불가 — 관측값에 collectedAt 없음 (freshness unprovable)';
+  }
+  const capturedMs = Date.parse(collectedAt);
+  if (Number.isNaN(capturedMs)) {
+    return `evidence-expired: collectedAt 파싱 불가 (${collectedAt})`;
+  }
+  const ageSec = (nowMs - capturedMs) / 1000;
+  if (ageSec > item.maxAgeSec) {
+    return `evidence-expired: 증거 나이 ${Math.round(ageSec)}s > 허용 ${item.maxAgeSec}s`;
+  }
+  return null;
+}
+
+export function evaluateSpec(spec: IntendedSpec, observed: Record<string, unknown>, options?: EvaluateOptions): EvaluationResult {
+  const nowMs = options?.now !== undefined ? new Date(options.now).getTime() : Date.now();
   const items: ItemResult[] = spec.items.map((item) => {
     const base = { id: item.id, label: item.label, expected: item.expected };
 
@@ -293,6 +324,12 @@ export function evaluateSpec(spec: IntendedSpec, observed: Record<string, unknow
       if (item.needsSeniorReview) {
         return withSrc({ ...base, verdict: 'INDETERMINATE' as Verdict, category: 'indeterminate' as Category, observed: value,
           reason: '시니어 검토 필요 항목 — 자동 PASS 금지 (senior review required)' });
+      }
+      // A1: a match on expired/unprovable evidence must not become a PASS.
+      const expired = freshnessDemotion(item, observedSource, nowMs);
+      if (expired) {
+        return withSrc({ ...base, verdict: 'INDETERMINATE' as Verdict, category: 'indeterminate' as Category, observed: value,
+          reason: expired });
       }
       return withSrc({ ...base, verdict: 'PASS' as Verdict, category: 'ok' as Category, observed: value, reason: 'matches expected' });
     }
