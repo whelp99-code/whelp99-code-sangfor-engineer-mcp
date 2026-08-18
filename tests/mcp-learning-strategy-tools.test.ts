@@ -31,10 +31,11 @@ describe('PR-011 learning MCP surface', () => {
   // + 감사 체크리스트 1급 데이터화 3 [sangfor_audit_frameworks, sangfor_audit_checklist, sangfor_audit_gap_report] = 105
   // + officecli 통합 2 [sangfor_validate_office_document, sangfor_build_evidence_package] = 107
   // + 루프-그래프 런타임 1 [sangfor_loop_status] = 108
-  // + 지식 카드 계층 2 [sangfor_list_knowledge_cards, sangfor_upsert_knowledge_card] = 110).
+  // + 지식 카드 계층 2 [sangfor_list_knowledge_cards, sangfor_upsert_knowledge_card] = 110
+  // + Config Chronicle 읽기 2 [sangfor_chronicle_diff, sangfor_drift_findings] (issue #23) = 112).
   it('adds exactly eight names on top of the 77-tool baseline', () => {
     const tools = listTools();
-    expect(tools).toHaveLength(110);
+    expect(tools).toHaveLength(112);
     expect(tools.filter((tool) => EXPECTED.includes(tool.name as typeof EXPECTED[number])).map((tool) => tool.name).sort())
       .toEqual([...EXPECTED].sort());
   });

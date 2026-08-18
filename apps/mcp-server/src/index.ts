@@ -15,6 +15,7 @@ import { generateEvidenceReport, buildChangeRunReport, listChangeRunIds, isSafeR
 import { submitFeedback, extractLesson } from '../../../packages/sangfor-feedback/src/index.js';
 import { createEvalCaseFromFeedback, runPlannerEval } from '../../../packages/sangfor-evals/src/index.js';
 import { PRODUCTS, type ProductCode } from '../../../packages/shared/src/index.js';
+import { findUnapprovedDrift, getDiff as getChronicleDiff, getHead as getChronicleHead } from '../../../packages/sangfor-chronicle/src/index.js';
 import { ingestDocument, ragSearch, exportRagIndexSummary, omitVectorFromHit, getRagSearchDiagnostics } from '../../../packages/sangfor-rag/src/index.js';
 import { createFineTuneDataset, createFineTuneJobSpec, validateFineTuneDataset } from '../../../packages/sangfor-finetune/src/index.js';
 import { loadEnvFile } from '../../../packages/sangfor-collector/src/load-env.js';
@@ -1284,14 +1285,39 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
       if (norm !== 'ENDPOINT_SECURE' && norm !== 'CYBER_COMMAND') {
         return { error: `no pool mapper for ${args.product} yet (EPP and CC only). IAG mappers land with the M3 campaign — fabricating one without captured data is forbidden.` };
       }
+      // A5 (issue #23): record the load this collection run put on the device —
+      // the envelope rides the tool result into the run ledger on every mapped
+      // outcome, refusals included, so collection cost is never invisible.
+      const collectStartedAt = Date.now();
       const pool = JSON.parse(readFileSync(args.poolPath, 'utf8'));
       const mapped = norm === 'ENDPOINT_SECURE' ? mapEppPoolToConfigState(pool) : mapCcPoolToConfigState(pool);
+      const collectionLoad = { apiCallCount: mapped.endpointsCaptured, collectDurationMs: Date.now() - collectStartedAt };
       const spec = loadSpec(norm, args.version);
-      if (!spec) return { error: `no IntendedSpec for ${norm} ${args.version}. Coverage: ${JSON.stringify(listSpecCoverage())}` };
+      if (!spec) return { error: `no IntendedSpec for ${norm} ${args.version}. Coverage: ${JSON.stringify(listSpecCoverage())}`, collectionLoad };
       const result = evaluateSpec(spec, mapped.observed);
       const report = renderAdvisoryReport(spec, result);
       const docx = args.docxPath ? renderAdvisoryReportDocx(spec, result, args.docxPath) : undefined;
-      return { mapped: { endpointsCaptured: mapped.endpointsCaptured, mappedKeys: mapped.mappedKeys }, result, report, ...(docx ? { docx } : {}) };
+      return { mapped: { endpointsCaptured: mapped.endpointsCaptured, mappedKeys: mapped.mappedKeys }, collectionLoad, result, report, ...(docx ? { docx } : {}) };
+    }
+  },
+  'sangfor_chronicle_diff': {
+    description: 'Read-only: latest (or span) semantic config diff for a device from the local Config Chronicle (content-addressed snapshot DAG, issue #23). Returns head hash, parent link and the write-time diff; unknown device → error, never a fabricated diff.',
+    inputSchema: { type: 'object', properties: { deviceId: { type: 'string' }, dir: { type: 'string' }, fromHash: { type: 'string' }, toHash: { type: 'string' } }, required: ['deviceId'] },
+    handler: (args: { deviceId: string; dir?: string; fromHash?: string; toHash?: string }) => {
+      const dir = args.dir ?? resolveRepoData('data/chronicle', 'SANGFOR_CHRONICLE_DIR');
+      const head = getChronicleHead(args.deviceId, dir);
+      if (!head) return { error: `no chronicle chain for device "${args.deviceId}" — nothing has been recorded` };
+      const diff = getChronicleDiff(args.deviceId, dir, { fromHash: args.fromHash, toHash: args.toHash });
+      return { deviceId: args.deviceId, headHash: head.hash, parentHash: head.parentHash, capturedAt: head.capturedAt, diff };
+    }
+  },
+  'sangfor_drift_findings': {
+    description: 'Read-only: unapproved-drift findings for a device — chronicle diffs joined against caller-supplied change approvals (dependency-injected; this tool never writes). A diff whose capture time falls inside an approval window produces no finding.',
+    inputSchema: { type: 'object', properties: { deviceId: { type: 'string' }, dir: { type: 'string' }, approvals: { type: 'array', items: { type: 'object', properties: { changeTicketId: { type: 'string' }, deviceId: { type: 'string' }, approvedAt: { type: 'string' }, windowStartAt: { type: 'string' }, windowEndAt: { type: 'string' } }, required: ['changeTicketId', 'deviceId', 'approvedAt'] } } }, required: ['deviceId'] },
+    handler: (args: { deviceId: string; dir?: string; approvals?: Array<{ changeTicketId: string; deviceId: string; approvedAt: string; windowStartAt?: string; windowEndAt?: string }> }) => {
+      const dir = args.dir ?? resolveRepoData('data/chronicle', 'SANGFOR_CHRONICLE_DIR');
+      const findings = findUnapprovedDrift({ deviceId: args.deviceId, dir, approvals: args.approvals ?? [] });
+      return { deviceId: args.deviceId, approvalsSupplied: (args.approvals ?? []).length, findings };
     }
   },
   'sangfor_capability_safety': {
