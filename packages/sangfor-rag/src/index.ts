@@ -11,11 +11,13 @@ import type { EmbeddingBackend, EmbeddingProvider } from './embedding-provider-t
 import { createMimoRerankFromEnv } from './mimo-rerank-provider.js';
 import { cosineSimilarity, hashEmbedding } from './hash-embedding.js';
 import { computeBm25Scores } from './bm25.js';
+import { normalizeRetrievalQuery } from './query-normalization.js';
 
 export { hashEmbedding, cosineSimilarity } from './hash-embedding.js';
 export { getEmbeddingProvider, resetEmbeddingProviderCache, wasEmbeddingFallback } from './embedding-provider.js';
 export type { EmbeddingBackend, EmbeddingProvider, RerankProvider } from './embedding-provider-types.js';
 export { computeBm25Scores, tokenize } from './bm25.js';
+export { normalizeRetrievalQuery } from './query-normalization.js';
 export { extractDocumentBlocks, type DocumentBlock, type DocumentBlockType } from './document-ir.js';
 export {
   JsonRagIndexStore,
@@ -101,6 +103,8 @@ function hydrateStoredChunk(chunk: StoredRagChunk): RagDocumentChunk {
 export interface RagSearchInput {
   product?: string;
   version?: string;
+  sourceType?: KnowledgeChunk['sourceType'];
+  trustLevel?: KnowledgeChunk['trustLevel'];
   query: string;
   limit?: number;
   indexPath?: string;
@@ -455,7 +459,10 @@ function rankHybrid<T extends RagDocumentChunk>(
 ): Array<T & { score: number; cosineScore: number; keywordScore: number }> {
   const alpha = resolveHybridAlpha();
   const cosineScores = candidates.map((chunk) => vectorForSearch(chunk, queryVector));
-  const bm25Scores = computeBm25Scores(query, candidates);
+  const bm25Scores = computeBm25Scores(query, candidates.map((chunk) => ({
+    id: chunk.id,
+    text: `${chunk.title}\n${chunk.text}`
+  })));
   const keywordScores = candidates.map((chunk) => bm25Scores.get(chunk.id) ?? 0);
   const normalizeCosine = minMaxNormalizer(cosineScores);
   const normalizeKeyword = minMaxNormalizer(keywordScores);
@@ -465,6 +472,18 @@ function rankHybrid<T extends RagDocumentChunk>(
     const score = alpha * normalizeCosine(cosineScore) + (1 - alpha) * normalizeKeyword(keywordScore);
     return { ...chunk, score, cosineScore, keywordScore };
   });
+}
+
+function distinctSources<T extends RagDocumentChunk>(hits: readonly T[], limit: number): T[] {
+  const seenSources = new Set<string>();
+  const distinct: T[] = [];
+  for (const hit of hits) {
+    if (seenSources.has(hit.filePath)) continue;
+    seenSources.add(hit.filePath);
+    distinct.push(hit);
+    if (distinct.length === limit) break;
+  }
+  return distinct;
 }
 
 function actualEmbeddingModelName(provider: EmbeddingProvider): string {
@@ -599,7 +618,8 @@ export async function ragSearch(input: RagSearchInput): Promise<RagSearchHit[]> 
   const index = loadRagIndex(input.indexPath);
   const product = input.product ? normalizeProduct(input.product) : undefined;
   const provider = await getEmbeddingProvider();
-  const [queryVector] = await embedForRole(provider, [input.query], 'query');
+  const normalizedQuery = normalizeRetrievalQuery(input.query);
+  const [queryVector] = await embedForRole(provider, [normalizedQuery], 'query');
   const candidateLimit = Number(process.env.SANGFOR_MIMO_RERANK_CANDIDATES ?? 40);
   const finalLimit = input.limit ?? 8;
 
@@ -607,21 +627,23 @@ export async function ragSearch(input: RagSearchInput): Promise<RagSearchHit[]> 
   const filtered = index.chunks
     .filter(chunk => !product || chunk.product === product)
     .filter(chunk => !input.version || !chunk.version || chunk.version === input.version)
+    .filter(chunk => !input.sourceType || chunk.sourceType === input.sourceType)
+    .filter(chunk => !input.trustLevel || chunk.trustLevel === input.trustLevel)
     .filter(chunk => allowCustomer || chunk.trustLevel !== 'customer');
 
   lastRagSearchDiagnostics = computeRagSearchDiagnostics(index, wasEmbeddingFallback(), provider.name, queryVector.length);
 
-  let pool = rankHybrid(filtered, queryVector, input.query)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, candidateLimit);
+  const ranked = rankHybrid(filtered, queryVector, normalizedQuery)
+    .sort((a, b) => b.score - a.score);
+  let pool = distinctSources(ranked, candidateLimit);
 
   const reranker = createMimoRerankFromEnv();
   if (reranker && pool.length > 1) {
     try {
       const rerankTimeoutMs = Number(process.env.SANGFOR_MIMO_RERANK_TIMEOUT_MS ?? '5000');
       const rankedIds = await Promise.race([
-        reranker.rerank(
-          input.query,
+      reranker.rerank(
+          normalizedQuery,
           pool.map(p => ({ id: p.id, text: p.text, title: p.title })),
           finalLimit
         ),
@@ -631,15 +653,14 @@ export async function ragSearch(input: RagSearchInput): Promise<RagSearchHit[]> 
       pool = pool
         .filter(p => order.has(p.id))
         .sort((a, b) => (order.get(b.id) ?? 0) - (order.get(a.id) ?? 0))
-        .slice(0, finalLimit)
         .map((p, i) => ({ ...p, rerankScore: order.get(p.id) ?? i }));
-      return pool;
+      return distinctSources(pool, finalLimit);
     } catch {
       // fall through to vector-only ranking
     }
   }
 
-  return pool.slice(0, finalLimit);
+  return distinctSources(ranked, finalLimit);
 }
 
 /**
@@ -665,11 +686,12 @@ export function filterScopedRagCandidates(
 /** Scope-first local search used for migration QA and derived JM caches. */
 export function ragSearchScopedSync(input: ScopedRagSearchInput): RagSearchHit[] {
   const product = input.product ? normalizeProduct(input.product) : undefined;
+  const normalizedQuery = normalizeRetrievalQuery(input.query);
   const authorized = filterScopedRagCandidates(input.chunks, input.authorization)
     .filter((chunk) => !product || chunk.product === product)
     .filter((chunk) => !input.version || !chunk.version || chunk.version === input.version);
   input.onCandidates?.(authorized);
-  return rankHybrid(authorized, hashEmbedding(input.query), input.query)
+  return rankHybrid(authorized, hashEmbedding(normalizedQuery), normalizedQuery)
     .sort((a, b) => b.score - a.score)
     .slice(0, input.limit ?? 8);
 }
@@ -678,13 +700,18 @@ export function ragSearchScopedSync(input: ScopedRagSearchInput): RagSearchHit[]
 export function ragSearchSync(input: RagSearchInput): RagSearchHit[] {
   const index = loadRagIndex(input.indexPath);
   const product = input.product ? normalizeProduct(input.product) : undefined;
-  const queryVector = hashEmbedding(input.query);
+  const normalizedQuery = normalizeRetrievalQuery(input.query);
+  const queryVector = hashEmbedding(normalizedQuery);
   const filtered = index.chunks
     .filter(chunk => !product || chunk.product === product)
-    .filter(chunk => !input.version || !chunk.version || chunk.version === input.version);
-  return rankHybrid(filtered, queryVector, input.query)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, input.limit ?? 8);
+    .filter(chunk => !input.version || !chunk.version || chunk.version === input.version)
+    .filter(chunk => !input.sourceType || chunk.sourceType === input.sourceType)
+    .filter(chunk => !input.trustLevel || chunk.trustLevel === input.trustLevel)
+    .filter(chunk => process.env.SANGFOR_ALLOW_CLOUD_RAG_CUSTOMER === '1' || chunk.trustLevel !== 'customer');
+  return distinctSources(
+    rankHybrid(filtered, queryVector, normalizedQuery).sort((a, b) => b.score - a.score),
+    input.limit ?? 8
+  );
 }
 
 export function exportRagIndexSummary(indexPath = DEFAULT_INDEX_PATH): Record<string, unknown> {

@@ -8,6 +8,8 @@ import { ingestDocument, minMaxNormalizer, ragSearchSync } from '../packages/san
 const dirs: string[] = [];
 afterEach(() => {
   delete process.env.SANGFOR_RAG_HYBRID_ALPHA;
+  delete process.env.SANGFOR_EMBEDDING_FORCE_HASH;
+  delete process.env.SANGFOR_ALLOW_CLOUD_RAG_CUSTOMER;
   for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true });
 });
 const mk = () => { const d = mkdtempSync(join(tmpdir(), 'rag-hybrid-')); dirs.push(d); return d; };
@@ -38,6 +40,42 @@ describe('minMaxNormalizer — large candidate sets', () => {
 });
 
 describe('ragSearchSync — hybrid (BM25 + cosine) ranking', () => {
+  it('keeps customer chunks out of local results unless explicitly allowed', async () => {
+    const dir = mk();
+    const indexPath = join(dir, 'index.json');
+    const officialPath = join(dir, 'official.md');
+    const customerPath = join(dir, 'customer.md');
+    writeFileSync(officialPath, 'official HCI storage network guide');
+    writeFileSync(customerPath, 'customer-only HCI storage network guide');
+    await ingestDocument({ filePath: officialPath, product: 'HCI', indexPath, trustLevel: 'official' });
+    await ingestDocument({ filePath: customerPath, product: 'HCI', indexPath, trustLevel: 'customer' });
+
+    const hits = ragSearchSync({ product: 'HCI', query: 'storage network guide', indexPath });
+
+    expect(hits.map((hit) => hit.filePath)).toContain(officialPath);
+    expect(hits.map((hit) => hit.filePath)).not.toContain(customerPath);
+  });
+
+  it('uses title metadata for lexical ranking and returns distinct sources at the requested limit', async () => {
+    const dir = mk();
+    const indexPath = join(dir, 'index.json');
+    process.env.SANGFOR_EMBEDDING_FORCE_HASH = '1';
+    try {
+      const targetPath = join(dir, 'target.md');
+      writeFileSync(targetPath, 'generic body split into enough words for multiple chunks '.repeat(120));
+      await ingestDocument({ filePath: targetPath, product: 'NGFW', indexPath, title: 'Guaranteed Bandwidth Channel' });
+      const otherPath = join(dir, 'other.md');
+      writeFileSync(otherPath, 'generic unrelated body');
+      await ingestDocument({ filePath: otherPath, product: 'NGFW', indexPath, title: 'Unrelated Manual' });
+    } finally {
+      delete process.env.SANGFOR_EMBEDDING_FORCE_HASH;
+    }
+
+    process.env.SANGFOR_RAG_HYBRID_ALPHA = '0';
+    const hits = ragSearchSync({ product: 'NGFW', sourceType: 'manual', trustLevel: 'official', query: 'guaranteed bandwidth channel', indexPath, limit: 5 });
+    expect(hits[0]?.title).toBe('Guaranteed Bandwidth Channel');
+    expect(new Set(hits.map((hit) => hit.filePath)).size).toBe(hits.length);
+  });
   it('a short chunk with an exact rare-term match outranks a longer unrelated chunk, under the default alpha', async () => {
     const dir = mk();
     const indexPath = join(dir, 'index.json');

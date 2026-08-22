@@ -1,0 +1,236 @@
+{
+  "collectedAt": "2026-08-16T15:32:44.289Z",
+  "targets": [
+    "HCI 6.11.3 (product 10, version 1381)",
+    "SCP 6.12.0 (product 45, version 1388)"
+  ],
+  "filterPattern": "\\bapi\\b|\\bcli\\b|command[- ]line|command line interface|restful|openapi|\\bsdk\\b|shell command",
+  "documentsFound": 32,
+  "chunksIngested": 104,
+  "documents": [
+    {
+      "productLabel": "HCI 6.11.3",
+      "categoryPath": "User Manual / Platform Operation and Maintenance / Operation and Maintenance tools/modules / Daily Operation and Maintenance Module / Sangfor CLI",
+      "sourceUrl": "https://support.sangfor.com/productDocument/read?category_id=2654470&product_id=10&type=1&version_id=1381",
+      "title": "HCI 6.11.3 - User Manual / Platform Operation and Maintenance / Operation and Maintenance tools/modules / Daily Operation and Maintenance Module / Sangfor CLI",
+      "chars": 2303
+    },
+    {
+      "productLabel": "HCI 6.11.3",
+      "categoryPath": "Technical White Paper / Key Technologies / HCI Management / O&M Management / Command Line Instructions",
+      "sourceUrl": "https://support.sangfor.com/productDocument/read?category_id=2662960&product_id=10&type=1&version_id=1381",
+      "title": "HCI 6.11.3 - Technical White Paper / Key Technologies / HCI Management / O&M Management / Command Line Instructions",
+      "chars": 1887
+    },
+    {
+      "productLabel": "HCI 6.11.3",
+      "categoryPath": "Technical White Paper / Key Technologies / Open Support / CLI Support",
+      "sourceUrl": "https://support.sangfor.com/productDocument/read?category_id=2662749&product_id=10&type=1&version_id=1381",
+      "title": "HCI 6.11.3 - Technical White Paper / Key Technologies / Open Support / CLI Support",
+      "chars": 2190
+    },
+    {
+      "productLabel": "SCP 6.12.0",
+      "categoryPath": "Backup Service / NBU Netbackup / Deployment / Configuring NetBackup and XBSA App / Generate API Key",
+      "sourceUrl": "https://support.sangfor.com/productDocument/read?category_id=2656029&product_id=45&type=1&version_id=1388",
+      "title": "SCP 6.12.0 - Backup Service / NBU Netbackup / Deployment / Configuring NetBackup and XBSA App / Generate API Key",
+      "chars": 2174
+    },
+    {
+      "productLabel": "SCP 6.12.0",
+      "categoryPath": "Backup Service / HotAdd / Agentless Backup Development Guide / Introduction / OpenAPI",
+      "sourceUrl": "https://support.sangfor.com/productDocument/read?category_id=2655937&product_id=45&type=1&version_id=1388",
+      "title": "SCP 6.12.0 - Backup Service / HotAdd / Agentless Backup Development Guide / Introduction / OpenAPI",
+      "chars": 2058
+    },
+    {
+      "productLabel": "SCP 6.12.0",
+      "categoryPath": "Backup Service / HotAdd / Agentless Backup Development Guide / Agentless Backup Instructions / OpenAPI Instructions",
+      "sourceUrl": "https://support.sangfor.com/productDocument/read?category_id=2655953&product_id=45&type=1&version_id=1388",
+      "title": "SCP 6.12.0 - Backup Service / HotAdd / Agentless Backup Development Guide / Agentless Backup Instructions / OpenAPI Instructions",
+      "chars": 1861
+    },
+    {
+      "productLabel": "SCP 6.12.0",
+      "categoryPath": "Backup Service / HotAdd / Agentless Backup API 3rd-party Integration User Guide  / About This Document",
+      "sourceUrl": "https://support.sangfor.com/productDocument/read?category_id=2655975&product_id=45&type=1&version_id=1388",
+      "title": "SCP 6.12.0 - Backup Service / HotAdd / Agentless Backup API 3rd-party Integration User Guide  / About This Document",
+      "chars": 1949
+    },
+    {
+      "productLabel": "SCP 6.12.0",
+      "categoryPath": "Backup Service / HotAdd / Agentless Backup API 3rd-party Integration User Guide  / Environment Deployment and Configuration / HCI",
+      "sourceUrl": "https://support.sangfor.com/productDocument/read?category_id=2655977&product_id=45&type=1&version_id=1388",
+      "title": "SCP 6.12.0 - Backup Service / HotAdd / Agentless Backup API 3rd-party Integration User Guide  / Environment Deployment and Configuration / HCI",
+      "chars": 2014
+    },
+    {
+      "productLabel": "SCP 6.12.0",
+      "categoryPath": "Backup Service / HotAdd / Agentless Backup API 3rd-party Integration User Guide  / Environment Deployment and Configuration / SCP",
+      "sourceUrl": "https://support.sangfor.com/productDocument/read?category_id=2655978&product_id=45&type=1&version_id=1388",
+      "title": "SCP 6.12.0 - Backup Service / HotAdd / Agentless Backup API 3rd-party Integration User Guide  / Environment Deployment and Configuration / SCP",
+      "chars": 2957
+    },
+    {
+      "productLabel": "SCP 6.12.0",
+      "categoryPath": "Backup Service / HotAdd / Agentless Backup API 3rd-party Integration User Guide  / Environment Deployment and Configuration / Licensing / HCI",
+      "sourceUrl": "https://support.sangfor.com/productDocument/read?category_id=2655980&product_id=45&type=1&version_id=1388",
+      "title": "SCP 6.12.0 - Backup Service / HotAdd / Agentless Backup API 3rd-party Integration User Guide  / Environment Deployment and Configuration / Licensing / HCI",
+      "chars": 2223
+    },
+    {
+      "productLabel": "SCP 6.12.0",
+      "categoryPath": "Backup Service / HotAdd / Agentless Backup API 3rd-party Integration User Guide  / Environment Deployment and Configuration / Licensing / SCP",
+      "sourceUrl": "https://support.sangfor.com/productDocument/read?category_id=2655981&product_id=45&type=1&version_id=1388",
+      "title": "SCP 6.12.0 - Backup Service / HotAdd / Agentless Backup API 3rd-party Integration User Guide  / Environment Deployment and Configuration / Licensing / SCP",
+      "chars": 2290
+    },
+    {
+      "productLabel": "SCP 6.12.0",
+      "categoryPath": "Backup Service / HotAdd / Agentless Backup API 3rd-party Integration User Guide  / Environment Deployment and Configuration / Transport Mode",
+      "sourceUrl": "https://support.sangfor.com/productDocument/read?category_id=2655982&product_id=45&type=1&version_id=1388",
+      "title": "SCP 6.12.0 - Backup Service / HotAdd / Agentless Backup API 3rd-party Integration User Guide  / Environment Deployment and Configuration / Transport Mode",
+      "chars": 2018
+    },
+    {
+      "productLabel": "SCP 6.12.0",
+      "categoryPath": "Backup Service / HotAdd / Agentless Backup API 3rd-party Integration User Guide  / Environment Deployment and Configuration / Deployment of Backup Proxy VMs",
+      "sourceUrl": "https://support.sangfor.com/productDocument/read?category_id=2655983&product_id=45&type=1&version_id=1388",
+      "title": "SCP 6.12.0 - Backup Service / HotAdd / Agentless Backup API 3rd-party Integration User Guide  / Environment Deployment and Configuration / Deployment of Backup Proxy VMs",
+      "chars": 4129
+    },
+    {
+      "productLabel": "SCP 6.12.0",
+      "categoryPath": "Backup Service / HotAdd / Agentless Backup API 3rd-party Integration User Guide  / Environment Deployment and Configuration / Supported Architectures",
+      "sourceUrl": "https://support.sangfor.com/productDocument/read?category_id=2655984&product_id=45&type=1&version_id=1388",
+      "title": "SCP 6.12.0 - Backup Service / HotAdd / Agentless Backup API 3rd-party Integration User Guide  / Environment Deployment and Configuration / Supported Architectures",
+      "chars": 2238
+    },
+    {
+      "productLabel": "SCP 6.12.0",
+      "categoryPath": "Backup Service / HotAdd / Agentless Backup API 3rd-party Integration User Guide  / Connection Preparations / Connect to Agentless Backup via SCP / Enable Agentless Backup Service Port",
+      "sourceUrl": "https://support.sangfor.com/productDocument/read?category_id=2655987&product_id=45&type=1&version_id=1388",
+      "title": "SCP 6.12.0 - Backup Service / HotAdd / Agentless Backup API 3rd-party Integration User Guide  / Connection Preparations / Connect to Agentless Backup via SCP / Enable Agentless Backup Service Port",
+      "chars": 2247
+    },
+    {
+      "productLabel": "SCP 6.12.0",
+      "categoryPath": "Backup Service / HotAdd / Agentless Backup API 3rd-party Integration User Guide  / Connection Preparations / Connect to Agentless Backup via SCP / Configure Agentless Backup",
+      "sourceUrl": "https://support.sangfor.com/productDocument/read?category_id=2655988&product_id=45&type=1&version_id=1388",
+      "title": "SCP 6.12.0 - Backup Service / HotAdd / Agentless Backup API 3rd-party Integration User Guide  / Connection Preparations / Connect to Agentless Backup via SCP / Configure Agentless Backup",
+      "chars": 2123
+    },
+    {
+      "productLabel": "SCP 6.12.0",
+      "categoryPath": "Backup Service / HotAdd / Agentless Backup API 3rd-party Integration User Guide  / Connection Preparations / User Permission Control",
+      "sourceUrl": "https://support.sangfor.com/productDocument/read?category_id=2655989&product_id=45&type=1&version_id=1388",
+      "title": "SCP 6.12.0 - Backup Service / HotAdd / Agentless Backup API 3rd-party Integration User Guide  / Connection Preparations / User Permission Control",
+      "chars": 2329
+    },
+    {
+      "productLabel": "SCP 6.12.0",
+      "categoryPath": "Backup Service / HotAdd / Agentless Backup API 3rd-party Integration User Guide  / Connection Preparations / SFVDDK / SFVDDK Installation",
+      "sourceUrl": "https://support.sangfor.com/productDocument/read?category_id=2655991&product_id=45&type=1&version_id=1388",
+      "title": "SCP 6.12.0 - Backup Service / HotAdd / Agentless Backup API 3rd-party Integration User Guide  / Connection Preparations / SFVDDK / SFVDDK Installation",
+      "chars": 2610
+    },
+    {
+      "productLabel": "SCP 6.12.0",
+      "categoryPath": "Backup Service / HotAdd / Agentless Backup API 3rd-party Integration User Guide  / Connection Preparations / SFVDDK / SFVDDK APIs",
+      "sourceUrl": "https://support.sangfor.com/productDocument/read?category_id=2655992&product_id=45&type=1&version_id=1388",
+      "title": "SCP 6.12.0 - Backup Service / HotAdd / Agentless Backup API 3rd-party Integration User Guide  / Connection Preparations / SFVDDK / SFVDDK APIs",
+      "chars": 3781
+    },
+    {
+      "productLabel": "SCP 6.12.0",
+      "categoryPath": "Backup Service / HotAdd / Agentless Backup API 3rd-party Integration User Guide  / Connection Preparations / Open APIs",
+      "sourceUrl": "https://support.sangfor.com/productDocument/read?category_id=2655993&product_id=45&type=1&version_id=1388",
+      "title": "SCP 6.12.0 - Backup Service / HotAdd / Agentless Backup API 3rd-party Integration User Guide  / Connection Preparations / Open APIs",
+      "chars": 13787
+    },
+    {
+      "productLabel": "SCP 6.12.0",
+      "categoryPath": "Backup Service / HotAdd / Agentless Backup API 3rd-party Integration User Guide  / Connection Preparations / Asynchronous Task Mechanism",
+      "sourceUrl": "https://support.sangfor.com/productDocument/read?category_id=2655994&product_id=45&type=1&version_id=1388",
+      "title": "SCP 6.12.0 - Backup Service / HotAdd / Agentless Backup API 3rd-party Integration User Guide  / Connection Preparations / Asynchronous Task Mechanism",
+      "chars": 3077
+    },
+    {
+      "productLabel": "SCP 6.12.0",
+      "categoryPath": "Backup Service / HotAdd / Agentless Backup API 3rd-party Integration User Guide  / Feature Connection / Platform Connection / Authentication and Authorization",
+      "sourceUrl": "https://support.sangfor.com/productDocument/read?category_id=2655997&product_id=45&type=1&version_id=1388",
+      "title": "SCP 6.12.0 - Backup Service / HotAdd / Agentless Backup API 3rd-party Integration User Guide  / Feature Connection / Platform Connection / Authentication and Authorization",
+      "chars": 2111
+    },
+    {
+      "productLabel": "SCP 6.12.0",
+      "categoryPath": "Backup Service / HotAdd / Agentless Backup API 3rd-party Integration User Guide  / Feature Connection / Platform Connection / Platform Version Check",
+      "sourceUrl": "https://support.sangfor.com/productDocument/read?category_id=2655998&product_id=45&type=1&version_id=1388",
+      "title": "SCP 6.12.0 - Backup Service / HotAdd / Agentless Backup API 3rd-party Integration User Guide  / Feature Connection / Platform Connection / Platform Version Check",
+      "chars": 2432
+    },
+    {
+      "productLabel": "SCP 6.12.0",
+      "categoryPath": "Backup Service / HotAdd / Agentless Backup API 3rd-party Integration User Guide  / Feature Connection / Platform Connection / Add VMs to a Backup Policy",
+      "sourceUrl": "https://support.sangfor.com/productDocument/read?category_id=2655999&product_id=45&type=1&version_id=1388",
+      "title": "SCP 6.12.0 - Backup Service / HotAdd / Agentless Backup API 3rd-party Integration User Guide  / Feature Connection / Platform Connection / Add VMs to a Backup Policy",
+      "chars": 4848
+    },
+    {
+      "productLabel": "SCP 6.12.0",
+      "categoryPath": "Backup Service / HotAdd / Agentless Backup API 3rd-party Integration User Guide  / Feature Connection / Backup and Recovery / Create a Backup",
+      "sourceUrl": "https://support.sangfor.com/productDocument/read?category_id=2656001&product_id=45&type=1&version_id=1388",
+      "title": "SCP 6.12.0 - Backup Service / HotAdd / Agentless Backup API 3rd-party Integration User Guide  / Feature Connection / Backup and Recovery / Create a Backup",
+      "chars": 10926
+    },
+    {
+      "productLabel": "SCP 6.12.0",
+      "categoryPath": "Backup Service / HotAdd / Agentless Backup API 3rd-party Integration User Guide  / Feature Connection / Backup and Recovery / Recover to a New VM",
+      "sourceUrl": "https://support.sangfor.com/productDocument/read?category_id=2656002&product_id=45&type=1&version_id=1388",
+      "title": "SCP 6.12.0 - Backup Service / HotAdd / Agentless Backup API 3rd-party Integration User Guide  / Feature Connection / Backup and Recovery / Recover to a New VM",
+      "chars": 5271
+    },
+    {
+      "productLabel": "SCP 6.12.0",
+      "categoryPath": "Backup Service / HotAdd / Agentless Backup API 3rd-party Integration User Guide  / Feature Connection / Backup and Recovery / Recover to the Original VM",
+      "sourceUrl": "https://support.sangfor.com/productDocument/read?category_id=2656003&product_id=45&type=1&version_id=1388",
+      "title": "SCP 6.12.0 - Backup Service / HotAdd / Agentless Backup API 3rd-party Integration User Guide  / Feature Connection / Backup and Recovery / Recover to the Original VM",
+      "chars": 3249
+    },
+    {
+      "productLabel": "SCP 6.12.0",
+      "categoryPath": "Backup Service / HotAdd / Agentless Backup API 3rd-party Integration User Guide  / Feature Connection / Backup and Recovery / Differentially Recover to the Original VM",
+      "sourceUrl": "https://support.sangfor.com/productDocument/read?category_id=2656004&product_id=45&type=1&version_id=1388",
+      "title": "SCP 6.12.0 - Backup Service / HotAdd / Agentless Backup API 3rd-party Integration User Guide  / Feature Connection / Backup and Recovery / Differentially Recover to the Original VM",
+      "chars": 3331
+    },
+    {
+      "productLabel": "SCP 6.12.0",
+      "categoryPath": "Backup Service / HotAdd / Agentless Backup API 3rd-party Integration User Guide  / Feature Connection / Backup and Recovery / Rapid Recovery",
+      "sourceUrl": "https://support.sangfor.com/productDocument/read?category_id=2656005&product_id=45&type=1&version_id=1388",
+      "title": "SCP 6.12.0 - Backup Service / HotAdd / Agentless Backup API 3rd-party Integration User Guide  / Feature Connection / Backup and Recovery / Rapid Recovery",
+      "chars": 3872
+    },
+    {
+      "productLabel": "SCP 6.12.0",
+      "categoryPath": "Backup Service / HotAdd / Agentless Backup API 3rd-party Integration User Guide  / Notes",
+      "sourceUrl": "https://support.sangfor.com/productDocument/read?category_id=2656006&product_id=45&type=1&version_id=1388",
+      "title": "SCP 6.12.0 - Backup Service / HotAdd / Agentless Backup API 3rd-party Integration User Guide  / Notes",
+      "chars": 5132
+    },
+    {
+      "productLabel": "SCP 6.12.0",
+      "categoryPath": "Maintenance & Operations Guide / SCP O&M Guide / Sangfor CLI / Core Objectives",
+      "sourceUrl": "https://support.sangfor.com/productDocument/read?category_id=2656818&product_id=45&type=1&version_id=1388",
+      "title": "SCP 6.12.0 - Maintenance & Operations Guide / SCP O&M Guide / Sangfor CLI / Core Objectives",
+      "chars": 1797
+    },
+    {
+      "productLabel": "SCP 6.12.0",
+      "categoryPath": "Maintenance & Operations Guide / SCP O&M Guide / Sangfor CLI / O&M Guidelines",
+      "sourceUrl": "https://support.sangfor.com/productDocument/read?category_id=2656819&product_id=45&type=1&version_id=1388",
+      "title": "SCP 6.12.0 - Maintenance & Operations Guide / SCP O&M Guide / Sangfor CLI / O&M Guidelines",
+      "chars": 2452
+    }
+  ]
+}

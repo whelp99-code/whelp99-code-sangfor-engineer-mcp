@@ -76,6 +76,8 @@ function buildKnowledgeQueries(product: ProductCode, projectType: ProjectType): 
   const base: Record<ProductCode, string[]> = {
     HCI_SCP: ['SCP OpenAPI resource inventory', 'HA DRS validation', 'VM resource planning', 'license mismatch validation'],
     HCI: ['cluster initialization precheck', 'storage network MTU', 'VM migration rollback', 'DR failover validation'],
+    NGFW: ['firewall policy design', 'bandwidth channel configuration', 'VPN validation', 'policy rollback'],
+    SCC: ['tenant quota operations', 'cloud resource planning', 'tenant validation', 'support escalation'],
     IAG: ['access policy design', 'authentication integration', 'internet access control logging', 'policy rollback'],
     ENDPOINT_SECURE: ['agent deployment pilot group', 'EDR policy baseline', 'exception policy', 'rollback uninstall package'],
     NDR: ['event source onboarding', 'SOAR playbook validation', 'alert incident validation', 'third party API integration'],

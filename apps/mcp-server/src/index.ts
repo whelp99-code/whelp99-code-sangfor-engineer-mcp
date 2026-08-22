@@ -900,8 +900,14 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
   },
   'sangfor_rag_search': {
     description: 'Search real ingested local RAG index by product/version/query. Supports privacy_mode (summary|structured|raw) to limit returned detail. Hit embedding vectors are omitted by default — pass include_vectors:true to get them back.',
-    inputSchema: { type: 'object', properties: { product: { type: 'string' }, version: { type: 'string' }, query: { type: 'string' }, limit: { type: 'number' }, indexPath: { type: 'string' }, privacy_mode: PRIVACY_MODE_SCHEMA, include_vectors: { type: 'boolean', description: 'Include each hit\'s raw embedding vector. Default false — vectors are large and rarely needed by callers.' } }, required: ['query'] },
-    handler: async (args: { query: string; product?: string; version?: string; limit?: number; indexPath?: string; privacy_mode?: 'summary' | 'structured' | 'raw'; include_vectors?: boolean }) => {
+    inputSchema: { type: 'object', properties: { product: { type: 'string' }, version: { type: 'string' }, sourceType: { type: 'string', enum: ['manual', 'wiki', 'lesson', 'pattern'] }, trustLevel: { type: 'string', enum: ['official', 'internal', 'draft', 'needs_review', 'customer'] }, query: { type: 'string' }, limit: { type: 'number' }, indexPath: { type: 'string' }, privacy_mode: PRIVACY_MODE_SCHEMA, include_vectors: { type: 'boolean', description: 'Include each hit\'s raw embedding vector. Default false — vectors are large and rarely needed by callers.' } }, required: ['query'] },
+    handler: async (args: { query: string; product?: string; version?: string; sourceType?: 'manual' | 'wiki' | 'lesson' | 'pattern'; trustLevel?: 'official' | 'internal' | 'draft' | 'needs_review' | 'customer'; limit?: number; indexPath?: string; privacy_mode?: 'summary' | 'structured' | 'raw'; include_vectors?: boolean }) => {
+      if (args.sourceType !== undefined && !['manual', 'wiki', 'lesson', 'pattern'].includes(args.sourceType)) {
+        throw new Error(`INVALID_SOURCE_TYPE: ${args.sourceType}`);
+      }
+      if (args.trustLevel !== undefined && !['official', 'internal', 'draft', 'needs_review', 'customer'].includes(args.trustLevel)) {
+        throw new Error(`INVALID_TRUST_LEVEL: ${args.trustLevel}`);
+      }
       const hits = await ragSearch(args);
       const diagnostics = getRagSearchDiagnostics();
       // C2 search-gap flywheel: a weak result (nothing found, or the best hit

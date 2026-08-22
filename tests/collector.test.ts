@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   htmlToText,
+  inferProductFromText,
   isCommunityNoise,
   parseCommunityThread,
   parseCommunityThreadIds,
@@ -8,6 +9,11 @@ import {
 } from '../packages/sangfor-collector/src/index.js';
 
 describe('sangfor-collector', () => {
+  it('classifies NGFW and SCC separately from Cyber Command', () => {
+    expect(inferProductFromText('Athena NGFW firewall policy guide')).toBe('NGFW');
+    expect(inferProductFromText('Sangfor Data Center Cloud tenant guide')).toBe('SCC');
+  });
+
   it('parses community thread ids from forum HTML', () => {
     const html = '<a href="forum.php?mod=viewthread&amp;tid=12345">x</a>';
     expect(parseCommunityThreadIds(html)).toEqual([12345]);

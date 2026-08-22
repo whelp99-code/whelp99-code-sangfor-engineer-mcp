@@ -66,7 +66,9 @@ export function inferProductFromText(text: string, fallback: ProductCode = 'HCI'
   const lower = text.toLowerCase();
   if (/\b(iag|swg|internet access gateway)\b/.test(lower)) return 'IAG';
   if (/\b(endpoint secure|epp|edr|aSec)\b/.test(lower)) return 'ENDPOINT_SECURE';
-  if (/\b(cyber command|ngfw|ndr|xdr|mdr|soc)\b/.test(lower)) return 'CYBER_COMMAND';
+  if (/\b(ngfw|ngaf|athena ngfw|next-generation firewall)\b/.test(lower)) return 'NGFW';
+  if (/\b(scc|sangfor data center cloud|data center cloud)\b/.test(lower)) return 'SCC';
+  if (/\b(cyber command|ndr|xdr|mdr|soc)\b/.test(lower)) return 'CYBER_COMMAND';
   if (/\b(hci|hyper.?converged|aSV|vmware)\b/.test(lower)) return 'HCI';
   return normalizeProduct(text) !== 'HCI' || /\bhci\b/i.test(text) ? normalizeProduct(text) : fallback;
 }

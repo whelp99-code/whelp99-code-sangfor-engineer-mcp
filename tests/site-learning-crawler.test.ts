@@ -202,9 +202,9 @@ describe('two-site learning crawler parsers', () => {
     expect(extractCommunityThreadPageCount(html, 12230)).toBe(41);
   });
 
-  it('keeps unsupported products explicit instead of mislabeling them as HCI', () => {
+  it('keeps supported products explicit and unsupported products out of HCI', () => {
     expect(inferLearningProduct('Hyper Converged Infrastructure HCI deployment')).toBe('HCI');
-    expect(inferLearningProduct('Athena NGFW firewall policy guide')).toBe('OTHER');
+    expect(inferLearningProduct('Athena NGFW firewall policy guide')).toBe('NGFW');
     expect(inferLearningProduct('aDesk Virtual Desktop Infrastructure')).toBe('OTHER');
     expect(inferLearningProduct('HCI, IAG, and Endpoint Secure product catalog')).toBe('OTHER');
   });

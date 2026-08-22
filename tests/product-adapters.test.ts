@@ -12,10 +12,16 @@ import {
   generateExcelBasedChangePlan,
   generateProductChangePlan
   , importExcelRequirementList,
-  mapRequirementsToProducts
+  mapRequirementsToProducts,
+  normalizeAutomationProduct
 } from '../packages/sangfor-product-adapters/src/index.js';
 
 describe('Product automation adapters', () => {
+  it('rejects unsupported NGFW and SCC automation instead of routing to HCI/SCP', () => {
+    expect(() => normalizeAutomationProduct('Athena NGFW')).toThrow('UNSUPPORTED_PRODUCT');
+    expect(() => normalizeAutomationProduct('Sangfor Data Center Cloud')).toThrow('UNSUPPORTED_PRODUCT');
+  });
+
   it('uses API-first strategy for HCI/SCP and exposes SCP OpenAPI candidates', () => {
     const discovery = discoverProductConsole({ product: 'SCP', version: '6.11.2' });
     expect(discovery.product).toBe('HCI_SCP');

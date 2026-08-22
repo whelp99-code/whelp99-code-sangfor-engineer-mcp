@@ -283,6 +283,8 @@ export function resolveEngagementScopedData(subdir: string, envVar?: string): st
 export type ProductCode =
   | 'HCI_SCP'
   | 'HCI'
+  | 'NGFW'
+  | 'SCC'
   | 'IAG'
   | 'ENDPOINT_SECURE'
   | 'NDR'
@@ -296,6 +298,8 @@ export const PRODUCT_PRIORITY: ProductCode[] = [
   'NDR',
   'HCI',
   'CYBER_COMMAND',
+  'NGFW',
+  'SCC',
   'OTHER'
 ];
 
@@ -321,6 +325,20 @@ export const PRODUCTS: SangforProduct[] = [
     priority: 5,
     aliases: ['HCI', 'aSV', 'Sangfor HCI', 'Hyper-Converged Infrastructure'],
     mvpScope: ['cluster deployment', 'network precheck', 'storage precheck', 'VM migration planning', 'DR PoC planning']
+  },
+  {
+    code: 'NGFW',
+    name: 'Sangfor NGFW',
+    priority: 7,
+    aliases: ['NGFW', 'NGAF', 'Athena NGFW', 'Next-Generation Firewall'],
+    mvpScope: ['firewall policy planning', 'bandwidth management', 'VPN planning', 'security validation']
+  },
+  {
+    code: 'SCC',
+    name: 'Sangfor Data Center Cloud',
+    priority: 8,
+    aliases: ['SCC', 'Sangfor Data Center Cloud', 'Data Center Cloud'],
+    mvpScope: ['tenant operations', 'quota planning', 'cloud resource validation']
   },
   {
     code: 'IAG',

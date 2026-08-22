@@ -85,4 +85,11 @@ describe('sangfor_rag_search — vector omission by default (C3)', () => {
     expect(tool.inputSchema.properties.include_vectors).toBeDefined();
     expect(tool.inputSchema.properties.include_vectors.type).toBe('boolean');
   });
+
+  it('rejects invalid trust-level filters instead of recording a false search gap', async () => {
+    const handler = getToolHandler('sangfor_rag_search')!;
+
+    await expect(handler({ query: 'MTU storage', indexPath, trustLevel: 'offical' }))
+      .rejects.toThrow('INVALID_TRUST_LEVEL');
+  });
 });

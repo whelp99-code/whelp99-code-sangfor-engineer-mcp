@@ -28,8 +28,10 @@ interface CatalogSection {
 function mapProduct(label: string): ProductCode {
   const l = label.toLowerCase();
   if (l.includes('hci')) return 'HCI';
+  if (l.includes('ngfw') || l.includes('ngaf') || l.includes('athena ngfw')) return 'NGFW';
+  if (l.includes('scc') || l.includes('data center cloud')) return 'SCC';
   if (l.includes('epp') || l.includes('endpoint')) return 'ENDPOINT_SECURE';
-  if (l.includes('ndr') || l.includes('ngfw') || l.includes('xdr') || l.includes('cyber')) return 'CYBER_COMMAND';
+  if (l.includes('ndr') || l.includes('xdr') || l.includes('cyber')) return 'CYBER_COMMAND';
   if (l.includes('swg') || l.includes('iag') || l.includes('atrust')) return 'IAG';
   return 'HCI';
 }
