@@ -289,6 +289,7 @@ export type ProductCode =
   | 'ENDPOINT_SECURE'
   | 'NDR'
   | 'CYBER_COMMAND'
+  | 'HIWARE'
   | 'OTHER';
 
 export const PRODUCT_PRIORITY: ProductCode[] = [
@@ -300,6 +301,7 @@ export const PRODUCT_PRIORITY: ProductCode[] = [
   'CYBER_COMMAND',
   'NGFW',
   'SCC',
+  'HIWARE',
   'OTHER'
 ];
 
@@ -367,6 +369,13 @@ export const PRODUCTS: SangforProduct[] = [
     priority: 6,
     aliases: ['Cyber Command legacy', 'Sangfor Cyber Command legacy'],
     mvpScope: ['event collection planning', 'alert policy planning', 'dashboard/report validation', 'integration readiness']
+  },
+  {
+    code: 'HIWARE',
+    name: 'HIWARE Privileged Access Management',
+    priority: 9,
+    aliases: ['HIWARE', 'HIWARE PSM', 'HIWARE 6', 'HIWARE PAM', 'PSM for System'],
+    mvpScope: ['privileged access policy review', 'OTP readiness', 'session audit review', 'approval workflow validation']
   },
   {
     code: 'OTHER',

@@ -922,7 +922,7 @@ export function normalizeAutomationProduct(input?: string): AutomationProductCod
   if (sharedProduct === 'HCI' || sharedProduct === 'HCI_SCP') return 'HCI_SCP';
   if (sharedProduct === 'CYBER_COMMAND' || sharedProduct === 'NDR') return 'NDR';
   if (sharedProduct === 'IAG' || sharedProduct === 'ENDPOINT_SECURE') return sharedProduct;
-  if (sharedProduct === 'NGFW' || sharedProduct === 'SCC') {
+  if (sharedProduct === 'NGFW' || sharedProduct === 'SCC' || sharedProduct === 'HIWARE') {
     throw new Error(`UNSUPPORTED_PRODUCT: ${sharedProduct} has no automation adapter.`);
   }
   return 'HCI_SCP';
