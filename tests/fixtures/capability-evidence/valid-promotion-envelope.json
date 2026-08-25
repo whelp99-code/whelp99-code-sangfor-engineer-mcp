@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "request": {
+    "version": 1,
+    "requestId": "promotion-request-001",
+    "manifestId": "manifest-018f22e2",
+    "manifestDigest": "00c68ec692ecf432e56737b420f3bfe6103cb30b7a6262d6b6f3d20b9e083561",
+    "target": {
+      "productId": "HCI_SCP",
+      "capabilityId": "resource_inventory",
+      "toolId": "sangfor_evaluate_config",
+      "workAtomIds": ["op_daily_health"]
+    },
+    "requestedMaturity": "field_verified",
+    "requestedBy": { "actorId": "campaign-requester-01", "actorType": "ai_engineer" },
+    "requestedAt": "2026-08-25T12:05:00.000Z",
+    "evidenceRef": "manifests/manifest-018f22e2.json",
+    "auditRef": "audit/promotion-request-001.jsonl",
+    "o5Counters": {
+      "runCount": 1,
+      "passCount": 1,
+      "failCount": 0,
+      "indeterminateCount": 0,
+      "independentReadBackPassCount": 1,
+      "negativeCasePassCount": 1,
+      "restoredCount": 1,
+      "retainedCount": 0,
+      "mutationCount": 1,
+      "retryCount": 0,
+      "collateralMutationCount": 0
+    }
+  },
+  "decision": {
+    "version": 1,
+    "decisionId": "promotion-decision-001",
+    "requestId": "promotion-request-001",
+    "manifestId": "manifest-018f22e2",
+    "manifestDigest": "00c68ec692ecf432e56737b420f3bfe6103cb30b7a6262d6b6f3d20b9e083561",
+    "target": {
+      "productId": "HCI_SCP",
+      "capabilityId": "resource_inventory",
+      "toolId": "sangfor_evaluate_config",
+      "workAtomIds": ["op_daily_health"]
+    },
+    "o5Counters": {
+      "runCount": 1,
+      "passCount": 1,
+      "failCount": 0,
+      "indeterminateCount": 0,
+      "independentReadBackPassCount": 1,
+      "negativeCasePassCount": 1,
+      "restoredCount": 1,
+      "retainedCount": 0,
+      "mutationCount": 1,
+      "retryCount": 0,
+      "collateralMutationCount": 0
+    },
+    "reviewer": { "actorId": "pm-reviewer-01", "actorType": "human_pm" },
+    "decidedAt": "2026-08-25T12:10:00.000Z",
+    "auditRef": "audit/promotion-decision-001.jsonl",
+    "approvalDigest": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+    "decision": "promote",
+    "promotedMaturity": "field_verified"
+  }
+}

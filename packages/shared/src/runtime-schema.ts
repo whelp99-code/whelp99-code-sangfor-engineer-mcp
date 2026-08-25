@@ -38,8 +38,8 @@ export class RuntimeSchemaError extends Error {
   }
 }
 
-export type RuntimeSchemaContract<T> = {
-  readonly schema: z.ZodType<T>;
+export type RuntimeSchemaContract<TOutput, TInput = TOutput> = {
+  readonly schema: z.ZodType<TOutput, z.ZodTypeDef, TInput>;
   readonly schemaName: string;
   readonly policy: RuntimeFailurePolicy;
   readonly expectedVersion?: string | number;
@@ -105,11 +105,17 @@ function duplicateIdIssue(value: unknown, path: readonly string[]): RuntimeSchem
   return undefined;
 }
 
-function reject(contract: RuntimeSchemaContract<unknown>, issue: RuntimeSchemaIssue): never {
+function reject(
+  contract: { readonly schemaName: string; readonly policy: RuntimeFailurePolicy },
+  issue: RuntimeSchemaIssue,
+): never {
   throw new RuntimeSchemaError(contract.schemaName, contract.policy, [issue]);
 }
 
-export function parseRuntimeJson<T>(source: string, contract: RuntimeSchemaContract<T>): T {
+export function parseRuntimeJson<TOutput, TInput>(
+  source: string,
+  contract: RuntimeSchemaContract<TOutput, TInput>,
+): TOutput {
   let parsed: unknown;
   try {
     parsed = JSON.parse(source);

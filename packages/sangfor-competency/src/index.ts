@@ -51,3 +51,57 @@ export {
   type CoverageResult,
   type ReplacementReport,
 } from './coverage.js';
+
+export {
+  CAPABILITY_EVIDENCE_VERSION,
+  MAX_CAPABILITY_EVIDENCE_BYTES,
+  MAX_EVIDENCE_RUNS,
+  MAX_EVIDENCE_ARTIFACTS,
+  MAX_NEGATIVE_CASES,
+  O5_COUNTER_KEYS,
+  EVIDENCE_RESULTS,
+  firmwareTruthEvidenceSchema,
+  capabilityEvidenceArtifactSchema,
+  negativeCaseSchema,
+  independentReadBackSchema,
+  capabilityEvidenceRunSchema,
+  o5CampaignCountersSchema,
+  capabilityEvidenceManifestSchema,
+  type CapabilityEvidenceArtifact,
+  type CapabilityEvidenceRun,
+  type CapabilityEvidenceManifest,
+  type NegativeCase,
+  type O5CampaignCounters,
+} from './evidence-schema.js';
+
+export {
+  CAPABILITY_PROMOTION_VERSION,
+  capabilityPromotionRequestSchema,
+  capabilityPromotionDecisionSchema,
+  capabilityPromotionEnvelopeSchema,
+  type CapabilityPromotionRequest,
+  type CapabilityPromotionDecision,
+  type CapabilityPromotionEnvelope,
+} from './promotion-schema.js';
+
+export {
+  parseGroundedCapabilityEvidence,
+  parseGroundedCapabilityPromotion,
+  CapabilityEvidenceGroundingError,
+  type CapabilityEvidenceGrounding,
+  type CapabilityEvidenceGroundingIssue,
+} from './evidence-grounding.js';
+
+export {
+  MAX_TARGET_WORK_ATOMS,
+  sha256Schema,
+  evidenceIdSchema,
+  firmwareValueSchema,
+  timestampSchema,
+  relativeArtifactPathSchema,
+  mediaTypeSchema,
+  actorIdentitySchema,
+  capabilityTargetSchema,
+  type ActorIdentity,
+  type CapabilityTarget,
+} from './evidence-primitives.js';

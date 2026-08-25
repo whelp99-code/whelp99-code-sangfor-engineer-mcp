@@ -1,0 +1,133 @@
+{
+  "version": 1,
+  "manifestId": "manifest-018f22e2",
+  "generatedAt": "2026-08-25T12:00:00.000Z",
+  "target": {
+    "productId": "HCI_SCP",
+    "capabilityId": "resource_inventory",
+    "toolId": "sangfor_evaluate_config",
+    "workAtomIds": ["op_daily_health"]
+  },
+  "firmwareTruth": {
+    "recordId": "firmware-hci-6.10.0",
+    "vendor": "SANGFOR",
+    "adapterProduct": "HCI_SCP",
+    "productVariant": "SCP",
+    "versionRaw": "6.10.0R2",
+    "versionFamily": "6.10",
+    "revision": "R2",
+    "buildId": null,
+    "hotfix": null,
+    "uiFingerprint": "1111111111111111111111111111111111111111111111111111111111111111",
+    "apiFingerprint": "2222222222222222222222222222222222222222222222222222222222222222",
+    "status": "verified",
+    "observedAt": "2026-08-25T10:50:00.000Z",
+    "evidenceFile": "firmware/truth-hci.json",
+    "specVersion": "6.10",
+    "specApplicability": "verified",
+    "truthDigest": "3333333333333333333333333333333333333333333333333333333333333333"
+  },
+  "digests": {
+    "recipeDigest": "4444444444444444444444444444444444444444444444444444444444444444",
+    "toolDigest": "5555555555555555555555555555555555555555555555555555555555555555",
+    "runtimeDigest": "6666666666666666666666666666666666666666666666666666666666666666",
+    "deviceIdentityDigest": "7777777777777777777777777777777777777777777777777777777777777777",
+    "windowIdentityDigest": "8888888888888888888888888888888888888888888888888888888888888888"
+  },
+  "runs": [
+    {
+      "id": "run-001",
+      "result": "pass",
+      "executor": { "actorId": "ai-engineer-07", "actorType": "ai_engineer" },
+      "startedAt": "2026-08-25T11:00:00.000Z",
+      "completedAt": "2026-08-25T11:06:00.000Z",
+      "independentReadBack": {
+        "independent": true,
+        "verifier": { "actorId": "verifier-service-02", "actorType": "service" },
+        "result": "pass",
+        "observedStateDigest": "9999999999999999999999999999999999999999999999999999999999999999",
+        "artifactId": "artifact-readback",
+        "observedAt": "2026-08-25T11:08:00.000Z"
+      },
+      "postRunState": {
+        "mode": "restored",
+        "result": "pass",
+        "readBackArtifactId": "artifact-restore"
+      },
+      "mutationAttempted": true,
+      "mutationCount": 1,
+      "retryCount": 0,
+      "collateralMutationCount": 0,
+      "auditRef": "audit/run-001.jsonl",
+      "evidenceChainRef": "chains/run-001.json",
+      "artifactIds": ["artifact-run", "artifact-readback", "artifact-restore"],
+      "negativeCaseIds": ["negative-001"]
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "artifact-run",
+      "kind": "run",
+      "path": "runs/run-001.json",
+      "fileType": "regular_file",
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "sizeBytes": 2048,
+      "mediaType": "application/json",
+      "createdAt": "2026-08-25T11:06:00.000Z"
+    },
+    {
+      "id": "artifact-readback",
+      "kind": "readback",
+      "path": "readback/run-001.json",
+      "fileType": "regular_file",
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "sizeBytes": 1024,
+      "mediaType": "application/json",
+      "createdAt": "2026-08-25T11:08:00.000Z"
+    },
+    {
+      "id": "artifact-restore",
+      "kind": "restore",
+      "path": "restore/run-001.json",
+      "fileType": "regular_file",
+      "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "sizeBytes": 1024,
+      "mediaType": "application/json",
+      "createdAt": "2026-08-25T11:07:00.000Z"
+    },
+    {
+      "id": "artifact-negative",
+      "kind": "negative",
+      "path": "negative/approval-replay.json",
+      "fileType": "regular_file",
+      "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "sizeBytes": 512,
+      "mediaType": "application/json",
+      "createdAt": "2026-08-25T11:05:00.000Z"
+    }
+  ],
+  "negativeCases": [
+    {
+      "id": "negative-001",
+      "caseCode": "approval_replay",
+      "expectedRefusalCode": "NONCE_REPLAY",
+      "observedRefusalCode": "NONCE_REPLAY",
+      "result": "pass",
+      "artifactIds": ["artifact-negative"],
+      "testedAt": "2026-08-25T11:05:00.000Z"
+    }
+  ],
+  "o5Counters": {
+    "runCount": 1,
+    "passCount": 1,
+    "failCount": 0,
+    "indeterminateCount": 0,
+    "independentReadBackPassCount": 1,
+    "negativeCasePassCount": 1,
+    "restoredCount": 1,
+    "retainedCount": 0,
+    "mutationCount": 1,
+    "retryCount": 0,
+    "collateralMutationCount": 0
+  }
+}
