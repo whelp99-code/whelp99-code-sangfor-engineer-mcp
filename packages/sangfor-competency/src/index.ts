@@ -93,6 +93,27 @@ export {
 } from './evidence-grounding.js';
 
 export {
+  validateCapabilityEvidence,
+  nodeEvidenceFilesystem,
+  evidenceValidationContextSchema,
+  parseEvidenceValidationContext,
+  EVIDENCE_CAMPAIGNS,
+  MAX_EVIDENCE_ARTIFACT_BYTES,
+  REQUIRED_MUTATION_NEGATIVE_CASE_CODES,
+  type CurrentEvidenceDigests,
+  type CurrentFirmwareIdentity,
+  type EvidenceCampaign,
+  type EvidenceClock,
+  type EvidenceFilesystem,
+  type EvidenceValidationContext,
+  type EvidenceValidationIssue,
+  type EvidenceValidationIssueCode,
+  type EvidenceValidationResult,
+  type EvidenceValidationRunIdentity,
+  type ValidateCapabilityEvidenceInput,
+} from './evidence-validation.js';
+
+export {
   MAX_TARGET_WORK_ATOMS,
   sha256Schema,
   evidenceIdSchema,

@@ -1,0 +1,366 @@
+{
+  "version": 1,
+  "manifestId": "manifest-api_read_only",
+  "generatedAt": "2026-08-25T12:00:00.000Z",
+  "target": {
+    "productId": "HCI_SCP",
+    "capabilityId": "resource_inventory",
+    "toolId": "sangfor_evaluate_config",
+    "workAtomIds": [
+      "op_daily_health"
+    ]
+  },
+  "firmwareTruth": {
+    "recordId": "firmware-hci-6.10.0",
+    "vendor": "SANGFOR",
+    "adapterProduct": "HCI_SCP",
+    "productVariant": "SCP",
+    "versionRaw": "6.10.0R2",
+    "versionFamily": "6.10",
+    "revision": "R2",
+    "buildId": null,
+    "hotfix": null,
+    "uiFingerprint": "d3ef7de562f9a4a34a9a0b05a112955fdecdd0102c3faae5eeb03a195091a5e4",
+    "apiFingerprint": "14c2529eb4498c5d1ffd6915d05bf58a91bdda796af59f41d480d11c099d0479",
+    "status": "verified",
+    "observedAt": "2026-08-20T10:00:00.000Z",
+    "evidenceFile": "firmware/truth-hci.json",
+    "specVersion": "6.10",
+    "specApplicability": "verified",
+    "truthDigest": "40e715e7d82b1fe7002091ee9c2e544db94b51dcd0fb13b85d6eb1a7de10bcab"
+  },
+  "digests": {
+    "recipeDigest": "e1d8e552330911f9f779f85b6f2c00a15e790dcc3fbb3b28f5da1d660a30c5b8",
+    "toolDigest": "7c9bbe5ec9b3fb774e8fa0f54247e93c34ddf8e5d16fe3073420de0ae81a262d",
+    "runtimeDigest": "d92c6a81b2ff50096bcda80885427d1f59a25b5f483f7055523504925d16ab23",
+    "deviceIdentityDigest": "258b5476c841034a9bd8e6b2ba5a8d4e107db4d92149a85668c30451e7120458",
+    "windowIdentityDigest": "3f435bb1c2cfc1f656b61ef4b9ebaf2c4e1f232704cc6acf964de2979001d79c"
+  },
+  "runs": [
+    {
+      "id": "run-1",
+      "result": "pass",
+      "executor": {
+        "actorId": "executor-1",
+        "actorType": "ai_engineer"
+      },
+      "startedAt": "2026-08-21T10:00:00.000Z",
+      "completedAt": "2026-08-21T10:01:00.000Z",
+      "independentReadBack": {
+        "independent": true,
+        "verifier": {
+          "actorId": "verifier-1",
+          "actorType": "service"
+        },
+        "result": "pass",
+        "observedStateDigest": "a08890b6bca55357fd063483d1ced1c076b89f15c07fee163fdc5eb431314d34",
+        "artifactId": "artifact-readback-1",
+        "observedAt": "2026-08-21T10:02:00.000Z"
+      },
+      "postRunState": {
+        "mode": "retained",
+        "result": "pass",
+        "approvalAuditRef": "audit/run-1.json"
+      },
+      "mutationAttempted": false,
+      "mutationCount": 0,
+      "retryCount": 0,
+      "collateralMutationCount": 0,
+      "auditRef": "audit/run-1.jsonl",
+      "evidenceChainRef": "chains/run-1.json",
+      "artifactIds": [
+        "artifact-run-1",
+        "artifact-readback-1"
+      ],
+      "negativeCaseIds": [
+        "negative-required"
+      ]
+    },
+    {
+      "id": "run-2",
+      "result": "pass",
+      "executor": {
+        "actorId": "executor-2",
+        "actorType": "ai_engineer"
+      },
+      "startedAt": "2026-08-22T10:00:00.000Z",
+      "completedAt": "2026-08-22T10:01:00.000Z",
+      "independentReadBack": {
+        "independent": true,
+        "verifier": {
+          "actorId": "verifier-2",
+          "actorType": "service"
+        },
+        "result": "pass",
+        "observedStateDigest": "f36b45ae818809ee24ae2489edabfe3cf2a12627b6929c07fc7a3b885d414d44",
+        "artifactId": "artifact-readback-2",
+        "observedAt": "2026-08-22T10:02:00.000Z"
+      },
+      "postRunState": {
+        "mode": "retained",
+        "result": "pass",
+        "approvalAuditRef": "audit/run-2.json"
+      },
+      "mutationAttempted": false,
+      "mutationCount": 0,
+      "retryCount": 0,
+      "collateralMutationCount": 0,
+      "auditRef": "audit/run-2.jsonl",
+      "evidenceChainRef": "chains/run-2.json",
+      "artifactIds": [
+        "artifact-run-2",
+        "artifact-readback-2"
+      ],
+      "negativeCaseIds": []
+    },
+    {
+      "id": "run-3",
+      "result": "pass",
+      "executor": {
+        "actorId": "executor-3",
+        "actorType": "ai_engineer"
+      },
+      "startedAt": "2026-08-23T10:00:00.000Z",
+      "completedAt": "2026-08-23T10:01:00.000Z",
+      "independentReadBack": {
+        "independent": true,
+        "verifier": {
+          "actorId": "verifier-3",
+          "actorType": "service"
+        },
+        "result": "pass",
+        "observedStateDigest": "046977fe25d893edf85927c4a038248b161c4b13431d0b5b9489e8bf179d89ae",
+        "artifactId": "artifact-readback-3",
+        "observedAt": "2026-08-23T10:02:00.000Z"
+      },
+      "postRunState": {
+        "mode": "retained",
+        "result": "pass",
+        "approvalAuditRef": "audit/run-3.json"
+      },
+      "mutationAttempted": false,
+      "mutationCount": 0,
+      "retryCount": 0,
+      "collateralMutationCount": 0,
+      "auditRef": "audit/run-3.jsonl",
+      "evidenceChainRef": "chains/run-3.json",
+      "artifactIds": [
+        "artifact-run-3",
+        "artifact-readback-3"
+      ],
+      "negativeCaseIds": []
+    },
+    {
+      "id": "run-4",
+      "result": "pass",
+      "executor": {
+        "actorId": "executor-4",
+        "actorType": "ai_engineer"
+      },
+      "startedAt": "2026-08-24T10:00:00.000Z",
+      "completedAt": "2026-08-24T10:01:00.000Z",
+      "independentReadBack": {
+        "independent": true,
+        "verifier": {
+          "actorId": "verifier-4",
+          "actorType": "service"
+        },
+        "result": "pass",
+        "observedStateDigest": "4cefe3f00029ec94bf7071c7ce0fbe939bebdd387c3ff4c80b3dcecee5bd0f0f",
+        "artifactId": "artifact-readback-4",
+        "observedAt": "2026-08-24T10:02:00.000Z"
+      },
+      "postRunState": {
+        "mode": "retained",
+        "result": "pass",
+        "approvalAuditRef": "audit/run-4.json"
+      },
+      "mutationAttempted": false,
+      "mutationCount": 0,
+      "retryCount": 0,
+      "collateralMutationCount": 0,
+      "auditRef": "audit/run-4.jsonl",
+      "evidenceChainRef": "chains/run-4.json",
+      "artifactIds": [
+        "artifact-run-4",
+        "artifact-readback-4"
+      ],
+      "negativeCaseIds": []
+    },
+    {
+      "id": "run-5",
+      "result": "pass",
+      "executor": {
+        "actorId": "executor-5",
+        "actorType": "ai_engineer"
+      },
+      "startedAt": "2026-08-25T10:00:00.000Z",
+      "completedAt": "2026-08-25T10:01:00.000Z",
+      "independentReadBack": {
+        "independent": true,
+        "verifier": {
+          "actorId": "verifier-5",
+          "actorType": "service"
+        },
+        "result": "pass",
+        "observedStateDigest": "3e8ceaf68a161f9dabda59e03b5ab8ec86aa5af0f4c2c92a5e633d2a379a6297",
+        "artifactId": "artifact-readback-5",
+        "observedAt": "2026-08-25T10:02:00.000Z"
+      },
+      "postRunState": {
+        "mode": "retained",
+        "result": "pass",
+        "approvalAuditRef": "audit/run-5.json"
+      },
+      "mutationAttempted": false,
+      "mutationCount": 0,
+      "retryCount": 0,
+      "collateralMutationCount": 0,
+      "auditRef": "audit/run-5.jsonl",
+      "evidenceChainRef": "chains/run-5.json",
+      "artifactIds": [
+        "artifact-run-5",
+        "artifact-readback-5"
+      ],
+      "negativeCaseIds": []
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "artifact-run-1",
+      "kind": "run",
+      "path": "runs/run-1.json",
+      "fileType": "regular_file",
+      "sha256": "33e9e2cc1c037481d8ff500c6162f455624127dabc898cc7b5817cd57a2690c3",
+      "sizeBytes": 17,
+      "mediaType": "application/json",
+      "createdAt": "2026-08-21T10:01:00.000Z"
+    },
+    {
+      "id": "artifact-readback-1",
+      "kind": "readback",
+      "path": "readback/run-1.json",
+      "fileType": "regular_file",
+      "sha256": "939fd0947c211cbcbabbcade4bd9263c95b82662b2e8f60d27e0ba8f625d1fb1",
+      "sizeBytes": 33,
+      "mediaType": "application/json",
+      "createdAt": "2026-08-21T10:02:00.000Z"
+    },
+    {
+      "id": "artifact-run-2",
+      "kind": "run",
+      "path": "runs/run-2.json",
+      "fileType": "regular_file",
+      "sha256": "5a865a980dfd6a223bfef8a0384bdbe9d60f8db21293bad7ac40af88443a188d",
+      "sizeBytes": 17,
+      "mediaType": "application/json",
+      "createdAt": "2026-08-22T10:01:00.000Z"
+    },
+    {
+      "id": "artifact-readback-2",
+      "kind": "readback",
+      "path": "readback/run-2.json",
+      "fileType": "regular_file",
+      "sha256": "bf68d336624f30d65e9745276dc77c2fd290b1d9dd2ea9923f795c471555156f",
+      "sizeBytes": 33,
+      "mediaType": "application/json",
+      "createdAt": "2026-08-22T10:02:00.000Z"
+    },
+    {
+      "id": "artifact-run-3",
+      "kind": "run",
+      "path": "runs/run-3.json",
+      "fileType": "regular_file",
+      "sha256": "6c8e362c994e2370f97bc3963799ba9ce2762f84634a7327f4c5197b3da5287b",
+      "sizeBytes": 17,
+      "mediaType": "application/json",
+      "createdAt": "2026-08-23T10:01:00.000Z"
+    },
+    {
+      "id": "artifact-readback-3",
+      "kind": "readback",
+      "path": "readback/run-3.json",
+      "fileType": "regular_file",
+      "sha256": "8aed629f76febc257c4bedf6c68923da142a450511a3fc32bfc150498648aa83",
+      "sizeBytes": 33,
+      "mediaType": "application/json",
+      "createdAt": "2026-08-23T10:02:00.000Z"
+    },
+    {
+      "id": "artifact-run-4",
+      "kind": "run",
+      "path": "runs/run-4.json",
+      "fileType": "regular_file",
+      "sha256": "924584871d6750a202c4fe6a8674345676cfed21b9fd1df98db9f1e066dad5dc",
+      "sizeBytes": 17,
+      "mediaType": "application/json",
+      "createdAt": "2026-08-24T10:01:00.000Z"
+    },
+    {
+      "id": "artifact-readback-4",
+      "kind": "readback",
+      "path": "readback/run-4.json",
+      "fileType": "regular_file",
+      "sha256": "227dc77246abfe6064220125b5c785b125026ab35b24d8f727da3e9600f58fb3",
+      "sizeBytes": 33,
+      "mediaType": "application/json",
+      "createdAt": "2026-08-24T10:02:00.000Z"
+    },
+    {
+      "id": "artifact-run-5",
+      "kind": "run",
+      "path": "runs/run-5.json",
+      "fileType": "regular_file",
+      "sha256": "9d7fe2c45399c90515d7a7efbe38376ea6442aced1cc73648690c0613d1b1cd9",
+      "sizeBytes": 17,
+      "mediaType": "application/json",
+      "createdAt": "2026-08-25T10:01:00.000Z"
+    },
+    {
+      "id": "artifact-readback-5",
+      "kind": "readback",
+      "path": "readback/run-5.json",
+      "fileType": "regular_file",
+      "sha256": "d1cc65ed6614e36c83c52ede953947fed86703f39ade96bad1f7bf0d50cfb172",
+      "sizeBytes": 33,
+      "mediaType": "application/json",
+      "createdAt": "2026-08-25T10:02:00.000Z"
+    },
+    {
+      "id": "artifact-negative-1",
+      "kind": "negative",
+      "path": "negative/ambiguous_observation.json",
+      "fileType": "regular_file",
+      "sha256": "281b7ac1c1b67a63a4e209927f53b72f52c8bf152c34baeb6722b65c96b128a2",
+      "sizeBytes": 36,
+      "mediaType": "application/json",
+      "createdAt": "2026-08-21T10:00:30.000Z"
+    }
+  ],
+  "negativeCases": [
+    {
+      "id": "negative-required",
+      "caseCode": "ambiguous_observation",
+      "expectedRefusalCode": "AMBIGUOUS_OBSERVATION",
+      "observedRefusalCode": "AMBIGUOUS_OBSERVATION",
+      "result": "indeterminate",
+      "artifactIds": [
+        "artifact-negative-1"
+      ],
+      "testedAt": "2026-08-21T10:00:40.000Z"
+    }
+  ],
+  "o5Counters": {
+    "runCount": 5,
+    "passCount": 5,
+    "failCount": 0,
+    "indeterminateCount": 0,
+    "independentReadBackPassCount": 5,
+    "negativeCasePassCount": 0,
+    "restoredCount": 0,
+    "retainedCount": 5,
+    "mutationCount": 0,
+    "retryCount": 0,
+    "collateralMutationCount": 0
+  }
+}

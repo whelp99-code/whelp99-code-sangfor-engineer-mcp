@@ -44,7 +44,7 @@ export const firmwareTruthEvidenceSchema = z.object({
 
 export const capabilityEvidenceArtifactSchema = z.object({
   id: evidenceIdSchema,
-  kind: z.enum(['run', 'readback', 'restore', 'negative', 'audit']),
+  kind: z.enum(['run', 'readback', 'restore', 'retention_approval', 'negative', 'audit']),
   path: relativeArtifactPathSchema,
   fileType: z.literal('regular_file'),
   sha256: sha256Schema,

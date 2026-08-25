@@ -4,7 +4,9 @@ type Result = 'pass' | 'fail' | 'indeterminate';
 type Identity = { readonly actorId: string };
 type Artifact = {
   readonly id: string;
-  readonly kind: 'run' | 'readback' | 'restore' | 'negative' | 'audit';
+  readonly kind: 'run' | 'readback' | 'restore' | 'retention_approval' | 'negative' | 'audit';
+  readonly path: string;
+  readonly mediaType: string;
   readonly createdAt: string;
 };
 type NegativeCase = {
@@ -30,7 +32,7 @@ type Run = {
   };
   readonly postRunState:
     | { readonly mode: 'restored'; readonly result: Result; readonly readBackArtifactId: string }
-    | { readonly mode: 'retained'; readonly result: Result };
+    | { readonly mode: 'retained'; readonly result: Result; readonly approvalAuditRef: string };
   readonly mutationAttempted: boolean;
   readonly mutationCount: number;
   readonly retryCount: number;
@@ -96,6 +98,12 @@ export function refineCapabilityEvidenceManifest(manifest: Manifest, context: z.
     });
   }
   const artifactsById = new Map(manifest.artifacts.map((artifact) => [artifact.id, artifact]));
+  const artifactsByPath = new Map<string, Artifact[]>();
+  manifest.artifacts.forEach((artifact) => {
+    const matches = artifactsByPath.get(artifact.path) ?? [];
+    matches.push(artifact);
+    artifactsByPath.set(artifact.path, matches);
+  });
   const negativeCasesById = new Map(manifest.negativeCases.map((item) => [item.id, item]));
   const artifactOwnerCounts = new Map<string, number>();
   const negativeOwnerCounts = new Map<string, number>();
@@ -114,7 +122,19 @@ export function refineCapabilityEvidenceManifest(manifest: Manifest, context: z.
           context.addIssue({ code: z.ZodIssueCode.custom, path: ['runs', index, 'postRunState'], message: 'restore requires dedicated evidence' });
         }
         break;
-      case 'retained': break;
+      case 'retained': {
+        if (!run.mutationAttempted) break;
+        const approvals = artifactsByPath.get(run.postRunState.approvalAuditRef) ?? [];
+        const approval = approvals.length === 1 ? approvals[0] : undefined;
+        if (approval === undefined || approval.kind !== 'retention_approval' || approval.mediaType !== 'application/json'
+          || !run.artifactIds.includes(approval.id)) {
+          context.addIssue({ code: z.ZodIssueCode.custom, path: ['runs', index, 'postRunState'], message: 'retention requires one owned dedicated JSON approval artifact' });
+        } else if (Date.parse(approval.createdAt) <= Date.parse(run.independentReadBack.observedAt)
+          || Date.parse(approval.createdAt) > Date.parse(manifest.generatedAt)) {
+          context.addIssue({ code: z.ZodIssueCode.custom, path: ['runs', index, 'postRunState'], message: 'retention approval must follow read-back and not postdate generation' });
+        }
+        break;
+      }
       default: run.postRunState satisfies never;
     }
     refs.forEach((id) => {
@@ -127,6 +147,7 @@ export function refineCapabilityEvidenceManifest(manifest: Manifest, context: z.
     }
     run.artifactIds.forEach((id) => {
       const artifact = artifactsById.get(id);
+      if (artifact?.kind === 'retention_approval') return;
       const lower = artifact?.kind === 'run' ? run.startedAt : run.completedAt;
       const upper = artifact?.kind === 'run' ? run.completedAt : run.independentReadBack.observedAt;
       if (artifact !== undefined && (Date.parse(artifact.createdAt) < Date.parse(lower)

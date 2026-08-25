@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { createServer, type Server } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -8,10 +8,15 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   MAX_CAPABILITY_EVIDENCE_BYTES,
   capabilityEvidenceManifestSchema,
+  type EvidenceValidationContext,
 } from '../packages/sangfor-competency/src/index.js';
+import { writeValidationFixture } from './helpers/capability-evidence-validation-fixture.js';
 
 const CLI = 'scripts/capability-evidence-cli.ts';
 const VALID = 'tests/fixtures/capability-evidence/valid-manifest.json';
+const RETAINED_MANIFEST = 'tests/fixtures/capability-evidence/active-retained-mutation-manifest.json';
+const RETAINED_ROOT = 'tests/fixtures/capability-evidence/retained-evidence';
+const RETAINED_CONTEXT = `${RETAINED_ROOT}/validation-context.json`;
 const GROUNDING_ROOT = fileURLToPath(new URL('./fixtures/capability-evidence/grounding', import.meta.url));
 const REPO_CATALOG_ROOT = fileURLToPath(new URL('../data/competency', import.meta.url));
 const TOOL_CENSUS = JSON.stringify({
@@ -25,14 +30,23 @@ const TOOL_CENSUS = JSON.stringify({
 });
 
 type CliResult = { readonly status: number | null; readonly stdout: string; readonly stderr: string };
+type RunCliOptions = {
+  readonly catalogRoot?: string;
+  readonly verification?: { readonly evidenceRoot: string; readonly contextPath: string };
+};
 
-function runCli(manifestPath: string, registryUrl: string, catalogRoot: string = GROUNDING_ROOT): Promise<CliResult> {
-  const child = spawn('pnpm', ['exec', 'tsx', CLI, 'parse', '--manifest', manifestPath], {
+function runCli(manifestPath: string, registryUrl: string, options: RunCliOptions = {}): Promise<CliResult> {
+  const { verification } = options;
+  const args = verification === undefined
+    ? ['exec', 'tsx', CLI, 'parse', '--manifest', manifestPath]
+    : ['exec', 'tsx', CLI, 'verify', '--manifest', manifestPath, '--evidence-root', verification.evidenceRoot];
+  const child = spawn('pnpm', args, {
     cwd: process.cwd(),
     env: {
       ...process.env,
       SANGFOR_HTTP_BRIDGE_URL: registryUrl,
-      SANGFOR_COMPETENCY_ROOT: catalogRoot,
+      SANGFOR_COMPETENCY_ROOT: options.catalogRoot ?? GROUNDING_ROOT,
+      ...(verification === undefined ? {} : { SANGFOR_CAPABILITY_EVIDENCE_CONTEXT: verification.contextPath }),
     },
   });
   return new Promise((resolve) => {
@@ -42,6 +56,17 @@ function runCli(manifestPath: string, registryUrl: string, catalogRoot: string =
     child.stderr.on('data', (chunk: Buffer) => { stderr += chunk.toString(); });
     child.on('close', (status) => resolve({ status, stdout, stderr }));
   });
+}
+
+function writeCliContext(path: string, context: EvidenceValidationContext, evaluatedAt: string): void {
+  writeFileSync(path, JSON.stringify({
+    campaign: context.campaign,
+    evaluatedAt,
+    currentFirmware: context.currentFirmware,
+    currentDigests: context.currentDigests,
+    reviewer: { actorId: context.reviewerActorId, actorType: 'human_pm' },
+    runIdentities: context.runIdentities,
+  }));
 }
 
 describe('capability evidence parse CLI', () => {
@@ -87,7 +112,7 @@ describe('capability evidence parse CLI', () => {
     const manifestPath = VALID;
 
     // When
-    const result = await runCli(manifestPath, registryUrl, REPO_CATALOG_ROOT);
+    const result = await runCli(manifestPath, registryUrl, { catalogRoot: REPO_CATALOG_ROOT });
 
     // Then
     expect(result.status).toBe(1);
@@ -155,5 +180,73 @@ describe('capability evidence parse CLI', () => {
     expect(result.status).toBe(1);
     expect(JSON.parse(result.stderr)).toMatchObject({ status: 'refused', violations: [{ code: 'malformed_json', path: [] }] });
     expect(readdirSync(tempRoot)).toEqual(['malformed.json']);
+  });
+
+  it('prints the ACTIVE sentinel only after physical evidence verification', async () => {
+    // Given
+    const evidenceRoot = join(tempRoot, 'evidence');
+    const fixture = writeValidationFixture(evidenceRoot);
+    const manifestPath = join(tempRoot, 'manifest.json');
+    const contextPath = join(tempRoot, 'context.json');
+    writeFileSync(manifestPath, JSON.stringify(fixture.manifest));
+    writeCliContext(contextPath, fixture.context, '2026-08-25T12:00:00.000Z');
+
+    // When
+    const result = await runCli(manifestPath, registryUrl, { verification: { evidenceRoot, contextPath } });
+
+    // Then
+    expect(result.status).toBe(0);
+    expect(result.stdout.trim()).toBe('CAPABILITY_EVIDENCE_ACTIVE');
+    expect(result.stderr).toBe('');
+  });
+
+  it('verifies committed retained mutation approval artifacts and refuses nonexistent refs', async () => {
+    // Given
+    const missingPath = join(tempRoot, 'missing-retention.json');
+    const retained = capabilityEvidenceManifestSchema.parse(JSON.parse(readFileSync(RETAINED_MANIFEST, 'utf8')));
+    const retentionIds = new Set(retained.artifacts.filter(({ kind }) => kind === 'retention_approval').map(({ id }) => id));
+    writeFileSync(missingPath, JSON.stringify({
+      ...retained,
+      runs: retained.runs.map((run) => ({ ...run, artifactIds: run.artifactIds.filter((id) => !retentionIds.has(id)) })),
+      artifacts: retained.artifacts.filter(({ id }) => !retentionIds.has(id)),
+    }));
+
+    // When
+    const active = await runCli(RETAINED_MANIFEST, registryUrl, { verification: { evidenceRoot: RETAINED_ROOT, contextPath: RETAINED_CONTEXT } });
+    const refused = await runCli(missingPath, registryUrl, { verification: { evidenceRoot: RETAINED_ROOT, contextPath: RETAINED_CONTEXT } });
+
+    // Then
+    expect(active.status).toBe(0);
+    expect(active.stdout.trim()).toBe('CAPABILITY_EVIDENCE_ACTIVE');
+    expect(refused.status).toBe(1);
+    expect(JSON.parse(refused.stderr)).toMatchObject({ status: 'refused', message: 'CAPABILITY_EVIDENCE_REFUSED' });
+  });
+
+  it('returns typed nonzero STALE and REFUSED outcomes without persistence', async () => {
+    // Given
+    const evidenceRoot = join(tempRoot, 'evidence');
+    const fixture = writeValidationFixture(evidenceRoot);
+    const manifestPath = join(tempRoot, 'manifest.json');
+    const contextPath = join(tempRoot, 'context.json');
+    writeFileSync(manifestPath, JSON.stringify(fixture.manifest));
+    writeCliContext(contextPath, fixture.context, '2027-02-21T12:00:00.001Z');
+    const before = readdirSync(tempRoot).sort();
+
+    // When
+    const stale = await runCli(manifestPath, registryUrl, { verification: { evidenceRoot, contextPath } });
+    writeCliContext(contextPath, fixture.context, '2026-08-25T12:00:00.000Z');
+    const artifact = fixture.manifest.artifacts[0];
+    if (artifact === undefined) throw new Error('fixture artifact missing');
+    const artifactPath = join(evidenceRoot, artifact.path);
+    rmSync(artifactPath);
+    symlinkSync(join(evidenceRoot, fixture.manifest.artifacts[1]?.path ?? ''), artifactPath);
+    const refused = await runCli(manifestPath, registryUrl, { verification: { evidenceRoot, contextPath } });
+
+    // Then
+    expect(stale.status).toBe(1);
+    expect(JSON.parse(stale.stderr)).toMatchObject({ status: 'stale', message: 'CAPABILITY_EVIDENCE_STALE' });
+    expect(refused.status).toBe(1);
+    expect(JSON.parse(refused.stderr)).toMatchObject({ status: 'refused', message: 'CAPABILITY_EVIDENCE_REFUSED', violations: [{ code: 'artifact_symlink' }] });
+    expect(readdirSync(tempRoot).sort()).toEqual(before);
   });
 });
