@@ -46,7 +46,7 @@ import { buildEvidencePackage, type EvidencePackageItem } from '../../../package
 import { captureProductScreenshots, captureConsoleEvidence, verifyCaptureLedger, resolveConfinedOutputDir, resolveProductScreenshotTargetUrl, buildCaptureRelativeDir, DEFAULT_CONSOLE_CDP_PORT, formatDateStamp as formatCaptureDateStamp } from '../../../packages/sangfor-screenshot/src/index.js';
 import { loadSpec, evaluateSpec, renderAdvisoryReport, renderAdvisoryReportDocx, listSpecCoverage, type IntendedSpec } from '../../../packages/sangfor-spec/src/index.js';
 import { getCapabilitySafety, listCapabilitySafety, loadMaturityPolicy } from '../../../packages/sangfor-safety/src/index.js';
-import { loadWorkAtoms, computeReplacementCoverage } from '../../../packages/sangfor-competency/src/index.js';
+import { buildRepoCoverageContext, computeReplacementCoverage, loadWorkAtomCatalog } from '../../../packages/sangfor-competency/src/index.js';
 import { suggestRca } from '../../../packages/sangfor-rca/src/index.js';
 import { recommendSizing, type SizingInput } from '../../../packages/sangfor-sizing/src/index.js';
 import { createPmStore } from '../../../packages/sangfor-pm/src/index.js';
@@ -1377,23 +1377,29 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
       : { capabilities: listCapabilitySafety() }
   },
   'sangfor_field_engineer_coverage': {
-    description: 'Honest "field-engineer replacement rate" from the WorkAtom taxonomy: counts ONLY automatable AND field_verified atoms. Human-only atoms never count. Returns per-phase and per-product breakdown. Optional cursor/limit page the atoms list; omit both for the full list (default, backward-compatible).',
+    description: 'Honest "field-engineer replacement rate" from the WorkAtom taxonomy: counts ONLY automatable AND field_verified atoms whose covering tool is ADVERTISED by the active tool profile and whose evidence is a real confined artifact. Human-only atoms never count. Any unverifiable claim refuses the whole report (ok=false + typed violations) instead of returning a quietly wrong rate. groundedToolCount reports how many advertised tools the grounding used. Optional cursor/limit page the atoms list; omit both for the full list.',
     inputSchema: { type: 'object', properties: { cursor: { type: 'string' }, limit: { type: 'integer', minimum: 1, maximum: 100 } } },
     handler: (args: { cursor?: string; limit?: number }) => {
-      // Verify coverage against reality: coveredBy must name a registered tool and
-      // evidence must resolve to a real artifact on disk (no over-claiming the rate).
-      const knownTools = new Set(Object.keys(tools));
-      // Anchor evidenceRoot to the same repo root the atoms come from (NOT process.cwd,
-      // which would disagree with the loader anchor and zero the rate off-cwd).
-      const evidenceRoot = resolveRepoData('.', 'SANGFOR_OUTPUT_ROOT');
-      const maturityPolicy = loadMaturityPolicy().entries.map(({ product, capabilityId, maturity }) => ({ product, capabilityId, maturity }));
-      const atoms = loadWorkAtoms();
+      // Ground on what this server ADVERTISES, not on the internal tool map: a
+      // tool hidden by the active profile cannot be called by any client here, so
+      // certifying a replacement against it would claim a capability nobody can
+      // reach. The rest of the context is the one repo-anchored factory both
+      // surfaces share, so the console can never disagree with this rate.
+      const advertised = listToolsForProfile().map((t) => t.name);
+      const groundedToolCount = advertised.length;
+      const built = buildRepoCoverageContext(advertised);
+      if (!built.ok) return { ok: false, groundedToolCount, violations: built.violations };
+
+      const result = computeReplacementCoverage(built.context);
+      if (!result.ok) return { ok: false, groundedToolCount, violations: result.violations };
+
+      const loaded = loadWorkAtomCatalog(built.context.catalogRoot);
+      if (!loaded.ok) return { ok: false, groundedToolCount, violations: loaded.violations };
       // coverage is computed over ALL atoms regardless of pagination — only the
       // returned `atoms` listing is windowed. Sort by id so a cursor always
       // resumes at the same row (loader order is directory order, not stable).
-      const sortedAtoms = [...atoms].sort((a, b) => a.id.localeCompare(b.id));
-      const coverage = computeReplacementCoverage(atoms, { knownTools, evidenceRoot, maturityPolicy });
-      return { coverage, ...paginateOptionalField(sortedAtoms, args, (a) => a.id, 'atoms') };
+      const sortedAtoms = [...loaded.atoms].sort((a, b) => a.id.localeCompare(b.id));
+      return { ok: true, groundedToolCount, coverage: result.report, ...paginateOptionalField(sortedAtoms, args, (a) => a.id, 'atoms') };
     }
   },
   'sangfor_suggest_rca': {

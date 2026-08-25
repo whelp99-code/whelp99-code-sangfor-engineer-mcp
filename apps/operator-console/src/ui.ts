@@ -243,19 +243,26 @@ export function dashboardHtml(): string {
     async function loadAutomation() {
       try {
         const [cov, diag, spec] = await Promise.all([api('/api/coverage'), api('/api/diagnoses'), api('/api/spec-coverage')]);
-        const c = cov.coverage;
-        $('auto-stats').innerHTML =
-          '<div class="stat"><strong>' + (c.replacementRate * 100).toFixed(1) + '%</strong>1인 대체율(정직)</div>' +
-          '<div class="stat"><strong>' + c.replacedAtoms + '/' + c.automatableAtoms + '</strong>field_verified 대체</div>' +
-          '<div class="stat"><strong>' + c.humanOnlyAtoms + '</strong>사람 전용</div>' +
-          '<div class="stat"><strong>' + c.totalAtoms + '</strong>총 WorkAtom</div>';
+        // An unverifiable catalog yields violations and NO rate — showing a
+        // partial percentage here is the over-claim the metric exists to prevent.
+        if (!cov.ok) {
+          $('auto-stats').innerHTML = '<div class="stat"><strong>측정불가</strong>1인 대체율(정직)</div>';
+          $('auto-atoms').textContent = JSON.stringify(cov.violations || [], null, 2);
+        } else {
+          const c = cov.coverage;
+          $('auto-stats').innerHTML =
+            '<div class="stat"><strong>' + (c.replacementRate * 100).toFixed(1) + '%</strong>1인 대체율(정직)</div>' +
+            '<div class="stat"><strong>' + c.replacedAtoms + '/' + c.automatableAtoms + '</strong>field_verified 대체</div>' +
+            '<div class="stat"><strong>' + c.humanOnlyAtoms + '</strong>사람 전용</div>' +
+            '<div class="stat"><strong>' + c.totalAtoms + '</strong>총 WorkAtom</div>';
+          $('auto-atoms').textContent = JSON.stringify(c.byPhase, null, 2);
+        }
         $('auto-diagnoses').innerHTML = (diag.diagnoses || []).length
           ? diag.diagnoses.map(d => '<div><b>' + d.file + '</b><br>' + (d.summary || '') + '<br>' + (d.verdict || '') + '</div>').join('<hr style="border-color:#334155">')
           : '진단 산출물 없음';
         $('auto-specs').innerHTML =
           '<b>Spec:</b> ' + (spec.specs || []).map(s => s.product + ' ' + s.version + '(' + s.items + ')').join(', ') +
           '<br><b>안전등급:</b> ' + (spec.safety || []).map(s => s.capabilityId + '=' + s.safetyClass).slice(0, 8).join(', ');
-        $('auto-atoms').textContent = JSON.stringify(c.byPhase, null, 2);
       } catch (e) { $('auto-stats').innerHTML = '오류: ' + e.message; }
     }
 

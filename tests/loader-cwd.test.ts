@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { loadSpec, listSpecCoverage } from '../packages/sangfor-spec/src/index.js';
-import { loadWorkAtoms } from '../packages/sangfor-competency/src/index.js';
+import { loadWorkAtomCatalog } from '../packages/sangfor-competency/src/index.js';
 
 const originalCwd = process.cwd();
 const tmpRoots: string[] = [];
@@ -28,10 +28,12 @@ describe('data-root loaders are anchored to the package, not cwd', () => {
     expect(cov.map((c) => c.product)).toContain('IAG');
   });
 
-  it('loadWorkAtoms still returns the catalog after chdir', () => {
+  it('loadWorkAtomCatalog still returns the catalog after chdir', () => {
     process.chdir(tmpdir());
-    const atoms = loadWorkAtoms();
-    expect(atoms.length).toBeGreaterThan(0);
+    const loaded = loadWorkAtomCatalog();
+    expect(loaded.ok).toBe(true);
+    if (!loaded.ok) return;
+    expect(loaded.atoms.length).toBeGreaterThan(0);
   });
 
   it('SANGFOR_SPEC_ROOT override still takes precedence over the anchored default', () => {

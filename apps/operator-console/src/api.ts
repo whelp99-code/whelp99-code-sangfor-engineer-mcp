@@ -1,9 +1,15 @@
 import { writeFileSync, mkdirSync, existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { computeReplacementCoverage, loadWorkAtoms } from '../../../packages/sangfor-competency/src/index.js';
+import {
+  buildRepoCoverageContext,
+  computeReplacementCoverage,
+  fetchBridgeToolRegistry,
+  loadWorkAtomCatalog,
+  type ToolRegistrySource,
+} from '../../../packages/sangfor-competency/src/index.js';
 import { resolveRepoData } from '../../../packages/shared/src/index.js';
 import { listSpecCoverage } from '../../../packages/sangfor-spec/src/index.js';
-import { listCapabilitySafety, loadMaturityPolicy } from '../../../packages/sangfor-safety/src/index.js';
+import { listCapabilitySafety } from '../../../packages/sangfor-safety/src/index.js';
 import { analyzeProject, generateConfigPlanAsync } from '../../../packages/sangfor-planner/src/index.js';
 import { listSeedManuals, searchManuals } from '../../../packages/sangfor-knowledge/src/index.js';
 import { listSeedWiki, searchWiki } from '../../../packages/sangfor-wiki/src/index.js';
@@ -160,13 +166,28 @@ export async function getEmbeddingHealth() {
 }
 
 // ── Field-engineer automation visibility (read-only panels) ──
-export function getFieldEngineerCoverage() {
-  const atoms = loadWorkAtoms();
-  // Human-facing surface MUST apply the same honest verification as the MCP path:
-  // evidence must resolve to a real artifact under the output root (no prose/dir/absolute).
-  const evidenceRoot = resolveRepoData('.', 'SANGFOR_OUTPUT_ROOT');
-  const maturityPolicy = loadMaturityPolicy().entries.map(({ product, capabilityId, maturity }) => ({ product, capabilityId, maturity }));
-  return { coverage: computeReplacementCoverage(atoms, { evidenceRoot, maturityPolicy }), atoms };
+/**
+ * This console serves no MCP tools of its own, so it cannot vouch for a coveredBy
+ * name on its own authority. It reads the census from the running bridge, which
+ * republishes the MCP server's own `tools/list` — the same answer the MCP surface
+ * grounds on. The source is a parameter so a test can point it at a wire-level
+ * fake without the console ever inventing a tool set of its own.
+ */
+export async function getFieldEngineerCoverage(registrySource: ToolRegistrySource = () => fetchBridgeToolRegistry()) {
+  const registry = await registrySource();
+  if (!registry.ok) return { ok: false as const, violations: registry.violations };
+
+  // Same factory the MCP tool uses: one catalog root, one confined evidence
+  // root, one strict maturity policy — two surfaces cannot drift into two rates.
+  const built = buildRepoCoverageContext(registry.toolNames);
+  if (!built.ok) return { ok: false as const, violations: built.violations };
+
+  const result = computeReplacementCoverage(built.context);
+  if (!result.ok) return { ok: false as const, violations: result.violations };
+
+  const loaded = loadWorkAtomCatalog(built.context.catalogRoot);
+  if (!loaded.ok) return { ok: false as const, violations: loaded.violations };
+  return { ok: true as const, coverage: result.report, atoms: loaded.atoms };
 }
 
 export function getSpecCoverage() {

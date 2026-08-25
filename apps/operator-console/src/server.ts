@@ -69,7 +69,7 @@ export function createOperatorServer(): http.Server {
       }
 
       if (method === 'GET' && url.pathname === '/api/coverage') {
-        return json(res, getFieldEngineerCoverage());
+        return json(res, await getFieldEngineerCoverage());
       }
 
       if (method === 'GET' && url.pathname === '/api/spec-coverage') {
