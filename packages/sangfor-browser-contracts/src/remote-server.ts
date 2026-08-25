@@ -53,7 +53,10 @@ export function createRemoteBrowserJobRequestListener(
           client: peerIdentityFromCertificate(certificate, socket.authorized),
           method: request.method ?? 'GET',
           urlPath: request.url ?? '/',
+          // Forwarded as Node parsed them: a repeated header stays an array and
+          // a comma-joined one stays joined, so negotiation sees the ambiguity.
           bodyText: await readRequestBody(request),
+          headers: request.headers,
         });
         response.writeHead(output.statusCode, output.headers);
         response.end(output.bodyText);

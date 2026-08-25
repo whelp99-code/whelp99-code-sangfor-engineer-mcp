@@ -1,9 +1,15 @@
 import { generateKeyPairSync } from 'node:crypto';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createRemoteBrowserExecutionPortFromEnv } from '../apps/mcp-server/src/remote-browser-runtime.js';
+import { NODE_RUNTIME_PINS } from '../packages/sangfor-browser-contracts/src/protocol-version.js';
+
+const repoFile = (relative: string): string => readFileSync(
+  new URL(`../${relative}`, import.meta.url),
+  'utf8',
+);
 
 const dirs: string[] = [];
 afterEach(() => {
@@ -47,5 +53,30 @@ describe('Phase 4 MCP remote runtime entry', () => {
       SANGFOR_REMOTE_BROWSER_SERVER_FINGERPRINT_SHA256: 'a'.repeat(64),
     });
     expect(port).toHaveProperty('execute');
+  });
+});
+
+describe('pinned runtime lanes', () => {
+  it('declares the supported Node engine range in the package manifest', () => {
+    const manifest: unknown = JSON.parse(repoFile('package.json'));
+    expect(manifest).toMatchObject({
+      packageManager: `pnpm@${NODE_RUNTIME_PINS.pnpm}`,
+      engines: {
+        node: `>=${NODE_RUNTIME_PINS.blroMajor} <${NODE_RUNTIME_PINS.jmMajor + 1}`,
+        pnpm: NODE_RUNTIME_PINS.pnpm,
+      },
+    });
+  });
+
+  it('makes the declared engine range binding for local installs', () => {
+    // Given engines is only advisory to pnpm by default,
+    // Then .npmrc must turn it into a refusal.
+    expect(repoFile('.npmrc')).toMatch(/^engine-strict=true$/m);
+  });
+
+  it('ships the container on the BLRO Node major', () => {
+    expect(repoFile('Dockerfile'))
+      .toMatch(new RegExp(`^FROM node:${NODE_RUNTIME_PINS.blroMajor}-alpine AS base$`, 'm'));
+    expect(repoFile('Dockerfile')).not.toMatch(/node:20/);
   });
 });

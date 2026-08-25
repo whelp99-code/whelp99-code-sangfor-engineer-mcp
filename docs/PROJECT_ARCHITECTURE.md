@@ -30,7 +30,7 @@
 
 | 항목 | 내용 |
 |------|------|
-| 언어 | TypeScript (ESM, `"type": "module"`), Node 20/22 |
+| 언어 | TypeScript (ESM, `"type": "module"`), Node 22(BLRO)/24(JM 엔드포인트) |
 | 패키지 매니저 | **pnpm 10.28.1** (workspace) — `npm`도 가능하나 비권장 |
 | 런타임 실행 | `tsx` (소스 직접 실행, 빌드 산출물 아닌 TS 그대로) |
 | 핵심 의존성 | `@modelcontextprotocol/sdk`, `@prisma/client`, `playwright`, `pdf-parse`, `zod`, `pptxgenjs` |
@@ -377,7 +377,7 @@ Prisma/Postgres bridge는 선택적이다. 미설정 시에도 안전·감사·�
 
 ## 11. 빌드 & 배포
 
-- **Dockerfile:** node:20-alpine, pnpm. deps 스테이지에서 워크스페이스 manifest만 복사(install 캐시 안정화) → runner 스테이지에서 전체 소스 복사 후 심볼릭 링크 재생성(`pnpm install --offline`). `tsx`로 소스 직접 실행(빌드 산출물 아님). EXPOSE 3600(브리지)/3502(콘솔).
+- **Dockerfile:** node:22-alpine, pnpm. deps 스테이지에서 워크스페이스 manifest만 복사(install 캐시 안정화) → runner 스테이지에서 전체 소스 복사 후 심볼릭 링크 재생성(`pnpm install --offline`). `tsx`로 소스 직접 실행(빌드 산출물 아님). EXPOSE 3600(브리지)/3502(콘솔).
 - **docker-entrypoint.sh:** operator-console(3502) 백그라운드 + http-bridge(3600) 포그라운드 동시 기동.
 - **Dockerfile.mock:** mock 콘솔용 별도 이미지.
 

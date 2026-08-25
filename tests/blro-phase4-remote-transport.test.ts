@@ -11,6 +11,8 @@ import {
   type BrowserExecutionResult,
 } from '../packages/sangfor-browser-contracts/src/index.js';
 import {
+  BLRO_CONTRACT_VERSION,
+  CONTRACT_VERSION_HEADER,
   REMOTE_BROWSER_JOB_PATH,
   REMOTE_TRANSPORT_ERROR_CODES,
   buildRemoteJobEnvelope,
@@ -48,6 +50,10 @@ const passResult = (
   observations,
   evidence: [],
 });
+
+/** What a compliant JM client puts on the wire; the handler accepts nothing less. */
+const declaredVersion = `${BLRO_CONTRACT_VERSION.major}.${BLRO_CONTRACT_VERSION.minor}`;
+const declaredHeaders = { [CONTRACT_VERSION_HEADER]: declaredVersion } as const;
 
 function envelopeOptions() {
   return {
@@ -103,6 +109,8 @@ describe('Phase 4 remote transport deterministic semantics', () => {
       envelope: envelopeOptions(),
       transport: async (remoteRequest, hooks) => {
         hooks.markDispatched();
+        // Forward exactly what the client emitted; inventing a header here
+        // would hide a client that never declares its contract version.
         const response = await handler.handle({
           client: {
             fingerprint256: 'client-a',
@@ -112,6 +120,7 @@ describe('Phase 4 remote transport deterministic semantics', () => {
           method: remoteRequest.method,
           urlPath: remoteRequest.url.pathname,
           bodyText: remoteRequest.body,
+          headers: remoteRequest.headers,
         });
         return { statusCode: response.statusCode, body: response.bodyText };
       },
@@ -121,6 +130,28 @@ describe('Phase 4 remote transport deterministic semantics', () => {
     expect(result.observations).toEqual({ title: 'Sangfor Mock Console' });
     expect(isAuthoritativePass(result)).toBe(true);
     expect(execute).toHaveBeenCalledOnce();
+  });
+
+  it('emits the exact canonical contract-version header on every dispatch', async () => {
+    // Given the authority accepts only the canonical header spelled exactly,
+    // Then the client must emit that key with an undecorated value.
+    const transport = vi.fn(async (_remoteRequest, hooks: { markDispatched(): void }) => {
+      hooks.markDispatched();
+      return { statusCode: 200, body: JSON.stringify(passResult('header-check')) };
+    });
+    const port = createRemoteBrowserExecutionPort({
+      endpointUrl: `https://jm.example${REMOTE_BROWSER_JOB_PATH}`,
+      tls: { cert: 'cert', key: 'key', ca: 'ca', expectedServerFingerprint256: 'a'.repeat(64) },
+      envelope: envelopeOptions(),
+      transport,
+    });
+
+    await port.execute(baseRequest({ kind: 'observe_console' }, 'header-check'));
+
+    const sent = transport.mock.calls[0]?.[0].headers ?? {};
+    expect(Object.keys(sent)).toContain(CONTRACT_VERSION_HEADER);
+    expect(sent[CONTRACT_VERSION_HEADER]).toBe(declaredVersion);
+    expect(sent[CONTRACT_VERSION_HEADER]).toBe(sent[CONTRACT_VERSION_HEADER]?.trim());
   });
 
   it('returns a stored duplicate result without executing or authorizing twice', async () => {
@@ -142,6 +173,7 @@ describe('Phase 4 remote transport deterministic semantics', () => {
       bodyText: JSON.stringify(
         buildRemoteJobEnvelope(request, envelopeOptions()),
       ),
+      headers: declaredHeaders,
     };
 
     const first = await handler.handle(input);
@@ -175,6 +207,7 @@ describe('Phase 4 remote transport deterministic semantics', () => {
       bodyText: JSON.stringify(
         buildRemoteJobEnvelope(request, envelopeOptions()),
       ),
+      headers: declaredHeaders,
     };
 
     await handler.handle(input);

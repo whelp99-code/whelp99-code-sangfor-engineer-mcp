@@ -2,8 +2,8 @@
 # Runs from TypeScript source via tsx because http-bridge spawns `pnpm exec tsx`
 # against apps/mcp-server/src/index.ts at runtime.
 #
-# node:20 matches the host and .nvmrc (one version story; see A9 in the plan).
-FROM node:20-alpine AS base
+# node:22 matches the BLRO CI lane and package.json engines (one version story).
+FROM node:22-alpine AS base
 RUN apk add --no-cache bash \
  && corepack enable \
  && corepack prepare pnpm@10.28.1 --activate

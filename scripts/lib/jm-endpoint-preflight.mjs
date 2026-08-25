@@ -8,7 +8,7 @@
  * value into the report.
  */
 
-const MINIMUM_NODE_MAJOR = 20;
+const MINIMUM_NODE_MAJOR = 22;
 
 /** Hosts that may expose a Chrome DevTools Protocol endpoint. */
 const LOOPBACK_HOSTS = new Set(['127.0.0.1', 'localhost', '::1', '[::1]']);

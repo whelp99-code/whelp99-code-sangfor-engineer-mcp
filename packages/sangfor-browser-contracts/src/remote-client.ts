@@ -6,6 +6,12 @@ import {
   type BrowserExecutionPort,
 } from './browser-execution.js';
 import {
+  BLRO_CONTRACT_VERSION,
+  CONTRACT_VERSION_HEADER,
+  formatContractVersion,
+  type ContractVersion,
+} from './protocol-version.js';
+import {
   REMOTE_TRANSPORT_ERROR_CODES,
   buildRemoteJobEnvelope,
   createExactServerIdentityChecker,
@@ -54,6 +60,8 @@ export interface RemoteBrowserExecutionPortOptions {
   readonly tls: RemoteTlsClientOptions;
   readonly envelope: RemoteEnvelopeOptions;
   readonly transport?: RemoteHttpTransport;
+  /** The contract version this endpoint speaks; declared on every dispatch. */
+  readonly contractVersion?: ContractVersion;
 }
 
 export function createNodeHttpsTransport(): RemoteHttpTransport {
@@ -105,6 +113,9 @@ export function createRemoteBrowserExecutionPort(
     throw new Error('expectedServerFingerprint256 is required.');
   }
   const transport = options.transport ?? createNodeHttpsTransport();
+  const declaredVersion = formatContractVersion(
+    options.contractVersion ?? BLRO_CONTRACT_VERSION,
+  );
   return {
     buildEnvelope: buildRemoteJobEnvelope,
     async execute(input) {
@@ -120,6 +131,7 @@ export function createRemoteBrowserExecutionPort(
             'content-type': 'application/json',
             accept: 'application/json',
             'content-length': String(Buffer.byteLength(body)),
+            [CONTRACT_VERSION_HEADER]: declaredVersion,
           },
           body,
           tls: options.tls,

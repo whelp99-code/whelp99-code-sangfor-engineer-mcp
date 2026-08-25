@@ -6,6 +6,13 @@ import {
 } from './browser-execution.js';
 import { parseJobEnvelope, type JobEnvelope } from './job-envelope.js';
 import {
+  BLRO_CONTRACT_VERSION,
+  CONTRACT_VERSION_HEADER,
+  formatContractVersion,
+  negotiateContractVersion,
+  type ContractVersion,
+} from './protocol-version.js';
+import {
   REMOTE_BROWSER_JOB_PATH,
   REMOTE_TRANSPORT_ERROR_CODES,
   errorBody,
@@ -45,6 +52,8 @@ export interface RemoteBrowserJobHandlerOptions {
   readonly idempotencyStore?: JobIdempotencyStore;
   readonly now?: () => Date;
   readonly path?: string;
+  /** The contract version this BLRO authority speaks. Peers negotiate against it. */
+  readonly contractVersion?: ContractVersion;
 }
 
 export interface RemoteHandlerInput {
@@ -52,6 +61,7 @@ export interface RemoteHandlerInput {
   readonly method: string;
   readonly urlPath: string;
   readonly bodyText: string;
+  readonly headers?: Readonly<Record<string, string | readonly string[] | undefined>>;
 }
 
 export function createRemoteBrowserJobHandler(
@@ -60,10 +70,12 @@ export function createRemoteBrowserJobHandler(
   const store = options.idempotencyStore ?? new MemoryJobIdempotencyStore();
   const inFlight = new Map<string, Promise<BrowserExecutionResult>>();
   const path = options.path ?? REMOTE_BROWSER_JOB_PATH;
+  const authority = options.contractVersion ?? BLRO_CONTRACT_VERSION;
   return {
     idempotencyStore: store,
     async handle(input: RemoteHandlerInput): Promise<RemoteHandlerResponse> {
-      const early = earlyRefuse(input, path, options.authorizeClient);
+      const early = earlyRefuse(input, path, options.authorizeClient)
+        ?? refuseUnsupportedContract(input, authority);
       if (early) return early;
       const client = input.client as RemotePeerIdentity;
       const parsed = parseEnvelope(input.bodyText, options.now);
@@ -167,6 +179,31 @@ function earlyRefuse(
     };
   }
   return undefined;
+}
+
+/**
+ * The canonical header key is looked up exactly. A differently-cased or
+ * differently-spelled key is not a declaration, so it refuses as missing.
+ */
+function refuseUnsupportedContract(
+  input: RemoteHandlerInput,
+  authority: ContractVersion,
+): RemoteHandlerResponse | undefined {
+  const decision = negotiateContractVersion(
+    input.headers?.[CONTRACT_VERSION_HEADER],
+    authority,
+  );
+  if (decision.kind === 'supported') return undefined;
+  return {
+    statusCode: 426,
+    bodyText: errorBody(
+      REMOTE_TRANSPORT_ERROR_CODES.CONTRACT_VERSION_UNSUPPORTED,
+      `${decision.reason}: ${decision.message}`,
+    ),
+    headers: jsonHeaders({
+      [CONTRACT_VERSION_HEADER]: formatContractVersion(authority),
+    }),
+  };
 }
 
 function parseEnvelope(
