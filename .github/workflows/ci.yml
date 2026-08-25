@@ -43,3 +43,19 @@ jobs:
 
       - name: MCP scorecard
         run: pnpm run check:mcp-scorecard
+
+      # 도구 개수는 문서가 아니라 살아있는 서버가 정한다. 이 단계는 tools/list를
+      # 읽어 주석/쓰기 집합 불변식을 검사하며, 어떤 개수도 하드코딩하지 않는다.
+      - name: MCP inventory truth
+        run: pnpm run check:mcp-inventory-truth
+
+      # 오프라인 픽스처는 토큰 없이도 규칙 자체가 살아있음을 증명한다.
+      - name: Tracker truth (offline fixture)
+        run: pnpm run check:tracker-truth:offline
+
+      # 실제 GitHub 그래프 검증은 읽기 전용이며, 토큰이 있는 원본 저장소에서만 돈다.
+      - name: Tracker truth (live graph)
+        if: github.event_name == 'push' && github.repository == 'whelp99-code/whelp99-code-sangfor-engineer-mcp'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: pnpm run check:tracker-truth
