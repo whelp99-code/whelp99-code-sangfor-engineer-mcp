@@ -1,7 +1,7 @@
 import type { PrismaClient } from '@prisma/client';
 import type { AuthorityConfig, AuthorityConfigField } from './authority-config.js';
 
-export const BLRO_RUNTIME_SCHEMA_VERSION = '20260826170000_blro_runtime_stores' as const;
+export const BLRO_RUNTIME_SCHEMA_VERSION = '20260826210000_blro_enrollment_lifecycle' as const;
 
 export type AuthorityReadinessReasonCode =
   | 'CONFIG_INVALID'
@@ -52,6 +52,8 @@ const SCOPED_AUTHORITY_TABLES = [
   'BlroProject', 'BlroApprovalNonce', 'BlroAuditEvent', 'BlroMembership', 'BlroDevice',
   'BlroRun', 'BlroRunStep', 'BlroApproval', 'BlroEvidenceManifest', 'BlroRagDocument',
   'BlroRagChunk', 'BlroClientEnrollment', 'BlroBrowserJobResult',
+  'BlroEnrollmentIdentity', 'BlroEnrollmentCertificate', 'BlroEnrollmentGrant',
+  'BlroEnrollmentBootstrapToken', 'BlroEnrollmentRotation',
 ] as const;
 
 export async function probeAuthorityDependencies(

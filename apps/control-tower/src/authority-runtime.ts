@@ -1,10 +1,8 @@
 import { PrismaClient } from '@prisma/client';
 import { PostgresSingleUseNonceStore } from '../../../packages/sangfor-approval/src/index.js';
 import { BlroAuthorityStore } from '../../../packages/sangfor-authority/src/index.js';
-import {
-  PostgresEnrollmentStore,
-  PostgresJobIdempotencyStore,
-} from '../../../packages/sangfor-browser-contracts/src/postgres-stores.js';
+import { PostgresEnrollmentRegistry } from '../../../packages/sangfor-browser-contracts/src/postgres-enrollment-registry.js';
+import { PostgresJobIdempotencyStore } from '../../../packages/sangfor-browser-contracts/src/postgres-stores.js';
 import {
   parseAuthorityConfig,
   type AuthorityConfig,
@@ -56,7 +54,7 @@ export type AuthorityResources = {
   readonly prisma: PrismaClient;
   readonly authorityStore: BlroAuthorityStore;
   readonly nonceStore: PostgresSingleUseNonceStore;
-  readonly enrollmentStore: PostgresEnrollmentStore;
+  readonly enrollmentStore: PostgresEnrollmentRegistry;
   readonly jobStore: PostgresJobIdempotencyStore;
   readonly domainApis: AuthorityDomainApis;
   readonly close: () => Promise<void>;
@@ -110,7 +108,11 @@ export function createAuthorityRuntime(options: RuntimeOptions = {}) {
       prisma: input.prisma,
       authorityStore: new BlroAuthorityStore(input.prisma, input.config.auditSecret),
       nonceStore: new PostgresSingleUseNonceStore({ database: input.prisma }),
-      enrollmentStore: new PostgresEnrollmentStore(input.prisma, input.config.projectId),
+      enrollmentStore: new PostgresEnrollmentRegistry({
+        database: input.prisma,
+        scope: { tenantId: input.config.tenantId, projectId: input.config.projectId },
+        trustedIssuerBundle: input.material.trustBundle,
+      }),
       jobStore: new PostgresJobIdempotencyStore(input.prisma, input.config.projectId),
     };
     const dependencies = { ...base, ...input.material };

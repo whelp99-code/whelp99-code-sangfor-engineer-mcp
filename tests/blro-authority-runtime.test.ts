@@ -1,15 +1,19 @@
 import { generateKeyPairSync } from 'node:crypto';
-import { execFileSync } from 'node:child_process';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { PrismaClient } from '@prisma/client';
+import { PostgresEnrollmentRegistry } from '../packages/sangfor-browser-contracts/src/enrollment.js';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import {
   BLRO_RUNTIME_SCHEMA_VERSION,
   createAuthorityRuntime,
   type AuthorityRuntimeEnvironment,
 } from '../apps/control-tower/src/authority-runtime.js';
+import {
+  createTaskCertificateFixture,
+  type TaskCertificateFixture,
+} from './helpers/blro-certificate-fixture.js';
 
 const DATABASE_URL = process.env.DATABASE_URL
   ?? 'postgresql://blro_app:blro_app_local@127.0.0.1:55432/blro';
@@ -19,6 +23,7 @@ const TENANT_ID = 'task19-tenant';
 let materialRoot: string;
 let signingPrivateKeyPath: string;
 let trustBundlePath: string;
+let certificateFixture: TaskCertificateFixture;
 
 const completeEnvironment = (): AuthorityRuntimeEnvironment => ({
   SANGFOR_BLRO_AUTHORITY_STORE: 'postgres',
@@ -40,11 +45,12 @@ beforeAll(async () => {
   writeFileSync(signingPrivateKeyPath, generateKeyPairSync('ed25519').privateKey.export({
     format: 'pem', type: 'pkcs8',
   }), { mode: 0o600 });
-  execFileSync('openssl', [
-    'req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-days', '1',
-    '-subj', '/CN=task19-ca', '-keyout', join(materialRoot, 'ca.key'),
-    '-out', trustBundlePath,
-  ], { stdio: 'pipe' });
+  certificateFixture = createTaskCertificateFixture(
+    join(materialRoot, 'certificates'),
+    'task19-installation',
+    'd'.repeat(64),
+  );
+  writeFileSync(trustBundlePath, certificateFixture.trustedCaPem);
   owner = new PrismaClient({ datasources: { db: { url: OWNER_URL } } });
   await owner.$executeRawUnsafe(
     `INSERT INTO "BlroTenant" ("id","name") VALUES ($1,$2) ON CONFLICT ("id") DO NOTHING`,
@@ -66,7 +72,10 @@ afterAll(async () => {
   await owner.$transaction(async (tx) => {
     await tx.$executeRawUnsafe(`SELECT set_config('app.project_id', $1, true)`, PROJECT_ID);
     await tx.$executeRawUnsafe(`DELETE FROM "BlroBrowserJobResult" WHERE "projectId"=$1`, PROJECT_ID);
-    await tx.$executeRawUnsafe(`DELETE FROM "BlroClientEnrollment" WHERE "projectId"=$1`, PROJECT_ID);
+    for (const table of [
+      'BlroEnrollmentRotation', 'BlroEnrollmentGrant', 'BlroEnrollmentCertificate',
+      'BlroEnrollmentIdentity', 'BlroEnrollmentBootstrapToken', 'BlroClientEnrollment',
+    ]) await tx.$executeRawUnsafe(`DELETE FROM "${table}" WHERE "projectId"=$1`, PROJECT_ID);
     await tx.$executeRawUnsafe(`DELETE FROM "BlroProject" WHERE "id"=$1`, PROJECT_ID);
   });
   await owner.$executeRawUnsafe(`DELETE FROM "BlroTenant" WHERE "id"=$1`, TENANT_ID);
@@ -113,6 +122,22 @@ describe('BLRO authority runtime composition', () => {
     await runtime.close();
   });
 
+  it('refuses a syntactically valid leaf certificate as the configured trust anchor', async () => {
+    const leafTrust = join(materialRoot, 'leaf-trust.crt');
+    writeFileSync(leafTrust, certificateFixture.validPem);
+    const runtime = createAuthorityRuntime({
+      environment: { ...completeEnvironment(), SANGFOR_BLRO_TRUST_BUNDLE_PATH: leafTrust },
+    });
+
+    await runtime.start();
+
+    await expect(runtime.readiness()).resolves.toMatchObject({
+      ok: false, checks: { trust: { ok: false }, database: { ok: false } },
+    });
+    expect(runtime.resources()).toBeUndefined();
+    await runtime.close();
+  });
+
   it('constructs every authority dependency only after config, database, schema, signing, trust, and scope pass', async () => {
     const runtime = createAuthorityRuntime({ environment: completeEnvironment() });
 
@@ -133,17 +158,23 @@ describe('BLRO authority runtime composition', () => {
     });
     const stores = runtime.resources();
     if (!stores) throw new Error('authority resources missing');
-    const enrollment = {
-      schemaVersion: 'browser-enrollment.v1' as const,
-      installationId: 'task19-installation', clientIdentityId: 'client:task19-installation',
-      certificateSerial: 'task19-serial', publicKeyFingerprintSha256: 'a'.repeat(64),
-      certificateFingerprintSha256: 'b'.repeat(64), status: 'active' as const,
-      enrolledAt: '2026-08-26T00:00:00.000Z', notBefore: '2026-08-26T00:00:00.000Z',
-      notAfter: '2027-08-26T00:00:00.000Z',
+    expect(stores.enrollmentStore).toBeInstanceOf(PostgresEnrollmentRegistry);
+    expect(stores.domainApis.enrollments).toBe(stores.enrollmentStore);
+    const enrollmentBinding = {
+      tenantId: TENANT_ID, projectId: PROJECT_ID,
+      installationId: 'task19-installation', deviceBindingDigest: 'd'.repeat(64),
     };
-    await stores.enrollmentStore.put(enrollment);
-    await expect(stores.enrollmentStore.getByInstallation(enrollment.installationId)).resolves.toEqual(enrollment);
-    await expect(stores.enrollmentStore.getBySerial(enrollment.certificateSerial)).resolves.toEqual(enrollment);
+    await expect(stores.enrollmentStore.issueBootstrapToken({
+      ...enrollmentBinding, tokenDigest: 'a'.repeat(64),
+      expiresAt: new Date(Date.now() + 60_000).toISOString(),
+      grants: [{ originDigest: 'b'.repeat(64), scope: 'browser:execute' }],
+    })).resolves.toMatchObject({ ok: true });
+    await expect(stores.enrollmentStore.claimBootstrapToken({
+      ...enrollmentBinding, tokenDigest: 'a'.repeat(64), clientIdentityId: 'client:task19-installation',
+      certificate: { encoding: 'pem', value: certificateFixture.validPem },
+    })).resolves.toMatchObject({ ok: true, enrollment: { revision: 1 } });
+    await expect(stores.enrollmentStore.getByInstallation('task19-installation'))
+      .resolves.toMatchObject({ revision: 1, currentCertificateSerial: expect.any(String) });
     const result = {
       schemaVersion: 'browser-execution-result.v1' as const,
       requestId: 'task19-request', status: 'PASS' as const,

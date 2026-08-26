@@ -45,7 +45,9 @@ export async function loadAuthorityMaterial(
     if (certificates.length === 0 || text.replaceAll(/-----BEGIN CERTIFICATE-----[\s\S]+?-----END CERTIFICATE-----/gu, '').trim()) {
       throw new TypeError('Trust bundle must contain only PEM certificates.');
     }
-    for (const certificate of certificates) new X509Certificate(certificate);
+    for (const certificate of certificates) {
+      if (!new X509Certificate(certificate).ca) throw new TypeError('Trust anchor must be a CA certificate.');
+    }
     trustBundle = encoded;
   } catch {
     trustBundle = undefined;

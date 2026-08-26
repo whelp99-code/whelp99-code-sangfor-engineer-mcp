@@ -19,7 +19,11 @@ export const CORE_MIGRATIONS = [
   },
   {
     id: 'm002-project-installation-identity', order: 2, aggregate: 'project_installation_identity', ownerPackage: '@sangfor/identity', classification: 'authoritative',
-    sources: sourcesFor(PROJECT_REFS), target: { kind: 'postgres', tables: ['BlroMembership', 'BlroClientEnrollment'] },
+    sources: sourcesFor(PROJECT_REFS), target: { kind: 'postgres', tables: [
+      'BlroMembership', 'BlroClientEnrollment', 'BlroEnrollmentIdentity',
+      'BlroEnrollmentCertificate', 'BlroEnrollmentGrant', 'BlroEnrollmentBootstrapToken',
+      'BlroEnrollmentRotation',
+    ] },
     projectScope: 'required', rlsRequired: true, secretPolicy: 'digest_only', prerequisites: ['rls-scope'], dependsOn: ['m001-tenant-identity'], inventoryRefs: [...PROJECT_REFS],
   },
   {

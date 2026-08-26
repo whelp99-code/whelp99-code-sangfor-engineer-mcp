@@ -235,6 +235,11 @@ model BlroTenant {
   configChronicles BlroConfigChronicle[]
   capabilityEvidence BlroCapabilityEvidence[]
   ragSourceChunks BlroRagSourceChunk[]
+  enrollmentIdentities BlroEnrollmentIdentity[]
+  enrollmentCertificates BlroEnrollmentCertificate[]
+  enrollmentGrants BlroEnrollmentGrant[]
+  enrollmentBootstrapTokens BlroEnrollmentBootstrapToken[]
+  enrollmentRotations BlroEnrollmentRotation[]
 }
 
 model BlroProject {
@@ -267,6 +272,11 @@ model BlroProject {
   configChronicles    BlroConfigChronicle[]
   capabilityEvidence  BlroCapabilityEvidence[]
   ragSourceChunks     BlroRagSourceChunk[]
+  enrollmentIdentities BlroEnrollmentIdentity[]
+  enrollmentCertificates BlroEnrollmentCertificate[]
+  enrollmentGrants BlroEnrollmentGrant[]
+  enrollmentBootstrapTokens BlroEnrollmentBootstrapToken[]
+  enrollmentRotations BlroEnrollmentRotation[]
 
   @@unique([id, tenantId])
   @@index([tenantId])
@@ -505,6 +515,121 @@ model BlroClientEnrollment {
 
   @@index([projectId, installationId])
   @@unique([projectId, certificateSerial])
+}
+
+model BlroEnrollmentIdentity {
+  id                       String   @id
+  tenantId                 String
+  projectId                String
+  installationId           String
+  deviceBindingDigest      String
+  clientIdentityId         String
+  state                    String
+  revision                 Int
+  currentCertificateSerial String
+  createdAt                DateTime
+  updatedAt                DateTime
+  revokedAt                DateTime?
+  revocationReason         String?
+  revocationRevision       Int?
+  tenant                   BlroTenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  project                  BlroProject @relation(fields: [projectId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  certificates             BlroEnrollmentCertificate[]
+  grants                   BlroEnrollmentGrant[]
+  rotations                BlroEnrollmentRotation[]
+
+  @@unique([id, projectId])
+  @@unique([projectId, installationId])
+  @@unique([projectId, clientIdentityId])
+  @@index([projectId, deviceBindingDigest])
+}
+
+model BlroEnrollmentCertificate {
+  id                  String   @id
+  tenantId            String
+  projectId           String
+  enrollmentId        String
+  issuerChainRef      String
+  issuer              String
+  subjectAltNames     String[]
+  extendedKeyUsages   String[]
+  serial              String
+  fingerprintSha256   String
+  notBefore           DateTime
+  notAfter            DateTime
+  state               String
+  revision            Int
+  overlapExpiresAt    DateTime?
+  acknowledgedAt      DateTime?
+  revokedAt           DateTime?
+  revocationReason    String?
+  createdAt           DateTime
+  tenant              BlroTenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  project             BlroProject @relation(fields: [projectId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  enrollment          BlroEnrollmentIdentity @relation(fields: [enrollmentId, projectId], references: [id, projectId], onDelete: Restrict)
+
+  @@unique([projectId, serial])
+  @@unique([projectId, fingerprintSha256])
+  @@index([projectId, enrollmentId, state])
+}
+
+model BlroEnrollmentGrant {
+  id           String   @id
+  tenantId     String
+  projectId    String
+  enrollmentId String
+  originDigest String
+  scope        String
+  revision     Int
+  createdAt    DateTime
+  tenant       BlroTenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  project      BlroProject @relation(fields: [projectId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  enrollment   BlroEnrollmentIdentity @relation(fields: [enrollmentId, projectId], references: [id, projectId], onDelete: Restrict)
+
+  @@unique([projectId, enrollmentId, originDigest, scope])
+  @@index([projectId, originDigest, scope])
+}
+
+model BlroEnrollmentBootstrapToken {
+  id                  String   @id
+  tenantId            String
+  projectId           String
+  installationId      String
+  deviceBindingDigest String
+  tokenDigest         String
+  grants              Json
+  expiresAt           DateTime
+  claimedAt           DateTime?
+  revision            Int
+  createdAt           DateTime
+  tenant              BlroTenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  project             BlroProject @relation(fields: [projectId, tenantId], references: [id, tenantId], onDelete: Restrict)
+
+  @@unique([projectId, tokenDigest])
+  @@index([projectId, installationId])
+  @@index([projectId, expiresAt])
+}
+
+model BlroEnrollmentRotation {
+  id               String   @id
+  tenantId         String
+  projectId        String
+  enrollmentId     String
+  oldSerial        String
+  newSerial        String
+  overlapExpiresAt DateTime
+  acknowledgedAt   DateTime?
+  requestDigest    String
+  acknowledgementDigest String?
+  revision         Int
+  createdAt        DateTime
+  tenant           BlroTenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  project          BlroProject @relation(fields: [projectId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  enrollment       BlroEnrollmentIdentity @relation(fields: [enrollmentId, projectId], references: [id, projectId], onDelete: Restrict)
+
+  @@unique([projectId, enrollmentId, oldSerial, newSerial])
+  @@unique([projectId, requestDigest])
+  @@index([projectId, overlapExpiresAt])
 }
 
 model BlroBrowserJobResult {

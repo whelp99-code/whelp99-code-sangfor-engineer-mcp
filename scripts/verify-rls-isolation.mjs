@@ -16,6 +16,8 @@ const SCOPED_TABLES = [
   'BlroProject', 'BlroMembership', 'BlroApprovalNonce', 'BlroAuditEvent',
   'BlroDevice', 'BlroRun', 'BlroRunStep', 'BlroApproval',
   'BlroEvidenceManifest', 'BlroRagDocument', 'BlroRagChunk',
+  'BlroEnrollmentIdentity', 'BlroEnrollmentCertificate', 'BlroEnrollmentGrant',
+  'BlroEnrollmentBootstrapToken', 'BlroEnrollmentRotation',
 ];
 
 function refuse(reason, detail) {
@@ -105,6 +107,34 @@ if (!databaseUrl) {
       await tx.$executeRawUnsafe(
         `INSERT INTO "BlroRagChunk" ("id","tenantId","projectId","documentId","text","contentHash","aclActorIds") VALUES ($1,$2,$3,$4,$5,$6,'{}')`,
         `chunk-${label}-${suffix}`, tenantId, projectId, `document-${label}-${suffix}`, `chunk ${label}`, `chunk-hash-${label}-${suffix}`,
+      );
+      const enrollmentId = `enrollment-${label}-${suffix}`;
+      const oldSerial = `serial-old-${label}-${suffix}`;
+      const newSerial = `serial-new-${label}-${suffix}`;
+      await tx.$executeRawUnsafe(
+        `INSERT INTO "BlroEnrollmentIdentity" ("id","tenantId","projectId","installationId","deviceBindingDigest","clientIdentityId","state","revision","currentCertificateSerial","createdAt","updatedAt")
+         VALUES ($1,$2,$3,$4,repeat($5,64),$6,'active',2,$7,now(),now())`,
+        enrollmentId, tenantId, projectId, `installation-${label}-${suffix}`, label,
+        `client-${label}-${suffix}`, newSerial,
+      );
+      await tx.$executeRawUnsafe(
+        `INSERT INTO "BlroEnrollmentCertificate" ("id","tenantId","projectId","enrollmentId","issuerChainRef","issuer","subjectAltNames","extendedKeyUsages","serial","fingerprintSha256","notBefore","notAfter","state","revision","createdAt") VALUES
+         ($1,$2,$3,$4,repeat('f',64),'CN=RLS',ARRAY['urn:rls:installation','urn:rls:device'],ARRAY['1.3.6.1.5.5.7.3.2'],$5,repeat($6,64),now()-interval '1 minute',now()+interval '1 hour','active',2,now())`,
+        `cert-new-${label}-${suffix}`, tenantId, projectId, enrollmentId, newSerial,
+        label === 'a' ? 'c' : 'd',
+      );
+      await tx.$executeRawUnsafe(
+        `INSERT INTO "BlroEnrollmentGrant" ("id","tenantId","projectId","enrollmentId","originDigest","scope","revision","createdAt") VALUES ($1,$2,$3,$4,repeat($5,64),'browser:execute',1,now())`,
+        `grant-${label}-${suffix}`, tenantId, projectId, enrollmentId, label,
+      );
+      await tx.$executeRawUnsafe(
+        `INSERT INTO "BlroEnrollmentBootstrapToken" ("id","tenantId","projectId","installationId","deviceBindingDigest","tokenDigest","grants","expiresAt","revision","createdAt") VALUES ($1,$2,$3,$4,repeat($5,64),repeat($6,64),'[]',now()+interval '5 minutes',0,now())`,
+        `token-${label}-${suffix}`, tenantId, projectId, `token-install-${label}-${suffix}`,
+        label, label === 'a' ? 'e' : 'f',
+      );
+      await tx.$executeRawUnsafe(
+        `INSERT INTO "BlroEnrollmentRotation" ("id","tenantId","projectId","enrollmentId","oldSerial","newSerial","overlapExpiresAt","requestDigest","revision","createdAt") VALUES ($1,$2,$3,$4,$5,$6,now()+interval '5 minutes',repeat('a',64),2,now())`,
+        `rotation-${label}-${suffix}`, tenantId, projectId, enrollmentId, oldSerial, newSerial,
       );
     };
 
