@@ -223,6 +223,8 @@ model BlroTenant {
   evidenceManifests BlroEvidenceManifest[]
   ragDocuments BlroRagDocument[]
   ragChunks BlroRagChunk[]
+  clientEnrollments BlroClientEnrollment[]
+  browserJobResults BlroBrowserJobResult[]
 }
 
 model BlroProject {
@@ -243,6 +245,8 @@ model BlroProject {
   evidenceManifests   BlroEvidenceManifest[]
   ragDocuments        BlroRagDocument[]
   ragChunks           BlroRagChunk[]
+  clientEnrollments   BlroClientEnrollment[]
+  browserJobResults   BlroBrowserJobResult[]
 
   @@unique([id, tenantId])
   @@index([tenantId])
@@ -460,4 +464,36 @@ model BlroRagChunk {
 
   @@unique([projectId, contentHash])
   @@index([projectId, documentId])
+}
+
+model BlroRuntimeSchema {
+  component   String   @id
+  version     String
+  installedAt DateTime @default(now())
+}
+
+model BlroClientEnrollment {
+  id                String   @id
+  tenantId          String
+  projectId         String
+  installationId    String
+  certificateSerial String
+  record            Json
+  updatedAt         DateTime @updatedAt
+  tenant            BlroTenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  project           BlroProject @relation(fields: [projectId, tenantId], references: [id, tenantId], onDelete: Restrict)
+
+  @@index([projectId, installationId])
+  @@unique([projectId, certificateSerial])
+}
+
+model BlroBrowserJobResult {
+  id        String   @id
+  tenantId  String
+  projectId String
+  jobId     String   @unique
+  result    Json
+  createdAt DateTime @default(now())
+  tenant    BlroTenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  project   BlroProject @relation(fields: [projectId, tenantId], references: [id, tenantId], onDelete: Restrict)
 }

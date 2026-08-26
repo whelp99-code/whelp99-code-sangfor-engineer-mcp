@@ -28,9 +28,16 @@ export interface NonceConsumeResult {
   readonly reason?: string;
 }
 
-export interface PostgresNonceStoreOptions {
-  readonly connectionString: string;
+interface NonceDatabase {
+  $queryRawUnsafe: Function;
+  $executeRawUnsafe: Function;
+  $transaction: Function;
+  $disconnect?: Function;
 }
+
+export type PostgresNonceStoreOptions =
+  | { readonly connectionString: string; readonly database?: never }
+  | { readonly database: NonceDatabase; readonly connectionString?: never };
 
 /** Strip credentials from anything that might carry a connection string. */
 function scrub(message: string): string {
@@ -38,13 +45,14 @@ function scrub(message: string): string {
 }
 
 export class PostgresSingleUseNonceStore {
-  private client:
-    | { $queryRawUnsafe: Function; $executeRawUnsafe: Function; $transaction: Function; $disconnect: Function }
-    | undefined;
-  private readonly connectionString: string;
+  private client: NonceDatabase | undefined;
+  private readonly connectionString: string | undefined;
+  private readonly ownsClient: boolean;
 
   constructor(options: PostgresNonceStoreOptions) {
     this.connectionString = options.connectionString;
+    this.client = options.database;
+    this.ownsClient = options.database === undefined;
   }
 
   private async getClient() {
@@ -140,7 +148,7 @@ export class PostgresSingleUseNonceStore {
   }
 
   async close(): Promise<void> {
-    if (this.client) {
+    if (this.client && this.ownsClient && this.client.$disconnect) {
       await this.client.$disconnect().catch(() => {});
       this.client = undefined;
     }

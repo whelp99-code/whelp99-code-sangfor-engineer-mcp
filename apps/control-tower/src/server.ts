@@ -1,46 +1,34 @@
 import http from 'node:http';
 import { URL } from 'node:url';
-import { checkAuth, resolveBindHost, assertBindSafety } from '../../../packages/shared/src/index.js';
+import { checkAuth } from '../../../packages/shared/src/index.js';
 import type { RunStatus } from '../../../packages/sangfor-runs/src/index.js';
 import type { PlaybookBlock, AgentTask } from './playbook-store.js';
 import { createApi, ApiError, type TowerOptions } from './api.js';
 import { loadEnvFile } from '../../../packages/sangfor-collector/src/load-env.js';
 import { buildLoopStatus } from '../../../packages/sangfor-loop/src/index.js';
-import { dashboardHtml } from './ui.js';
+import type { AuthorityRuntimePort } from './authority-runtime.js';
+import {
+  readJsonBody,
+  refuseUnreadyAuthorityApi,
+  routeProcessShell,
+  sendJson as json,
+} from './health-routes.js';
+import { seedLegacyApi } from './legacy-seed.js';
+import { startTowerProcess } from './tower-process.js';
 
 loadEnvFile('.env');
 
 export interface TowerServerOptions extends TowerOptions {
   apiToken?: string;
   seedOnStart?: boolean;   // 기동 시 기본 플레이북 시드 (멱등). 테스트는 기본 false.
-}
-
-function json(res: http.ServerResponse, data: unknown, status = 200) {
-  res.writeHead(status, { 'content-type': 'application/json; charset=utf-8' });
-  res.end(JSON.stringify(data));
-}
-
-async function readJsonBody(req: http.IncomingMessage): Promise<Record<string, unknown>> {
-  const chunks: Buffer[] = [];
-  for await (const chunk of req) chunks.push(chunk as Buffer);
-  const raw = Buffer.concat(chunks).toString('utf8');
-  if (!raw.trim()) return {};
-  return JSON.parse(raw) as Record<string, unknown>;
+  authorityRuntime?: AuthorityRuntimePort;
 }
 
 export function createTowerServer(opts: TowerServerOptions = {}): http.Server {
-  const api = createApi(opts);
+  const api = opts.authorityRuntime ? undefined : createApi(opts);
   const apiToken = opts.apiToken ?? process.env.SANGFOR_API_TOKEN;
 
-  if (opts.seedOnStart) {
-    // 시드 실패로 타워가 기동하지 못하면 안 된다 — 값으로 흡수하고 로그만 남긴다.
-    try {
-      const { created, skipped } = api.seedPlaybooks();
-      if (created.length) console.log(`기본 플레이북 시드: ${created.length}건 생성, ${skipped}건 기존 유지 (승인 필요)`);
-    } catch (error) {
-      console.error(`플레이북 시드 실패(무시하고 기동): ${error instanceof Error ? error.message : String(error)}`);
-    }
-  }
+  seedLegacyApi(api, opts.seedOnStart);
 
   return http.createServer(async (req, res) => {
     const url = new URL(req.url ?? '/', 'http://localhost');
@@ -54,11 +42,11 @@ export function createTowerServer(opts: TowerServerOptions = {}): http.Server {
     }
 
     try {
-      if (method === 'GET' && (path === '/' || path === '/index.html')) {
-        res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
-        res.end(dashboardHtml());
-        return;
-      }
+      const authorityRoute = { method, path, response: res, authorityRuntime: opts.authorityRuntime };
+      if (await routeProcessShell(authorityRoute)) return;
+      if (await refuseUnreadyAuthorityApi(authorityRoute)) return;
+      if (path.startsWith('/api/') && !api) return json(res, { error: 'BLRO authority API is not exposed' }, 404);
+      if (!api) return json(res, { error: 'Not found' }, 404);
       if (method === 'GET' && path === '/api/overview') return json(res, await api.overview());
       if (method === 'GET' && path === '/api/tools') return json(res, await api.toolGroups());
       if (method === 'GET' && path === '/api/health') return json(res, await api.health());
@@ -219,12 +207,9 @@ export function createTowerServer(opts: TowerServerOptions = {}): http.Server {
 }
 
 // Auto-start only when run as a process (not when imported by tests).
-const port = Number(process.env.PORT ?? process.env.CONTROL_TOWER_PORT ?? 3700);
 if (process.env.MCP_NO_SERVE !== '1' && process.env.VITEST === undefined) {
-  const bindHost = resolveBindHost();
-  const apiToken = process.env.SANGFOR_API_TOKEN;
-  assertBindSafety(bindHost, apiToken); // fail closed: no public bind without a token
-  createTowerServer({ seedOnStart: process.env.SANGFOR_TOWER_SEED_PLAYBOOKS !== '0' }).listen(port, bindHost, () => {
-    console.log(`Sangfor Control Tower listening on http://${bindHost}:${port}${apiToken ? ' (token-gated)' : ''}`);
+  void startTowerProcess({ createServer: createTowerServer }).catch(() => { // no-excuse-ok: catch
+    console.error('Control Tower startup failed.');
+    process.exitCode = 1;
   });
 }

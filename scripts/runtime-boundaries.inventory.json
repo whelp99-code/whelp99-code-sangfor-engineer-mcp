@@ -5,7 +5,7 @@
     { "file": "apps/control-tower/src/playbook-store.ts", "line": 269, "owner": "control-tower", "schema": "PlaybookAnalysis", "policy": "invalid_report" },
     { "file": "apps/control-tower/src/playbook-store.ts", "line": 339, "owner": "control-tower", "schema": "AgentTask[]", "policy": "freeze" },
     { "file": "apps/control-tower/src/registry.ts", "line": 136, "owner": "control-tower", "schema": "T", "policy": "freeze" },
-    { "file": "apps/control-tower/src/server.ts", "line": 28, "owner": "control-tower", "schema": "Record<string, unknown>", "policy": "deny" },
+    { "file": "apps/control-tower/src/health-routes.ts", "line": 27, "owner": "control-tower", "schema": "Record<string, unknown>", "policy": "deny" },
     { "file": "apps/http-bridge/src/server.ts", "line": 62, "owner": "http-bridge", "schema": "JsonRpcResponse", "policy": "INDETERMINATE" },
     { "file": "apps/http-bridge/src/server.ts", "line": 132, "owner": "http-bridge", "schema": "Record<string, unknown>", "policy": "deny" },
     { "file": "apps/mcp-server/src/index.ts", "line": 356, "owner": "mcp-server", "schema": "SearchGapEvent", "policy": "freeze" },

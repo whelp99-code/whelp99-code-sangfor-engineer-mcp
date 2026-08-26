@@ -14,6 +14,11 @@ import {
 import { dirname } from 'node:path';
 import { ApprovalDecision, ConsoleAction, RiskLevel } from '@sangfor/shared';
 
+export {
+  PostgresSingleUseNonceStore,
+  type PostgresNonceStoreOptions,
+} from './postgres-nonce-store.js';
+
 export function canonicalizeApprovalPayload(fields: readonly string[]): string {
   return fields.join('\n');
 }

@@ -86,8 +86,13 @@ Observed: `blro_app` and `blro_owner` both `rolsuper=f`, `rolbypassrls=f`.
 Migrations run as the **owner**; the application never does DDL.
 
 ```bash
-PGPASSWORD=blro_owner_local psql -h 127.0.0.1 -p 55432 -U blro_owner -d blro \
-  -v ON_ERROR_STOP=1 -f prisma/migrations/20260812101700_blro_scope_rls/migration.sql
+for migration in \
+  prisma/migrations/20260812101700_blro_scope_rls/migration.sql \
+  prisma/migrations/20260812150000_blro_authority_stores/migration.sql \
+  prisma/migrations/20260826170000_blro_runtime_stores/migration.sql; do
+  PGPASSWORD=blro_owner_local psql -h 127.0.0.1 -p 55432 -U blro_owner -d blro \
+    -v ON_ERROR_STOP=1 -f "$migration"
+done
 ```
 
 ## Verify isolation

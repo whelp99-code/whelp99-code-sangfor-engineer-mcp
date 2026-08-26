@@ -47,7 +47,16 @@ a non-loopback bind is refused at startup, not warned about.
 
 For a rootless PostgreSQL to develop and verify RLS against, see
 [BLRO Local Database](BLRO_LOCAL_DATABASE.md). RLS isolation is proven there with
-`pnpm run verify:rls` (expects `BLRO_RLS_ISOLATION_PASS`).
+`pnpm run verify:rls` (expects `BLRO_RLS_ISOLATION_PASS`). Apply
+`20260826170000_blro_runtime_stores` as the owner before starting control-tower.
+
+Control-tower is the BLRO composition root. It requires `SANGFOR_BLRO_AUTHORITY_STORE=postgres`,
+a credentialed PostgreSQL `DATABASE_URL`, tenant/project IDs, an Ed25519 private-key file at
+`SANGFOR_BLRO_SIGNING_PRIVATE_KEY_PATH`, a CA bundle at `SANGFOR_BLRO_TRUST_BUNDLE_PATH`, and
+independent audit/operator secrets of at least 32 characters. There are no defaults or file-store
+fallbacks. `/health` and `/live` report process liveness only; `/ready` checks config, database,
+exact schema, project scope, signing material, trust material, and drain state. New authority work
+is refused with 503 whenever readiness is false.
 
 ## 3. Deploy and upgrade
 
@@ -75,6 +84,9 @@ review. Never auto-mutate a device to undo a change.
 |---|---|---|
 | `SANGFOR_OPERATOR_APPROVAL_SECRET` | HMAC key for action-bound approvals | rotate on suspicion, on operator departure, and quarterly |
 | `SANGFOR_API_TOKEN` | bearer token for any non-loopback bind | rotate with each network exposure change |
+| `SANGFOR_BLRO_SIGNING_PRIVATE_KEY_PATH` | Ed25519 authority signing key file | rotate through a drained key ceremony |
+| `SANGFOR_BLRO_TRUST_BUNDLE_PATH` | trusted CA bundle for authority peers | rotate before peer certificate rollover |
+| `SANGFOR_BLRO_AUDIT_SECRET` | authoritative audit-chain integrity | rotate only through a witnessed chain cutover |
 | `SANGFOR_CHANGE_LEDGER_SECRET` | change-ledger chain integrity | rotate with the ledger cutover only |
 | `SANGFOR_WIKI_APPROVAL_SECRET` | wiki proposal approvals | quarterly |
 
@@ -170,8 +182,8 @@ filtering after ranking to save a query; that leaks scores and identifiers acros
 Stated plainly so nobody operates on an assumption:
 
 - multi-JM routing, queueing, retry semantics;
-- durable production enrollment and JM receipt-store adapters;
-- authoritative store migration and backfill;
+- enrollment and JM receipt service routes (the Postgres adapters are composed but not remotely exposed until Phase 26);
+- authoritative historical backfill;
 - production Postgres / object-store / vector-store topology;
 - active-active BLRO storage.
 
