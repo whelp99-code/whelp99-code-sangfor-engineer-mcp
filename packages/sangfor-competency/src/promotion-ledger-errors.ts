@@ -12,3 +12,8 @@ export class PromotionLedgerStaleStateError extends Error {
   readonly name = 'PromotionLedgerStaleStateError';
   constructor() { super('CAPABILITY_PROMOTION_STALE_MATURITY'); }
 }
+
+export class PromotionLedgerStaleEvidenceError extends Error {
+  readonly name = 'PromotionLedgerStaleEvidenceError';
+  constructor() { super('CAPABILITY_PROMOTION_STALE_EVIDENCE_DIGEST'); }
+}

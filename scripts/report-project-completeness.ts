@@ -16,7 +16,6 @@
 import { execFileSync } from 'node:child_process';
 import {
   buildCoverageContext,
-  computeReplacementCoverage,
   defaultCatalogRoot,
   fetchBridgeToolRegistry,
   loadMaturityPolicyStrict,
@@ -25,10 +24,15 @@ import {
 } from '../packages/sangfor-competency/src/index.js';
 import { resolveRepoData } from '../packages/shared/src/index.js';
 import { baselineExitCode, runBaseline, type CensusProbe, type GraphProbe } from './lib/completeness-baseline-run.js';
+import { renderEffectiveCoverage } from './lib/completeness-effective-report.js';
+import { runEffectiveCoverage } from './lib/completeness-effective-run.js';
 import { evaluateTrackerTruth, parseTrackerSnapshot } from './lib/tracker-truth.js';
 
 const BOOLEAN_FLAGS = ['--strict', '--json', '--baseline'] as const;
-const VALUE_FLAGS = ['--catalog-root', '--evidence-root', '--registry-url', '--historical-record'] as const;
+const VALUE_FLAGS = [
+  '--catalog-root', '--evidence-root', '--registry-url', '--historical-record',
+  '--evidence-manifest', '--validation-context', '--promotion-ledger',
+] as const;
 
 type BooleanFlag = (typeof BOOLEAN_FLAGS)[number];
 type ValueFlag = (typeof VALUE_FLAGS)[number];
@@ -41,6 +45,9 @@ interface CliOptions {
   readonly evidenceRoot: string;
   readonly registryUrl: string;
   readonly historicalRecord: string;
+  readonly evidenceManifests: readonly string[];
+  readonly validationContexts: readonly string[];
+  readonly promotionLedger: string;
 }
 
 const DEFAULT_HISTORICAL_RECORD = '.omo/evidence/project-completeness/task-2-project-completeness-production-readiness.json';
@@ -53,7 +60,7 @@ const isValueFlag = (token: string): token is ValueFlag => VALUE_FLAGS.includes(
 
 function parseArgs(argv: readonly string[]): CliOptions {
   const booleans = new Set<BooleanFlag>();
-  const values = new Map<ValueFlag, string>();
+  const values = new Map<ValueFlag, string[]>();
 
   for (let i = 0; i < argv.length; i += 1) {
     const token = argv[i];
@@ -66,7 +73,7 @@ function parseArgs(argv: readonly string[]): CliOptions {
       if (value === undefined || value.startsWith('--')) {
         throw new CliUsageError(`${token} requires a value`);
       }
-      values.set(token, value);
+      values.set(token, [...(values.get(token) ?? []), value]);
       i += 1;
       continue;
     }
@@ -75,14 +82,29 @@ function parseArgs(argv: readonly string[]): CliOptions {
     );
   }
 
+  const single = (flag: ValueFlag, fallback: string): string => {
+    const found = values.get(flag) ?? [];
+    if (found.length > 1) throw new CliUsageError(`${flag} may be supplied only once`);
+    return found[0] ?? fallback;
+  };
+  const evidenceManifests = values.get('--evidence-manifest')
+    ?? (process.env['SANGFOR_CAPABILITY_EVIDENCE_MANIFEST'] === undefined ? [] : [process.env['SANGFOR_CAPABILITY_EVIDENCE_MANIFEST']]);
+  const validationContexts = values.get('--validation-context')
+    ?? (process.env['SANGFOR_CAPABILITY_EVIDENCE_CONTEXT'] === undefined ? [] : [process.env['SANGFOR_CAPABILITY_EVIDENCE_CONTEXT']]);
+  if (evidenceManifests.length !== validationContexts.length) {
+    throw new CliUsageError('each --evidence-manifest requires one matching --validation-context');
+  }
   return {
     strict: booleans.has('--strict'),
     json: booleans.has('--json'),
     baseline: booleans.has('--baseline'),
-    catalogRoot: values.get('--catalog-root') ?? defaultCatalogRoot(),
-    evidenceRoot: values.get('--evidence-root') ?? resolveRepoData('.', 'SANGFOR_OUTPUT_ROOT'),
-    registryUrl: values.get('--registry-url') ?? bridgeUrlFromEnv(),
-    historicalRecord: values.get('--historical-record') ?? DEFAULT_HISTORICAL_RECORD,
+    catalogRoot: single('--catalog-root', defaultCatalogRoot()),
+    evidenceRoot: single('--evidence-root', resolveRepoData('.', 'SANGFOR_OUTPUT_ROOT')),
+    registryUrl: single('--registry-url', bridgeUrlFromEnv()),
+    historicalRecord: single('--historical-record', DEFAULT_HISTORICAL_RECORD),
+    evidenceManifests,
+    validationContexts,
+    promotionLedger: single('--promotion-ledger', process.env['SANGFOR_CAPABILITY_PROMOTION_LEDGER_PATH'] ?? ''),
   };
 }
 
@@ -173,30 +195,21 @@ async function run(options: CliOptions): Promise<number> {
     return 1;
   }
 
-  const result = computeReplacementCoverage(buildCoverageContext({
+  const result = await runEffectiveCoverage(buildCoverageContext({
     catalogRoot: options.catalogRoot,
     evidenceRoot: options.evidenceRoot,
     registeredTools: registry.toolNames,
     maturityPolicy: policy.entries,
-  }));
+  }), {
+    evidenceRoot: options.evidenceRoot,
+    evidenceManifests: options.evidenceManifests,
+    validationContexts: options.validationContexts,
+    promotionLedger: options.promotionLedger,
+    ledgerSecret: process.env['SANGFOR_CAPABILITY_PROMOTION_LEDGER_SECRET'],
+    checkpointSecret: process.env['SANGFOR_CAPABILITY_PROMOTION_CHECKPOINT_SECRET'],
+  });
 
-  if (!result.ok) {
-    renderViolations(result.violations, options.json);
-    // Without --strict the violations are still the only output; there is no
-    // fallback number to print, so the exit code is the only thing that softens.
-    return options.strict ? 1 : 0;
-  }
-
-  const { report } = result;
-  if (options.json) process.stdout.write(`${JSON.stringify({ ok: true, report }, null, 2)}\n`);
-  else {
-    process.stdout.write(
-      `project completeness: ${(report.replacementRate * 100).toFixed(1)}% ` +
-      `(${report.replacedAtoms}/${report.automatableAtoms} automatable replaced, ` +
-      `${report.humanOnlyAtoms} human-only, ${report.totalAtoms} total)\n`,
-    );
-  }
-  return 0;
+  return renderEffectiveCoverage(result, { strict: options.strict, json: options.json });
 }
 
 async function main(): Promise<number> { // no-excuse-ok: catch

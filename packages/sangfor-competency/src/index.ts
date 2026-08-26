@@ -53,6 +53,22 @@ export {
 } from './coverage.js';
 
 export {
+  loadEffectiveMaturityAuthority,
+  type EffectiveAuthorityLoad,
+  type EffectiveAuthoritySource,
+  type EffectiveEvidenceClaimSource,
+} from './effective-context.js';
+
+export {
+  computeEffectiveReplacementCoverage,
+  type EffectiveClaimIssue,
+  type EffectiveCoverageResult,
+  type EffectiveEvidenceClaim,
+  type EffectiveMaturityAuthority,
+  type EffectiveReplacementReport,
+} from './effective-maturity.js';
+
+export {
   CAPABILITY_EVIDENCE_VERSION,
   MAX_CAPABILITY_EVIDENCE_BYTES,
   MAX_EVIDENCE_RUNS,
@@ -87,9 +103,12 @@ export {
 export {
   FilePromotionLedger,
   PromotionLedgerIndeterminateError,
+  PromotionLedgerStaleEvidenceError,
   PromotionLedgerStaleStateError,
   PromotionLedgerUnavailableError,
+  hasStalePromotionManifest,
   maskedPromotionRef,
+  samePromotionTarget,
   type PromotionLedger,
   type PromotionLedgerEvent,
   type PromotionLedgerEventInput,
@@ -97,6 +116,12 @@ export {
 } from './promotion-ledger.js';
 
 export { capabilityPromotionCliOutput, type CapabilityPromotionCliOutput } from './promotion-cli.js';
+
+export {
+  validateAndPersistEvidenceStaleness,
+  type ValidateAndPersistEvidenceStalenessInput,
+  type ValidateAndPersistEvidenceStalenessResult,
+} from './evidence-invalidation.js';
 
 export {
   canonicalizeCapabilityApproval,

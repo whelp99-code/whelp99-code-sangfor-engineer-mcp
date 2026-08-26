@@ -10,8 +10,11 @@ import { nodeEvidenceFilesystem } from './evidence-filesystem.js';
 import type { EvidenceFilesystem, EvidenceValidationContext } from './evidence-validation-types.js';
 import { validateCapabilityEvidence } from './evidence-validation.js';
 import {
+  PromotionLedgerStaleEvidenceError,
   PromotionLedgerStaleStateError,
   PromotionLedgerUnavailableError,
+  hasStalePromotionManifest,
+  maskedPromotionRef,
   type PromotionLedger,
   type PromotionLedgerEvent,
 } from './promotion-ledger.js';
@@ -124,6 +127,11 @@ export async function executeCapabilityPromotion(input: ExecuteCapabilityPromoti
   );
   if (!signature.ok) return refuse('signature_mismatch');
   if (envelope.request.fromMaturity !== effective || decision.fromMaturity !== effective) return refuse('stale_maturity');
+  if (decision.decision === 'promote' && hasStalePromotionManifest(
+    events,
+    envelope.request.target,
+    maskedPromotionRef('manifest', envelope.request.manifestDigest),
+  )) return refuse('stale_evidence_digest');
   const transition = promotionTransitionCode(envelope, effective);
   if (transition !== undefined) return refuse(transition);
   if (decision.decision === 'promote') {
@@ -145,6 +153,18 @@ export async function executeCapabilityPromotion(input: ExecuteCapabilityPromoti
     const event = await input.ledger.append(promotionEventInput(envelope, effective, 'applied', null, input.now));
     return { status: 'applied', effectiveMaturity: event.toMaturity, event };
   } catch (error) {
+    if (error instanceof PromotionLedgerStaleEvidenceError) {
+      let current: Maturity;
+      try { current = deriveEffectiveMaturity(baseline, envelope.request.target, await input.ledger.read()); }
+      catch { return promotionIndeterminate('ledger_state_unknown'); }
+      try {
+        const event = await input.ledger.append(promotionEventInput(envelope, current, 'rejected', 'stale_evidence_digest', input.now));
+        return { status: 'refused', effectiveMaturity: current, refusalCode: 'stale_evidence_digest', event };
+      } catch (appendError) {
+        if (appendError instanceof Error) return promotionIndeterminate('ledger_state_unknown');
+        throw appendError;
+      }
+    }
     if (error instanceof PromotionLedgerStaleStateError) {
       let current: Maturity;
       try { current = deriveEffectiveMaturity(baseline, envelope.request.target, await input.ledger.read()); }

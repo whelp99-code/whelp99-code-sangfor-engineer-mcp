@@ -1,14 +1,12 @@
 import { createHash, createHmac } from 'node:crypto';
 import { appendFileSync, closeSync, fsyncSync, openSync, readFileSync } from 'node:fs';
 import { withDirLock } from '../../shared/src/index.js';
-import { z } from 'zod';
 import {
   PROMOTION_GENESIS,
   assertCheckpointMatches,
   assertCheckpointPrefix,
   assertPromotionSecrets,
   assertPromotionStoreFiles,
-  checkpointHashSchema,
   initializePromotionStore,
   promotionCheckpointPath,
   readPromotionCheckpoint,
@@ -16,38 +14,20 @@ import {
 } from './promotion-checkpoint.js';
 import {
   PromotionLedgerIndeterminateError,
+  PromotionLedgerStaleEvidenceError,
   PromotionLedgerStaleStateError,
   PromotionLedgerUnavailableError,
 } from './promotion-ledger-errors.js';
-import { capabilityTargetSchema, evidenceIdSchema, sha256Schema, timestampSchema, type CapabilityTarget } from './evidence-primitives.js';
-import { MATURITIES, type Maturity } from './schema.js';
+import type { CapabilityTarget } from './evidence-primitives.js';
+import {
+  parsePromotionLedgerEvent,
+  parseUnsignedPromotionLedgerEvent,
+  type PromotionLedgerEvent,
+  type PromotionLedgerEventInput,
+} from './promotion-ledger-schema.js';
 
 const LEDGER_DOMAIN = 'sangfor.capability-promotion-ledger.v1';
-const promotionLedgerEventFields = {
-  version: z.literal(1), seq: z.number().int().nonnegative(), eventId: evidenceIdSchema, at: timestampSchema,
-  outcome: z.enum(['applied', 'rejected']), action: z.enum(['promote', 'emergency_demote', 'reject']),
-  target: capabilityTargetSchema, fromMaturity: z.enum(MATURITIES), toMaturity: z.enum(MATURITIES),
-  decisionRef: sha256Schema, manifestRef: sha256Schema, nonceRef: sha256Schema.nullable(),
-  refusalCode: evidenceIdSchema.nullable(), prevHash: checkpointHashSchema,
-} as const;
-const unsignedPromotionLedgerEventSchema = z.object(promotionLedgerEventFields).strict().readonly();
-const promotionLedgerEventSchema = z.object({ ...promotionLedgerEventFields, hash: sha256Schema }).strict().readonly();
-
-export type PromotionLedgerEvent = z.infer<typeof promotionLedgerEventSchema>;
-export type PromotionLedgerEventInput = {
-  readonly version: 1;
-  readonly eventId: string;
-  readonly at: string;
-  readonly outcome: 'applied' | 'rejected';
-  readonly action: 'promote' | 'emergency_demote' | 'reject';
-  readonly target: CapabilityTarget;
-  readonly fromMaturity: Maturity;
-  readonly toMaturity: Maturity;
-  readonly decisionRef: string;
-  readonly manifestRef: string;
-  readonly nonceRef: string | null;
-  readonly refusalCode: string | null;
-};
+export type { PromotionLedgerEvent, PromotionLedgerEventInput } from './promotion-ledger-schema.js';
 export type PromotionLedgerFaults = {
   readonly afterEventDurable?: () => void;
   readonly afterCheckpointDurable?: () => void;
@@ -58,6 +38,7 @@ export interface PromotionLedger {
 }
 export {
   PromotionLedgerIndeterminateError,
+  PromotionLedgerStaleEvidenceError,
   PromotionLedgerStaleStateError,
   PromotionLedgerUnavailableError,
 };
@@ -75,15 +56,28 @@ function eventHash(secret: string, event: Omit<PromotionLedgerEvent, 'hash'>): s
 export function maskedPromotionRef(domain: string, value: string): string {
   return createHash('sha256').update(`${domain}\0${value}`, 'utf8').digest('hex');
 }
+export function samePromotionTarget(left: CapabilityTarget, right: CapabilityTarget): boolean {
+  return left.productId === right.productId && left.capabilityId === right.capabilityId && left.toolId === right.toolId
+    && left.workAtomIds.length === right.workAtomIds.length
+    && left.workAtomIds.every((id, index) => id === right.workAtomIds[index]);
+}
+export function hasStalePromotionManifest(
+  events: readonly PromotionLedgerEvent[],
+  target: CapabilityTarget,
+  manifestRef: string,
+): boolean {
+  return events.some((event) => event.outcome === 'applied' && event.action === 'stale'
+    && samePromotionTarget(event.target, target) && event.manifestRef === manifestRef);
+}
 function parseLines(source: string, secret: string): readonly PromotionLedgerEvent[] {
   const events: PromotionLedgerEvent[] = [];
   let previous: string = PROMOTION_GENESIS;
   for (const [index, line] of source.split('\n').filter((value) => value.length > 0).entries()) {
     let raw: unknown;
     try { raw = JSON.parse(line); } catch { throw new PromotionLedgerUnavailableError(); }
-    const parsed = promotionLedgerEventSchema.safeParse(raw);
-    if (!parsed.success) throw new PromotionLedgerUnavailableError();
-    const event = parsed.data;
+    let event: PromotionLedgerEvent;
+    try { event = parsePromotionLedgerEvent(raw); }
+    catch { throw new PromotionLedgerUnavailableError(); }
     const { hash, ...unsigned } = event;
     if (event.seq !== index || event.prevHash !== previous || hash !== eventHash(secret, unsigned)) throw new PromotionLedgerUnavailableError();
     events.push(event);
@@ -136,14 +130,17 @@ export class FilePromotionLedger implements PromotionLedger {
     return withDirLock(`${this.path}.lock`, () => {
       const events = this.readVerified();
       const priorApplied = [...events].reverse().find((event) => event.outcome === 'applied'
-        && event.target.productId === input.target.productId && event.target.capabilityId === input.target.capabilityId
-        && event.target.toolId === input.target.toolId);
+        && samePromotionTarget(event.target, input.target));
       if (input.outcome === 'applied' && priorApplied !== undefined && priorApplied.toMaturity !== input.fromMaturity) {
         throw new PromotionLedgerStaleStateError();
       }
+      if (input.outcome === 'applied' && input.action === 'promote'
+        && hasStalePromotionManifest(events, input.target, input.manifestRef)) {
+        throw new PromotionLedgerStaleEvidenceError();
+      }
       const previous = events.at(-1)?.hash ?? PROMOTION_GENESIS;
-      const unsigned = unsignedPromotionLedgerEventSchema.parse({ ...input, seq: events.length, prevHash: previous });
-      const event = promotionLedgerEventSchema.parse({ ...unsigned, hash: eventHash(this.ledgerSecret, unsigned) });
+      const unsigned = parseUnsignedPromotionLedgerEvent({ ...input, seq: events.length, prevHash: previous });
+      const event = parsePromotionLedgerEvent({ ...unsigned, hash: eventHash(this.ledgerSecret, unsigned) });
       let descriptor: number;
       try { descriptor = openSync(this.path, 'a', 0o600); }
       catch { throw new PromotionLedgerUnavailableError(); }

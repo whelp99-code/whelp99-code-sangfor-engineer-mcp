@@ -81,7 +81,7 @@ function checkEvidence(atom: WorkAtom, evidence: string, evidenceRoot: string): 
  * Checks a single field_verified, automatable claim. Returns the violations it
  * raised; an empty list means the claim is grounded and counts as replaced.
  */
-function auditClaim(atom: WorkAtom, ctx: CoverageContext): readonly CoverageViolation[] {
+export function auditClaimGrounding(atom: WorkAtom, ctx: CoverageContext): readonly CoverageViolation[] {
   const found: CoverageViolation[] = [];
 
   if (!atom.coveredBy) found.push(violation('unregisteredTool', atom.id, 'field_verified atom names no covering tool'));
@@ -105,28 +105,36 @@ function auditClaim(atom: WorkAtom, ctx: CoverageContext): readonly CoverageViol
     const policyMaturity = ctx.maturityByCapability.get(key);
     if (policyMaturity === undefined) {
       found.push(violation('missingCapabilityRef', atom.id, `capabilityRef '${key}' is absent from the maturity policy`));
-    } else if (MATURITY_RANK[policyMaturity] < MATURITY_RANK[atom.maturity]) {
-      found.push(violation('maturityBelowClaim', atom.id, `policy maturity '${policyMaturity}' is below the atom claim '${atom.maturity}'`));
     }
   }
 
   return found;
 }
 
+function auditClaim(atom: WorkAtom, ctx: CoverageContext): readonly CoverageViolation[] {
+  const found = [...auditClaimGrounding(atom, ctx)];
+  if (atom.capabilityRef !== undefined) {
+    const policyMaturity = ctx.maturityByCapability.get(capabilityKey(atom.capabilityRef));
+    if (policyMaturity !== undefined && MATURITY_RANK[policyMaturity] < MATURITY_RANK[atom.maturity]) {
+      found.push(violation('maturityBelowClaim', atom.id, `policy maturity '${policyMaturity}' is below the atom claim '${atom.maturity}'`));
+    }
+  }
+  return found;
+}
+
 const emptyBucket = (): { automatable: number; replaced: number; human: number } => ({ automatable: 0, replaced: 0, human: 0 });
 
-export function computeReplacementCoverage(ctx: CoverageContext): CoverageResult {
-  const loaded = loadWorkAtomCatalog(ctx.catalogRoot);
-  if (!loaded.ok) return loaded;
-
-  const violations: CoverageViolation[] = [];
+export function buildReplacementReport(
+  atoms: readonly WorkAtom[],
+  replacedAtomIds: ReadonlySet<string>,
+): ReplacementReport {
   const byPhase: Record<string, ReturnType<typeof emptyBucket>> = {};
   const byProduct: Record<string, ReturnType<typeof emptyBucket>> = {};
   let automatableAtoms = 0;
   let humanOnlyAtoms = 0;
   let replacedAtoms = 0;
 
-  for (const atom of loaded.atoms) {
+  for (const atom of atoms) {
     const phase = (byPhase[atom.phase] ??= emptyBucket());
     const product = (byProduct[atom.product] ??= emptyBucket());
 
@@ -140,30 +148,35 @@ export function computeReplacementCoverage(ctx: CoverageContext): CoverageResult
     automatableAtoms += 1;
     phase.automatable += 1;
     product.automatable += 1;
-    if (atom.maturity !== 'field_verified') continue;
-
-    const faults = auditClaim(atom, ctx);
-    if (faults.length > 0) {
-      violations.push(...faults);
-      continue;
-    }
+    if (!replacedAtomIds.has(atom.id)) continue;
     replacedAtoms += 1;
     phase.replaced += 1;
     product.replaced += 1;
   }
 
-  if (violations.length > 0) return { ok: false, violations };
-
   return {
-    ok: true,
-    report: {
-      totalAtoms: loaded.atoms.length,
-      automatableAtoms,
-      humanOnlyAtoms,
-      replacedAtoms,
-      replacementRate: automatableAtoms === 0 ? 0 : replacedAtoms / automatableAtoms,
-      byPhase,
-      byProduct,
-    },
+    totalAtoms: atoms.length,
+    automatableAtoms,
+    humanOnlyAtoms,
+    replacedAtoms,
+    replacementRate: automatableAtoms === 0 ? 0 : replacedAtoms / automatableAtoms,
+    byPhase,
+    byProduct,
   };
+}
+
+export function computeReplacementCoverage(ctx: CoverageContext): CoverageResult {
+  const loaded = loadWorkAtomCatalog(ctx.catalogRoot);
+  if (!loaded.ok) return loaded;
+
+  const violations: CoverageViolation[] = [];
+  const replacedAtomIds = new Set<string>();
+  for (const atom of loaded.atoms) {
+    if (atom.automatability === 'human' || atom.maturity !== 'field_verified') continue;
+    const faults = auditClaim(atom, ctx);
+    if (faults.length > 0) violations.push(...faults);
+    else replacedAtomIds.add(atom.id);
+  }
+  if (violations.length > 0) return { ok: false, violations };
+  return { ok: true, report: buildReplacementReport(loaded.atoms, replacedAtomIds) };
 }

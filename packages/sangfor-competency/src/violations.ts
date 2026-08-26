@@ -16,6 +16,9 @@ export const COVERAGE_VIOLATION_KINDS = [
   'evidenceOutsideRoot',
   'evidenceNotRegularFile',
   'maturityBelowClaim',
+  'activeEvidenceUnavailable',
+  'duplicateEvidenceClaim',
+  'promotionLedgerUnavailable',
 ] as const;
 
 export type CoverageViolationKind = (typeof COVERAGE_VIOLATION_KINDS)[number];
