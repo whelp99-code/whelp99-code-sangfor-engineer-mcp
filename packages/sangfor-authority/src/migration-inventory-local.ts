@@ -43,7 +43,7 @@ export const CREDENTIAL_REFS = [
 ] as const;
 
 export const BROWSER_CACHE_REFS = [
-  "persist:packages/sangfor-browser-contracts/src/postgres-stores.ts#PostgresJobIdempotencyStore",
+  "persist:packages/sangfor-authority/src/browser-job-store.ts#PostgresJobIdempotencyStore",
   "prisma:model:BlroBrowserJobResult",
 ] as const;
 

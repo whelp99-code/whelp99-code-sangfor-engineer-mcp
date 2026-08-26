@@ -1,4 +1,9 @@
 import { createHash, randomUUID } from 'node:crypto';
+import type {
+  AcknowledgeRotationInput,
+  EnrollmentLifecycleDecision,
+  RotateEnrollmentInput,
+} from '@sangfor/browser-contracts';
 import {
   EnrollmentLifecycleAbort,
   inEnrollmentScope,
@@ -7,13 +12,10 @@ import {
   type EnrollmentDatabase,
   type EnrollmentProjectScope,
   type EnrollmentSqlExecutor,
-} from './postgres-enrollment-db.js';
-import type {
-  AcknowledgeRotationInput,
-  EnrollmentLifecycleDecision,
-  RotateEnrollmentInput,
-} from './postgres-enrollment-schemas.js';
-import type { DerivedClientCertificate, TrustedIssuer } from './postgres-enrollment-x509.js';
+} from './enrollment-database.js';
+import type { DerivedClientCertificate, TrustedIssuer } from './enrollment-x509.js';
+
+export const MAX_ROTATION_OVERLAP_MS = 10 * 60_000;
 
 export type EnrollmentRepositoryContext = {
   readonly database: EnrollmentDatabase;
@@ -62,8 +64,10 @@ export async function rotateScopedEnrollment(
 ): Promise<EnrollmentLifecycleDecision> {
   if (!scopeMatches(context.scope, input)) return refused('BINDING_MISMATCH');
   const now = context.clock.now();
-  if (Date.parse(input.overlapExpiresAt) <= now.getTime()
-    || Date.parse(input.overlapExpiresAt) > Date.parse(input.certificate.notAfter)) return refused('ROTATION_INVALID');
+  const overlapExpiresAt = Date.parse(input.overlapExpiresAt);
+  if (overlapExpiresAt <= now.getTime()
+    || overlapExpiresAt > now.getTime() + MAX_ROTATION_OVERLAP_MS
+    || overlapExpiresAt > Date.parse(input.certificate.notAfter)) return refused('ROTATION_INVALID');
   const requestDigest = rotationDigest(input);
   try {
     return await inEnrollmentScope(context.database, context.scope, async (transaction) => {

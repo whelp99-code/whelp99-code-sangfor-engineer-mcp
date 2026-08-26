@@ -1,25 +1,31 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import {
-  EnrollmentLifecycleAbort,
-  inEnrollmentScope,
-  readScopedEnrollment,
-  type EnrollmentSqlExecutor,
-} from './postgres-enrollment-db.js';
-import type { EnrollmentRepositoryContext } from './postgres-enrollment-lifecycle.js';
-import {
-  MAX_BOOTSTRAP_TTL_MS,
   enrollmentGrantSchema,
   type ClaimBootstrapTokenInput,
   type EnrollmentLifecycleDecision,
   type EnrollmentLifecycleRefusal,
   type IssueBootstrapTokenInput,
-} from './postgres-enrollment-schemas.js';
-import type { DerivedClientCertificate } from './postgres-enrollment-x509.js';
+} from '@sangfor/browser-contracts';
+import {
+  EnrollmentLifecycleAbort,
+  inEnrollmentScope,
+  readScopedEnrollment,
+  type EnrollmentSqlExecutor,
+} from './enrollment-database.js';
+import type { EnrollmentRepositoryContext } from './enrollment-lifecycle.js';
+import type { DerivedClientCertificate } from './enrollment-x509.js';
+
+export const MAX_BOOTSTRAP_TTL_MS = 10 * 60_000;
+
+type VerifiedClaimInput = Omit<ClaimBootstrapTokenInput, 'bootstrapToken' | 'certificate'> & {
+  readonly tokenDigest: string;
+};
 
 export type BootstrapTokenDecision =
   | { readonly ok: true; readonly tokenDigest: string }
   | { readonly ok: false; readonly reason: EnrollmentLifecycleRefusal };
+export type BootstrapTokenPreflightDecision = BootstrapTokenDecision;
 const refused = (reason: EnrollmentLifecycleRefusal): EnrollmentLifecycleDecision => ({ ok: false, reason });
 const bindingMatches = (
   context: EnrollmentRepositoryContext,
@@ -66,6 +72,38 @@ export async function issueScopedBootstrapToken(
   });
 }
 
+export async function preflightBootstrapToken(
+  context: EnrollmentRepositoryContext,
+  parsed: ClaimBootstrapTokenInput,
+): Promise<BootstrapTokenPreflightDecision> {
+  const tokenDigest = createHash('sha256').update(parsed.bootstrapToken, 'utf8').digest('hex');
+  if (!bindingMatches(context, parsed)) return { ok: false, reason: 'BINDING_MISMATCH' };
+  const now = context.clock.now();
+  return inEnrollmentScope(context.database, context.scope, async (transaction) => {
+    const rows = await transaction.$queryRawUnsafe<readonly {
+      readonly tenantId: string;
+      readonly installationId: string;
+      readonly deviceBindingDigest: string;
+      readonly claimedAt: Date | null;
+      readonly expiresAt: Date;
+    }[]>(
+      `SELECT "tenantId","installationId","deviceBindingDigest","claimedAt","expiresAt"
+       FROM "BlroEnrollmentBootstrapToken" WHERE "projectId"=$1 AND "tokenDigest"=$2`,
+      parsed.projectId, tokenDigest,
+    );
+    const token = rows[0];
+    if (!token
+      || token.tenantId !== parsed.tenantId
+      || token.installationId !== parsed.installationId
+      || token.deviceBindingDigest !== parsed.deviceBindingDigest) {
+      return { ok: false, reason: 'TOKEN_INVALID' };
+    }
+    if (token.claimedAt) return { ok: false, reason: 'TOKEN_REPLAYED' };
+    if (token.expiresAt.getTime() <= now.getTime()) return { ok: false, reason: 'TOKEN_EXPIRED' };
+    return { ok: true, tokenDigest };
+  });
+}
+
 async function complete(
   transaction: EnrollmentSqlExecutor,
   context: EnrollmentRepositoryContext,
@@ -78,7 +116,7 @@ async function complete(
 
 export async function claimScopedBootstrapToken(
   context: EnrollmentRepositoryContext,
-  parsed: ClaimBootstrapTokenInput,
+  parsed: VerifiedClaimInput,
   certificate: DerivedClientCertificate,
 ): Promise<EnrollmentLifecycleDecision> {
   if (!bindingMatches(context, parsed)) return refused('BINDING_MISMATCH');

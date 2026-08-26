@@ -1,4 +1,9 @@
 import type { PrismaClient } from '@prisma/client';
+import {
+  CONTROL_TOWER_AUTHORITY_SCHEMA_COMPONENT,
+  probeAuthorityDatabase,
+  type AuthorityDatabaseProbeResult,
+} from '../../../packages/sangfor-authority/src/index.js';
 import type { AuthorityConfig, AuthorityConfigField } from './authority-config.js';
 
 export const BLRO_RUNTIME_SCHEMA_VERSION = '20260826210000_blro_enrollment_lifecycle' as const;
@@ -42,53 +47,19 @@ export function firstReadinessFailure(readiness: AuthorityReadiness): AuthorityR
   return 'DATABASE_UNAVAILABLE';
 }
 
-export type AuthorityProbeResult = {
-  readonly database: boolean;
-  readonly schema: boolean;
-  readonly scope: boolean;
-};
-
-const SCOPED_AUTHORITY_TABLES = [
-  'BlroProject', 'BlroApprovalNonce', 'BlroAuditEvent', 'BlroMembership', 'BlroDevice',
-  'BlroRun', 'BlroRunStep', 'BlroApproval', 'BlroEvidenceManifest', 'BlroRagDocument',
-  'BlroRagChunk', 'BlroClientEnrollment', 'BlroBrowserJobResult',
-  'BlroEnrollmentIdentity', 'BlroEnrollmentCertificate', 'BlroEnrollmentGrant',
-  'BlroEnrollmentBootstrapToken', 'BlroEnrollmentRotation',
-] as const;
-
-export async function probeAuthorityDependencies(
+export type AuthorityProbeResult = AuthorityDatabaseProbeResult;
+export function probeAuthorityDependencies(
   prisma: PrismaClient,
   config: AuthorityConfig,
   probeOverride?: () => Promise<boolean>,
+  expectedSchemaComponent: string = CONTROL_TOWER_AUTHORITY_SCHEMA_COMPONENT,
 ): Promise<AuthorityProbeResult> {
-  if (probeOverride && !await probeOverride()) {
-    return { database: false, schema: false, scope: false };
-  }
-  await prisma.$queryRawUnsafe(`SELECT 1`);
-  try {
-    const schema = await prisma.$queryRawUnsafe<readonly { readonly version: string }[]>(
-      `SELECT "version" FROM "BlroRuntimeSchema" WHERE "component"='control-tower-authority'`,
-    );
-    const tables = await prisma.$queryRawUnsafe<readonly { readonly count: number }[]>(
-      `SELECT COUNT(*)::int AS "count" FROM pg_class
-       WHERE relname = ANY($1::text[]) AND relrowsecurity AND relforcerowsecurity`,
-      SCOPED_AUTHORITY_TABLES,
-    );
-    if (schema[0]?.version !== BLRO_RUNTIME_SCHEMA_VERSION || tables[0]?.count !== SCOPED_AUTHORITY_TABLES.length) {
-      return { database: true, schema: false, scope: false };
-    }
-  } catch {
-    return { database: true, schema: false, scope: false };
-  }
-  try {
-    const project = await prisma.$transaction(async (transaction) => {
-      await transaction.$executeRawUnsafe(`SELECT set_config('app.project_id', $1, true)`, config.projectId);
-      return transaction.$queryRawUnsafe<readonly { readonly tenantId: string }[]>(
-        `SELECT "tenantId" FROM "BlroProject" WHERE "id"=$1`, config.projectId,
-      );
-    });
-    return { database: true, schema: true, scope: project[0]?.tenantId === config.tenantId };
-  } catch {
-    return { database: true, schema: true, scope: false };
-  }
+  return probeAuthorityDatabase({
+    databaseClient: prisma,
+    tenantId: config.tenantId,
+    projectId: config.projectId,
+    schemaVersion: BLRO_RUNTIME_SCHEMA_VERSION,
+    expectedSchemaComponent,
+    ...(probeOverride ? { probeOverride } : {}),
+  });
 }

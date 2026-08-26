@@ -1,57 +1,61 @@
 import {
-  authorizeEnrollmentSnapshot,
-  certificateAuthorizationInputSchema,
-  certificateSnapshotFromRow,
-  type EnrollmentAuthorizationDecision,
-  type PersistedCertificateRow,
-} from './postgres-enrollment-authorization.js';
-import {
-  claimScopedBootstrapToken,
-  issueScopedBootstrapToken,
-  type BootstrapTokenDecision,
-} from './postgres-enrollment-bootstrap.js';
-import {
-  inEnrollmentScope,
-  readScopedEnrollment,
-  type EnrollmentClock,
-  type EnrollmentDatabase,
-  type EnrollmentProjectScope,
-} from './postgres-enrollment-db.js';
-import {
-  acknowledgeScopedRotation,
-  rotateScopedEnrollment,
-  type EnrollmentRepositoryContext,
-} from './postgres-enrollment-lifecycle.js';
-import { revokeScopedEnrollment } from './postgres-enrollment-revocation.js';
-import {
   acknowledgeRotationInputSchema,
+  certificateAuthorizationInputSchema,
   claimBootstrapTokenInputSchema,
   issueBootstrapTokenInputSchema,
   rejectSecretEnrollmentFields,
   revokeEnrollmentInputSchema,
   rotateEnrollmentInputSchema,
   type EnrollmentLifecycleDecision,
+  type LeafCertificate,
   type PersistedScopedEnrollment,
-} from './postgres-enrollment-schemas.js';
+} from '@sangfor/browser-contracts';
+import {
+  authorizeEnrollmentSnapshot,
+  certificateSnapshotFromRow,
+  type EnrollmentAuthorizationDecision,
+  type PersistedCertificateRow,
+} from './enrollment-authorization.js';
+import {
+  claimScopedBootstrapToken,
+  issueScopedBootstrapToken,
+  preflightBootstrapToken,
+  type BootstrapTokenDecision,
+} from './enrollment-bootstrap.js';
+import {
+  inEnrollmentScope,
+  readScopedEnrollment,
+  type EnrollmentClock,
+  type EnrollmentDatabase,
+  type EnrollmentProjectScope,
+} from './enrollment-database.js';
+import {
+  acknowledgeScopedRotation,
+  rotateScopedEnrollment,
+  type EnrollmentRepositoryContext,
+} from './enrollment-lifecycle.js';
+import { revokeScopedEnrollment } from './enrollment-revocation.js';
 import {
   deriveClientCertificateIdentity,
   parseTrustedIssuerBundle,
-  type LeafCertificate,
-} from './postgres-enrollment-x509.js';
+} from './enrollment-x509.js';
 
 export type PostgresEnrollmentRegistryOptions = {
   readonly database: EnrollmentDatabase;
   readonly scope: EnrollmentProjectScope;
   readonly clock?: EnrollmentClock;
   readonly trustedIssuerBundle: string | Buffer;
+  readonly certificateIdentityDeriver?: typeof deriveClientCertificateIdentity;
 };
 export type RepositoryAuthorizationDecision = EnrollmentAuthorizationDecision
   | { readonly ok: false; readonly reason: 'ENROLLMENT_MISSING' };
 
 export class PostgresEnrollmentRegistry {
   private readonly context: EnrollmentRepositoryContext;
+  private readonly certificateIdentityDeriver: typeof deriveClientCertificateIdentity;
 
   constructor(options: PostgresEnrollmentRegistryOptions) {
+    this.certificateIdentityDeriver = options.certificateIdentityDeriver ?? deriveClientCertificateIdentity;
     this.context = {
       database: options.database,
       scope: options.scope,
@@ -69,9 +73,18 @@ export class PostgresEnrollmentRegistry {
     rejectSecretEnrollmentFields(input);
     const parsed = claimBootstrapTokenInputSchema.parse(input);
     if (!this.bindingMatches(parsed)) return { ok: false, reason: 'BINDING_MISMATCH' };
+    const preflight = await preflightBootstrapToken(this.context, parsed);
+    if (!preflight.ok) return preflight;
     const certificate = this.deriveCertificate(parsed.certificate, parsed);
     if (!certificate.ok) return certificate;
-    return claimScopedBootstrapToken(this.context, parsed, certificate.certificate);
+    return claimScopedBootstrapToken(this.context, {
+      tenantId: parsed.tenantId,
+      projectId: parsed.projectId,
+      installationId: parsed.installationId,
+      deviceBindingDigest: parsed.deviceBindingDigest,
+      clientIdentityId: parsed.clientIdentityId,
+      tokenDigest: preflight.tokenDigest,
+    }, certificate.certificate);
   }
 
   async getByInstallation(installationId: string): Promise<PersistedScopedEnrollment | undefined> {
@@ -139,7 +152,7 @@ export class PostgresEnrollmentRegistry {
     certificate: LeafCertificate,
     binding: { readonly installationId: string; readonly deviceBindingDigest: string },
   ) {
-    return deriveClientCertificateIdentity({
+    return this.certificateIdentityDeriver({
       certificate,
       trustedIssuers: this.context.trustedIssuers,
       binding,
@@ -148,4 +161,4 @@ export class PostgresEnrollmentRegistry {
   }
 }
 
-export type { BootstrapTokenDecision } from './postgres-enrollment-bootstrap.js';
+export type { BootstrapTokenDecision } from './enrollment-bootstrap.js';

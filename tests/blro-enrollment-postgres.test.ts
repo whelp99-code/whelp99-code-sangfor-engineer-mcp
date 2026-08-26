@@ -1,4 +1,4 @@
-import { X509Certificate, randomUUID } from 'node:crypto';
+import { X509Certificate, createHash, randomUUID } from 'node:crypto';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -6,8 +6,10 @@ import { PrismaClient } from '@prisma/client';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   MAX_BOOTSTRAP_TTL_MS,
+  MAX_ROTATION_OVERLAP_MS,
   PostgresEnrollmentRegistry,
-} from '../packages/sangfor-browser-contracts/src/enrollment.js';
+  deriveClientCertificateIdentity,
+} from '../packages/sangfor-authority/src/index.js';
 import {
   createTaskCertificateFixture,
   type TaskCertificateFixture,
@@ -22,7 +24,8 @@ const projectId = `enrollment-project-${suffix}`;
 const installationId = `enrollment-install-${suffix}`;
 const deviceBindingDigest = 'd'.repeat(64);
 const originDigest = 'a'.repeat(64);
-const tokenDigest = 'b'.repeat(64);
+const bootstrapToken = 'raw-bootstrap-token-32-bytes-minimum-AAAAAA';
+const tokenDigest = createHash('sha256').update(bootstrapToken).digest('hex');
 const mutableClock = { value: new Date('2026-08-26T12:00:00.000Z') };
 let owner: PrismaClient;
 let database: PrismaClient;
@@ -35,6 +38,13 @@ const leaf = (value: string) => ({ encoding: 'pem' as const, value });
 const serial = (pem: string): string => new X509Certificate(pem).serialNumber;
 const grant = () => ({ originDigest, scope: 'browser:execute' });
 const presentation = (pem: string) => ({ ...binding(), ...grant(), certificate: leaf(pem) });
+
+async function scopedRows<T>(query: string, ...values: readonly unknown[]): Promise<readonly T[]> {
+  return database.$transaction(async (transaction) => {
+    await transaction.$executeRawUnsafe(`SELECT set_config('app.project_id',$1,true)`, projectId);
+    return transaction.$queryRawUnsafe<readonly T[]>(query, ...values);
+  });
+}
 
 async function clearEnrollmentRows(): Promise<void> {
   await owner.$transaction(async (transaction) => {
@@ -52,7 +62,7 @@ async function issueAndClaim(pem = certificates.validPem): Promise<void> {
     grants: [grant()],
   });
   const claimed = await registry.claimBootstrapToken({
-    ...binding(), tokenDigest, clientIdentityId: `client:${installationId}`, certificate: leaf(pem),
+    ...binding(), bootstrapToken, clientIdentityId: `client:${installationId}`, certificate: leaf(pem),
   });
   expect(claimed).toMatchObject({ ok: true, enrollment: { revision: 1 } });
 }
@@ -91,12 +101,100 @@ describeDb('BLRO enrollment registry on PostgreSQL', () => {
     rmSync(root, { recursive: true, force: true });
   });
 
+  it('preflights token state before certificate derivation without consuming a valid token', async () => {
+    const derivations: string[] = [];
+    const orderedRegistry = new PostgresEnrollmentRegistry({
+      database, scope: { tenantId, projectId }, clock: { now: () => mutableClock.value },
+      trustedIssuerBundle: certificates.trustedCaPem,
+      certificateIdentityDeriver: (input) => {
+        derivations.push(input.certificate.value);
+        return deriveClientCertificateIdentity(input);
+      },
+    });
+    const validToken = 'valid-preflight-bootstrap-token-32-bytes-AAAAAA';
+    const expiredToken = 'expired-preflight-bootstrap-token-32-bytes-AAAA';
+    await orderedRegistry.issueBootstrapToken({
+      ...binding(), tokenDigest: createHash('sha256').update(validToken).digest('hex'),
+      expiresAt: new Date(mutableClock.value.getTime() + 60_000).toISOString(), grants: [grant()],
+    });
+    await orderedRegistry.issueBootstrapToken({
+      ...binding(), tokenDigest: createHash('sha256').update(expiredToken).digest('hex'),
+      expiresAt: new Date(mutableClock.value.getTime() + 1).toISOString(), grants: [grant()],
+    });
+    const foreignProjectId = `foreign-${projectId}`;
+    const crossProjectToken = 'cross-project-bootstrap-token-32-bytes-AAAAAA';
+    await owner.$transaction(async (transaction) => {
+      await transaction.$executeRawUnsafe(`SELECT set_config('app.project_id',$1,true)`, foreignProjectId);
+      await transaction.$executeRawUnsafe(
+        `INSERT INTO "BlroProject" ("id","tenantId","name") VALUES ($1,$2,$3)`,
+        foreignProjectId, tenantId, 'Foreign Task 21 project',
+      );
+    });
+    const foreignRegistry = new PostgresEnrollmentRegistry({
+      database, scope: { tenantId, projectId: foreignProjectId }, clock: { now: () => mutableClock.value },
+      trustedIssuerBundle: certificates.trustedCaPem,
+    });
+    await foreignRegistry.issueBootstrapToken({
+      ...binding(), projectId: foreignProjectId,
+      tokenDigest: createHash('sha256').update(crossProjectToken).digest('hex'),
+      expiresAt: new Date(mutableClock.value.getTime() + 60_000).toISOString(), grants: [grant()],
+    });
+    const claim = (rawToken: string, pem = certificates.foreignPem) => ({
+      ...binding(), bootstrapToken: rawToken, clientIdentityId: `client:${installationId}`, certificate: leaf(pem),
+    });
+    try {
+      await expect(orderedRegistry.claimBootstrapToken(claim('nonexistent-bootstrap-token-32-bytes-AAAAAA')))
+        .resolves.toEqual({ ok: false, reason: 'TOKEN_INVALID' });
+      await expect(orderedRegistry.claimBootstrapToken(claim(crossProjectToken)))
+        .resolves.toEqual({ ok: false, reason: 'TOKEN_INVALID' });
+      await expect(orderedRegistry.claimBootstrapToken({
+        ...claim(validToken), installationId: `wrong-${installationId}`,
+      })).resolves.toEqual({ ok: false, reason: 'TOKEN_INVALID' });
+      await expect(orderedRegistry.claimBootstrapToken({
+        ...claim(validToken), deviceBindingDigest: 'e'.repeat(64),
+      })).resolves.toEqual({ ok: false, reason: 'TOKEN_INVALID' });
+      mutableClock.value = new Date(mutableClock.value.getTime() + 1);
+      await expect(orderedRegistry.claimBootstrapToken(claim(expiredToken)))
+        .resolves.toEqual({ ok: false, reason: 'TOKEN_EXPIRED' });
+      expect(derivations).toHaveLength(0);
+      expect(await scopedRows<{ readonly count: number }>(
+        `SELECT count(*)::int count FROM "BlroEnrollmentIdentity"`,
+      )).toEqual([{ count: 0 }]);
+
+      await expect(orderedRegistry.claimBootstrapToken(claim(validToken)))
+        .resolves.toEqual({ ok: false, reason: 'ISSUER_UNTRUSTED' });
+      expect(derivations).toHaveLength(1);
+      expect(await scopedRows<{ readonly claimedAt: Date | null }>(
+        `SELECT "claimedAt" FROM "BlroEnrollmentBootstrapToken" WHERE "tokenDigest"=$1`,
+        createHash('sha256').update(validToken).digest('hex'),
+      )).toEqual([{ claimedAt: null }]);
+      await expect(orderedRegistry.claimBootstrapToken(claim(validToken, certificates.validPem)))
+        .resolves.toMatchObject({ ok: true, enrollment: { revision: 1 } });
+      expect(derivations).toHaveLength(2);
+      await expect(orderedRegistry.claimBootstrapToken(claim(validToken)))
+        .resolves.toEqual({ ok: false, reason: 'TOKEN_REPLAYED' });
+      expect(derivations).toHaveLength(2);
+    } finally {
+      await owner.$transaction(async (transaction) => {
+        await transaction.$executeRawUnsafe(`SELECT set_config('app.project_id',$1,true)`, foreignProjectId);
+        await transaction.$executeRawUnsafe(
+          `DELETE FROM "BlroEnrollmentBootstrapToken" WHERE "projectId"=$1`, foreignProjectId,
+        );
+        await transaction.$executeRawUnsafe(`DELETE FROM "BlroProject" WHERE "id"=$1`, foreignProjectId);
+      });
+    }
+  });
+
   it('claims a digest exactly once under 32 concurrent signed-certificate enrollments', async () => {
     await registry.issueBootstrapToken({
       ...binding(), tokenDigest, expiresAt: '2026-08-26T12:05:00.000Z', grants: [grant()],
     });
+    await expect(registry.claimBootstrapToken({
+      ...binding(), bootstrapToken: tokenDigest, clientIdentityId: `client:${installationId}`,
+      certificate: leaf(certificates.validPem),
+    })).resolves.toEqual({ ok: false, reason: 'TOKEN_INVALID' });
     const claims = await Promise.all(Array.from({ length: 32 }, () => registry.claimBootstrapToken({
-      ...binding(), tokenDigest, clientIdentityId: `client:${installationId}`,
+      ...binding(), bootstrapToken, clientIdentityId: `client:${installationId}`,
       certificate: leaf(certificates.validPem),
     })));
 
@@ -108,8 +206,33 @@ describeDb('BLRO enrollment registry on PostgreSQL', () => {
     expect(stored[0]?.source).not.toContain('BEGIN CERTIFICATE');
   });
 
+  it('refuses duplicate installation enrollment and cross-project authorization', async () => {
+    await issueAndClaim();
+    const duplicateToken = 'duplicate-bootstrap-token-32-bytes-minimum-A';
+    const duplicateDigest = createHash('sha256').update(duplicateToken).digest('hex');
+    await registry.issueBootstrapToken({
+      ...binding(), tokenDigest: duplicateDigest, expiresAt: '2026-08-26T12:05:00.000Z', grants: [grant()],
+    });
+    await expect(registry.claimBootstrapToken({
+      ...binding(), bootstrapToken: duplicateToken,
+      clientIdentityId: `client:duplicate:${installationId}`, certificate: leaf(certificates.middlePem),
+    })).resolves.toEqual({ ok: false, reason: 'ENROLLMENT_EXISTS' });
+    await expect(registry.authorize({
+      ...presentation(certificates.validPem), projectId: `foreign-${projectId}`,
+    })).resolves.toEqual({ ok: false, reason: 'ENROLLMENT_MISSING' });
+  });
+
   it('derives authorization identity and keeps only middle plus newest after three certificates', async () => {
     await issueAndClaim();
+    expect(MAX_ROTATION_OVERLAP_MS).toBe(600_000);
+    await expect(registry.rotate({
+      ...binding(), expectedRevision: 1, certificate: leaf(certificates.middlePem),
+      overlapExpiresAt: new Date(mutableClock.value.getTime() + MAX_ROTATION_OVERLAP_MS + 1).toISOString(),
+    })).resolves.toEqual({ ok: false, reason: 'ROTATION_INVALID' });
+    await expect(registry.rotate({
+      ...binding(), expectedRevision: 1, certificate: leaf(certificates.middlePem),
+      overlapExpiresAt: '2036-01-01T00:00:00.000Z',
+    })).resolves.toEqual({ ok: false, reason: 'ROTATION_INVALID' });
     await expect(registry.rotate({
       ...binding(), expectedRevision: 1, certificate: leaf(certificates.middlePem),
       overlapExpiresAt: '2026-08-26T12:10:00.000Z',
@@ -131,11 +254,12 @@ describeDb('BLRO enrollment registry on PostgreSQL', () => {
     })).resolves.toEqual({ ok: false, reason: 'SCOPE_NOT_GRANTED' });
     const authorized = await database.$transaction(async (transaction) => {
       await transaction.$executeRawUnsafe(`SELECT set_config('app.project_id',$1,true)`, projectId);
-      return transaction.$queryRawUnsafe<readonly { readonly count: number }[]>(
-        `SELECT count(*)::int count FROM "BlroEnrollmentCertificate" WHERE "state" IN ('active','overlap')`,
+      return transaction.$queryRawUnsafe<readonly { readonly authorized: number; readonly active: number }[]>(
+        `SELECT count(*) FILTER (WHERE "state" IN ('active','overlap'))::int authorized,
+          count(*) FILTER (WHERE "state"='active')::int active FROM "BlroEnrollmentCertificate"`,
       );
     });
-    expect(authorized[0]?.count).toBe(2);
+    expect(authorized[0]).toEqual({ authorized: 2, active: 1 });
 
     const exactRetry = {
       ...binding(), expectedRevision: 2, certificate: leaf(certificates.newestPem),
@@ -144,7 +268,7 @@ describeDb('BLRO enrollment registry on PostgreSQL', () => {
     await expect(registry.rotate(exactRetry)).resolves.toEqual(newestRotation);
     await expect(registry.rotate({ ...exactRetry, certificate: leaf(certificates.changedSerialPem) }))
       .resolves.toMatchObject({ ok: false, reason: 'REVISION_CONFLICT' });
-    await expect(registry.rotate({ ...exactRetry, overlapExpiresAt: '2026-08-26T12:11:00.000Z' }))
+    await expect(registry.rotate({ ...exactRetry, overlapExpiresAt: '2026-08-26T12:09:00.000Z' }))
       .resolves.toMatchObject({ ok: false, reason: 'REVISION_CONFLICT' });
 
     const acknowledgement = {
@@ -170,8 +294,8 @@ describeDb('BLRO enrollment registry on PostgreSQL', () => {
     await expect(registry.authorize(presentation(pem()))).resolves.toEqual({ ok: false, reason });
   });
 
-  it('enforces the 15-minute bootstrap TTL including equality and a 2036 expiry', async () => {
-    expect(MAX_BOOTSTRAP_TTL_MS).toBe(900_000);
+  it('enforces the 10-minute bootstrap TTL including equality and a 2036 expiry', async () => {
+    expect(MAX_BOOTSTRAP_TTL_MS).toBe(600_000);
     await expect(registry.issueBootstrapToken({
       ...binding(), tokenDigest, expiresAt: new Date(mutableClock.value.getTime() + MAX_BOOTSTRAP_TTL_MS).toISOString(),
       grants: [grant()],
@@ -187,20 +311,27 @@ describeDb('BLRO enrollment registry on PostgreSQL', () => {
     await expect(registry.issueBootstrapToken({
       ...binding(), tokenDigest: '8'.repeat(64), expiresAt: mutableClock.value.toISOString(), grants: [grant()],
     })).resolves.toEqual({ ok: false, reason: 'TOKEN_EXPIRED' });
+    const expiryToken = 'expiry-bootstrap-token-32-bytes-minimum-AAAA';
     await registry.issueBootstrapToken({
-      ...binding(), tokenDigest: '7'.repeat(64),
+      ...binding(), tokenDigest: createHash('sha256').update(expiryToken).digest('hex'),
       expiresAt: new Date(mutableClock.value.getTime() + 1).toISOString(), grants: [grant()],
     });
     mutableClock.value = new Date(mutableClock.value.getTime() + 1);
     await expect(registry.claimBootstrapToken({
-      ...binding(), tokenDigest: '7'.repeat(64), clientIdentityId: `client:${installationId}`,
-      certificate: leaf(certificates.validPem),
+      ...binding(), bootstrapToken: expiryToken,
+      clientIdentityId: `client:${installationId}`, certificate: leaf(certificates.validPem),
     })).resolves.toEqual({ ok: false, reason: 'TOKEN_EXPIRED' });
   });
 
   it('orders revocation before and after rotation deterministically', async () => {
     await issueAndClaim();
-    await registry.revoke({ ...binding(), expectedRevision: 1, reason: 'revoke first' });
+    const revokedFirst = await registry.revoke({ ...binding(), expectedRevision: 1, reason: 'revoke first' });
+    expect(revokedFirst).toMatchObject({ ok: true, enrollment: { state: 'revoked' } });
+    if (revokedFirst.ok) {
+      expect(Date.parse(revokedFirst.enrollment.revokedAt ?? '') - mutableClock.value.getTime()).toBeLessThan(60_000);
+    }
+    await expect(registry.authorize(presentation(certificates.validPem)))
+      .resolves.toEqual({ ok: false, reason: 'ENROLLMENT_REVOKED' });
     await expect(registry.rotate({
       ...binding(), expectedRevision: 2, certificate: leaf(certificates.middlePem),
       overlapExpiresAt: '2026-08-26T12:10:00.000Z',
@@ -213,5 +344,7 @@ describeDb('BLRO enrollment registry on PostgreSQL', () => {
     });
     await expect(registry.revoke({ ...binding(), expectedRevision: 2, reason: 'revoke new' }))
       .resolves.toMatchObject({ ok: true, enrollment: { state: 'revoked', revision: 3 } });
+    await expect(registry.authorize(presentation(certificates.middlePem)))
+      .resolves.toEqual({ ok: false, reason: 'ENROLLMENT_REVOKED' });
   });
 });

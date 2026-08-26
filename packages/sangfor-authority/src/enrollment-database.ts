@@ -1,5 +1,8 @@
-import type { PersistedScopedEnrollment } from './postgres-enrollment-schemas.js';
-import { persistedScopedEnrollmentSchema } from './postgres-enrollment-schemas.js';
+import {
+  persistedScopedEnrollmentSchema,
+  type EnrollmentLifecycleRefusal,
+  type PersistedScopedEnrollment,
+} from '@sangfor/browser-contracts';
 
 export interface EnrollmentSqlExecutor {
   $executeRawUnsafe(query: string, ...values: unknown[]): Promise<number>;
@@ -76,7 +79,7 @@ export async function readScopedEnrollment(
 
 export class EnrollmentLifecycleAbort extends Error {
   override readonly name = 'EnrollmentLifecycleAbort';
-  constructor(readonly reason: import('./postgres-enrollment-schemas.js').EnrollmentLifecycleRefusal) {
+  constructor(readonly reason: EnrollmentLifecycleRefusal) {
     super(`Enrollment lifecycle refused: ${reason}`);
   }
 }

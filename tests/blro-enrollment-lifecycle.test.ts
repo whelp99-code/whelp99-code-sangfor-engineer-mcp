@@ -3,12 +3,14 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
-  CLIENT_AUTH_EKU,
   certificateAuthorizationInputSchema,
   claimBootstrapTokenInputSchema,
+} from '../packages/sangfor-browser-contracts/src/enrollment.js';
+import {
+  CLIENT_AUTH_EKU,
   deriveClientCertificateIdentity,
   parseTrustedIssuerBundle,
-} from '../packages/sangfor-browser-contracts/src/enrollment.js';
+} from '../packages/sangfor-authority/src/index.js';
 import {
   createTaskCertificateFixture,
   type TaskCertificateFixture,
@@ -77,6 +79,17 @@ describe('BLRO enrollment X.509 authority', () => {
     }
   });
 
+  it('accepts only a raw high-entropy bootstrap credential at the claim boundary', () => {
+    const base = {
+      tenantId: 'tenant-a', projectId: 'project-a', installationId, deviceBindingDigest,
+      clientIdentityId: 'client-a', certificate: { encoding: 'pem', value: fixture.validPem },
+    };
+    expect(claimBootstrapTokenInputSchema.safeParse({
+      ...base, bootstrapToken: 'schema-bootstrap-token-32-bytes-minimum-AAAA',
+    }).success).toBe(true);
+    expect(claimBootstrapTokenInputSchema.safeParse({ ...base, tokenDigest: 'b'.repeat(64) }).success).toBe(false);
+  });
+
   it('refuses caller-asserted identity fields even when they mimic a trusted certificate', () => {
     const legacyMetadata = {
       issuerChainRef: 'trusted', issuer: 'CN=Task-21-Trusted-CA', serial: '1000',
@@ -86,7 +99,8 @@ describe('BLRO enrollment X.509 authority', () => {
     };
     expect(() => claimBootstrapTokenInputSchema.parse({
       tenantId: 'tenant-a', projectId: 'project-a', installationId, deviceBindingDigest,
-      tokenDigest: 'b'.repeat(64), clientIdentityId: 'client-a', certificate: legacyMetadata,
+      bootstrapToken: 'schema-bootstrap-token-32-bytes-minimum-AAAA',
+      clientIdentityId: 'client-a', certificate: legacyMetadata,
     })).toThrow();
     expect(() => certificateAuthorizationInputSchema.parse({
       tenantId: 'tenant-a', projectId: 'project-a', installationId, deviceBindingDigest,

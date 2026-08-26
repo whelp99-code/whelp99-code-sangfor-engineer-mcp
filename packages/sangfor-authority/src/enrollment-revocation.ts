@@ -1,13 +1,13 @@
+import type {
+  EnrollmentLifecycleDecision,
+  RevokeEnrollmentInput,
+} from '@sangfor/browser-contracts';
 import {
   EnrollmentLifecycleAbort,
   inEnrollmentScope,
   readScopedEnrollment,
-} from './postgres-enrollment-db.js';
-import type { EnrollmentRepositoryContext } from './postgres-enrollment-lifecycle.js';
-import type {
-  EnrollmentLifecycleDecision,
-  RevokeEnrollmentInput,
-} from './postgres-enrollment-schemas.js';
+} from './enrollment-database.js';
+import type { EnrollmentRepositoryContext } from './enrollment-lifecycle.js';
 
 const refused = (reason: EnrollmentLifecycleAbort['reason']): EnrollmentLifecycleDecision => ({ ok: false, reason });
 export async function revokeScopedEnrollment(

@@ -38,6 +38,7 @@ The sole pre-promotion exception is the internal O1 IAG evidence campaign bootst
 ## Network exposure (`@sangfor/shared`)
 - `assertBindSafety` **fails closed**: binding a non-loopback host **requires** a token (`SANGFOR_API_TOKEN`). An empty/whitespace `BIND_HOST` must not silently become an all-interfaces bind.
 - `checkAuth` is a constant-time bearer comparison. All app servers (`mcp`/`bridge`/`control-tower`/`operator-console`) route through these helpers.
+- Control Tower enrollment lifecycle routes are stricter: they require a configured `SANGFOR_API_TOKEN` even on loopback and accept requests only when the actual peer socket is in `127.0.0.0/8`, `::1`, or IPv4-mapped `127.0.0.0/8`. They are unavailable while BLRO authority is unready and never bind enrollment mutations to a non-loopback peer.
 
 ## Secret handling
 - `maskSecrets` redacts `password|secret|token|authorization|cookie` → `***` **before** anything is written to a run ledger, audit ledger, or console.

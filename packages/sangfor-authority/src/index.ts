@@ -12,6 +12,27 @@ export {
   type AuthorityManifestLock,
 } from './authority-manifest-lock.js';
 export { BlroAuthorityStore } from './authority-store.js';
+export { PostgresJobIdempotencyStore } from './browser-job-store.js';
+export {
+  MAX_BOOTSTRAP_TTL_MS,
+  preflightBootstrapToken,
+  type BootstrapTokenPreflightDecision,
+} from './enrollment-bootstrap.js';
+export { MAX_ROTATION_OVERLAP_MS } from './enrollment-lifecycle.js';
+export {
+  PostgresEnrollmentRegistry,
+  type BootstrapTokenDecision,
+  type PostgresEnrollmentRegistryOptions,
+  type RepositoryAuthorizationDecision,
+} from './enrollment-store.js';
+export {
+  deriveClientCertificateIdentity,
+  parseTrustedIssuerBundle,
+  type CertificateIdentityDecision,
+  type DerivedClientCertificate,
+  type TrustedIssuer,
+} from './enrollment-x509.js';
+export { CLIENT_AUTH_EKU } from '@sangfor/browser-contracts';
 export type {
   AuthorityActorScope,
   AuthorityDatabase,
@@ -30,3 +51,9 @@ export {
   type AuthorityMigrationManifest,
 } from './migration-manifest.js';
 export { censusRepository, loadRepositoryCensus, type RepositoryCensus } from './repository-census.js';
+export {
+  CONTROL_TOWER_AUTHORITY_SCHEMA_COMPONENT,
+  probeAuthorityDatabase,
+  type AuthorityDatabaseProbeInput,
+  type AuthorityDatabaseProbeResult,
+} from './runtime-database-probe.js';

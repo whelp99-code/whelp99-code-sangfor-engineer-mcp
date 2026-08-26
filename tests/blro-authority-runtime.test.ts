@@ -1,9 +1,9 @@
-import { generateKeyPairSync } from 'node:crypto';
+import { createHash, generateKeyPairSync, randomUUID } from 'node:crypto';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { PrismaClient } from '@prisma/client';
-import { PostgresEnrollmentRegistry } from '../packages/sangfor-browser-contracts/src/enrollment.js';
+import { PostgresEnrollmentRegistry } from '../packages/sangfor-authority/src/index.js';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import {
   BLRO_RUNTIME_SCHEMA_VERSION,
@@ -18,8 +18,9 @@ import {
 const DATABASE_URL = process.env.DATABASE_URL
   ?? 'postgresql://blro_app:blro_app_local@127.0.0.1:55432/blro';
 const OWNER_URL = 'postgresql://blro_owner:blro_owner_local@127.0.0.1:55432/blro';
-const PROJECT_ID = 'task19-project';
-const TENANT_ID = 'task19-tenant';
+const taskId = randomUUID();
+const PROJECT_ID = `task19-project-${taskId}`;
+const TENANT_ID = `task19-tenant-${taskId}`;
 let materialRoot: string;
 let signingPrivateKeyPath: string;
 let trustBundlePath: string;
@@ -53,14 +54,14 @@ beforeAll(async () => {
   writeFileSync(trustBundlePath, certificateFixture.trustedCaPem);
   owner = new PrismaClient({ datasources: { db: { url: OWNER_URL } } });
   await owner.$executeRawUnsafe(
-    `INSERT INTO "BlroTenant" ("id","name") VALUES ($1,$2) ON CONFLICT ("id") DO NOTHING`,
+    `INSERT INTO "BlroTenant" ("id","name") VALUES ($1,$2)`,
     TENANT_ID,
     'Task 19 tenant',
   );
   await owner.$transaction(async (tx) => {
     await tx.$executeRawUnsafe(`SELECT set_config('app.project_id', $1, true)`, PROJECT_ID);
     await tx.$executeRawUnsafe(
-      `INSERT INTO "BlroProject" ("id","tenantId","name") VALUES ($1,$2,$3) ON CONFLICT ("id") DO NOTHING`,
+      `INSERT INTO "BlroProject" ("id","tenantId","name") VALUES ($1,$2,$3)`,
       PROJECT_ID,
       TENANT_ID,
       'Task 19 project',
@@ -160,17 +161,19 @@ describe('BLRO authority runtime composition', () => {
     if (!stores) throw new Error('authority resources missing');
     expect(stores.enrollmentStore).toBeInstanceOf(PostgresEnrollmentRegistry);
     expect(stores.domainApis.enrollments).toBe(stores.enrollmentStore);
+    expect(runtime.enrollments()).toBe(stores.enrollmentStore);
     const enrollmentBinding = {
       tenantId: TENANT_ID, projectId: PROJECT_ID,
       installationId: 'task19-installation', deviceBindingDigest: 'd'.repeat(64),
     };
+    const bootstrapToken = 'runtime-bootstrap-token-32-bytes-minimum-AAAA';
     await expect(stores.enrollmentStore.issueBootstrapToken({
-      ...enrollmentBinding, tokenDigest: 'a'.repeat(64),
+      ...enrollmentBinding, tokenDigest: createHash('sha256').update(bootstrapToken).digest('hex'),
       expiresAt: new Date(Date.now() + 60_000).toISOString(),
       grants: [{ originDigest: 'b'.repeat(64), scope: 'browser:execute' }],
     })).resolves.toMatchObject({ ok: true });
     await expect(stores.enrollmentStore.claimBootstrapToken({
-      ...enrollmentBinding, tokenDigest: 'a'.repeat(64), clientIdentityId: 'client:task19-installation',
+      ...enrollmentBinding, bootstrapToken, clientIdentityId: 'client:task19-installation',
       certificate: { encoding: 'pem', value: certificateFixture.validPem },
     })).resolves.toMatchObject({ ok: true, enrollment: { revision: 1 } });
     await expect(stores.enrollmentStore.getByInstallation('task19-installation'))
@@ -183,6 +186,7 @@ describe('BLRO authority runtime composition', () => {
     await stores.jobStore.put('task19-job', result);
     await expect(stores.jobStore.get('task19-job')).resolves.toEqual(result);
     await runtime.close();
+    expect(runtime.enrollments()).toBeUndefined();
     expect(runtime.liveness()).toEqual({ ok: false, state: 'closed' });
   });
 
@@ -207,13 +211,20 @@ describe('BLRO authority runtime composition', () => {
     await runtime.close();
   });
 
-  it('reports a stale schema precisely and constructs no stores or domain APIs', async () => {
+  it('reports a uniquely scoped stale schema precisely and constructs no stores or domain APIs', async () => {
     const createDomainApis = vi.fn();
+    const expectedSchemaComponent = `task-stale-authority-${randomUUID()}`;
     await owner.$executeRawUnsafe(
-      `UPDATE "BlroRuntimeSchema" SET "version"='stale' WHERE "component"='control-tower-authority'`,
+      `INSERT INTO "BlroRuntimeSchema" ("component","version") VALUES ($1,$2)`,
+      expectedSchemaComponent, 'stale',
     );
-    const runtime = createAuthorityRuntime({ environment: completeEnvironment(), createDomainApis });
+    const runtime = createAuthorityRuntime({
+      environment: completeEnvironment(), createDomainApis, expectedSchemaComponent,
+    });
     try {
+      await expect(owner.$queryRawUnsafe<readonly { readonly version: string }[]>(
+        `SELECT "version" FROM "BlroRuntimeSchema" WHERE "component"=$1`, expectedSchemaComponent,
+      )).resolves.toEqual([{ version: 'stale' }]);
       await runtime.start();
       await expect(runtime.readiness()).resolves.toMatchObject({
         ok: false,
@@ -224,8 +235,7 @@ describe('BLRO authority runtime composition', () => {
     } finally {
       await runtime.close();
       await owner.$executeRawUnsafe(
-        `UPDATE "BlroRuntimeSchema" SET "version"=$1 WHERE "component"='control-tower-authority'`,
-        BLRO_RUNTIME_SCHEMA_VERSION,
+        `DELETE FROM "BlroRuntimeSchema" WHERE "component"=$1`, expectedSchemaComponent,
       );
     }
   });

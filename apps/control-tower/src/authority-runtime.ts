@@ -1,8 +1,10 @@
 import { PrismaClient } from '@prisma/client';
 import { PostgresSingleUseNonceStore } from '../../../packages/sangfor-approval/src/index.js';
-import { BlroAuthorityStore } from '../../../packages/sangfor-authority/src/index.js';
-import { PostgresEnrollmentRegistry } from '../../../packages/sangfor-browser-contracts/src/postgres-enrollment-registry.js';
-import { PostgresJobIdempotencyStore } from '../../../packages/sangfor-browser-contracts/src/postgres-stores.js';
+import {
+  BlroAuthorityStore,
+  PostgresEnrollmentRegistry,
+  PostgresJobIdempotencyStore,
+} from '../../../packages/sangfor-authority/src/index.js';
 import {
   parseAuthorityConfig,
   type AuthorityConfig,
@@ -35,10 +37,17 @@ export type AuthorityLiveness = {
   readonly state: 'starting' | 'running' | 'draining' | 'closed';
 };
 
+export type EnrollmentAuthorityApi = Pick<
+  PostgresEnrollmentRegistry,
+  'issueBootstrapToken' | 'claimBootstrapToken' | 'getByInstallation'
+  | 'rotate' | 'acknowledgeRotation' | 'revoke'
+>;
+
 export interface AuthorityRuntimePort {
   liveness(): AuthorityLiveness;
   readiness(): Promise<AuthorityReadiness>;
   assertReady(): Promise<void>;
+  enrollments(): EnrollmentAuthorityApi | undefined;
   beginDrain(): void;
   close(): Promise<void>;
 }
@@ -69,6 +78,7 @@ type RuntimeOptions = {
   readonly environment?: AuthorityRuntimeEnvironment;
   readonly createDomainApis?: AuthorityDomainApiFactory;
   readonly probeOverride?: () => Promise<boolean>;
+  readonly expectedSchemaComponent?: string;
 };
 
 export function createAuthorityRuntime(options: RuntimeOptions = {}) {
@@ -113,7 +123,10 @@ export function createAuthorityRuntime(options: RuntimeOptions = {}) {
         scope: { tenantId: input.config.tenantId, projectId: input.config.projectId },
         trustedIssuerBundle: input.material.trustBundle,
       }),
-      jobStore: new PostgresJobIdempotencyStore(input.prisma, input.config.projectId),
+      jobStore: new PostgresJobIdempotencyStore(input.prisma, {
+        tenantId: input.config.tenantId,
+        projectId: input.config.projectId,
+      }),
     };
     const dependencies = { ...base, ...input.material };
     let candidate: unknown;
@@ -141,7 +154,9 @@ export function createAuthorityRuntime(options: RuntimeOptions = {}) {
     if (!material.ok) { degraded = true; state = 'running'; return; }
     const prisma = new PrismaClient({ datasources: { db: { url: parsed.data.databaseUrl } } });
     try {
-      dependency = await probeAuthorityDependencies(prisma, parsed.data, options.probeOverride);
+      dependency = await probeAuthorityDependencies(
+        prisma, parsed.data, options.probeOverride, options.expectedSchemaComponent,
+      );
     } catch {
       dependency = { database: false, schema: false, scope: false };
       degraded = true;
@@ -163,7 +178,9 @@ export function createAuthorityRuntime(options: RuntimeOptions = {}) {
   async function readiness(): Promise<AuthorityReadiness> {
     if (!resources || !parsed.success || degraded || state !== 'running') return report();
     try {
-      dependency = await probeAuthorityDependencies(resources.prisma, parsed.data, options.probeOverride);
+      dependency = await probeAuthorityDependencies(
+        resources.prisma, parsed.data, options.probeOverride, options.expectedSchemaComponent,
+      );
       if (!dependency.database || !dependency.schema || !dependency.scope) degraded = true;
     } catch {
       dependency = { database: false, schema: false, scope: false };
@@ -185,7 +202,9 @@ export function createAuthorityRuntime(options: RuntimeOptions = {}) {
         throw new AuthorityUnavailableError(firstReadinessFailure(report()));
       }
       try {
-        dependency = await probeAuthorityDependencies(resources.prisma, parsed.data, options.probeOverride);
+        dependency = await probeAuthorityDependencies(
+          resources.prisma, parsed.data, options.probeOverride, options.expectedSchemaComponent,
+        );
         degraded = !dependency.database || !dependency.schema || !dependency.scope;
       } catch {
         dependency = { database: false, schema: false, scope: false };
@@ -193,6 +212,7 @@ export function createAuthorityRuntime(options: RuntimeOptions = {}) {
       }
       if (degraded) throw new AuthorityUnavailableError(firstReadinessFailure(report()));
     },
+    enrollments: (): EnrollmentAuthorityApi | undefined => resources?.enrollmentStore,
     beginDrain(): void { if (state === 'running') state = 'draining'; },
     async close(): Promise<void> {
       if (closed) return;

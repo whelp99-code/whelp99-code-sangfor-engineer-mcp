@@ -113,6 +113,9 @@ importers:
 
   packages/sangfor-authority:
     dependencies:
+      '@sangfor/browser-contracts':
+        specifier: workspace:*
+        version: link:../sangfor-browser-contracts
       '@sangfor/identity':
         specifier: workspace:*
         version: link:../sangfor-identity

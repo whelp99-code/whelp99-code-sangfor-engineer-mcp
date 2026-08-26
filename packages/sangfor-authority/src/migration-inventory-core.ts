@@ -7,12 +7,11 @@ export const IDENTITY_REFS = [
 ] as const;
 
 export const PROJECT_REFS = [
-  "persist:packages/sangfor-browser-contracts/src/postgres-enrollment-bootstrap.ts#claimScopedBootstrapToken",
-  "persist:packages/sangfor-browser-contracts/src/postgres-enrollment-bootstrap.ts#issueScopedBootstrapToken",
-  "persist:packages/sangfor-browser-contracts/src/postgres-enrollment-lifecycle.ts#acknowledgeScopedRotation",
-  "persist:packages/sangfor-browser-contracts/src/postgres-enrollment-lifecycle.ts#rotateScopedEnrollment",
-  "persist:packages/sangfor-browser-contracts/src/postgres-enrollment-revocation.ts#revokeScopedEnrollment",
-  "persist:packages/sangfor-browser-contracts/src/postgres-stores.ts#PostgresEnrollmentStore",
+  "persist:packages/sangfor-authority/src/enrollment-bootstrap.ts#claimScopedBootstrapToken",
+  "persist:packages/sangfor-authority/src/enrollment-bootstrap.ts#issueScopedBootstrapToken",
+  "persist:packages/sangfor-authority/src/enrollment-lifecycle.ts#acknowledgeScopedRotation",
+  "persist:packages/sangfor-authority/src/enrollment-lifecycle.ts#rotateScopedEnrollment",
+  "persist:packages/sangfor-authority/src/enrollment-revocation.ts#revokeScopedEnrollment",
   "prisma:model:BlroClientEnrollment",
   "prisma:model:BlroEnrollmentBootstrapToken",
   "prisma:model:BlroEnrollmentCertificate",

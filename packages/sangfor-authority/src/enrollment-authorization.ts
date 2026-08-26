@@ -1,26 +1,9 @@
-import { z } from 'zod';
-import {
-  enrollmentDigestSchema,
-  type PersistedScopedEnrollment,
-} from './postgres-enrollment-schemas.js';
-import {
-  leafCertificateSchema,
-  type CertificateIdentityRefusal,
-  type DerivedClientCertificate,
-} from './postgres-enrollment-x509.js';
-
-const identitySchema = z.string().trim().min(1).max(200);
-export const certificateAuthorizationInputSchema = z.object({
-  tenantId: identitySchema,
-  projectId: identitySchema,
-  installationId: identitySchema,
-  deviceBindingDigest: enrollmentDigestSchema,
-  originDigest: enrollmentDigestSchema,
-  scope: identitySchema,
-  certificate: leafCertificateSchema,
-}).strict().readonly();
-
-export type CertificateAuthorizationInput = z.infer<typeof certificateAuthorizationInputSchema>;
+import type {
+  CertificateAuthorizationInput,
+  CertificateIdentityRefusal,
+  PersistedScopedEnrollment,
+} from '@sangfor/browser-contracts';
+import type { DerivedClientCertificate } from './enrollment-x509.js';
 export type EnrollmentCertificateSnapshot = DerivedClientCertificate & {
   readonly state: 'active' | 'overlap' | 'revoked' | 'superseded';
   readonly overlapExpiresAt?: string;

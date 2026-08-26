@@ -1,22 +1,12 @@
 import { X509Certificate } from 'node:crypto';
-import { z } from 'zod';
+import {
+  CLIENT_AUTH_EKU,
+  leafCertificateSchema,
+  type CertificateIdentityRefusal,
+  type LeafCertificate,
+} from '@sangfor/browser-contracts';
 
-export const CLIENT_AUTH_EKU = '1.3.6.1.5.5.7.3.2' as const;
 const CERTIFICATE_PATTERN = /-----BEGIN CERTIFICATE-----[\s\S]+?-----END CERTIFICATE-----/gu;
-const PRIVATE_KEY_PATTERN = /-----BEGIN[^-]*PRIVATE KEY-----/iu;
-const pemSchema = z.string().trim().min(1).max(65_536)
-  .refine((value) => !PRIVATE_KEY_PATTERN.test(value), 'Private key material is refused.')
-  .refine((value) => {
-    const matches = value.match(CERTIFICATE_PATTERN) ?? [];
-    return matches.length === 1 && value.replaceAll(CERTIFICATE_PATTERN, '').trim().length === 0;
-  }, 'Exactly one certificate PEM is required.');
-const derSchema = z.string().min(1).max(90_000).regex(/^[A-Za-z0-9+/]+={0,2}$/u);
-
-export const leafCertificateSchema = z.discriminatedUnion('encoding', [
-  z.object({ encoding: z.literal('pem'), value: pemSchema }).strict(),
-  z.object({ encoding: z.literal('der-base64'), value: derSchema }).strict(),
-]).readonly();
-export type LeafCertificate = z.infer<typeof leafCertificateSchema>;
 export type TrustedIssuer = {
   readonly certificate: X509Certificate;
   readonly fingerprintSha256: string;
@@ -32,9 +22,6 @@ export type DerivedClientCertificate = {
   readonly notBefore: string;
   readonly notAfter: string;
 };
-export type CertificateIdentityRefusal =
-  | 'CERTIFICATE_EXPIRED' | 'CERTIFICATE_INVALID' | 'CERTIFICATE_NOT_YET_VALID'
-  | 'CLIENT_EKU_MISSING' | 'ISSUER_UNTRUSTED' | 'SAN_MISMATCH';
 export type CertificateIdentityDecision =
   | { readonly ok: true; readonly certificate: DerivedClientCertificate }
   | { readonly ok: false; readonly reason: CertificateIdentityRefusal };

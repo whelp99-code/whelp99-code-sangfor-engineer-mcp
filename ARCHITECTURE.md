@@ -49,7 +49,7 @@ Enforced invariants of the graph: no L1 package imports an L2/L3 package; `opera
 | `@sangfor/shared` | L0 | domain types, product catalog, `resolveRepoData`/`nowId`, HTTP-bind safety (`assertBindSafety`, `checkAuth`) |
 | `@sangfor/browser-contracts` | L0 | strict JSON-serializable `BrowserExecutionPort` request/result schemas; no browser runtime or credentials |
 | `@sangfor/identity` | L0 | fail-closed tenant/project/actor/role/membership authorization read model |
-| `@sangfor/authority` | L1 | sole Postgres writer for BLRO registry, run/step, approval, audit, evidence, and RAG aggregates |
+| `@sangfor/authority` | L1 | sole Postgres writer for BLRO enrollment, registry, run/step, approval, audit, evidence, and RAG aggregates |
 | `@sangfor/approval` | L1 | keyword risk classifier → is-approval-required (the risk brain) |
 | `@sangfor/safety` | L1 | data-driven capability safety/maturity oracle; fail-safe deny |
 | `@sangfor/runs` | L1 | append-only JSONL run ledger + secret masking |

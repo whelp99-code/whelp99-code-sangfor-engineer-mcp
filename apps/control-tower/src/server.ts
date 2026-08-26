@@ -7,6 +7,7 @@ import { createApi, ApiError, type TowerOptions } from './api.js';
 import { loadEnvFile } from '../../../packages/sangfor-collector/src/load-env.js';
 import { buildLoopStatus } from '../../../packages/sangfor-loop/src/index.js';
 import type { AuthorityRuntimePort } from './authority-runtime.js';
+import { routeAuthorityEnrollment } from './authority-enrollment-routes.js';
 import {
   readJsonBody,
   refuseUnreadyAuthorityApi,
@@ -35,16 +36,18 @@ export function createTowerServer(opts: TowerServerOptions = {}): http.Server {
     const method = req.method ?? 'GET';
     const path = url.pathname;
 
-    // Shared-secret gate for API routes (no-op when the token is unset).
-    if (path.startsWith('/api/')) {
-      const auth = checkAuth(req.headers['authorization'], apiToken);
-      if (!auth.ok) return json(res, { error: 'unauthorized' }, auth.status ?? 401);
-    }
-
     try {
       const authorityRoute = { method, path, response: res, authorityRuntime: opts.authorityRuntime };
       if (await routeProcessShell(authorityRoute)) return;
       if (await refuseUnreadyAuthorityApi(authorityRoute)) return;
+      if (path.startsWith('/api/')) {
+        const auth = checkAuth(req.headers['authorization'], apiToken);
+        if (!auth.ok) return json(res, { error: 'unauthorized' }, auth.status ?? 401);
+      }
+      if (await routeAuthorityEnrollment({
+        method, path, request: req, response: res,
+        authorityRuntime: opts.authorityRuntime, apiToken,
+      })) return;
       if (path.startsWith('/api/') && !api) return json(res, { error: 'BLRO authority API is not exposed' }, 404);
       if (!api) return json(res, { error: 'Not found' }, 404);
       if (method === 'GET' && path === '/api/overview') return json(res, await api.overview());

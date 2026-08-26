@@ -43,6 +43,7 @@ function readinessRuntime(): AuthorityRuntimePort & { setReady(value: boolean): 
     async assertReady() {
       if (!ready || state !== 'running') throw new AuthorityUnavailableError('DATABASE_UNAVAILABLE');
     },
+    enrollments: () => undefined,
     beginDrain() { state = 'draining'; },
     async close() { state = 'closed'; },
   };

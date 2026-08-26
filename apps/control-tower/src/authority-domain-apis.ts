@@ -1,9 +1,11 @@
 import type { KeyObject } from 'node:crypto';
 import type { PrismaClient } from '@prisma/client';
 import type { PostgresSingleUseNonceStore } from '../../../packages/sangfor-approval/src/index.js';
-import type { BlroAuthorityStore } from '../../../packages/sangfor-authority/src/index.js';
-import type { PostgresEnrollmentRegistry } from '../../../packages/sangfor-browser-contracts/src/postgres-enrollment-registry.js';
-import type { PostgresJobIdempotencyStore } from '../../../packages/sangfor-browser-contracts/src/postgres-stores.js';
+import type {
+  BlroAuthorityStore,
+  PostgresEnrollmentRegistry,
+  PostgresJobIdempotencyStore,
+} from '../../../packages/sangfor-authority/src/index.js';
 
 export type AuthorityDomainDependencies = {
   readonly prisma: PrismaClient;
