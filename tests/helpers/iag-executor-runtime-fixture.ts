@@ -151,6 +151,6 @@ export function replayFixture(
       executionPort, readBackPort, now: () => IAG_EXECUTOR_TEST_NOW,
       dispatchTimeoutMs: 1_000, scheduler: new FakeDispatchScheduler(),
     }),
-    preflights, dispatches, readBacks,
+    executionPort, readBackPort, preflights, dispatches, readBacks,
   };
 }

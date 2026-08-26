@@ -17,6 +17,7 @@ export type IagOrchestratorRequest = {
   readonly actionSource: string;
   readonly authorityRequest: ResolveIagMutationActionAuthorityInput;
   readonly approval?: unknown;
+  readonly ordinaryAuthorityRequired?: true;
 };
 
 type FreshRunInput = {
@@ -81,6 +82,9 @@ function fromReadBack(input: FreshRunInput, readBack: IagIndependentReadBack, di
 export async function executeFreshIagRun(input: FreshRunInput): Promise<IagApplyResult> {
   const { runtime, action, runId, requestDigest } = input;
   runtime.store.append({ runId, requestDigest, state: 'VALIDATING', payload: { actionDigest: requestDigest } });
+  if (input.request.ordinaryAuthorityRequired === true && input.authorizationClass !== 'ordinary_active') {
+    return terminal(input, refusal({ runId, action, reasonCode: 'ORDINARY_AUTHORITY_REQUIRED' }));
+  }
   if (!isNarrowReversibleIagAction(action)) return terminal(input, refusal({ runId, action, reasonCode: 'BROAD_OR_IRREVERSIBLE_ACTION_REFUSED' }));
   runtime.store.append({ runId, requestDigest, state: 'PREFLIGHTING' });
   const preflight = await runtime.executor.preflight(action);
@@ -113,7 +117,7 @@ export async function executeFreshIagRun(input: FreshRunInput): Promise<IagApply
     changeTicketId: authorization.approval.changeTicketId,
     rollbackPlanId: authorization.approval.rollbackPlanId,
     approvalToken: authorization.approval.approvalToken,
-    nonceRef: authorization.nonceRef,
+    approvalRef: authorization.nonceRef,
   } });
   runtime.store.append({ runId, requestDigest, state: 'DISPATCHING' });
   const consumed = await consumeIagMutationNonce(authorization.approval, runtime.now());

@@ -1170,75 +1170,57 @@ export async function applyApprovedProductChange(input: { plan: ProductChangePla
   const highRiskTasks = input.plan.tasks.filter(task => task.approvalRequired || requiresApprovalForText(`${task.requirement} ${task.capabilityId}`).required);
   if (highRiskTasks.length > 0 && missingApproval.length > 0) {
     return {
-      id: nowId('apply'),
-      ok: false,
-      approvalRequired: true,
-      mutationPerformed: false,
-      reason: `Missing approval payload fields: ${missingApproval.join(', ')}`
+      id: nowId('apply'), ok: false, code: 'LEGACY_PRODUCT_APPLY_DEPRECATED',
+      approvalRequired: true, mutationPerformed: false,
+      reason: `Missing approval payload fields: ${missingApproval.join(', ')}`,
     };
   }
   if (process.env.SANGFOR_ALLOW_REAL_EXECUTION !== 'true') {
     return {
-      id: nowId('apply'),
-      ok: false,
-      approvalRequired: highRiskTasks.length > 0,
-      mutationPerformed: false,
-      reason: 'SANGFOR_ALLOW_REAL_EXECUTION=true is required for real changes.'
+      id: nowId('apply'), ok: false, code: 'LEGACY_PRODUCT_APPLY_DEPRECATED',
+      approvalRequired: highRiskTasks.length > 0, mutationPerformed: false,
+      reason: 'SANGFOR_ALLOW_REAL_EXECUTION=true is required for real changes.',
     };
   }
   if (input.environment === 'production' && process.env.SANGFOR_ALLOW_PRODUCTION_EXECUTION !== 'true') {
     return {
-      id: nowId('apply'),
-      ok: false,
-      approvalRequired: true,
-      mutationPerformed: false,
-      reason: 'SANGFOR_ALLOW_PRODUCTION_EXECUTION=true is required for production changes.'
+      id: nowId('apply'), ok: false, code: 'LEGACY_PRODUCT_APPLY_DEPRECATED',
+      approvalRequired: true, mutationPerformed: false,
+      reason: 'SANGFOR_ALLOW_PRODUCTION_EXECUTION=true is required for production changes.',
     };
   }
-  const operatorEvidence = input.sessionId
-    ? await executeLiveConsoleAction({
-      sessionId: input.sessionId,
-      // Dry-run screenshot for evidence only — the execution gate short-circuits
-      // on dryRun before any approval is verified, so no signed approval is passed.
-      action: { type: 'screenshot', target: 'product-change-plan', dryRun: true },
-      executionPort: input.browserExecutionPort,
-    })
-    : undefined;
-  // Every gate above has passed. A real mutation happens ONLY through an explicitly
-  // attached executor; with none (the default) nothing is mutated, so the safe
-  // default is unchanged and real execution stays opt-in behind the same gates.
-  const executed = input.executor
-    ? await input.executor({ plan: input.plan, approval: input.approval, environment: input.environment, sessionId: input.sessionId })
-    : undefined;
   return {
-    id: nowId('apply'),
-    ok: true,
-    approvalRequired: highRiskTasks.length > 0,
-    mutationPerformed: executed?.mutationPerformed ?? false,
-    reason: executed
-      ? 'Execution gate passed; applied through the attached executor.'
-      : 'Execution gate passed. No executor attached; no mutation was performed.',
+    id: nowId('apply'), ok: false, code: 'LEGACY_PRODUCT_APPLY_DEPRECATED',
+    approvalRequired: highRiskTasks.length > 0, mutationPerformed: false,
+    reason: 'Legacy product apply cannot execute. Use the verified product-specific orchestrator.',
     approvedBy: input.approval?.approvedBy,
     changeTicketId: input.approval?.changeTicketId,
-    operatorEvidence,
-    executorDetails: executed?.details
   };
 }
 
 export function verifyProductChange(input: { plan: ProductChangePlan; observed?: Record<string, unknown> }) {
-  return {
-    id: nowId('verify'),
-    product: input.plan.product,
-    ok: true,
-    readOnly: true,
-    checks: input.plan.tasks.map(task => ({
-      taskId: task.id,
-      requirement: task.requirement,
-      menuPath: task.menuPath,
+  const checks = input.plan.tasks.map(task => {
+    const observed = input.observed?.[task.id] ?? null;
+    let status: 'PASS' | 'FAIL' | 'INDETERMINATE' = 'INDETERMINATE';
+    if (typeof observed === 'object' && observed !== null) {
+      const candidate = Reflect.get(observed, 'status');
+      if (candidate === 'PASS' || candidate === 'FAIL' || candidate === 'INDETERMINATE') status = candidate;
+    }
+    return {
+      taskId: task.id, requirement: task.requirement, menuPath: task.menuPath,
       expectedEvidence: ['post-change config snapshot', 'task/audit log', 'alert/log verification', 'before-after comparison'],
-      observed: input.observed?.[task.id] ?? null
-    })),
-    evidenceStatus: input.observed ? 'observed_values_attached' : 'pending_observed_values'
+      observed, status,
+    };
+  });
+  const aggregate = checks.some(({ status }) => status === 'FAIL')
+    ? 'FAIL' as const
+    : checks.length > 0 && checks.every(({ status }) => status === 'PASS')
+      ? 'PASS' as const
+      : 'INDETERMINATE' as const;
+  return {
+    id: nowId('verify'), product: input.plan.product, ok: aggregate === 'PASS', aggregate,
+    readOnly: true, checks,
+    evidenceStatus: aggregate === 'PASS' ? 'verified_pass' : aggregate === 'FAIL' ? 'verified_fail' : 'indeterminate',
   };
 }
 

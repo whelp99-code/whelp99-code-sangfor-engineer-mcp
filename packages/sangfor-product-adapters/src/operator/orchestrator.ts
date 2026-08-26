@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { resolveIagMutationActionAuthority } from '@sangfor/competency';
+import { verifyIagMutationAuthorization } from '@sangfor/operator';
 import { digestIagMutationAction, parseIagMutationAction } from '../apply/iag-action-authority.js';
 import type { GroundedIagMutationAction } from '../apply/iag-mutation-action.js';
 import { reconcileIagRun, resolveUncertainReplay } from './commit-resolution.js';
@@ -60,12 +61,31 @@ export function createIagOrchestrator(runtime: IagOrchestratorRuntime): IagOrche
       }
       const action = parsed.value;
       const runId = runIdFor(action);
+      let applyAuthorization: ReturnType<typeof verifyIagMutationAuthorization> | undefined;
+      if (request.ordinaryAuthorityRequired === true) {
+        applyAuthorization = verifyIagMutationAuthorization({
+          authorizationClass: authority.authority.authorizationClass,
+          scope: {
+            actionDigest: digestIagMutationAction(action), origin: action.target.origin,
+            deviceIdentityDigest: action.target.deviceIdentityDigest,
+            sessionId: action.target.sessionId, windowId: action.target.windowId,
+          },
+          approval: request.approval,
+          now: runtime.now(),
+        });
+        if (!applyAuthorization.ok) return refusal(runId, action, applyAuthorization.code);
+      }
       const existing = active.get(runId);
       if (existing !== undefined) return existing;
       const requestDigest = digestIagMutationAction(action);
       const claim = runtime.store.claim(runId, requestDigest);
       switch (claim.kind) {
-        case 'REPLAY': return claim.result;
+        case 'REPLAY':
+          if (applyAuthorization?.ok === true) {
+            return refusal(runId, action, claim.approvalRef === applyAuthorization.nonceRef
+              ? 'APPROVAL_REPLAY' : 'RUN_ALREADY_TERMINAL_USE_STATUS');
+          }
+          return claim.result;
         case 'CONFLICT': return refusal(runId, action, 'IDEMPOTENCY_CONFLICT');
         case 'ACTIVE': return refusal(runId, action, 'RUN_RECONCILIATION_REQUIRED');
         case 'UNCERTAIN': return resolveUncertainReplay({

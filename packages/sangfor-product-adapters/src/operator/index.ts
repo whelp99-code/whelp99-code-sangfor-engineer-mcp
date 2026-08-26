@@ -1,5 +1,6 @@
 export { createIagOrchestrator, type IagOrchestrator, type IagOrchestratorRequest } from './orchestrator.js';
 export { groundIagApplyResult, type IagApplyResult } from './result.js';
+export { lookupIagRunStatus } from './status.js';
 export {
   IAG_ORCHESTRATOR_STATES,
   isIagTerminalState,
@@ -11,6 +12,7 @@ export {
   FileIagOrchestratorStore,
   IagOrchestratorStoreIndeterminateError,
   IagOrchestratorStoreUnavailableError,
+  IagRunNotFoundError,
   type IagOrchestratorEvent,
   type IagRunClaim,
   type IagRunRecord,

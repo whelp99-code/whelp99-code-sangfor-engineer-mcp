@@ -9,6 +9,7 @@ import { IagIndeterminateSealStore } from './store-seal.js';
 import {
   canonicalOrchestratorValue,
   IAG_ORCHESTRATOR_GENESIS,
+  orchestratorHashSchema,
   IagLedgerSerializer,
   type IagLedgerSnapshot,
   type IagOrchestratorEvent,
@@ -16,6 +17,7 @@ import {
 import {
   IagOrchestratorStoreIndeterminateError,
   IagOrchestratorStoreUnavailableError,
+  IagRunNotFoundError,
 } from './store-errors.js';
 import {
   isIagTerminalState,
@@ -24,7 +26,11 @@ import {
 } from './state.js';
 
 export type { IagOrchestratorEvent } from './store-serialization.js';
-export { IagOrchestratorStoreIndeterminateError, IagOrchestratorStoreUnavailableError } from './store-errors.js';
+export {
+  IagOrchestratorStoreIndeterminateError,
+  IagOrchestratorStoreUnavailableError,
+  IagRunNotFoundError,
+} from './store-errors.js';
 export type IagRunRecord = {
   readonly runId: string; readonly requestDigest: string;
   readonly events: readonly IagOrchestratorEvent[]; readonly terminal?: IagApplyResult;
@@ -33,7 +39,7 @@ export type IagRunClaim =
   | { readonly kind: 'FRESH' }
   | { readonly kind: 'ACTIVE' }
   | { readonly kind: 'UNCERTAIN'; readonly mutationAttempted: boolean }
-  | { readonly kind: 'REPLAY'; readonly result: IagApplyResult }
+  | { readonly kind: 'REPLAY'; readonly result: IagApplyResult; readonly approvalRef?: string }
   | { readonly kind: 'CONFLICT' };
 export type IagTerminalCommit =
   | { readonly kind: 'COMMITTED'; readonly result: IagApplyResult }
@@ -68,6 +74,17 @@ export class FileIagOrchestratorStore {
     this.seals = new IagIndeterminateSealStore(
       config.path, config.checkpointSecret, config.faults.beforeSealDurable,
     );
+  }
+
+  static open(input: {
+    readonly ledgerPath: string; readonly ledgerSecret: string;
+    readonly checkpointSecret: string; readonly now?: () => Date;
+  }): FileIagOrchestratorStore {
+    const checkpoint = new IagCheckpointStore(input.ledgerPath, input.checkpointSecret);
+    if (!existsSync(input.ledgerPath) || !existsSync(checkpoint.path)) {
+      throw new IagOrchestratorStoreUnavailableError();
+    }
+    return FileIagOrchestratorStore.initialize(input);
   }
 
   static initialize(input: {
@@ -134,7 +151,15 @@ export class FileIagOrchestratorStore {
       const events = snapshot.committed.filter((event) => event.runId === runId);
       if (events.some((event) => event.requestDigest !== requestDigest)) return { kind: 'CONFLICT' };
       const terminal = [...events].reverse().find((event) => isIagTerminalState(event.state));
-      if (terminal !== undefined) return { kind: 'REPLAY', result: parseStoredIagApplyResult(terminal.payload) };
+      if (terminal !== undefined) {
+        const authorized = [...events].reverse().find((event) => event.state === 'AUTHORIZED');
+        const approvalRef = authorized === undefined || typeof authorized.payload !== 'object' || authorized.payload === null
+          ? undefined : orchestratorHashSchema.safeParse(Reflect.get(authorized.payload, 'approvalRef'));
+        return {
+          kind: 'REPLAY', result: parseStoredIagApplyResult(terminal.payload),
+          ...(approvalRef?.success === true ? { approvalRef: approvalRef.data } : {}),
+        };
+      }
       const tailForRun = snapshot.tail.events.some((event) => event.runId === runId);
       if (tailForRun || (snapshot.tail.kind === 'CORRUPT' && events.length > 0)) {
         const lastState = events.at(-1)?.state;
@@ -171,11 +196,13 @@ export class FileIagOrchestratorStore {
   sealIndeterminate(runId: string, requestDigest: string, result: IagApplyResult): void {
     withDirLock(`${this.path}.lock`, () => this.seals.seal({ runId, requestDigest, result }));
   }
-  read(runId: string): IagRunRecord {
+  read(runId: string, requireAuthenticatedTail = false): IagRunRecord {
     const sealed = withDirLock(`${this.path}.lock`, () => this.seals.find(runId));
     if (sealed !== undefined) return { runId, requestDigest: sealed.requestDigest, events: [], terminal: sealed.result };
-    const events = withDirLock(`${this.path}.lock`, () => this.snapshot().committed.filter((event) => event.runId === runId));
-    if (events.length === 0) throw new IagOrchestratorStoreUnavailableError();
+    const snapshot = withDirLock(`${this.path}.lock`, () => this.snapshot());
+    if (requireAuthenticatedTail && snapshot.tail.kind !== 'NONE') throw new IagOrchestratorStoreUnavailableError();
+    const events = snapshot.committed.filter((event) => event.runId === runId);
+    if (events.length === 0) throw new IagRunNotFoundError(runId);
     const terminal = [...events].reverse().find((event) => isIagTerminalState(event.state));
     return { runId, requestDigest: events[0]?.requestDigest ?? '', events,
       ...(terminal === undefined ? {} : { terminal: parseStoredIagApplyResult(terminal.payload) }) };

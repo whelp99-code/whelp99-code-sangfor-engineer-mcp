@@ -81,6 +81,10 @@ import { createDefaultJmBrowserRuntime } from './jm-browser-runtime.js';
 import { createRemoteBrowserExecutionPortFromEnv } from './remote-browser-runtime.js';
 import { captureKeyringFromEnv } from '../../../packages/sangfor-collector/src/capture-bundle.js';
 import {
+  configureIagOrchestratorToolService,
+  iagOrchestratorToolCatalog,
+} from './iag-orchestrator-tools.js';
+import {
   getAuditFramework,
   listAuditFrameworkSummaries,
   filterChecklistItems,
@@ -119,6 +123,7 @@ export function configureJmBrowserRuntime(deps: {
   browserArtifactMaterializer = deps.materializeArtifact;
   browserRuntimeDispose = deps.dispose;
   observerManagerCache = undefined;
+  configureIagOrchestratorToolService(undefined);
 }
 
 function requiredBrowserExecutionPort(): BrowserExecutionPort {
@@ -851,15 +856,16 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
     })
   },
   'sangfor_apply_approved_product_change': {
-    description: 'Apply only an approved product change. Requires approval payload and SANGFOR_ALLOW_REAL_EXECUTION; production also requires SANGFOR_ALLOW_PRODUCTION_EXECUTION.',
+    description: 'Deprecated write surface: typed-refuses every real apply. Use a verified product-specific orchestrator; dry-run planning remains available separately.',
     inputSchema: { type: 'object', properties: { plan: { type: 'object' }, approval: { type: 'object' }, environment: { type: 'string' }, sessionId: { type: 'string' } }, required: ['plan'] },
-    handler: (args) => applyApprovedProductChange({ ...args, browserExecutionPort: requiredBrowserExecutionPort() })
+    handler: applyApprovedProductChange
   },
   'sangfor_verify_product_change': {
     description: 'Verify a product change with read-only API/WebUI re-collection checklist and evidence expectations.',
     inputSchema: { type: 'object', properties: { plan: { type: 'object' }, observed: { type: 'object' } }, required: ['plan'] },
     handler: verifyProductChange
   },
+  ...iagOrchestratorToolCatalog(requiredBrowserExecutionPort),
   'sangfor_search_manuals': {
     description: 'Search Sangfor manual/guide chunks by product, version and query. Supports privacy_mode (summary|structured|raw).',
     inputSchema: { type: 'object', properties: { product: { type: 'string' }, version: { type: 'string' }, query: { type: 'string' }, limit: { type: 'number' }, privacy_mode: PRIVACY_MODE_SCHEMA }, required: ['product'] },
@@ -1865,6 +1871,7 @@ const DESTRUCTIVE_TOOLS = new Set([
   'sangfor_apply_github_wiki_update',
   'sangfor_apply_obsidian_wiki_update',
   'sangfor_hci_delete_volume',
+  'sangfor_iag_exception_apply',
 ]);
 
 // Tools that write local server/session/dataset/artifact state (not customer devices).

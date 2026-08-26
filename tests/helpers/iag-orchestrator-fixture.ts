@@ -14,9 +14,9 @@ import { configureAuthorityEnvironment, writeAuthorityFixture } from './write-au
 
 export const IAG_ORCHESTRATOR_NOW = new Date('2026-08-20T11:01:00.000Z');
 export const IAG_ORCHESTRATOR_APPROVAL_SECRET = 'iag-orchestrator-approval-secret-32';
-const IAG_ORDINARY_APPROVAL_SECRET = 'iag-ordinary-approval-secret-32-bytes';
-const LEDGER_SECRET = 'iag-orchestrator-ledger-secret-32';
-const CHECKPOINT_SECRET = 'iag-orchestrator-checkpoint-secret-32';
+export const IAG_ORDINARY_APPROVAL_SECRET = 'iag-ordinary-approval-secret-32-bytes';
+export const IAG_ORCHESTRATOR_LEDGER_SECRET = 'iag-orchestrator-ledger-secret-32';
+export const IAG_ORCHESTRATOR_CHECKPOINT_SECRET = 'iag-orchestrator-checkpoint-secret-32';
 
 export function configureIagOrchestratorTestEnvironment(root: string): void {
   configureAuthorityEnvironment(root);
@@ -71,13 +71,13 @@ export async function iagOrchestratorFixture(input: {
     [parsed.value], input.dispatchBehavior ?? 'settle', observed === 'EXACT_MATCH', input.readBackPresent ?? true,
   );
   const store = FileIagOrchestratorStore.initialize({
-    ledgerPath: join(input.root, 'orchestrator.jsonl'), ledgerSecret: LEDGER_SECRET,
-    checkpointSecret: CHECKPOINT_SECRET, faults: input.faults, now: () => IAG_ORCHESTRATOR_NOW,
+    ledgerPath: join(input.root, 'orchestrator.jsonl'), ledgerSecret: IAG_ORCHESTRATOR_LEDGER_SECRET,
+    checkpointSecret: IAG_ORCHESTRATOR_CHECKPOINT_SECRET, faults: input.faults, now: () => IAG_ORCHESTRATOR_NOW,
   });
   const restart = (faults: IagStoreFaults = {}) => {
     const restartedStore = FileIagOrchestratorStore.initialize({
-      ledgerPath: join(input.root, 'orchestrator.jsonl'), ledgerSecret: LEDGER_SECRET,
-      checkpointSecret: CHECKPOINT_SECRET, faults, now: () => IAG_ORCHESTRATOR_NOW,
+      ledgerPath: join(input.root, 'orchestrator.jsonl'), ledgerSecret: IAG_ORCHESTRATOR_LEDGER_SECRET,
+      checkpointSecret: IAG_ORCHESTRATOR_CHECKPOINT_SECRET, faults, now: () => IAG_ORCHESTRATOR_NOW,
     });
     return {
       store: restartedStore,
