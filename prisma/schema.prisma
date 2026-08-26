@@ -225,6 +225,16 @@ model BlroTenant {
   ragChunks BlroRagChunk[]
   clientEnrollments BlroClientEnrollment[]
   browserJobResults BlroBrowserJobResult[]
+  serviceRegistry BlroServiceRegistry[]
+  pmRecords BlroPmRecord[]
+  feedbackLessons BlroFeedbackLesson[]
+  evalRecords BlroEvalRecord[]
+  wikiProposals BlroWikiProposal[]
+  learningRecords BlroLearningRecord[]
+  firmwareEvidence BlroFirmwareEvidence[]
+  configChronicles BlroConfigChronicle[]
+  capabilityEvidence BlroCapabilityEvidence[]
+  ragSourceChunks BlroRagSourceChunk[]
 }
 
 model BlroProject {
@@ -247,6 +257,16 @@ model BlroProject {
   ragChunks           BlroRagChunk[]
   clientEnrollments   BlroClientEnrollment[]
   browserJobResults   BlroBrowserJobResult[]
+  serviceRegistry     BlroServiceRegistry[]
+  pmRecords           BlroPmRecord[]
+  feedbackLessons     BlroFeedbackLesson[]
+  evalRecords         BlroEvalRecord[]
+  wikiProposals       BlroWikiProposal[]
+  learningRecords     BlroLearningRecord[]
+  firmwareEvidence    BlroFirmwareEvidence[]
+  configChronicles    BlroConfigChronicle[]
+  capabilityEvidence  BlroCapabilityEvidence[]
+  ragSourceChunks     BlroRagSourceChunk[]
 
   @@unique([id, tenantId])
   @@index([tenantId])
@@ -496,4 +516,127 @@ model BlroBrowserJobResult {
   createdAt DateTime @default(now())
   tenant    BlroTenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   project   BlroProject @relation(fields: [projectId, tenantId], references: [id, tenantId], onDelete: Restrict)
+}
+
+model BlroServiceRegistry {
+  id String @id
+  tenantId String
+  projectId String
+  kind String
+  payload Json
+  createdAt DateTime @default(now())
+  tenant BlroTenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  project BlroProject @relation(fields: [projectId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  @@index([projectId, kind])
+}
+
+model BlroPmRecord {
+  id String @id
+  tenantId String
+  projectId String
+  kind String
+  payload Json
+  createdAt DateTime @default(now())
+  tenant BlroTenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  project BlroProject @relation(fields: [projectId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  @@index([projectId, kind])
+}
+
+model BlroFeedbackLesson {
+  id String @id
+  tenantId String
+  projectId String
+  kind String
+  payload Json
+  createdAt DateTime @default(now())
+  tenant BlroTenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  project BlroProject @relation(fields: [projectId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  @@index([projectId, kind])
+}
+
+model BlroEvalRecord {
+  id String @id
+  tenantId String
+  projectId String
+  kind String
+  payload Json
+  createdAt DateTime @default(now())
+  tenant BlroTenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  project BlroProject @relation(fields: [projectId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  @@index([projectId, kind])
+}
+
+model BlroWikiProposal {
+  id String @id
+  tenantId String
+  projectId String
+  kind String
+  payload Json
+  createdAt DateTime @default(now())
+  tenant BlroTenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  project BlroProject @relation(fields: [projectId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  @@index([projectId, kind])
+}
+
+model BlroLearningRecord {
+  id String @id
+  tenantId String
+  projectId String
+  kind String
+  payload Json
+  createdAt DateTime @default(now())
+  tenant BlroTenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  project BlroProject @relation(fields: [projectId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  @@index([projectId, kind])
+}
+
+model BlroFirmwareEvidence {
+  id String @id
+  tenantId String
+  projectId String
+  kind String
+  payload Json
+  createdAt DateTime @default(now())
+  tenant BlroTenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  project BlroProject @relation(fields: [projectId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  @@index([projectId, kind])
+}
+
+model BlroConfigChronicle {
+  id String @id
+  tenantId String
+  projectId String
+  kind String
+  payload Json
+  createdAt DateTime @default(now())
+  tenant BlroTenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  project BlroProject @relation(fields: [projectId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  @@index([projectId, kind])
+}
+
+model BlroCapabilityEvidence {
+  id String @id
+  tenantId String
+  projectId String
+  kind String
+  payload Json
+  createdAt DateTime @default(now())
+  tenant BlroTenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  project BlroProject @relation(fields: [projectId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  @@index([projectId, kind])
+}
+
+model BlroRagSourceChunk {
+  id String @id
+  tenantId String
+  projectId String
+  documentId String
+  text String
+  contentHash String
+  aclActorIds String[]
+  createdAt DateTime @default(now())
+  tenant BlroTenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  project BlroProject @relation(fields: [projectId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  @@unique([projectId, contentHash])
+  @@index([projectId, documentId])
 }

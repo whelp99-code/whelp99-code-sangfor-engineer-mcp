@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "aggregateIds": [
+    "m001-tenant-identity",
+    "m002-project-installation-identity",
+    "m003-registry-services",
+    "m004-runs-steps",
+    "m005-approvals-nonces",
+    "m006-audit",
+    "m007-evidence",
+    "m008-rag-source-chunks",
+    "m009-rag-embeddings-local-index",
+    "m010-pm-tasks",
+    "m011-feedback-lessons",
+    "m012-evals",
+    "m013-wiki-proposals",
+    "m014-learning-strategy-lifecycle",
+    "m015-firmware-version-evidence",
+    "m016-config-chronicle-state",
+    "m017-capability-evidence-promotion",
+    "m018-finetune-artifacts",
+    "m019-browser-credentials",
+    "m020-browser-job-cache",
+    "m021-loop-runtime-cache",
+    "m022-acquisition-checkpoints",
+    "m023-iag-orchestrator-checkpoints",
+    "m024-legacy-unscoped-metadata",
+    "m025-generated-artifacts",
+    "m026-spec-registry"
+  ],
+  "classCounts": {
+    "authoritative": 16,
+    "derived": 8,
+    "credential_local": 1,
+    "curated_seed": 1
+  },
+  "manifestSemanticSha256": "c38c9230d692733f66e60cc94e509d41b4d0935b892ce74bcb9d0ebf0669eadf",
+  "repositoryCensusDigest": "daaaae3484120ac9ea774ea748cec757f1bb2b4f08084347b33faff1fc200b84",
+  "sourceOnlyRefs": [
+    "m026-spec-registry:data/specs#curated-seed:v1"
+  ]
+}

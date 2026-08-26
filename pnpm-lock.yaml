@@ -116,6 +116,12 @@ importers:
       '@sangfor/identity':
         specifier: workspace:*
         version: link:../sangfor-identity
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+      zod:
+        specifier: ^3.25.76
+        version: 3.25.76
 
   packages/sangfor-browser-contracts:
     dependencies:
