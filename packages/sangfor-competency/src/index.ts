@@ -85,6 +85,30 @@ export {
 } from './promotion-schema.js';
 
 export {
+  FilePromotionLedger,
+  PromotionLedgerIndeterminateError,
+  PromotionLedgerStaleStateError,
+  PromotionLedgerUnavailableError,
+  maskedPromotionRef,
+  type PromotionLedger,
+  type PromotionLedgerEvent,
+  type PromotionLedgerEventInput,
+  type PromotionLedgerFaults,
+} from './promotion-ledger.js';
+
+export { capabilityPromotionCliOutput, type CapabilityPromotionCliOutput } from './promotion-cli.js';
+
+export {
+  canonicalizeCapabilityApproval,
+  signCapabilityApproval,
+  deriveEffectiveMaturity,
+  executeCapabilityPromotion,
+  type PromotionNonceStore,
+  type ExecuteCapabilityPromotionInput,
+  type CapabilityPromotionResult,
+} from './promotion.js';
+
+export {
   parseGroundedCapabilityEvidence,
   parseGroundedCapabilityPromotion,
   CapabilityEvidenceGroundingError,

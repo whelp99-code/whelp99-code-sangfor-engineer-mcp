@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { authorizeToolCall } from '../apps/http-bridge/src/tool-guard.js';
 import { mintApproval } from '../apps/control-tower/src/approval-mint.js';
@@ -13,6 +14,28 @@ const SECRET = 'doc-accuracy-secret';
 const TOOL_LIST = { tools: [
   { name: 'destructive', annotations: { readOnlyHint: false, destructiveHint: true } },
 ] };
+
+let nonceRoot: string;
+let noncePath: string;
+let previousNonceStore: string | undefined;
+let previousNonceStorePath: string | undefined;
+
+beforeEach(() => {
+  nonceRoot = mkdtempSync(join(tmpdir(), 'security-doc-nonce-'));
+  noncePath = join(nonceRoot, 'nonces.json');
+  previousNonceStore = process.env.SANGFOR_NONCE_STORE;
+  previousNonceStorePath = process.env.SANGFOR_NONCE_STORE_PATH;
+  process.env.SANGFOR_NONCE_STORE = 'file';
+  process.env.SANGFOR_NONCE_STORE_PATH = noncePath;
+});
+
+afterEach(() => {
+  if (previousNonceStore === undefined) delete process.env.SANGFOR_NONCE_STORE;
+  else process.env.SANGFOR_NONCE_STORE = previousNonceStore;
+  if (previousNonceStorePath === undefined) delete process.env.SANGFOR_NONCE_STORE_PATH;
+  else process.env.SANGFOR_NONCE_STORE_PATH = previousNonceStorePath;
+  rmSync(nonceRoot, { recursive: true, force: true });
+});
 
 describe('docs/SECURITY.md — 브리지 게이트 서술이 실제 동작과 일치한다', () => {
   it('승인 없는 destructive는 모든 토글과 무관하게 거부된다', async () => {
@@ -33,6 +56,7 @@ describe('docs/SECURITY.md — 브리지 게이트 서술이 실제 동작과 �
       approval, approvalSecret: SECRET,
     }));
     expect(d.allow).toBe(true);
+    expect(readFileSync(noncePath, 'utf8')).toContain(approval.nonce);
   });
 
   it('문서가 "always refused"로 단정하지 않고 승인 경로를 함께 서술한다', async () => {

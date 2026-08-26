@@ -8,6 +8,7 @@ import {
   timestampSchema,
 } from './evidence-primitives.js';
 import { CAPABILITY_EVIDENCE_VERSION, O5_COUNTER_KEYS, o5CampaignCountersSchema } from './evidence-schema.js';
+import { MATURITIES } from './schema.js';
 
 export const CAPABILITY_PROMOTION_VERSION = 1 as const;
 
@@ -17,7 +18,8 @@ export const capabilityPromotionRequestSchema = z.object({
   manifestId: evidenceIdSchema,
   manifestDigest: sha256Schema,
   target: capabilityTargetSchema,
-  requestedMaturity: z.literal('field_verified'),
+  fromMaturity: z.enum(MATURITIES),
+  requestedMaturity: z.enum(MATURITIES),
   requestedBy: actorIdentitySchema,
   requestedAt: timestampSchema,
   evidenceRef: relativeArtifactPathSchema,
@@ -38,17 +40,26 @@ const promotionDecisionFields = {
   manifestDigest: sha256Schema,
   target: capabilityTargetSchema,
   o5Counters: o5CampaignCountersSchema,
+  fromMaturity: z.enum(MATURITIES),
   reviewer: humanReviewerSchema,
   decidedAt: timestampSchema,
   auditRef: relativeArtifactPathSchema,
   approvalDigest: sha256Schema,
+  nonce: evidenceIdSchema.optional(),
+  expiresAt: timestampSchema.optional(),
 } as const;
 
 export const capabilityPromotionDecisionSchema = z.discriminatedUnion('decision', [
   z.object({
     ...promotionDecisionFields,
     decision: z.literal('promote'),
-    promotedMaturity: z.literal('field_verified'),
+    promotedMaturity: z.enum(MATURITIES),
+  }).strict(),
+  z.object({
+    ...promotionDecisionFields,
+    decision: z.literal('emergency_demote'),
+    demotedMaturity: z.enum(MATURITIES),
+    reason: z.string().trim().min(1).max(512),
   }).strict(),
   z.object({
     ...promotionDecisionFields,
@@ -86,8 +97,17 @@ export const capabilityPromotionEnvelopeSchema = z.object({
   if (Date.parse(decision.decidedAt) < Date.parse(envelope.request.requestedAt)) {
     context.addIssue({ code: z.ZodIssueCode.custom, path: ['decision', 'decidedAt'], message: 'decision precedes request' });
   }
+  if (decision.fromMaturity !== envelope.request.fromMaturity) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ['decision', 'fromMaturity'], message: 'decision source maturity differs from request' });
+  }
   if (decision.reviewer.actorId === envelope.request.requestedBy.actorId) {
     context.addIssue({ code: z.ZodIssueCode.custom, path: ['decision', 'reviewer'], message: 'reviewer must be independent from requester' });
+  }
+  if (decision.decision === 'promote' && decision.promotedMaturity !== envelope.request.requestedMaturity) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ['decision', 'promotedMaturity'], message: 'promoted maturity differs from request' });
+  }
+  if (decision.decision === 'emergency_demote' && decision.demotedMaturity !== envelope.request.requestedMaturity) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ['decision', 'demotedMaturity'], message: 'demoted maturity differs from request' });
   }
 }).readonly();
 

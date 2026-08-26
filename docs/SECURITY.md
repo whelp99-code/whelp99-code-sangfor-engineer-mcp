@@ -53,6 +53,7 @@ A destructive HCI tool therefore needs **two independent approvals** over HTTP: 
 ## Knowledge/data trust
 - RAG runs local-first; cloud embeddings/rerank need `SANGFOR_ALLOW_CLOUD_RAG`; customer-trust docs excluded from results unless `SANGFOR_ALLOW_CLOUD_RAG_CUSTOMER=1`.
 - Wiki writes are review-gated: proposal → `approveWikiUpdate` (action-bound HMAC over the `proposalId`, keyed by `SANGFOR_WIKI_APPROVAL_SECRET`, timing-safe verify, fail-closed if unset) → apply.
+- Capability maturity changes are event-derived, human-only decisions. They use the dedicated `SANGFOR_CAPABILITY_PROMOTION_SECRET` domain, an append-only decision ledger keyed separately by `SANGFOR_CAPABILITY_PROMOTION_LEDGER_SECRET`, an independently keyed durable head (`SANGFOR_CAPABILITY_PROMOTION_CHECKPOINT_SECRET`), and an existing single-use nonce store. Only a fully verified ledger/head pair yields maturity; uncertain append acknowledgement reports INDETERMINATE. They never rewrite the curated catalog/policy, reuse operator/wiki keys, create missing authority stores at runtime, or auto-promote active evidence.
 
 ## Rules for agents working here
 - **Never weaken a gate to make a test pass.** The refusal *is* the feature; dedicated tests assert it (`operator-execution-gate`, `operator-nonce-store`, `verifier-apply-gate`, `http-bridge-approval-guard`, `operator-console-auth`).
@@ -61,4 +62,4 @@ A destructive HCI tool therefore needs **two independent approvals** over HTTP: 
 - When in doubt, **refuse and surface** rather than proceed.
 
 ## Security env vars (gates & secrets)
-`SANGFOR_ALLOW_REAL_EXECUTION`, `SANGFOR_ALLOW_PRODUCTION_EXECUTION`, `SANGFOR_OPERATOR_APPROVAL_SECRET`, `SANGFOR_ALLOW_REMOTE_WRITE`, `SANGFOR_API_TOKEN`, `SANGFOR_BLRO_AUTHORITY_STORE`, `SANGFOR_NONCE_STORE`, `SANGFOR_NONCE_STORE_PATH`, `SANGFOR_PROJECT_ID`, `DATABASE_URL`, `SANGFOR_CHANGE_LEDGER_SECRET`, `SANGFOR_PM_CHAIN_SECRET`, `SANGFOR_WIKI_APPROVAL_SECRET`, `SANGFOR_ALLOW_CLOUD_RAG`, `SANGFOR_ALLOW_CLOUD_RAG_CUSTOMER`. See `.env.example` for the full set.
+`SANGFOR_ALLOW_REAL_EXECUTION`, `SANGFOR_ALLOW_PRODUCTION_EXECUTION`, `SANGFOR_OPERATOR_APPROVAL_SECRET`, `SANGFOR_ALLOW_REMOTE_WRITE`, `SANGFOR_API_TOKEN`, `SANGFOR_BLRO_AUTHORITY_STORE`, `SANGFOR_NONCE_STORE`, `SANGFOR_NONCE_STORE_PATH`, `SANGFOR_PROJECT_ID`, `DATABASE_URL`, `SANGFOR_CHANGE_LEDGER_SECRET`, `SANGFOR_PM_CHAIN_SECRET`, `SANGFOR_WIKI_APPROVAL_SECRET`, `SANGFOR_CAPABILITY_PROMOTION_SECRET`, `SANGFOR_CAPABILITY_PROMOTION_LEDGER_SECRET`, `SANGFOR_CAPABILITY_PROMOTION_CHECKPOINT_SECRET`, `SANGFOR_CAPABILITY_PROMOTION_NONCE_STORE_PATH`, `SANGFOR_CAPABILITY_PROMOTION_LEDGER_PATH`, `SANGFOR_ALLOW_CLOUD_RAG`, `SANGFOR_ALLOW_CLOUD_RAG_CUSTOMER`. See `.env.example` for the full set.

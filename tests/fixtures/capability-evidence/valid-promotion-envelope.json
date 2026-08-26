@@ -11,6 +11,7 @@
       "toolId": "sangfor_evaluate_config",
       "workAtomIds": ["op_daily_health"]
     },
+    "fromMaturity": "tested_mock",
     "requestedMaturity": "field_verified",
     "requestedBy": { "actorId": "campaign-requester-01", "actorType": "ai_engineer" },
     "requestedAt": "2026-08-25T12:05:00.000Z",
@@ -55,6 +56,7 @@
       "retryCount": 0,
       "collateralMutationCount": 0
     },
+    "fromMaturity": "tested_mock",
     "reviewer": { "actorId": "pm-reviewer-01", "actorType": "human_pm" },
     "decidedAt": "2026-08-25T12:10:00.000Z",
     "auditRef": "audit/promotion-decision-001.jsonl",
