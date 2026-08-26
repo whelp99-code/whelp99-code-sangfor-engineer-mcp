@@ -196,6 +196,8 @@ export {
   type ValidateCapabilityEvidenceInput,
 } from './evidence-validation.js';
 
+export { resolveIagMutationActionAuthority, isIagMutationActionAuthority, type IagMutationActionAuthority, type IagMutationActionAuthorityResult, type ResolveIagMutationActionAuthorityInput } from './iag-mutation-authority.js';
+
 export {
   MAX_TARGET_WORK_ATOMS,
   sha256Schema,

@@ -94,6 +94,8 @@ importers:
         specifier: ^5.0.0
         version: 5.9.3
 
+  packages/sangfor-acquisition: {}
+
   packages/sangfor-approval:
     dependencies:
       '@sangfor/shared':
@@ -120,6 +122,8 @@ importers:
         specifier: ^1.60.0
         version: 1.60.0
 
+  packages/sangfor-chronicle: {}
+
   packages/sangfor-collector:
     dependencies:
       '@sangfor/shared':
@@ -129,6 +133,8 @@ importers:
   packages/sangfor-competency: {}
 
   packages/sangfor-config-state: {}
+
+  packages/sangfor-engineer-report: {}
 
   packages/sangfor-evals: {}
 
@@ -162,11 +168,15 @@ importers:
         specifier: workspace:*
         version: link:../shared
 
+  packages/sangfor-first-line: {}
+
   packages/sangfor-hci-client: {}
 
   packages/sangfor-identity: {}
 
   packages/sangfor-integration: {}
+
+  packages/sangfor-intent-graph: {}
 
   packages/sangfor-jm-execution:
     dependencies:
@@ -269,6 +279,9 @@ importers:
       '@sangfor/browser-contracts':
         specifier: workspace:*
         version: link:../sangfor-browser-contracts
+      '@sangfor/competency':
+        specifier: workspace:*
+        version: link:../sangfor-competency
       '@sangfor/learning-strategy':
         specifier: workspace:*
         version: link:../sangfor-learning-strategy
@@ -281,6 +294,12 @@ importers:
       '@sangfor/shared':
         specifier: workspace:*
         version: link:../shared
+      tldts:
+        specifier: 7.4.11
+        version: 7.4.11
+      zod:
+        specifier: ^3.25.76
+        version: 3.25.76
 
   packages/sangfor-rag:
     dependencies:
@@ -300,6 +319,10 @@ importers:
         version: link:../shared
 
   packages/sangfor-safety: {}
+
+  packages/sangfor-saga: {}
+
+  packages/sangfor-scorecard: {}
 
   packages/sangfor-screenshot:
     dependencies:
@@ -1366,6 +1389,13 @@ packages:
   tinyrainbow@3.1.0:
     resolution: {integrity: sha512-Bf+ILmBgretUrdJxzXM0SgXLZ3XfiaUuOj/IKQHuTXip+05Xn+uyEYdVg0kYDipTBcLrCVyUzAPz7QmArb0mmw==}
     engines: {node: '>=14.0.0'}
+
+  tldts-core@7.4.11:
+    resolution: {integrity: sha512-CW3WN2rIIE/Of21mulhgnGOwoDyEFNygyIBOONSdyAuSATgMMUCpLeUlB+E8sAwA5xRV9hYPl+kyZ9citHCaKg==}
+
+  tldts@7.4.11:
+    resolution: {integrity: sha512-aBiNayCfTQxuIJBm06M+xR14cYaYlDlSXZbgsnKzKNxDKUVq7KFwTjwBSsb7m9Y5xO8WfPnBc63WaYFMTGlvqw==}
+    hasBin: true
 
   toidentifier@1.0.1:
     resolution: {integrity: sha512-o5sSPKEkg/DIQNmH43V0/uerLrpzVedkUh8tGNvaeXpfpuwjKenlSox/2O/BTlZUtEe+JG7s5YhEz608PlAHRA==}
@@ -2467,6 +2497,12 @@ snapshots:
       picomatch: 4.0.4
 
   tinyrainbow@3.1.0: {}
+
+  tldts-core@7.4.11: {}
+
+  tldts@7.4.11:
+    dependencies:
+      tldts-core: 7.4.11
 
   toidentifier@1.0.1: {}
 

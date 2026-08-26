@@ -46,6 +46,29 @@ export type DerivedAuthorityScope = {
   readonly deviceId: string;
   readonly originDigest: string;
   readonly firmwareId: string;
+  readonly firmwareTruth: {
+    readonly recordId: string;
+    readonly vendor: 'SANGFOR' | 'FORTINET' | 'CISCO';
+    readonly adapterProduct: string;
+    readonly productVariant: string | null;
+    readonly versionRaw: string;
+    readonly versionFamily: string;
+    readonly revision: string | null;
+    readonly buildId: string | null;
+    readonly hotfix: string | null;
+    readonly uiFingerprint: string | null;
+    readonly apiFingerprint: string | null;
+    readonly status: 'verified';
+    readonly observedAt: string;
+    readonly specVersion: string;
+    readonly specApplicability: 'verified';
+    readonly truthDigest: string;
+  };
+  readonly implementation: {
+    readonly recipeDigest: string;
+    readonly toolDigest: string;
+    readonly runtimeDigest: string;
+  };
   readonly windowId: string;
   readonly sessionId: string;
   readonly campaignId: string;
@@ -128,6 +151,29 @@ export async function resolveConfiguredWriteAuthority(input: ResolveWriteAuthori
       deviceId: validationContext.currentDigests.deviceIdentityDigest,
       originDigest: validationContext.currentDigests.originDigest,
       firmwareId: validationContext.currentFirmware.truthDigest,
+      firmwareTruth: {
+        recordId: manifest.firmwareTruth.recordId,
+        vendor: manifest.firmwareTruth.vendor,
+        adapterProduct: manifest.firmwareTruth.adapterProduct,
+        productVariant: manifest.firmwareTruth.productVariant,
+        versionRaw: manifest.firmwareTruth.versionRaw,
+        versionFamily: manifest.firmwareTruth.versionFamily,
+        revision: manifest.firmwareTruth.revision,
+        buildId: manifest.firmwareTruth.buildId,
+        hotfix: manifest.firmwareTruth.hotfix,
+        uiFingerprint: manifest.firmwareTruth.uiFingerprint,
+        apiFingerprint: manifest.firmwareTruth.apiFingerprint,
+        status: manifest.firmwareTruth.status,
+        observedAt: manifest.firmwareTruth.observedAt,
+        specVersion: manifest.firmwareTruth.specVersion,
+        specApplicability: manifest.firmwareTruth.specApplicability,
+        truthDigest: manifest.firmwareTruth.truthDigest,
+      },
+      implementation: {
+        recipeDigest: validationContext.currentDigests.recipeDigest,
+        toolDigest: validationContext.currentDigests.toolDigest,
+        runtimeDigest: validationContext.currentDigests.runtimeDigest,
+      },
       windowId: validationContext.currentDigests.windowIdentityDigest,
       sessionId: firstRun.id,
       campaignId: manifest.manifestId,

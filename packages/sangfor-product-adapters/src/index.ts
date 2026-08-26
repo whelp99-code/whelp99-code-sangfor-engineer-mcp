@@ -14,6 +14,7 @@ import type {
 export type { AdapterProductCode, ProductRegistryEntry, ProductRegistryView, SpecProductMapping } from '@sangfor/learning-strategy';
 
 export { buildSettingGuideDocx, buildOperationsGuideDocx, buildComprehensiveSettingGuideDocx, buildComprehensiveOperationsGuideDocx, type DocxBuilderInput, type DocxBuilderResult } from './docx-builder.js';
+export * from './apply/index.js';
 
 export type AutomationProductCode = 'HCI_SCP' | 'IAG' | 'ENDPOINT_SECURE' | 'NDR';
 export type RequirementProductCode = AutomationProductCode | 'external_or_manual';
