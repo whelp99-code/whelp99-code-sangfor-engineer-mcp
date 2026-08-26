@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import {
   browserExecutionResultSchema,
+  type BrowserExecutionContext,
   type BrowserExecutionPort,
   type BrowserExecutionResult,
 } from './browser-execution.js';
@@ -62,6 +63,7 @@ export interface RemoteHandlerInput {
   readonly urlPath: string;
   readonly bodyText: string;
   readonly headers?: Readonly<Record<string, string | readonly string[] | undefined>>;
+  readonly executionContext?: BrowserExecutionContext;
 }
 
 export function createRemoteBrowserJobHandler(
@@ -85,7 +87,9 @@ export function createRemoteBrowserJobHandler(
       if (cached) return resultResponse(200, cached);
       const running = inFlight.get(envelope.jobId);
       if (running) return resultResponse(200, await running);
-      const execution = executeOnce(options, client, envelope, store);
+      const execution = executeOnce({
+        options, client, envelope, store, executionContext: input.executionContext,
+      });
       inFlight.set(envelope.jobId, execution);
       try {
         return resultResponse(200, await execution);
@@ -111,14 +115,19 @@ class AuthorizationRefusal extends Error {
   }
 }
 
-async function executeOnce(
-  options: RemoteBrowserJobHandlerOptions,
-  client: RemotePeerIdentity,
-  envelope: JobEnvelope,
-  store: JobIdempotencyStore,
-): Promise<BrowserExecutionResult> {
-  if (options.preExecution) {
-    const decision = await options.preExecution({ client, envelope });
+interface RemoteExecutionInput {
+  readonly options: RemoteBrowserJobHandlerOptions;
+  readonly client: RemotePeerIdentity;
+  readonly envelope: JobEnvelope;
+  readonly store: JobIdempotencyStore;
+  readonly executionContext: BrowserExecutionContext | undefined;
+}
+
+async function executeOnce(input: RemoteExecutionInput): Promise<BrowserExecutionResult> {
+  if (input.options.preExecution) {
+    const decision = await input.options.preExecution({
+      client: input.client, envelope: input.envelope,
+    });
     if (!decision.allow) {
       throw new AuthorizationRefusal(
         decision.code ?? REMOTE_TRANSPORT_ERROR_CODES.JOB_AUTHORIZATION_DENIED,
@@ -126,10 +135,11 @@ async function executeOnce(
       );
     }
   }
-  const result = browserExecutionResultSchema.parse(
-    await options.executor.execute(envelope.request),
-  );
-  await store.put(envelope.jobId, result);
+  const rawResult = input.executionContext === undefined
+    ? await input.options.executor.execute(input.envelope.request)
+    : await input.options.executor.execute(input.envelope.request, input.executionContext);
+  const result = browserExecutionResultSchema.parse(rawResult);
+  await input.store.put(input.envelope.jobId, result);
   return result;
 }
 

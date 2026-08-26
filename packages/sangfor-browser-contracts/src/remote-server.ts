@@ -6,6 +6,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { TLSSocket } from 'node:tls';
 import {
   REMOTE_BROWSER_JOB_PATH,
+  REMOTE_EXECUTION_DEADLINE_HEADER,
   REMOTE_TRANSPORT_ERROR_CODES,
   errorBody,
   jsonHeaders,
@@ -45,10 +46,20 @@ export function createRemoteBrowserJobRequestListener(
   handler: ReturnType<typeof createRemoteBrowserJobHandler>,
 ): (request: IncomingMessage, response: ServerResponse) => void {
   return (request: IncomingMessage, response: ServerResponse) => {
+    const controller = new AbortController();
+    request.once('aborted', () => controller.abort());
+    response.once('close', () => {
+      if (!response.writableFinished) controller.abort();
+    });
     void (async () => {
       try {
         const socket = request.socket as TLSSocket;
         const certificate = socket.getPeerCertificate();
+        const deadlineHeader = request.headers[REMOTE_EXECUTION_DEADLINE_HEADER];
+        const deadline = typeof deadlineHeader === 'string'
+          && Number.isFinite(Date.parse(deadlineHeader))
+          ? new Date(deadlineHeader).toISOString()
+          : undefined;
         const output = await handler.handle({
           client: peerIdentityFromCertificate(certificate, socket.authorized),
           method: request.method ?? 'GET',
@@ -57,6 +68,9 @@ export function createRemoteBrowserJobRequestListener(
           // a comma-joined one stays joined, so negotiation sees the ambiguity.
           bodyText: await readRequestBody(request),
           headers: request.headers,
+          ...(deadline === undefined
+            ? {}
+            : { executionContext: { signal: controller.signal, deadline } }),
         });
         response.writeHead(output.statusCode, output.headers);
         response.end(output.bodyText);

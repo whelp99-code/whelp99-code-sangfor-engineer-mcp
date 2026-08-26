@@ -112,6 +112,33 @@ describe('local JM browser execution port', () => {
     expect(output.error?.code).toBe('JM_BROWSER_MUTATION_INDETERMINATE');
   });
 
+  it('releases the browser session when an in-flight dispatch is aborted', async () => {
+    let rejectDriver: ((reason: Error) => void) | undefined;
+    const driverResult = new Promise<BrowserExecutionResult>((_resolve, reject) => {
+      rejectDriver = reject;
+    });
+    const execute = vi.fn<JmBrowserDriver['execute']>(async () => driverResult);
+    const closeSession = vi.fn<JmBrowserDriver['closeSession']>(async () => {
+      rejectDriver?.(new Error('browser closed on abort'));
+    });
+    const port = createLocalJmExecutionPort({
+      resolveSession: () => session,
+      driver: { execute, closeSession },
+    });
+    const controller = new AbortController();
+    const pending = port.execute(request({
+      kind: 'perform_console_action',
+      action: { type: 'click', target: 'Apply', dryRun: false },
+    }), { signal: controller.signal, deadline: '2026-08-20T11:01:01.000Z' });
+    expect(execute).toHaveBeenCalledOnce();
+
+    controller.abort();
+    expect(closeSession).toHaveBeenCalledOnce();
+    const output = await pending;
+
+    expect(output).toMatchObject({ status: 'INDETERMINATE', mutationAttempted: true });
+  });
+
   it('closes a local session without browser data in the result', async () => {
     const closeSession = vi.fn<JmBrowserDriver['closeSession']>()
       .mockResolvedValue(undefined);

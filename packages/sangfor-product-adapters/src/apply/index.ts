@@ -33,3 +33,25 @@ export {
   parseIagMutationResult,
   verifyIagMutationResult,
 } from './iag-result-authority.js';
+export {
+  createIagExecutor,
+  type IagExecutionAdapterResult,
+  type IagExecutor,
+  type IagPreflight,
+} from './iag-executor.js';
+export {
+  systemIagDispatchScheduler,
+  type IagDispatchOutcome,
+  type IagDispatchSchedule,
+  type IagDuplicateDispatchOutcome,
+  type IagDispatchScheduler,
+} from './iag-dispatch.js';
+export {
+  IAG_POLICY_OBSERVATION_SCHEMA_VERSION,
+  iagPolicyObservationSchema,
+  type IagPolicyObservation,
+} from './iag-observation.js';
+export {
+  independentlyReadBackIag,
+  type IagIndependentReadBack,
+} from './iag-read-back.js';

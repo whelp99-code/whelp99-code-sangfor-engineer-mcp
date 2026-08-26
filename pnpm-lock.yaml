@@ -44,7 +44,11 @@ importers:
 
   apps/mcp-server: {}
 
-  apps/mock-sangfor-console: {}
+  apps/mock-sangfor-console:
+    dependencies:
+      zod:
+        specifier: ^3.25.76
+        version: 3.25.76
 
   apps/operator-console: {}
 

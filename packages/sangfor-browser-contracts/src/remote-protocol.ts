@@ -7,6 +7,7 @@ import {
 import { jobEnvelopeSchema, type JobEnvelope } from './job-envelope.js';
 
 export const REMOTE_BROWSER_JOB_PATH = '/v1/browser-jobs' as const;
+export const REMOTE_EXECUTION_DEADLINE_HEADER = 'x-sangfor-browser-deadline' as const;
 export const REMOTE_TRANSPORT_ERROR_CODES = {
   SERVER_IDENTITY_MISMATCH: 'REMOTE_SERVER_IDENTITY_MISMATCH',
   CLIENT_UNAUTHORIZED: 'REMOTE_CLIENT_UNAUTHORIZED',

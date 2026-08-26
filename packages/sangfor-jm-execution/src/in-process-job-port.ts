@@ -27,7 +27,7 @@ export function createInProcessJobExecutionPort(
   options: InProcessJobExecutionOptions,
 ): BrowserExecutionPort {
   return {
-    async execute(input) {
+    async execute(input, context) {
       const request = browserExecutionRequestSchema.parse(input);
       const issuedAt = (options.now ?? (() => new Date()))();
       const envelope = jobEnvelopeSchema.parse({
@@ -45,7 +45,9 @@ export function createInProcessJobExecutionPort(
         request,
       });
 
-      const result = await delegate.execute(envelope.request);
+      const result = context === undefined
+        ? await delegate.execute(envelope.request)
+        : await delegate.execute(envelope.request, context);
       const parsedResult = browserExecutionResultSchema.parse(result);
       const acceptedAt = (options.now ?? (() => new Date()))().toISOString();
       const receipt = jobReceiptSchema.parse({

@@ -12,6 +12,7 @@ import {
   type ContractVersion,
 } from './protocol-version.js';
 import {
+  REMOTE_EXECUTION_DEADLINE_HEADER,
   REMOTE_TRANSPORT_ERROR_CODES,
   buildRemoteJobEnvelope,
   createExactServerIdentityChecker,
@@ -39,6 +40,8 @@ export interface RemoteHttpRequest {
   readonly headers: Readonly<Record<string, string>>;
   readonly body: string;
   readonly tls: RemoteTlsClientOptions;
+  readonly signal?: AbortSignal;
+  readonly deadline?: string;
 }
 
 export interface RemoteHttpResponse {
@@ -81,6 +84,7 @@ export function createNodeHttpsTransport(): RemoteHttpTransport {
       rejectUnauthorized: true,
       servername: request.tls.servername ?? request.url.hostname,
       checkServerIdentity: checker,
+      signal: request.signal,
     }, (incoming) => {
       const chunks: Buffer[] = [];
       incoming.on('data', (chunk: Buffer | string) => {
@@ -118,7 +122,7 @@ export function createRemoteBrowserExecutionPort(
   );
   return {
     buildEnvelope: buildRemoteJobEnvelope,
-    async execute(input) {
+    async execute(input, context) {
       const request = browserExecutionRequestSchema.parse(input);
       const envelope = buildRemoteJobEnvelope(request, options.envelope);
       const body = JSON.stringify(envelope);
@@ -132,9 +136,14 @@ export function createRemoteBrowserExecutionPort(
             accept: 'application/json',
             'content-length': String(Buffer.byteLength(body)),
             [CONTRACT_VERSION_HEADER]: declaredVersion,
+            ...(context === undefined
+              ? {}
+              : { [REMOTE_EXECUTION_DEADLINE_HEADER]: context.deadline }),
           },
           body,
           tls: options.tls,
+          signal: context?.signal,
+          deadline: context?.deadline,
         }, {
           markDispatched() {
             dispatched = true;
