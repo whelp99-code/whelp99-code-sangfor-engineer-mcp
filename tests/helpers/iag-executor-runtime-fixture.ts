@@ -119,6 +119,8 @@ export function executorResult(
 export function replayFixture(
   actions: readonly GroundedIagMutationAction[],
   dispatchBehavior: 'settle' | 'throw' = 'settle',
+  preflightPresent = false,
+  readBackPresent = true,
 ) {
   const preflights: BrowserExecutionRequest[] = [];
   const dispatches: BrowserExecutionRequest[] = [];
@@ -129,7 +131,7 @@ export function replayFixture(
         const action = actions[preflights.length];
         preflights.push(request);
         if (action === undefined) throw new TypeError('UNEXPECTED_PREFLIGHT');
-        return executorResult(request, executorObservation(action));
+        return executorResult(request, executorObservation(action, preflightPresent));
       }
       dispatches.push(request);
       if (dispatchBehavior === 'throw') throw new Error('dispatch connection lost');
@@ -141,7 +143,7 @@ export function replayFixture(
       readBacks.push(request);
       const action = actions[0];
       if (action === undefined) throw new TypeError('MISSING_ACTION');
-      return executorResult(request, executorObservation(action, true));
+      return executorResult(request, executorObservation(action, readBackPresent));
     },
   };
   return {

@@ -55,3 +55,4 @@ export {
   independentlyReadBackIag,
   type IagIndependentReadBack,
 } from './iag-read-back.js';
+export * from '../operator/index.js';

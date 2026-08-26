@@ -14,7 +14,6 @@ const expectedTarget = {
   product: 'IAG',
   capabilityId: 'internet_policy',
   toolId: 'iag_o1_evidence_campaign',
-  mode: 'bootstrap_mock',
 } as const;
 
 const requestSchema = z.object({
@@ -50,6 +49,7 @@ export type IagMutationActionAuthority = {
   readonly product: 'IAG';
   readonly capabilityId: 'internet_policy';
   readonly toolId: 'iag_o1_evidence_campaign';
+  readonly authorizationClass: 'ordinary_active' | 'bootstrap_candidate';
   readonly deviceIdentityDigest: string;
   readonly origin: string;
   readonly originDigest: string;
@@ -99,17 +99,22 @@ export async function resolveIagMutationActionAuthority(
   }
   if (origin !== parsed.data.origin) return { ok: false, code: 'IAG_MUTATION_AUTHORITY_REFUSED' };
 
-  const resolved = await resolveConfiguredWriteAuthority({
+  const ordinary = await resolveConfiguredWriteAuthority({
     references: parsed.data.references,
-    expected: expectedTarget,
+    expected: { ...expectedTarget, mode: 'ordinary_field' },
   });
-  if (resolved.status !== 'bootstrap_candidate'
+  const resolved = ordinary.status === 'ordinary_active' ? ordinary : await resolveConfiguredWriteAuthority({
+    references: parsed.data.references,
+    expected: { ...expectedTarget, mode: 'bootstrap_mock' },
+  });
+  if ((resolved.status !== 'ordinary_active' && resolved.status !== 'bootstrap_candidate')
     || resolved.scope.originDigest !== digestCanonicalOrigin(origin, 'origin')) {
     return { ok: false, code: 'IAG_MUTATION_AUTHORITY_REFUSED' };
   }
 
   const authority: IagMutationActionAuthority = deepFreeze({
     product: 'IAG', capabilityId: 'internet_policy', toolId: 'iag_o1_evidence_campaign',
+    authorizationClass: resolved.status,
     deviceIdentityDigest: resolved.scope.deviceId,
     origin,
     originDigest: resolved.scope.originDigest,

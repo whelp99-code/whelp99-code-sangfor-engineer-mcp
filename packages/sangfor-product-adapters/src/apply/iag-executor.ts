@@ -34,6 +34,9 @@ export type IagExecutionAdapterResult = {
 };
 
 export interface IagExecutor {
+  preflight(action: GroundedIagMutationAction): Promise<IagPreflight>;
+  dispatch(action: GroundedIagMutationAction): Promise<IagDispatchOutcome>;
+  readBack(action: GroundedIagMutationAction): Promise<IagIndependentReadBack>;
   execute(action: GroundedIagMutationAction): Promise<IagExecutionAdapterResult>;
 }
 
@@ -144,57 +147,53 @@ export function createIagExecutor(options: {
   }
   const scheduler = options.scheduler ?? systemIagDispatchScheduler;
   const actionDigestByIdempotencyKey = new Map<string, string>();
-  return {
+  const executor: IagExecutor = {
+    async preflight(action) {
+      if (!isGroundedIagMutationAction(action)) throw new TypeError('IAG_ACTION_AUTHORITY_REQUIRED');
+      return preflight({ action, port: options.executionPort });
+    },
+    async dispatch(action) {
+      if (!isGroundedIagMutationAction(action)) throw new TypeError('IAG_ACTION_AUTHORITY_REQUIRED');
+      const actionDigest = digestIagMutationAction(action);
+      const idempotencyKey = action.bindings.idempotencyKey;
+      const firstActionDigest = actionDigestByIdempotencyKey.get(idempotencyKey);
+      if (firstActionDigest !== undefined) {
+        return duplicateDispatch({ idempotencyKey, firstActionDigest, actionDigest });
+      }
+      actionDigestByIdempotencyKey.set(idempotencyKey, actionDigest);
+      return invokeBoundedIagDispatch({
+        request: dispatchRequest(action), port: options.executionPort, now: options.now,
+        timeoutMs: dispatchTimeoutMs, scheduler,
+      });
+    },
+    async readBack(action) {
+      if (!isGroundedIagMutationAction(action)) throw new TypeError('IAG_ACTION_AUTHORITY_REQUIRED');
+      return independentlyReadBackIag({ action, port: options.readBackPort, now: options.now });
+    },
     async execute(action) {
       if (!isGroundedIagMutationAction(action)) throw new TypeError('IAG_ACTION_AUTHORITY_REQUIRED');
       const actionDigest = digestIagMutationAction(action);
       const idempotencyKey = action.bindings.idempotencyKey;
       const existingDigest = actionDigestByIdempotencyKey.get(idempotencyKey);
       if (existingDigest !== undefined) {
-        const dispatch = duplicateDispatch({
-          idempotencyKey, firstActionDigest: existingDigest, actionDigest,
-        });
+        const dispatch = duplicateDispatch({ idempotencyKey, firstActionDigest: existingDigest, actionDigest });
         return {
-          actionDigest,
-          preflight: {
-            status: 'SKIPPED_IDEMPOTENCY', request: preflightRequest(action),
-            reasonCode: dispatch.code,
-          },
-          mutationAttempted: false,
-          dispatch,
+          actionDigest, preflight: { status: 'SKIPPED_IDEMPOTENCY', request: preflightRequest(action), reasonCode: dispatch.code },
+          mutationAttempted: false, dispatch,
         };
       }
-      const observed = await preflight({ action, port: options.executionPort });
+      const observed = await executor.preflight(action);
       if (observed.status === 'NO_CHANGE_CANDIDATE') {
-        return {
-          actionDigest, preflight: observed, mutationAttempted: false,
-          readBack: await independentlyReadBackIag({ action, port: options.readBackPort, now: options.now }),
-        };
+        return { actionDigest, preflight: observed, mutationAttempted: false, readBack: await executor.readBack(action) };
       }
-      if (observed.status !== 'READY_TO_DISPATCH') {
-        return { actionDigest, preflight: observed, mutationAttempted: false };
-      }
-
-      const firstActionDigest = actionDigestByIdempotencyKey.get(idempotencyKey);
-      if (firstActionDigest !== undefined) {
-        const dispatch = duplicateDispatch({ idempotencyKey, firstActionDigest, actionDigest });
-        return { actionDigest, preflight: observed, mutationAttempted: false, dispatch };
-      }
-
-      actionDigestByIdempotencyKey.set(idempotencyKey, actionDigest);
-      const request = dispatchRequest(action);
-      const dispatch = await invokeBoundedIagDispatch({
-        request, port: options.executionPort, now: options.now,
-        timeoutMs: dispatchTimeoutMs, scheduler,
-      });
+      if (observed.status !== 'READY_TO_DISPATCH') return { actionDigest, preflight: observed, mutationAttempted: false };
+      const dispatch = await executor.dispatch(action);
+      const mutationAttempted = dispatch.status === 'SETTLED' || dispatch.status === 'UNKNOWN';
       return {
-        actionDigest,
-        preflight: observed,
-        mutationAttempted: true,
-        dispatch,
-        readBack: await independentlyReadBackIag({ action, port: options.readBackPort, now: options.now }),
-        restoreCandidate: observed.before,
+        actionDigest, preflight: observed, mutationAttempted, dispatch,
+        ...(mutationAttempted ? { readBack: await executor.readBack(action), restoreCandidate: observed.before } : {}),
       };
     },
   };
+  return executor;
 }
