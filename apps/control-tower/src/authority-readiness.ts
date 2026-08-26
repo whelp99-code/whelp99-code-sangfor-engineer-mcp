@@ -6,7 +6,7 @@ import {
 } from '../../../packages/sangfor-authority/src/index.js';
 import type { AuthorityConfig, AuthorityConfigField } from './authority-config.js';
 
-export const BLRO_RUNTIME_SCHEMA_VERSION = '20260826210000_blro_enrollment_lifecycle' as const;
+export const BLRO_RUNTIME_SCHEMA_VERSION = '20260826220000_blro_remote_job_authority' as const;
 
 export type AuthorityReadinessReasonCode =
   | 'CONFIG_INVALID'

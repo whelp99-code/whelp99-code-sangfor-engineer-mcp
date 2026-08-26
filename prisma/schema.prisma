@@ -224,7 +224,8 @@ model BlroTenant {
   ragDocuments BlroRagDocument[]
   ragChunks BlroRagChunk[]
   clientEnrollments BlroClientEnrollment[]
-  browserJobResults BlroBrowserJobResult[]
+  remoteJobCapabilityJtis BlroRemoteJobCapabilityJti[]
+  remoteJobs BlroRemoteJob[]
   serviceRegistry BlroServiceRegistry[]
   pmRecords BlroPmRecord[]
   feedbackLessons BlroFeedbackLesson[]
@@ -261,7 +262,8 @@ model BlroProject {
   ragDocuments        BlroRagDocument[]
   ragChunks           BlroRagChunk[]
   clientEnrollments   BlroClientEnrollment[]
-  browserJobResults   BlroBrowserJobResult[]
+  remoteJobCapabilityJtis BlroRemoteJobCapabilityJti[]
+  remoteJobs          BlroRemoteJob[]
   serviceRegistry     BlroServiceRegistry[]
   pmRecords           BlroPmRecord[]
   feedbackLessons     BlroFeedbackLesson[]
@@ -537,9 +539,12 @@ model BlroEnrollmentIdentity {
   certificates             BlroEnrollmentCertificate[]
   grants                   BlroEnrollmentGrant[]
   rotations                BlroEnrollmentRotation[]
+  remoteJobCapabilityJtis  BlroRemoteJobCapabilityJti[]
+  remoteJobs               BlroRemoteJob[]
 
   @@unique([id, projectId])
   @@unique([projectId, installationId])
+  @@unique([tenantId, projectId, installationId])
   @@unique([projectId, clientIdentityId])
   @@index([projectId, deviceBindingDigest])
 }
@@ -632,15 +637,52 @@ model BlroEnrollmentRotation {
   @@index([projectId, overlapExpiresAt])
 }
 
-model BlroBrowserJobResult {
-  id        String   @id
-  tenantId  String
-  projectId String
-  jobId     String   @unique
-  result    Json
-  createdAt DateTime @default(now())
-  tenant    BlroTenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  project   BlroProject @relation(fields: [projectId, tenantId], references: [id, tenantId], onDelete: Restrict)
+model BlroRemoteJobCapabilityJti {
+  jti                 String   @id
+  tenantId            String
+  projectId           String
+  installationId      String
+  jobId               String
+  requestDigest       String
+  capabilityExpiresAt DateTime
+  consumedAt          DateTime
+  tenant              BlroTenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  project             BlroProject @relation(fields: [projectId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  enrollment          BlroEnrollmentIdentity @relation(fields: [tenantId, projectId, installationId], references: [tenantId, projectId, installationId], onDelete: Restrict)
+  remoteJob           BlroRemoteJob?
+
+  @@unique([jti, tenantId, projectId, installationId, jobId, requestDigest])
+  @@index([projectId, installationId, jobId])
+}
+
+model BlroRemoteJob {
+  id                   String   @id
+  tenantId             String
+  projectId            String
+  installationId       String
+  jobId                String
+  runId                String
+  stepId               String
+  requestId            String
+  requestDigest        String
+  capabilityJti        String   @unique
+  state                String
+  result               Json?
+  resultDigest         String?
+  tombstoneCommittedAt DateTime
+  resultCommittedAt    DateTime?
+  indeterminateAt      DateTime?
+  createdAt            DateTime
+  updatedAt            DateTime
+  tenant               BlroTenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  project              BlroProject @relation(fields: [projectId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  enrollment           BlroEnrollmentIdentity @relation(fields: [tenantId, projectId, installationId], references: [tenantId, projectId, installationId], onDelete: Restrict)
+  capability           BlroRemoteJobCapabilityJti @relation(fields: [capabilityJti, tenantId, projectId, installationId, jobId, requestDigest], references: [jti, tenantId, projectId, installationId, jobId, requestDigest], onDelete: Restrict)
+
+  @@unique([tenantId, projectId, installationId, jobId])
+  @@unique([tenantId, projectId, installationId, jobId, requestDigest])
+  @@unique([capabilityJti, tenantId, projectId, installationId, jobId, requestDigest])
+  @@index([projectId, installationId, state])
 }
 
 model BlroServiceRegistry {

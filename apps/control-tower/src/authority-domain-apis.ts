@@ -4,7 +4,7 @@ import type { PostgresSingleUseNonceStore } from '../../../packages/sangfor-appr
 import type {
   BlroAuthorityStore,
   PostgresEnrollmentRegistry,
-  PostgresJobIdempotencyStore,
+  PostgresRemoteJobStore,
 } from '../../../packages/sangfor-authority/src/index.js';
 
 export type AuthorityDomainDependencies = {
@@ -12,7 +12,7 @@ export type AuthorityDomainDependencies = {
   readonly authorityStore: BlroAuthorityStore;
   readonly nonceStore: PostgresSingleUseNonceStore;
   readonly enrollmentStore: PostgresEnrollmentRegistry;
-  readonly jobStore: PostgresJobIdempotencyStore;
+  readonly jobStore: PostgresRemoteJobStore;
   readonly signingPrivateKey: KeyObject;
   readonly trustBundle: Buffer;
 };
@@ -21,7 +21,7 @@ export type AuthorityDomainApis = {
   readonly authority: BlroAuthorityStore;
   readonly approvalNonces: PostgresSingleUseNonceStore;
   readonly enrollments: PostgresEnrollmentRegistry;
-  readonly jobs: PostgresJobIdempotencyStore;
+  readonly jobs: PostgresRemoteJobStore;
 };
 
 export type AuthorityDomainApiFactory = (

@@ -18,6 +18,7 @@ const SCOPED_TABLES = [
   'BlroEvidenceManifest', 'BlroRagDocument', 'BlroRagChunk',
   'BlroEnrollmentIdentity', 'BlroEnrollmentCertificate', 'BlroEnrollmentGrant',
   'BlroEnrollmentBootstrapToken', 'BlroEnrollmentRotation',
+  'BlroRemoteJobCapabilityJti', 'BlroRemoteJob',
 ];
 
 function refuse(reason, detail) {
@@ -109,12 +110,13 @@ if (!databaseUrl) {
         `chunk-${label}-${suffix}`, tenantId, projectId, `document-${label}-${suffix}`, `chunk ${label}`, `chunk-hash-${label}-${suffix}`,
       );
       const enrollmentId = `enrollment-${label}-${suffix}`;
+      const installationId = `installation-${label}-${suffix}`;
       const oldSerial = `serial-old-${label}-${suffix}`;
       const newSerial = `serial-new-${label}-${suffix}`;
       await tx.$executeRawUnsafe(
         `INSERT INTO "BlroEnrollmentIdentity" ("id","tenantId","projectId","installationId","deviceBindingDigest","clientIdentityId","state","revision","currentCertificateSerial","createdAt","updatedAt")
          VALUES ($1,$2,$3,$4,repeat($5,64),$6,'active',2,$7,now(),now())`,
-        enrollmentId, tenantId, projectId, `installation-${label}-${suffix}`, label,
+        enrollmentId, tenantId, projectId, installationId, label,
         `client-${label}-${suffix}`, newSerial,
       );
       await tx.$executeRawUnsafe(
@@ -135,6 +137,18 @@ if (!databaseUrl) {
       await tx.$executeRawUnsafe(
         `INSERT INTO "BlroEnrollmentRotation" ("id","tenantId","projectId","enrollmentId","oldSerial","newSerial","overlapExpiresAt","requestDigest","revision","createdAt") VALUES ($1,$2,$3,$4,$5,$6,now()+interval '5 minutes',repeat('a',64),2,now())`,
         `rotation-${label}-${suffix}`, tenantId, projectId, enrollmentId, oldSerial, newSerial,
+      );
+      const remoteJti = `remote-jti-${label}-${suffix}`;
+      const remoteJob = `remote-job-${label}-${suffix}`;
+      await tx.$executeRawUnsafe(
+        `INSERT INTO "BlroRemoteJobCapabilityJti" ("jti","tenantId","projectId","installationId","jobId","requestDigest","capabilityExpiresAt","consumedAt") VALUES ($1,$2,$3,$4,$5,repeat($6,64),now()+interval '1 hour',now())`,
+        remoteJti, tenantId, projectId, installationId, remoteJob, label,
+      );
+      await tx.$executeRawUnsafe(
+        `INSERT INTO "BlroRemoteJob" ("id","tenantId","projectId","installationId","jobId","runId","stepId","requestId","requestDigest","capabilityJti","state","tombstoneCommittedAt","createdAt","updatedAt") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,repeat($9,64),$10,'dispatch_committed',now(),now(),now())`,
+        `remote-dispatch-${label}-${suffix}`, tenantId, projectId, installationId, remoteJob,
+        `remote-run-${label}-${suffix}`, `remote-step-${label}-${suffix}`,
+        `remote-request-${label}-${suffix}`, label, remoteJti,
       );
     };
 

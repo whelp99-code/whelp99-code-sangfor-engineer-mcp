@@ -12,7 +12,8 @@ import {
 
 const DATABASE_URL = process.env.DATABASE_URL
   ?? 'postgresql://blro_app:blro_app_local@127.0.0.1:55432/blro';
-const OWNER_URL = 'postgresql://blro_owner:blro_owner_local@127.0.0.1:55432/blro';
+const OWNER_URL = process.env.BLRO_OWNER_DATABASE_URL
+  ?? 'postgresql://blro_owner:blro_owner_local@127.0.0.1:55432/blro';
 const suffix = randomUUID();
 const tenantId = `domain-tenant-${suffix}`;
 const projectId = `domain-project-${suffix}`;

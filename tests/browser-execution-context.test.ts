@@ -15,6 +15,7 @@ import {
   createRemoteBrowserJobHandler,
 } from '../packages/sangfor-browser-contracts/src/remote-transport.js';
 import { createInProcessJobExecutionPort } from '../packages/sangfor-jm-execution/src/index.js';
+import { TestRemoteJobStore } from './helpers/remote-job-store-fake.js';
 
 const NOW = new Date('2026-08-20T11:00:00.000Z');
 const request: BrowserExecutionRequest = {
@@ -76,7 +77,8 @@ describe('BrowserExecutionPort cancellation context', () => {
   it('Given a remote handler execution context, When a validated job runs, Then the server-side browser port receives it', async () => {
     const execute = vi.fn<BrowserExecutionPort['execute']>().mockResolvedValue(output);
     const handler = createRemoteBrowserJobHandler({
-      executor: { execute }, authorizeClient: () => true, now: () => NOW,
+      executor: { execute }, authorizeClient: () => true,
+      jobStore: new TestRemoteJobStore(), now: () => NOW,
     });
     const executionContext = context();
     const envelope = buildRemoteJobEnvelope(request, envelopeOptions());

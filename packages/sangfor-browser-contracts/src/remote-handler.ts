@@ -1,236 +1,175 @@
-import { z } from 'zod';
 import {
   browserExecutionResultSchema,
   type BrowserExecutionContext,
   type BrowserExecutionPort,
-  type BrowserExecutionResult,
 } from './browser-execution.js';
-import { parseJobEnvelope, type JobEnvelope } from './job-envelope.js';
+import type { JobEnvelope } from './job-envelope.js';
 import {
-  BLRO_CONTRACT_VERSION,
-  CONTRACT_VERSION_HEADER,
-  formatContractVersion,
-  negotiateContractVersion,
-  type ContractVersion,
-} from './protocol-version.js';
+  defaultContractVersion,
+  parseRemoteEnvelope,
+  refuseTransportInput,
+  type RemoteHandlerInput,
+} from './remote-handler-input.js';
+import {
+  REMOTE_JOB_REFUSAL_REASONS,
+  type RemoteJobDispatch,
+  type RemoteJobReservation,
+  type RemoteJobStore,
+} from './remote-job-store.js';
 import {
   REMOTE_BROWSER_JOB_PATH,
   REMOTE_TRANSPORT_ERROR_CODES,
   errorBody,
+  indeterminateAfterDispatch,
   jsonHeaders,
   resultResponse,
   type RemoteHandlerResponse,
   type RemotePeerIdentity,
 } from './remote-protocol.js';
+import type { ContractVersion } from './protocol-version.js';
 
-export interface JobIdempotencyStore {
-  get(jobId: string): Promise<BrowserExecutionResult | undefined>;
-  put(jobId: string, result: BrowserExecutionResult): Promise<void>;
-}
+export type { RemoteHandlerInput } from './remote-handler-input.js';
 
-class MemoryJobIdempotencyStore implements JobIdempotencyStore {
-  private readonly results = new Map<string, BrowserExecutionResult>();
-
-  async get(jobId: string): Promise<BrowserExecutionResult | undefined> {
-    return this.results.get(jobId);
-  }
-
-  async put(jobId: string, result: BrowserExecutionResult): Promise<void> {
-    this.results.set(jobId, result);
-  }
-}
-
-export interface RemoteBrowserJobHandlerOptions {
+export type RemoteBrowserJobHandlerOptions = {
   readonly executor: BrowserExecutionPort;
   readonly authorizeClient: (identity: RemotePeerIdentity) => boolean;
-  readonly preExecution?: (input: {
-    readonly client: RemotePeerIdentity;
-    readonly envelope: JobEnvelope;
-  }) => Promise<
-    | { readonly allow: true }
-    | { readonly allow: false; readonly code?: string; readonly message: string }
-  >;
-  readonly idempotencyStore?: JobIdempotencyStore;
+  readonly jobStore: RemoteJobStore;
   readonly now?: () => Date;
   readonly path?: string;
-  /** The contract version this BLRO authority speaks. Peers negotiate against it. */
   readonly contractVersion?: ContractVersion;
-}
+};
 
-export interface RemoteHandlerInput {
-  readonly client: RemotePeerIdentity | null;
-  readonly method: string;
-  readonly urlPath: string;
-  readonly bodyText: string;
-  readonly headers?: Readonly<Record<string, string | readonly string[] | undefined>>;
-  readonly executionContext?: BrowserExecutionContext;
-}
-
-export function createRemoteBrowserJobHandler(
-  options: RemoteBrowserJobHandlerOptions,
-) {
-  const store = options.idempotencyStore ?? new MemoryJobIdempotencyStore();
-  const inFlight = new Map<string, Promise<BrowserExecutionResult>>();
+export function createRemoteBrowserJobHandler(options: RemoteBrowserJobHandlerOptions) {
   const path = options.path ?? REMOTE_BROWSER_JOB_PATH;
-  const authority = options.contractVersion ?? BLRO_CONTRACT_VERSION;
+  const authority = options.contractVersion ?? defaultContractVersion();
   return {
-    idempotencyStore: store,
+    jobStore: options.jobStore,
     async handle(input: RemoteHandlerInput): Promise<RemoteHandlerResponse> {
-      const early = earlyRefuse(input, path, options.authorizeClient)
-        ?? refuseUnsupportedContract(input, authority);
-      if (early) return early;
-      const client = input.client as RemotePeerIdentity;
-      const parsed = parseEnvelope(input.bodyText, options.now);
-      if ('statusCode' in parsed) return parsed;
-      const envelope = parsed;
-      const cached = await store.get(envelope.jobId);
-      if (cached) return resultResponse(200, cached);
-      const running = inFlight.get(envelope.jobId);
-      if (running) return resultResponse(200, await running);
-      const execution = executeOnce({
-        options, client, envelope, store, executionContext: input.executionContext,
+      const early = refuseTransportInput(input, {
+        path,
+        authority,
+        authorizeClient: options.authorizeClient,
       });
-      inFlight.set(envelope.jobId, execution);
-      try {
-        return resultResponse(200, await execution);
-      } catch (error) {
-        if (error instanceof AuthorizationRefusal) {
-          return {
-            statusCode: 403,
-            bodyText: errorBody(error.code, error.message),
-            headers: jsonHeaders(),
-          };
-        }
-        throw error;
-      } finally {
-        inFlight.delete(envelope.jobId);
+      if (early) return early;
+      const envelope = parseRemoteEnvelope(input.bodyText, options.now);
+      if ('statusCode' in envelope) return envelope;
+      const certificate = input.client?.certificate;
+      const [reserved] = await Promise.allSettled([
+        options.jobStore.authorizeAndReserve({ envelope, certificate }),
+      ]);
+      if (!reserved || reserved.status === 'rejected') {
+        return errorResponse(
+          503,
+          REMOTE_TRANSPORT_ERROR_CODES.JOB_AUTHORITY_UNAVAILABLE,
+          'Remote job authority is unavailable; no dispatch was authorized.',
+        );
       }
+      return reservationResponse({
+        options,
+        envelope,
+        reservation: reserved.value,
+        executionContext: input.executionContext,
+      });
     },
   };
 }
 
-class AuthorizationRefusal extends Error {
-  constructor(readonly code: string, message: string) {
-    super(message);
-  }
-}
-
-interface RemoteExecutionInput {
+type ReservationContext = {
   readonly options: RemoteBrowserJobHandlerOptions;
-  readonly client: RemotePeerIdentity;
   readonly envelope: JobEnvelope;
-  readonly store: JobIdempotencyStore;
+  readonly reservation: RemoteJobReservation;
   readonly executionContext: BrowserExecutionContext | undefined;
-}
+};
 
-async function executeOnce(input: RemoteExecutionInput): Promise<BrowserExecutionResult> {
-  if (input.options.preExecution) {
-    const decision = await input.options.preExecution({
-      client: input.client, envelope: input.envelope,
-    });
-    if (!decision.allow) {
-      throw new AuthorizationRefusal(
-        decision.code ?? REMOTE_TRANSPORT_ERROR_CODES.JOB_AUTHORIZATION_DENIED,
-        decision.message,
+async function reservationResponse(context: ReservationContext): Promise<RemoteHandlerResponse> {
+  switch (context.reservation.kind) {
+    case 'retained':
+      return resultResponse(200, context.reservation.result);
+    case 'indeterminate':
+      return resultResponse(200, indeterminateResult(context.reservation.requestId));
+    case 'refused':
+      return context.reservation.reason === REMOTE_JOB_REFUSAL_REASONS.REQUEST_CONFLICT
+        ? errorResponse(
+          409,
+          REMOTE_TRANSPORT_ERROR_CODES.JOB_REQUEST_CONFLICT,
+          'Remote job request conflicts with retained authority state.',
+        )
+        : errorResponse(
+          403,
+          REMOTE_TRANSPORT_ERROR_CODES.JOB_AUTHORIZATION_DENIED,
+          'Remote job authorization was refused.',
+        );
+    case 'unavailable':
+      return errorResponse(
+        503,
+        REMOTE_TRANSPORT_ERROR_CODES.JOB_AUTHORITY_UNAVAILABLE,
+        'Remote job authority is unavailable; no dispatch was authorized.',
       );
-    }
+    case 'dispatch':
+      return executeReserved({
+        options: context.options,
+        envelope: context.envelope,
+        dispatch: context.reservation.dispatch,
+        executionContext: context.executionContext,
+      });
+    default:
+      throw new RemoteHandlerInvariantError(context.reservation);
   }
-  const rawResult = input.executionContext === undefined
-    ? await input.options.executor.execute(input.envelope.request)
-    : await input.options.executor.execute(input.envelope.request, input.executionContext);
-  const result = browserExecutionResultSchema.parse(rawResult);
-  await input.store.put(input.envelope.jobId, result);
-  return result;
 }
 
-function earlyRefuse(
-  input: RemoteHandlerInput,
-  path: string,
-  authorizeClient: (identity: RemotePeerIdentity) => boolean,
-): RemoteHandlerResponse | undefined {
-  if (input.urlPath.split('?')[0] !== path) {
-    return {
-      statusCode: 404,
-      bodyText: errorBody(
-        REMOTE_TRANSPORT_ERROR_CODES.PATH_NOT_FOUND,
-        `No handler for ${input.urlPath}.`,
-      ),
-      headers: jsonHeaders(),
-    };
+type ReservedExecutionContext = Omit<ReservationContext, 'reservation'> & {
+  readonly dispatch: RemoteJobDispatch;
+};
+
+async function executeReserved(context: ReservedExecutionContext): Promise<RemoteHandlerResponse> {
+  const [execution] = await Promise.allSettled([
+    context.executionContext === undefined
+      ? context.options.executor.execute(context.envelope.request)
+      : context.options.executor.execute(context.envelope.request, context.executionContext),
+  ]);
+  if (!execution || execution.status === 'rejected') {
+    await sealIndeterminate(context.options.jobStore, context.dispatch);
+    return resultResponse(200, indeterminateResult(context.dispatch.requestId));
   }
-  if (input.method.toUpperCase() !== 'POST') {
-    return {
-      statusCode: 405,
-      bodyText: errorBody(
-        REMOTE_TRANSPORT_ERROR_CODES.METHOD_NOT_ALLOWED,
-        'Only POST is accepted.',
-      ),
-      headers: jsonHeaders({ allow: 'POST' }),
-    };
+  const parsed = browserExecutionResultSchema.safeParse(execution.value);
+  if (!parsed.success || parsed.data.requestId !== context.dispatch.requestId) {
+    await sealIndeterminate(context.options.jobStore, context.dispatch);
+    return resultResponse(200, indeterminateResult(context.dispatch.requestId));
   }
-  if (!input.client || !input.client.tlsAuthorized) {
-    return {
-      statusCode: 401,
-      bodyText: errorBody(
-        REMOTE_TRANSPORT_ERROR_CODES.CLIENT_UNAUTHORIZED,
-        'An authorized client certificate is required.',
-      ),
-      headers: jsonHeaders(),
-    };
+  const [retention] = await Promise.allSettled([
+    context.options.jobStore.retainResult({ dispatch: context.dispatch, result: parsed.data }),
+  ]);
+  if (!retention || retention.status === 'rejected') {
+    return resultResponse(200, indeterminateResult(context.dispatch.requestId));
   }
-  if (!authorizeClient(input.client)) {
-    return {
-      statusCode: 403,
-      bodyText: errorBody(
-        REMOTE_TRANSPORT_ERROR_CODES.CLIENT_UNAUTHORIZED,
-        'Client certificate is not authorized.',
-      ),
-      headers: jsonHeaders(),
-    };
+  switch (retention.value.kind) {
+    case 'retained':
+      return resultResponse(200, retention.value.result);
+    case 'indeterminate':
+      return resultResponse(200, indeterminateResult(context.dispatch.requestId));
+    default:
+      throw new RemoteHandlerInvariantError(retention.value);
   }
-  return undefined;
 }
 
-/**
- * The canonical header key is looked up exactly. A differently-cased or
- * differently-spelled key is not a declaration, so it refuses as missing.
- */
-function refuseUnsupportedContract(
-  input: RemoteHandlerInput,
-  authority: ContractVersion,
-): RemoteHandlerResponse | undefined {
-  const decision = negotiateContractVersion(
-    input.headers?.[CONTRACT_VERSION_HEADER],
-    authority,
+async function sealIndeterminate(store: RemoteJobStore, dispatch: RemoteJobDispatch): Promise<void> {
+  await Promise.allSettled([store.markIndeterminate({ dispatch })]);
+}
+
+function indeterminateResult(requestId: string) {
+  return indeterminateAfterDispatch(
+    requestId,
+    'Dispatch authority was committed, but no authoritative retained result was read back.',
   );
-  if (decision.kind === 'supported') return undefined;
-  return {
-    statusCode: 426,
-    bodyText: errorBody(
-      REMOTE_TRANSPORT_ERROR_CODES.CONTRACT_VERSION_UNSUPPORTED,
-      `${decision.reason}: ${decision.message}`,
-    ),
-    headers: jsonHeaders({
-      [CONTRACT_VERSION_HEADER]: formatContractVersion(authority),
-    }),
-  };
 }
 
-function parseEnvelope(
-  bodyText: string,
-  now: (() => Date) | undefined,
-): JobEnvelope | RemoteHandlerResponse {
-  try {
-    const body: unknown = JSON.parse(bodyText);
-    return parseJobEnvelope(body, (now ?? (() => new Date()))());
-  } catch (error) {
-    const message = error instanceof z.ZodError
-      ? error.issues.map((issue) => issue.message).join('; ')
-      : error instanceof Error ? error.message : 'Invalid envelope.';
-    return {
-      statusCode: 400,
-      bodyText: errorBody(REMOTE_TRANSPORT_ERROR_CODES.BAD_ENVELOPE, message),
-      headers: jsonHeaders(),
-    };
+function errorResponse(statusCode: number, code: string, message: string): RemoteHandlerResponse {
+  return { statusCode, bodyText: errorBody(code, message), headers: jsonHeaders() };
+}
+
+class RemoteHandlerInvariantError extends Error {
+  override readonly name = 'RemoteHandlerInvariantError';
+  constructor(readonly value: never) {
+    super('Remote job reservation variant was not handled.');
   }
 }

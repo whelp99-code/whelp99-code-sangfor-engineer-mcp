@@ -20,7 +20,7 @@
     "m017-capability-evidence-promotion",
     "m018-finetune-artifacts",
     "m019-browser-credentials",
-    "m020-browser-job-cache",
+    "m020-browser-job-authority",
     "m021-loop-runtime-cache",
     "m022-acquisition-checkpoints",
     "m023-iag-orchestrator-checkpoints",
@@ -29,13 +29,13 @@
     "m026-spec-registry"
   ],
   "classCounts": {
-    "authoritative": 16,
-    "derived": 8,
+    "authoritative": 17,
+    "derived": 7,
     "credential_local": 1,
     "curated_seed": 1
   },
-  "manifestSemanticSha256": "d239379e4e5aa6e4c5c70dfcea5f7f1cd1f08cf666d04be9561605db4095ad6f",
-  "repositoryCensusDigest": "20541a2a439cde8fc7205713503c7a092f15b642f58d6c1cd18a75a9a6bba03b",
+  "manifestSemanticSha256": "5079a0e63963d7f806d94cbb63df5bedbb5b193bf37280387004c571c46ba411",
+  "repositoryCensusDigest": "eed60043263a44d11d5d66bb0982ac501fa43290061f944e2d0c91cccf2fb0ea",
   "sourceOnlyRefs": [
     "m026-spec-registry:data/specs#curated-seed:v1"
   ]

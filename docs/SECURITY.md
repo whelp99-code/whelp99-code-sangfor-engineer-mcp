@@ -23,6 +23,12 @@ A non-dry-run live write passes `assertRealExecutionAllowed()` only if **all** h
 
 Mandatory approval fields: `approvedBy`, `approvalToken`, `changeTicketId`, `rollbackPlanId`, `nonce`, `expiresAt` (+ optional `maintenanceWindow`). No rollback plan → no approval.
 
+## Remote-job dispatch authority
+
+In BLRO production, `PostgresRemoteJobStore` is the only remote-job authority. A current enrolled client certificate, exact origin/scope grant, and an Ed25519 capability bound to the full request are verified before retained job state is consulted. The capability JTI and first dispatch tombstone commit atomically; only after that transaction commits may the external executor run. There is no memory or file fallback. A used JTI, request-digest conflict, revoked or superseded enrollment, wrong certificate, wrong origin/scope, or invalid capability refuses without dispatch or retained-result disclosure.
+
+This is deliberately **at-most-once dispatch, not exactly-once delivery**. A crash after the tombstone commit can prevent delivery, and a crash or acknowledgement loss after dispatch can hide the result. Either case remains `INDETERMINATE` and is never automatically redispatched. Tombstones have no expiry or deletion path; an exact authorized duplicate can return only a digest-verified retained result.
+
 ## The second, independent gate (`apps/http-bridge/tool-guard.ts`)
 Defense-in-depth for the REST surface:
 - Tools with **missing annotations** → 403 (fail closed).

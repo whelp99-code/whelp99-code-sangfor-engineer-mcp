@@ -8,6 +8,7 @@
     { "aggregate": "approval_nonce", "authoritativeWriter": "PostgresSingleUseNonceStore", "supersededLocalStore": "data/runtime/approval-nonces.json", "jmTreatment": "none; consume centrally" },
     { "aggregate": "audit_chain", "authoritativeWriter": "BlroAuthorityStore", "supersededLocalStore": "data/evidence/change-runs/*.jsonl", "jmTreatment": "temporary delivery buffer until acknowledged" },
     { "aggregate": "evidence_manifest", "authoritativeWriter": "BlroAuthorityStore", "supersededLocalStore": "data/evidence manifests and capture ledgers", "jmTreatment": "temporary bytes plus upload receipt" },
-    { "aggregate": "rag_document_chunk", "authoritativeWriter": "BlroAuthorityStore", "supersededLocalStore": "data/rag/index.json", "jmTreatment": "derived disposable encrypted cache" }
+    { "aggregate": "rag_document_chunk", "authoritativeWriter": "BlroAuthorityStore", "supersededLocalStore": "data/rag/index.json", "jmTreatment": "derived disposable encrypted cache" },
+    { "aggregate": "remote_job_dispatch", "authoritativeWriter": "PostgresRemoteJobStore", "supersededLocalStore": "MemoryJobIdempotencyStore", "jmTreatment": "no authority fallback; durable dispatch tombstones and retained result digests remain in BLRO" }
   ]
 }

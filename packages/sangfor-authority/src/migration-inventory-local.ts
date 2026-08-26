@@ -42,9 +42,12 @@ export const CREDENTIAL_REFS = [
   "credential:scripts/test-browser-port.ts#localReadBack",
 ] as const;
 
-export const BROWSER_CACHE_REFS = [
-  "persist:packages/sangfor-authority/src/browser-job-store.ts#PostgresJobIdempotencyStore",
-  "prisma:model:BlroBrowserJobResult",
+export const BROWSER_JOB_AUTHORITY_REFS = [
+  "persist:packages/sangfor-authority/src/remote-job-reservation.ts#reserveRemoteJobTransaction",
+  "persist:packages/sangfor-authority/src/remote-job-result.ts#markRemoteJobIndeterminateTransaction",
+  "persist:packages/sangfor-authority/src/remote-job-result.ts#retainRemoteJobResultTransaction",
+  "prisma:model:BlroRemoteJob",
+  "prisma:model:BlroRemoteJobCapabilityJti",
 ] as const;
 
 export const LOOP_REFS = [

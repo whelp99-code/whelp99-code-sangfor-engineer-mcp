@@ -23,7 +23,7 @@ describe('canonical authority manifest lock', () => {
     expect(raw).toMatchObject({
       schemaVersion: 1,
       aggregateIds: [...AUTHORITY_MANIFEST.entries.map((entry) => entry.id)].sort(),
-      classCounts: { authoritative: 16, derived: 8, credential_local: 1, curated_seed: 1 },
+      classCounts: { authoritative: 17, derived: 7, credential_local: 1, curated_seed: 1 },
       repositoryCensusDigest: census.digest,
       sourceOnlyRefs: ['m026-spec-registry:data/specs#curated-seed:v1'],
     });

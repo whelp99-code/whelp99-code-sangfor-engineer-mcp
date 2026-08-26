@@ -9,6 +9,7 @@ Reliability here means: a change either **provably** happened (verified by read-
 4. **Idempotency.** Writes carry an `X-Client-Token` idempotency key (≥8 chars) so a retried request cannot double-apply.
 5. **Fail-closed dependencies.** A service missing from the Keystone catalog, a corrupt safety/nonce/ledger file, or an ambiguous UI locator (0 or >1 matches) → refuse, don't guess.
 6. **Read-only never mutates.** `@sangfor/verifier` throws if asked to `apply` without `SANGFOR_ALLOW_REAL_EXECUTION`; config collection is always `{readOnly:true, mutationBlocked:true}`.
+7. **Remote dispatch is at most once, never exactly once.** BLRO atomically commits a scoped capability JTI and permanent dispatch tombstone before calling the external executor. Pre-commit failure is retryable; every post-tombstone path without a digest-verified retained result is `INDETERMINATE` and is never redispatched automatically.
 
 ## Evidence & auditability
 - Every apply step is written to a **hash-chained audit ledger** (`data/evidence/change-runs/<runId>.jsonl`): `request | response | state | verdict`.

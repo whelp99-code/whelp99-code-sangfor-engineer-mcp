@@ -9,7 +9,10 @@ export interface EnrollmentSqlExecutor {
   $queryRawUnsafe<T = unknown[]>(query: string, ...values: unknown[]): Promise<T>;
 }
 export interface EnrollmentDatabase extends EnrollmentSqlExecutor {
-  $transaction<T>(work: (transaction: EnrollmentSqlExecutor) => Promise<T>): Promise<T>;
+  $transaction<T>(
+    work: (transaction: EnrollmentSqlExecutor) => Promise<T>,
+    options?: { readonly isolationLevel?: 'Serializable' },
+  ): Promise<T>;
 }
 export type EnrollmentProjectScope = {
   readonly tenantId: string;

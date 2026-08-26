@@ -2,7 +2,7 @@ import { sourcesFor } from './migration-manifest-builder.js';
 import { GENERATED_REFS } from './migration-inventory-generated.js';
 import {
   ACQUISITION_REFS,
-  BROWSER_CACHE_REFS,
+  BROWSER_JOB_AUTHORITY_REFS,
   CREDENTIAL_REFS,
   FINETUNE_REFS,
   IAG_REFS,
@@ -22,9 +22,9 @@ export const LOCAL_AND_SEED_MIGRATIONS = [
     secretPolicy: 'forbid', prerequisites: ['jm-os-keyring'], dependsOn: [], inventoryRefs: [...CREDENTIAL_REFS],
   },
   {
-    id: 'm020-browser-job-cache', order: 20, aggregate: 'browser_job_cache', ownerPackage: '@sangfor/browser-contracts', classification: 'derived',
-    sources: sourcesFor(BROWSER_CACHE_REFS), target: { kind: 'excluded' }, projectScope: 'required', rlsRequired: false,
-    secretPolicy: 'redact_before_authority', prerequisites: ['bounded-retention'], dependsOn: ['m002-project-installation-identity'], inventoryRefs: [...BROWSER_CACHE_REFS],
+    id: 'm020-browser-job-authority', order: 20, aggregate: 'browser_job_authority', ownerPackage: '@sangfor/authority', classification: 'authoritative',
+    sources: sourcesFor(BROWSER_JOB_AUTHORITY_REFS), target: { kind: 'postgres', tables: ['BlroRemoteJobCapabilityJti', 'BlroRemoteJob'] }, projectScope: 'required', rlsRequired: true,
+    secretPolicy: 'digest_only', prerequisites: ['at-most-once-dispatch-tombstone'], dependsOn: ['m002-project-installation-identity'], inventoryRefs: [...BROWSER_JOB_AUTHORITY_REFS],
   },
   {
     id: 'm021-loop-runtime-cache', order: 21, aggregate: 'loop_runtime_cache', ownerPackage: '@sangfor/collector', classification: 'derived',

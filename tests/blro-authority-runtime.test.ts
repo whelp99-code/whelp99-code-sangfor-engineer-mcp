@@ -3,7 +3,10 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { PrismaClient } from '@prisma/client';
-import { PostgresEnrollmentRegistry } from '../packages/sangfor-authority/src/index.js';
+import {
+  PostgresEnrollmentRegistry,
+  PostgresRemoteJobStore,
+} from '../packages/sangfor-authority/src/index.js';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import {
   BLRO_RUNTIME_SCHEMA_VERSION,
@@ -17,7 +20,8 @@ import {
 
 const DATABASE_URL = process.env.DATABASE_URL
   ?? 'postgresql://blro_app:blro_app_local@127.0.0.1:55432/blro';
-const OWNER_URL = 'postgresql://blro_owner:blro_owner_local@127.0.0.1:55432/blro';
+const OWNER_URL = process.env.BLRO_OWNER_DATABASE_URL
+  ?? 'postgresql://blro_owner:blro_owner_local@127.0.0.1:55432/blro';
 const taskId = randomUUID();
 const PROJECT_ID = `task19-project-${taskId}`;
 const TENANT_ID = `task19-tenant-${taskId}`;
@@ -72,8 +76,8 @@ beforeAll(async () => {
 afterAll(async () => {
   await owner.$transaction(async (tx) => {
     await tx.$executeRawUnsafe(`SELECT set_config('app.project_id', $1, true)`, PROJECT_ID);
-    await tx.$executeRawUnsafe(`DELETE FROM "BlroBrowserJobResult" WHERE "projectId"=$1`, PROJECT_ID);
     for (const table of [
+      'BlroRemoteJob', 'BlroRemoteJobCapabilityJti',
       'BlroEnrollmentRotation', 'BlroEnrollmentGrant', 'BlroEnrollmentCertificate',
       'BlroEnrollmentIdentity', 'BlroEnrollmentBootstrapToken', 'BlroClientEnrollment',
     ]) await tx.$executeRawUnsafe(`DELETE FROM "${table}" WHERE "projectId"=$1`, PROJECT_ID);
@@ -160,6 +164,7 @@ describe('BLRO authority runtime composition', () => {
     const stores = runtime.resources();
     if (!stores) throw new Error('authority resources missing');
     expect(stores.enrollmentStore).toBeInstanceOf(PostgresEnrollmentRegistry);
+    expect(stores.jobStore).toBeInstanceOf(PostgresRemoteJobStore);
     expect(stores.domainApis.enrollments).toBe(stores.enrollmentStore);
     expect(runtime.enrollments()).toBe(stores.enrollmentStore);
     const enrollmentBinding = {
@@ -178,13 +183,7 @@ describe('BLRO authority runtime composition', () => {
     })).resolves.toMatchObject({ ok: true, enrollment: { revision: 1 } });
     await expect(stores.enrollmentStore.getByInstallation('task19-installation'))
       .resolves.toMatchObject({ revision: 1, currentCertificateSerial: expect.any(String) });
-    const result = {
-      schemaVersion: 'browser-execution-result.v1' as const,
-      requestId: 'task19-request', status: 'PASS' as const,
-      mutationAttempted: false, observations: { healthy: true }, evidence: [],
-    };
-    await stores.jobStore.put('task19-job', result);
-    await expect(stores.jobStore.get('task19-job')).resolves.toEqual(result);
+    expect(stores.domainApis.jobs).toBe(stores.jobStore);
     await runtime.close();
     expect(runtime.enrollments()).toBeUndefined();
     expect(runtime.liveness()).toEqual({ ok: false, state: 'closed' });

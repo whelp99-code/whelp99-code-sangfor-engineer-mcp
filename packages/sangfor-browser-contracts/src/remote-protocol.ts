@@ -5,6 +5,7 @@ import {
   type BrowserExecutionResult,
 } from './browser-execution.js';
 import { jobEnvelopeSchema, type JobEnvelope } from './job-envelope.js';
+import type { LeafCertificate } from './enrollment.js';
 
 export const REMOTE_BROWSER_JOB_PATH = '/v1/browser-jobs' as const;
 export const REMOTE_EXECUTION_DEADLINE_HEADER = 'x-sangfor-browser-deadline' as const;
@@ -19,6 +20,8 @@ export const REMOTE_TRANSPORT_ERROR_CODES = {
   PATH_NOT_FOUND: 'REMOTE_PATH_NOT_FOUND',
   METHOD_NOT_ALLOWED: 'REMOTE_METHOD_NOT_ALLOWED',
   CONTRACT_VERSION_UNSUPPORTED: 'REMOTE_CONTRACT_VERSION_UNSUPPORTED',
+  JOB_AUTHORITY_UNAVAILABLE: 'REMOTE_JOB_AUTHORITY_UNAVAILABLE',
+  JOB_REQUEST_CONFLICT: 'REMOTE_JOB_REQUEST_CONFLICT',
 } as const;
 
 const DEFAULT_JOB_TTL_MS = 60_000;
@@ -47,6 +50,7 @@ export interface RemotePeerIdentity {
   readonly fingerprint256: string;
   readonly subjectCN?: string;
   readonly tlsAuthorized: boolean;
+  readonly certificate?: LeafCertificate;
   readonly raw: object;
 }
 
@@ -68,6 +72,7 @@ export function peerIdentityFromCertificate(
   certificate: {
     readonly fingerprint256?: string;
     readonly subject?: { readonly CN?: unknown };
+    readonly raw?: Buffer;
   } | undefined,
   tlsAuthorized: boolean,
 ): RemotePeerIdentity | null {
@@ -79,6 +84,9 @@ export function peerIdentityFromCertificate(
     fingerprint256: certificate.fingerprint256,
     ...(subjectCN ? { subjectCN } : {}),
     tlsAuthorized,
+    ...(Buffer.isBuffer(certificate.raw)
+      ? { certificate: { encoding: 'der-base64' as const, value: certificate.raw.toString('base64') } }
+      : {}),
     raw: certificate,
   };
 }

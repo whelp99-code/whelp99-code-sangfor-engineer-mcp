@@ -119,6 +119,9 @@ importers:
       '@sangfor/identity':
         specifier: workspace:*
         version: link:../sangfor-identity
+      '@sangfor/shared':
+        specifier: workspace:*
+        version: link:../shared
       typescript:
         specifier: ^5.9.3
         version: 5.9.3

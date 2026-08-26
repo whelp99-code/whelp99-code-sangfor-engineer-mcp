@@ -11,6 +11,7 @@ import { z } from 'zod';
 import { executorObservation, executorResult } from './iag-executor-runtime-fixture.js';
 import type { iagOrchestratorFixture } from './iag-orchestrator-fixture.js';
 import { StdioJsonRpcClient, type StdioProcess } from './stdio-json-rpc-client.js';
+import { TestRemoteJobStore } from './remote-job-store-fake.js';
 
 type IagFixture = Awaited<ReturnType<typeof iagOrchestratorFixture>>;
 
@@ -72,6 +73,7 @@ export async function startIagMcpStdioProcess(input: {
   const server = await createRemoteBrowserJobServer({
     host: '127.0.0.1', port: 0,
     tls: { cert: tls.serverCert, key: tls.serverKey, ca: readFileSync(tls.caPath, 'utf8') },
+    jobStore: new TestRemoteJobStore(),
     authorizeClient: (identity) => fingerprintsMatch(identity.fingerprint256, tls.clientFingerprint),
     executor: { async execute(request: BrowserExecutionRequest) {
       const present = request.requestId.endsWith('-independent-readback');

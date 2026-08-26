@@ -12,7 +12,11 @@ export {
   type AuthorityManifestLock,
 } from './authority-manifest-lock.js';
 export { BlroAuthorityStore } from './authority-store.js';
-export { PostgresJobIdempotencyStore } from './browser-job-store.js';
+export {
+  PostgresRemoteJobStore,
+  type PostgresRemoteJobStoreOptions,
+} from './remote-job-store.js';
+export type { RemoteJobDatabase } from './remote-job-database.js';
 export {
   MAX_BOOTSTRAP_TTL_MS,
   preflightBootstrapToken,

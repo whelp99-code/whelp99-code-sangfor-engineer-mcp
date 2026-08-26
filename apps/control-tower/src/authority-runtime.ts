@@ -1,9 +1,10 @@
+import { createPublicKey } from 'node:crypto';
 import { PrismaClient } from '@prisma/client';
 import { PostgresSingleUseNonceStore } from '../../../packages/sangfor-approval/src/index.js';
 import {
   BlroAuthorityStore,
   PostgresEnrollmentRegistry,
-  PostgresJobIdempotencyStore,
+  PostgresRemoteJobStore,
 } from '../../../packages/sangfor-authority/src/index.js';
 import {
   parseAuthorityConfig,
@@ -64,7 +65,7 @@ export type AuthorityResources = {
   readonly authorityStore: BlroAuthorityStore;
   readonly nonceStore: PostgresSingleUseNonceStore;
   readonly enrollmentStore: PostgresEnrollmentRegistry;
-  readonly jobStore: PostgresJobIdempotencyStore;
+  readonly jobStore: PostgresRemoteJobStore;
   readonly domainApis: AuthorityDomainApis;
   readonly close: () => Promise<void>;
 };
@@ -87,8 +88,7 @@ export function createAuthorityRuntime(options: RuntimeOptions = {}) {
   let state: AuthorityLiveness['state'] = 'starting';
   let resources: AuthorityResources | undefined;
   let dependency: AuthorityProbeResult = { database: false, schema: false, scope: false };
-  let signingReady = false;
-  let trustReady = false;
+  let signingReady = false; let trustReady = false;
   let domainApisReady = false;
   let degraded = false;
   let closed = false;
@@ -123,9 +123,11 @@ export function createAuthorityRuntime(options: RuntimeOptions = {}) {
         scope: { tenantId: input.config.tenantId, projectId: input.config.projectId },
         trustedIssuerBundle: input.material.trustBundle,
       }),
-      jobStore: new PostgresJobIdempotencyStore(input.prisma, {
-        tenantId: input.config.tenantId,
-        projectId: input.config.projectId,
+      jobStore: new PostgresRemoteJobStore({
+        database: input.prisma,
+        scope: { tenantId: input.config.tenantId, projectId: input.config.projectId },
+        capabilityPublicKey: createPublicKey(input.material.signingPrivateKey),
+        trustedIssuerBundle: input.material.trustBundle,
       }),
     };
     const dependencies = { ...base, ...input.material };
@@ -139,8 +141,7 @@ export function createAuthorityRuntime(options: RuntimeOptions = {}) {
     }
     const domainApis = parseAuthorityDomainApis(candidate, dependencies);
     if (!domainApis) return undefined;
-    domainApisReady = true;
-    return { ...base, domainApis, close: () => input.prisma.$disconnect() };
+    domainApisReady = true; return { ...base, domainApis, close: () => input.prisma.$disconnect() };
   }
 
   async function start(): Promise<void> {
@@ -149,8 +150,7 @@ export function createAuthorityRuntime(options: RuntimeOptions = {}) {
       parsed.data.signingPrivateKeyPath,
       parsed.data.trustBundlePath,
     );
-    signingReady = material.ok || material.signing;
-    trustReady = material.ok || material.trust;
+    signingReady = material.ok || material.signing; trustReady = material.ok || material.trust;
     if (!material.ok) { degraded = true; state = 'running'; return; }
     const prisma = new PrismaClient({ datasources: { db: { url: parsed.data.databaseUrl } } });
     try {

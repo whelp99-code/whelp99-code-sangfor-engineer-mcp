@@ -14,9 +14,10 @@ import {
   REMOTE_TRANSPORT_ERROR_CODES,
   buildRemoteJobEnvelope,
   createRemoteBrowserJobHandler,
-  type JobIdempotencyStore,
+  type RemoteJobStore,
 } from '../packages/sangfor-browser-contracts/src/remote-transport.js';
 import { mintJobCapability } from '../packages/sangfor-browser-contracts/src/capability.js';
+import { TestRemoteJobStore } from './helpers/remote-job-store-fake.js';
 
 const issuedAt = new Date('2026-08-12T10:00:00.000Z');
 const capabilityKeys = generateKeyPairSync('ed25519');
@@ -75,35 +76,21 @@ function envelopeOptions() {
   };
 }
 
-/** A store that records every lookup, so "refused before lookup" is provable. */
-function countingStore(): JobIdempotencyStore & { readonly gets: string[]; readonly puts: string[] } {
-  const gets: string[] = [];
-  const puts: string[] = [];
-  const records = new Map<string, BrowserExecutionResult>();
-  return {
-    gets,
-    puts,
-    async get(jobId) {
-      gets.push(jobId);
-      return records.get(jobId);
-    },
-    async put(jobId, result) {
-      puts.push(jobId);
-      records.set(jobId, result);
-    },
-  };
+/** A store that records every reserve, so "refused before lookup" is provable. */
+function countingStore(): TestRemoteJobStore {
+  return new TestRemoteJobStore();
 }
 
 function bodyFor(requestId: string): string {
   return JSON.stringify(buildRemoteJobEnvelope(baseRequest(requestId), envelopeOptions()));
 }
 
-function handlerWith(store: JobIdempotencyStore) {
+function handlerWith(store: RemoteJobStore) {
   const execute = vi.fn(async (input: BrowserExecutionRequest) => passResult(input.requestId));
   const handler = createRemoteBrowserJobHandler({
     executor: { execute },
     authorizeClient: () => true,
-    idempotencyStore: store,
+    jobStore: store,
     now: () => issuedAt,
   });
   return { execute, handler };
@@ -136,7 +123,7 @@ describe('browser contract version negotiation at the job boundary', () => {
 
     expect(response.statusCode).toBe(200);
     expect(execute).toHaveBeenCalledOnce();
-    expect(store.gets).toEqual(['job-supported']);
+    expect(store.reserves).toEqual(['job-supported']);
     expect(JSON.parse(response.bodyText)).toMatchObject({ status: 'PASS' });
   });
 
@@ -167,8 +154,8 @@ describe('browser contract version negotiation at the job boundary', () => {
 
       expect(response.statusCode).toBe(426);
       expect(execute).not.toHaveBeenCalled();
-      expect(store.gets).toEqual([]);
-      expect(store.puts).toEqual([]);
+      expect(store.reserves).toEqual([]);
+      expect(store.retentions).toEqual([]);
       expect(JSON.parse(response.bodyText)).toMatchObject({
         error: { code: REMOTE_TRANSPORT_ERROR_CODES.CONTRACT_VERSION_UNSUPPORTED },
       });
@@ -190,7 +177,7 @@ describe('browser contract version negotiation at the job boundary', () => {
 
     expect(response.statusCode).toBe(426);
     expect(execute).not.toHaveBeenCalled();
-    expect(store.gets).toEqual([]);
+    expect(store.reserves).toEqual([]);
   });
 
   it('cannot replay a stored result to an undeclared peer', async () => {
@@ -200,13 +187,13 @@ describe('browser contract version negotiation at the job boundary', () => {
     const store = countingStore();
     const { execute, handler } = handlerWith(store);
     await handler.handle(inputWith('job-replay', { [CONTRACT_VERSION_HEADER]: supported }));
-    expect(store.puts).toEqual(['job-replay']);
+    expect(store.retentions).toEqual(['job-replay']);
 
     const replay = await handler.handle(inputWith('job-replay', {}));
 
     expect(replay.statusCode).toBe(426);
     expect(execute).toHaveBeenCalledOnce();
-    expect(store.gets).toEqual(['job-replay']);
+    expect(store.reserves).toEqual(['job-replay']);
   });
 
   it('pins the Node runtime lanes and the pnpm version the toolchain proves', () => {
