@@ -185,13 +185,13 @@ describe('IAG terminal apply replay over guarded loopback HTTP', () => {
     expect(refs.fixture.adapterFixture.readBacks).toHaveLength(1);
   });
 
-  it('Given HTTP prior success, When consumed approval replays concurrently, Then all results refuse without extra work', async () => {
+  it('Given HTTP prior success, When 32 consumed approval replays contend, Then all results refuse without extra work', async () => {
     const refs = await successfulFixture();
 
-    const results = await Promise.all([httpApply(refs), httpApply(refs)]);
+    const results = await Promise.all(Array.from({ length: 32 }, () => httpApply(refs)));
 
     expect(results.map(({ body }) => domainResultSchema.parse(body.structuredContent).reasonCode))
-      .toEqual(['APPROVAL_REPLAY', 'APPROVAL_REPLAY']);
+      .toEqual(Array.from({ length: 32 }, () => 'APPROVAL_REPLAY'));
     expect(refs.fixture.adapterFixture.dispatches).toHaveLength(1);
     expect(refs.fixture.adapterFixture.readBacks).toHaveLength(1);
   });
