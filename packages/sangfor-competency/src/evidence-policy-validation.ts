@@ -27,7 +27,7 @@ export function validateCurrentIdentity(
   driftDigests.forEach((key) => {
     if (manifest.digests[key] !== context.currentDigests[key]) issues.push(validationIssue('identity_drift', ['digests', key]));
   });
-  const campaignDigests = ['deviceIdentityDigest', 'windowIdentityDigest'] as const;
+  const campaignDigests = ['deviceIdentityDigest', 'originDigest', 'windowIdentityDigest'] as const;
   campaignDigests.forEach((key) => {
     if (manifest.digests[key] !== context.currentDigests[key]) issues.push(validationIssue('campaign_identity_mismatch', ['digests', key]));
   });
@@ -92,12 +92,22 @@ function validateAdvisoryThresholds(
   return issues;
 }
 
+type MutationThresholds = {
+  readonly environment: 'real_device' | 'mock';
+  readonly minimumRuns: number;
+  readonly minimumDevices: number;
+  readonly minimumWindows: number;
+};
+
 function validateMutationThresholds(
   manifest: CapabilityEvidenceManifest,
   context: EvidenceValidationContext,
+  thresholds: MutationThresholds,
 ): readonly EvidenceValidationIssue[] {
   const issues: EvidenceValidationIssue[] = [];
-  const realIds = new Set<string>(context.runIdentities.filter(({ environment }) => environment === 'real_device').map(({ runId }) => runId));
+  const eligibleIds = new Set<string>(context.runIdentities
+    .filter(({ environment }) => environment === thresholds.environment)
+    .map(({ runId }) => runId));
   const artifactsById = new Map(manifest.artifacts.map((artifact) => [artifact.id, artifact]));
   const artifactOwners = new Map<string, number>();
   manifest.runs.forEach((run) => {
@@ -124,15 +134,15 @@ function validateMutationThresholds(
     }
   };
   const mutationRuns = manifest.runs.filter(({ mutationAttempted }) => mutationAttempted);
-  const complete = mutationRuns.filter((run) => realIds.has(run.id) && run.result === 'pass' && run.mutationCount === 1
+  const complete = mutationRuns.filter((run) => eligibleIds.has(run.id) && run.result === 'pass' && run.mutationCount === 1
     && run.independentReadBack.result === 'pass' && run.postRunState.result === 'pass' && postRunEvidenceIsComplete(run));
   const completeIds = new Set<string>(complete.map(({ id }) => id));
   const identities = context.runIdentities.filter(({ runId }) => completeIds.has(runId));
-  if (complete.length < 3) issues.push(validationIssue('incomplete_mutation_cycle', ['runs']));
-  if (new Set(identities.map(({ deviceIdentityDigest }) => deviceIdentityDigest)).size < 2) {
+  if (complete.length < thresholds.minimumRuns) issues.push(validationIssue('incomplete_mutation_cycle', ['runs']));
+  if (new Set(identities.map(({ deviceIdentityDigest }) => deviceIdentityDigest)).size < thresholds.minimumDevices) {
     issues.push(validationIssue('insufficient_device_diversity', ['runIdentities']));
   }
-  if (new Set(identities.map(({ windowIdentityDigest }) => windowIdentityDigest)).size < 2) {
+  if (new Set(identities.map(({ windowIdentityDigest }) => windowIdentityDigest)).size < thresholds.minimumWindows) {
     issues.push(validationIssue('insufficient_window_diversity', ['runIdentities']));
   }
   if (mutationRuns.some(({ independentReadBack }) => independentReadBack.result !== 'pass')) {
@@ -165,7 +175,13 @@ export function validateEvidencePolicy(
     case 'browser':
       return [...commonIssues, ...validateAdvisoryThresholds(manifest, context)];
     case 'mutation':
-      return [...commonIssues, ...validateMutationThresholds(manifest, context)];
+      return [...commonIssues, ...validateMutationThresholds(manifest, context, {
+        environment: 'real_device', minimumRuns: 3, minimumDevices: 2, minimumWindows: 2,
+      })];
+    case 'mock_mutation':
+      return [...commonIssues, ...validateMutationThresholds(manifest, context, {
+        environment: 'mock', minimumRuns: 3, minimumDevices: 2, minimumWindows: 2,
+      })];
     default:
       context.campaign satisfies never;
       return commonIssues;

@@ -54,6 +54,7 @@ function validateFreshness(input: ValidateCapabilityEvidenceInput): readonly Evi
       break;
     case 'browser':
     case 'mutation':
+    case 'mock_mutation':
       maximumAgeDays = 90;
       break;
     default:

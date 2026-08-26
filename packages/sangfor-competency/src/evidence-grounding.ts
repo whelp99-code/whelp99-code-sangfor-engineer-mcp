@@ -23,7 +23,7 @@ export type CapabilityEvidenceGrounding = {
 export type CapabilityEvidenceGroundingIssue = {
   readonly code:
     | 'unknown_work_atom' | 'product_mismatch' | 'capability_mismatch' | 'tool_mismatch' | 'human_only_atom'
-    | 'manifest_digest_mismatch' | 'target_mismatch' | 'counter_mismatch' | 'timestamp_order'
+    | 'manifest_digest_mismatch' | 'target_mismatch' | 'scope_digest_mismatch' | 'counter_mismatch' | 'timestamp_order'
     | 'identity_role_conflict';
   readonly path: readonly (string | number)[];
 };
@@ -111,6 +111,10 @@ export function parseGroundedCapabilityPromotion(input: {
     issues.push({ code: 'manifest_digest_mismatch', path: ['request', 'manifestDigest'] });
   }
   const target = manifest.target;
+  if (request.deviceIdentityDigest !== manifest.digests.deviceIdentityDigest
+    || request.originDigest !== manifest.digests.originDigest) {
+    issues.push({ code: 'scope_digest_mismatch', path: ['request', 'originDigest'] });
+  }
   if (request.target.productId !== target.productId
     || request.target.capabilityId !== target.capabilityId
     || request.target.toolId !== target.toolId

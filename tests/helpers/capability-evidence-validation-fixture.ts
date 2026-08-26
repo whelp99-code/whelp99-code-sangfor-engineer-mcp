@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { digestCanonicalOrigin } from '../../packages/shared/src/index.js';
 import {
   capabilityEvidenceManifestSchema,
   type CapabilityEvidenceManifest,
@@ -109,7 +110,12 @@ export function writeValidationFixture(root: string, campaign: 'api_read_only' |
     uiFingerprint: hash('ui'), apiFingerprint: hash('api'), status: 'verified', observedAt: '2026-08-20T10:00:00.000Z',
     evidenceFile: 'firmware/truth-hci.json', specVersion: '6.10', specApplicability: 'verified', truthDigest: hash(firmwareBody),
   };
-  const digests = { recipeDigest: hash('recipe'), toolDigest: hash('tool'), runtimeDigest: hash('runtime'), deviceIdentityDigest: hash('campaign-devices'), windowIdentityDigest: hash('campaign-windows') };
+  const digests = {
+    recipeDigest: hash('recipe'), toolDigest: hash('tool'), runtimeDigest: hash('runtime'),
+    deviceIdentityDigest: hash('campaign-devices'),
+    originDigest: digestCanonicalOrigin('https://evidence.invalid', 'origin'),
+    windowIdentityDigest: hash('campaign-windows'),
+  };
   const manifest = capabilityEvidenceManifestSchema.parse({
     version: 1, manifestId: `manifest-${campaign}`, generatedAt,
     target: { productId: 'HCI_SCP', capabilityId: 'resource_inventory', toolId: 'sangfor_evaluate_config', workAtomIds: ['op_daily_health'] },

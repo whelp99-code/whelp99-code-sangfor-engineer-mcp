@@ -50,7 +50,9 @@ function signedEnvelope(
   const manifestDigest = createHash('sha256').update(manifestSource).digest('hex');
   const request = {
     version: 1, requestId: `request-${decisionId}`, manifestId: manifest.manifestId, manifestDigest,
-    target: manifest.target, fromMaturity: 'tested_mock', requestedMaturity: 'field_verified',
+    target: manifest.target,
+    deviceIdentityDigest: manifest.digests.deviceIdentityDigest, originDigest: manifest.digests.originDigest,
+    fromMaturity: 'tested_mock', requestedMaturity: 'field_verified',
     requestedBy: { actorId: 'requester-1', actorType: 'ai_engineer' }, requestedAt: '2026-08-25T12:05:00.000Z',
     evidenceRef: 'manifest.json', auditRef: 'promotion.jsonl', o5Counters: manifest.o5Counters,
   } as const;
@@ -59,7 +61,9 @@ function signedEnvelope(
     request,
     decision: {
       version: 1, decisionId, requestId: request.requestId, manifestId: manifest.manifestId, manifestDigest,
-      target: manifest.target, o5Counters: manifest.o5Counters, fromMaturity: 'tested_mock',
+      target: manifest.target, o5Counters: manifest.o5Counters,
+      deviceIdentityDigest: manifest.digests.deviceIdentityDigest, originDigest: manifest.digests.originDigest,
+      fromMaturity: 'tested_mock',
       reviewer: { actorId: 'human-reviewer-1', actorType: 'human_pm' }, decidedAt: '2026-08-25T12:10:00.000Z',
       auditRef: 'decision.jsonl', approvalDigest: '0'.repeat(64), nonce: `nonce-${decisionId}`,
       expiresAt: '2026-08-25T12:20:00.000Z', decision: 'promote', promotedMaturity: 'field_verified',

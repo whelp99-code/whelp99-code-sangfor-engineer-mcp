@@ -66,6 +66,7 @@ function signedPromotion(manifestSource: string, manifest: ReturnType<typeof wri
   const request = {
     version: 1, requestId: 'cli-request-1', manifestId: manifest.manifestId,
     manifestDigest: createHash('sha256').update(manifestSource).digest('hex'), target: manifest.target,
+    deviceIdentityDigest: manifest.digests.deviceIdentityDigest, originDigest: manifest.digests.originDigest,
     fromMaturity: 'tested_mock', requestedMaturity: 'field_verified', requestedBy: { actorId: 'cli-requester', actorType: 'ai_engineer' },
     requestedAt: '2026-08-25T12:05:00.000Z', evidenceRef: 'manifest.json', auditRef: 'request.jsonl',
     o5Counters: manifest.o5Counters,
@@ -75,6 +76,7 @@ function signedPromotion(manifestSource: string, manifest: ReturnType<typeof wri
     decision: {
       version: 1, decisionId: 'cli-decision-1', requestId: request.requestId, manifestId: request.manifestId,
       manifestDigest: request.manifestDigest, target: request.target, o5Counters: request.o5Counters,
+      deviceIdentityDigest: request.deviceIdentityDigest, originDigest: request.originDigest,
       fromMaturity: request.fromMaturity, reviewer: { actorId: 'human-reviewer-1', actorType: 'human_pm' }, decidedAt: '2026-08-25T12:10:00.000Z',
       auditRef: 'decision.jsonl', approvalDigest: '0'.repeat(64), nonce: 'cli-nonce-1',
       expiresAt: '2026-08-25T12:20:00.000Z', decision: 'promote', promotedMaturity: 'field_verified',

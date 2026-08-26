@@ -2,6 +2,20 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { resolveRepoData } from '../../shared/src/index.js';
 
+export {
+  O1_ACTION_KINDS,
+  O1_NEGATIVE_CASE_CODES,
+  WRITE_ELIGIBILITY_OUTCOMES,
+  resolveWriteEligibility,
+  type ActiveWriteEvidence,
+  type IagBootstrapEligibilityInput,
+  type IagBootstrapScope,
+  type OrdinaryWriteEligibilityInput,
+  type WriteEligibility,
+  type WriteEligibilityInput,
+  type WriteScope,
+} from './write-eligibility.js';
+
 export type SafetyClass = 'auto_allowed' | 'read_only' | 'human_only';
 export type MaturityLevel = 'planned' | 'implemented_local' | 'tested_mock' | 'field_verified';
 

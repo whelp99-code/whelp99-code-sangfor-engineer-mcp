@@ -9,6 +9,7 @@ process.env.MCP_NO_SERVE = '1';
 
 import { createMockConsoleServer } from '../apps/mock-sangfor-console/src/server.js';
 import { signApprovalToken } from '../packages/sangfor-operator/src/approval.js';
+import { consumeApprovalNonce } from '../packages/sangfor-operator/src/nonce-store.js';
 import { listTools, getToolHandler } from '../apps/mcp-server/src/index.js';
 
 let server: ReturnType<typeof createMockConsoleServer>;
@@ -54,13 +55,13 @@ describe('hci apply tool gates (mock target, loopback)', () => {
   });
 
   const apply = getToolHandler('sangfor_hci_apply_create_volume')!;
-  const mkApproval = (name: string) => {
+  const mkApproval = (name: string, host = '127.0.0.1') => {
     const base = {
       approvedBy: 'tester', changeTicketId: 'CHG-1', rollbackPlanId: 'RB-1',
       nonce: `n-${name}-${Math.round(performance.now() * 1000)}`,
       expiresAt: new Date(Date.now() + 5 * 60_000).toISOString(),
     };
-    return { ...base, approvalToken: signApprovalToken(SECRET, { type: 'hci.create-volume', target: `127.0.0.1:${name}` }, base) };
+    return { ...base, approvalToken: signApprovalToken(SECRET, { type: 'hci.create-volume', target: `${host}:${name}` }, base) };
   };
 
   it('refuses without a signed approval', async () => {
@@ -83,5 +84,20 @@ describe('hci apply tool gates (mock target, loopback)', () => {
     const second = await apply({ name: 'replay-vol', sizeGb: 2, clientToken: 'ct-replay-2', approval, identityBaseUrl }) as any;
     expect(second.ok).toBe(false);
     expect(second.error).toMatch(/already used/);
+  });
+
+  it('refuses a non-loopback HCI target with missing configured authority before consuming the nonce', async () => {
+    process.env.SANGFOR_ALLOW_REAL_EXECUTION = 'true';
+    process.env.SANGFOR_ALLOW_PRODUCTION_EXECUTION = 'true';
+    const name = 'active-evidence-required';
+    const approval = mkApproval(name, '192.0.2.10');
+
+    const result = await apply({
+      name, sizeGb: 2, clientToken: 'ct-active-evidence', approval,
+      identityBaseUrl: 'http://192.0.2.10/openstack/identity/v2.0',
+    }) as any;
+
+    expect(result).toMatchObject({ ok: false, error: 'HCI_AUTHORITY_REFERENCES_REQUIRED' });
+    expect(consumeApprovalNonce(approval)).toMatchObject({ ok: true });
   });
 });

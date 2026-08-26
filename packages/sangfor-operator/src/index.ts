@@ -31,3 +31,7 @@ export {
   defaultNonceStorePath,
 } from './nonce-store.js';
 export type { NonceConsumeResult } from './nonce-store.js';
+export { authorizeHciMutation } from './hci-authorization.js';
+export type { HciMutationAuthorizationInput } from './hci-authorization.js';
+export { authorizeIagEvidenceBootstrap } from './iag-evidence-bootstrap.js';
+export type { IagBootstrapAuthorizationInput } from './iag-evidence-bootstrap.js';

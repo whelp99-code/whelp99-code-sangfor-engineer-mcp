@@ -34,7 +34,8 @@
     "toolDigest": "7c9bbe5ec9b3fb774e8fa0f54247e93c34ddf8e5d16fe3073420de0ae81a262d",
     "runtimeDigest": "d92c6a81b2ff50096bcda80885427d1f59a25b5f483f7055523504925d16ab23",
     "deviceIdentityDigest": "258b5476c841034a9bd8e6b2ba5a8d4e107db4d92149a85668c30451e7120458",
-    "windowIdentityDigest": "3f435bb1c2cfc1f656b61ef4b9ebaf2c4e1f232704cc6acf964de2979001d79c"
+    "windowIdentityDigest": "3f435bb1c2cfc1f656b61ef4b9ebaf2c4e1f232704cc6acf964de2979001d79c",
+    "originDigest": "063384f0164bf480eb61c7b184d32f267e92080e7b0c6f1cc423b107b095a265"
   },
   "runs": [
     {

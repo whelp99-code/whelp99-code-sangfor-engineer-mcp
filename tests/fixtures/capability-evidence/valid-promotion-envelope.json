@@ -4,16 +4,21 @@
     "version": 1,
     "requestId": "promotion-request-001",
     "manifestId": "manifest-018f22e2",
-    "manifestDigest": "00c68ec692ecf432e56737b420f3bfe6103cb30b7a6262d6b6f3d20b9e083561",
+    "manifestDigest": "8eef0603ee5f2333923fd6acad6dbb8bb2ce1a1a92192c874c18ea55c64bca2a",
     "target": {
       "productId": "HCI_SCP",
       "capabilityId": "resource_inventory",
       "toolId": "sangfor_evaluate_config",
-      "workAtomIds": ["op_daily_health"]
+      "workAtomIds": [
+        "op_daily_health"
+      ]
     },
     "fromMaturity": "tested_mock",
     "requestedMaturity": "field_verified",
-    "requestedBy": { "actorId": "campaign-requester-01", "actorType": "ai_engineer" },
+    "requestedBy": {
+      "actorId": "campaign-requester-01",
+      "actorType": "ai_engineer"
+    },
     "requestedAt": "2026-08-25T12:05:00.000Z",
     "evidenceRef": "manifests/manifest-018f22e2.json",
     "auditRef": "audit/promotion-request-001.jsonl",
@@ -29,19 +34,23 @@
       "mutationCount": 1,
       "retryCount": 0,
       "collateralMutationCount": 0
-    }
+    },
+    "deviceIdentityDigest": "7777777777777777777777777777777777777777777777777777777777777777",
+    "originDigest": "063384f0164bf480eb61c7b184d32f267e92080e7b0c6f1cc423b107b095a265"
   },
   "decision": {
     "version": 1,
     "decisionId": "promotion-decision-001",
     "requestId": "promotion-request-001",
     "manifestId": "manifest-018f22e2",
-    "manifestDigest": "00c68ec692ecf432e56737b420f3bfe6103cb30b7a6262d6b6f3d20b9e083561",
+    "manifestDigest": "8eef0603ee5f2333923fd6acad6dbb8bb2ce1a1a92192c874c18ea55c64bca2a",
     "target": {
       "productId": "HCI_SCP",
       "capabilityId": "resource_inventory",
       "toolId": "sangfor_evaluate_config",
-      "workAtomIds": ["op_daily_health"]
+      "workAtomIds": [
+        "op_daily_health"
+      ]
     },
     "o5Counters": {
       "runCount": 1,
@@ -57,11 +66,16 @@
       "collateralMutationCount": 0
     },
     "fromMaturity": "tested_mock",
-    "reviewer": { "actorId": "pm-reviewer-01", "actorType": "human_pm" },
+    "reviewer": {
+      "actorId": "pm-reviewer-01",
+      "actorType": "human_pm"
+    },
     "decidedAt": "2026-08-25T12:10:00.000Z",
     "auditRef": "audit/promotion-decision-001.jsonl",
     "approvalDigest": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
     "decision": "promote",
-    "promotedMaturity": "field_verified"
+    "promotedMaturity": "field_verified",
+    "deviceIdentityDigest": "7777777777777777777777777777777777777777777777777777777777777777",
+    "originDigest": "063384f0164bf480eb61c7b184d32f267e92080e7b0c6f1cc423b107b095a265"
   }
 }

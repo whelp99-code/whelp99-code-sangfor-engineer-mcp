@@ -38,6 +38,12 @@ describe('capability evidence contract foundations', () => {
 });
 
 describe('capability-evidence.v1 manifest', () => {
+  it('rejects a legacy manifest whose authoritative scope omits originDigest', () => {
+    const { originDigest: _originDigest, ...legacyDigests } = manifest.digests;
+
+    expect(capabilityEvidenceManifestSchema.safeParse({ ...manifest, digests: legacyDigests }).success).toBe(false);
+  });
+
   it('parses exact field evidence with firmware, digests, read-back, restore, artifacts, negatives, and O5 counters', () => {
     // Given
     const source = JSON.parse(manifestSource);
@@ -176,6 +182,17 @@ describe('capability-evidence.v1 manifest', () => {
 });
 
 describe('capability promotion contracts', () => {
+  it('rejects legacy promotion request and decision scope without originDigest', () => {
+    const { originDigest: _requestOrigin, ...legacyRequest } = promotion.request;
+    const decision = promotion.decision;
+    if (decision === null) throw new Error('promotion fixture decision missing');
+    const { originDigest: _decisionOrigin, ...legacyDecision } = decision;
+
+    expect(capabilityPromotionEnvelopeSchema.safeParse({
+      ...promotion, request: legacyRequest, decision: legacyDecision,
+    }).success).toBe(false);
+  });
+
   it('parses a request and human-reviewed decision bound to the exact manifest', () => {
     // Given
     const source = JSON.parse(promotionSource);

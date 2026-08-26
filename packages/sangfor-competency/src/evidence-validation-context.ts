@@ -27,6 +27,7 @@ const currentDigestsSchema = z.object({
   toolDigest: sha256Schema,
   runtimeDigest: sha256Schema,
   deviceIdentityDigest: sha256Schema,
+  originDigest: sha256Schema,
   windowIdentityDigest: sha256Schema,
 }).strict().readonly();
 

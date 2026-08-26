@@ -67,6 +67,7 @@ describe('action-bound capability promotion gate', () => {
     const request = {
       version: 1, requestId: 'promotion-request-1', manifestId: fixture.manifest.manifestId,
       manifestDigest: createHash('sha256').update(manifestSource).digest('hex'), target: fixture.manifest.target,
+      deviceIdentityDigest: fixture.manifest.digests.deviceIdentityDigest, originDigest: fixture.manifest.digests.originDigest,
       fromMaturity: 'tested_mock', requestedMaturity: 'field_verified', requestedBy: { actorId: 'requester-1', actorType: 'ai_engineer' },
       requestedAt: '2026-08-25T12:05:00.000Z', evidenceRef: 'manifest.json', auditRef: 'promotion.jsonl',
       o5Counters: fixture.manifest.o5Counters,
@@ -76,6 +77,7 @@ describe('action-bound capability promotion gate', () => {
       decision: {
         version: 1, decisionId: 'decision-1', requestId: request.requestId, manifestId: request.manifestId,
         manifestDigest: request.manifestDigest, target: request.target, o5Counters: request.o5Counters,
+        deviceIdentityDigest: request.deviceIdentityDigest, originDigest: request.originDigest,
         fromMaturity: request.fromMaturity, reviewer: { actorId: 'human-reviewer-1', actorType: 'human_pm' }, decidedAt: NOW.toISOString(),
         auditRef: 'decision.jsonl', approvalDigest: '0'.repeat(64), nonce: 'nonce-1',
         expiresAt: '2026-08-25T12:20:00.000Z', decision: 'promote', promotedMaturity: 'field_verified',

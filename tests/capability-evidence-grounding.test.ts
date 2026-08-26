@@ -76,6 +76,20 @@ describe('grounded capability promotion', () => {
     actions.forEach((action) => expect(action).toThrow(/CAPABILITY_EVIDENCE_GROUNDING_REFUSED/u));
   });
 
+  it('rejects a promotion rebound to different device or origin digests', () => {
+    const rebound = {
+      ...validPromotion,
+      request: { ...validPromotion.request, deviceIdentityDigest: '1'.repeat(64), originDigest: '2'.repeat(64) },
+      decision: { ...validPromotion.decision, deviceIdentityDigest: '1'.repeat(64), originDigest: '2'.repeat(64) },
+    };
+
+    expect(() => parseGroundedCapabilityPromotion({
+      manifestSource,
+      promotionSource: JSON.stringify(rebound),
+      grounding,
+    })).toThrow(/scope_digest_mismatch/u);
+  });
+
   it('rejects caller counters and promotion chronology that differ from the manifest', () => {
     // Given
     const staleCounters = { ...manifest.o5Counters, passCount: 0 };

@@ -1,6 +1,6 @@
 import type { CapabilityEvidenceManifest } from './evidence-schema.js';
 
-export const EVIDENCE_CAMPAIGNS = ['api_read_only', 'browser', 'mutation'] as const;
+export const EVIDENCE_CAMPAIGNS = ['api_read_only', 'browser', 'mutation', 'mock_mutation'] as const;
 export const MAX_EVIDENCE_ARTIFACT_BYTES = 67_108_864 as const;
 export type EvidenceCampaign = (typeof EVIDENCE_CAMPAIGNS)[number];
 
@@ -67,7 +67,7 @@ export type CurrentFirmwareIdentity = Pick<FirmwareTruth,
   | 'specVersion' | 'truthDigest'>;
 
 export type CurrentEvidenceDigests = Pick<Digests,
-  'recipeDigest' | 'toolDigest' | 'runtimeDigest' | 'deviceIdentityDigest' | 'windowIdentityDigest'>;
+  'recipeDigest' | 'toolDigest' | 'runtimeDigest' | 'deviceIdentityDigest' | 'originDigest' | 'windowIdentityDigest'>;
 
 export type EvidenceValidationContext = {
   readonly campaign: EvidenceCampaign;

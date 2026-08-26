@@ -19,6 +19,13 @@ import { fileURLToPath } from 'node:url';
 import { createHash, randomUUID, timingSafeEqual } from 'node:crypto';
 import { isIP } from 'node:net';
 
+export {
+  CanonicalOriginError,
+  canonicalizeUrlOrigin,
+  digestCanonicalOrigin,
+  type CanonicalOriginInput,
+} from './origin.js';
+
 // ── HTTP exposure guard ─────────────────────────────────────────────────────
 // The operator-console / http-bridge servers previously bound to 0.0.0.0 with no
 // auth, exposing device-adjacent tooling to the LAN. These helpers make loopback

@@ -12,7 +12,13 @@ import { MATURITIES } from './schema.js';
 
 export const CAPABILITY_PROMOTION_VERSION = 1 as const;
 
+const promotionScopeFields = {
+  deviceIdentityDigest: sha256Schema,
+  originDigest: sha256Schema,
+} as const;
+
 export const capabilityPromotionRequestSchema = z.object({
+  ...promotionScopeFields,
   version: z.literal(CAPABILITY_PROMOTION_VERSION),
   requestId: evidenceIdSchema,
   manifestId: evidenceIdSchema,
@@ -33,6 +39,7 @@ const humanReviewerSchema = z.object({
 }).strict().readonly();
 
 const promotionDecisionFields = {
+  ...promotionScopeFields,
   version: z.literal(CAPABILITY_PROMOTION_VERSION),
   decisionId: evidenceIdSchema,
   requestId: evidenceIdSchema,
@@ -77,7 +84,9 @@ export const capabilityPromotionEnvelopeSchema = z.object({
   if (decision === null) return;
   if (decision.requestId !== envelope.request.requestId
     || decision.manifestId !== envelope.request.manifestId
-    || decision.manifestDigest !== envelope.request.manifestDigest) {
+    || decision.manifestDigest !== envelope.request.manifestDigest
+    || decision.deviceIdentityDigest !== envelope.request.deviceIdentityDigest
+    || decision.originDigest !== envelope.request.originDigest) {
     context.addIssue({ code: z.ZodIssueCode.custom, path: ['decision'], message: 'decision does not bind the exact request manifest' });
   }
   const requestTarget = envelope.request.target;

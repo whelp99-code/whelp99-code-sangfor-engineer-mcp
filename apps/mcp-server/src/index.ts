@@ -8,7 +8,7 @@ import { analyzeProject, generateConfigPlan, generateConfigPlanAsync, validateCo
 import { searchManuals, getManualSection } from '../../../packages/sangfor-knowledge/src/index.js';
 import { searchWiki, proposeWikiUpdate, approveWikiUpdate, applyWikiUpdate, applyObsidianWikiUpdate, applyGitHubWikiUpdate, listKnowledgeCards, upsertKnowledgeCard } from '../../../packages/sangfor-wiki/src/index.js';
 import { requiresApprovalForText, canonicalizeApprovalPayload, verifyDomainApprovalSignature, FileSingleUseNonceStore } from '../../../packages/sangfor-approval/src/index.js';
-import { startOperatorSession, readConsoleState, executeConsoleAction, readLiveConsoleState, executeLiveConsoleAction, closeOperatorSession } from '../../../packages/sangfor-operator/src/index.js';
+import { authorizeHciMutation, startOperatorSession, readConsoleState, executeConsoleAction, readLiveConsoleState, executeLiveConsoleAction, closeOperatorSession } from '../../../packages/sangfor-operator/src/index.js';
 import type { BrowserExecutionPort } from '../../../packages/sangfor-browser-contracts/src/index.js';
 import { verifyResult } from '../../../packages/sangfor-verifier/src/index.js';
 import { generateEvidenceReport, buildChangeRunReport, listChangeRunIds, isSafeRunId } from '../../../packages/sangfor-evidence/src/index.js';
@@ -52,7 +52,7 @@ import { recommendSizing, type SizingInput } from '../../../packages/sangfor-siz
 import { createPmStore } from '../../../packages/sangfor-pm/src/index.js';
 import { checkVersionRequirement, loadVersionRequirements } from '../../../packages/sangfor-version/src/index.js';
 import { generateIntegrationGuide, listIntegrationTypes } from '../../../packages/sangfor-integration/src/index.js';
-import { resolveRepoData, resolveEngagementScopedData, activeEngagementId, isLoopback, nowId, normalizeProduct, paginate, appendJsonl, writeFileAtomicSync } from '../../../packages/shared/src/index.js';
+import { resolveRepoData, resolveEngagementScopedData, activeEngagementId, nowId, normalizeProduct, paginate, appendJsonl, writeFileAtomicSync } from '../../../packages/shared/src/index.js';
 import { mapEppPoolToConfigState, mapCcPoolToConfigState } from '../../../packages/sangfor-config-state/src/index.js';
 import { fortios_policy_baseline, fortios_system_health_baseline, fortios_policy_audit_baseline } from '../../../packages/fortios-spec/src/index.js';
 import { mapFortiOSConfigState, mapFortiOSSystemHealth, mapFortiOSPolicyAudit } from '../../../packages/fortios-client/src/index.js';
@@ -68,8 +68,6 @@ import {
 } from '../../../packages/sangfor-hci-client/src/index.js';
 import { TowerClient } from './tower-client.js';
 import { authorizeToolCall } from '../../http-bridge/src/tool-guard.js';
-import { verifyExecutionApproval } from '../../../packages/sangfor-operator/src/approval.js';
-import { consumeApprovalNonceAsync } from '../../../packages/sangfor-operator/src/nonce-store.js';
 import {
   LearningStrategyService,
   assertSafeLearningInput,
@@ -231,28 +229,13 @@ function hciClientFor(args: Record<string, unknown> = {}) {
   return { client: new HciClient(new KeystoneV2TokenProvider(cfg), { tlsSkipVerify: cfg.tlsSkipVerify }), cfg };
 }
 
-async function hciWriteGate(
-  kind: 'hci.create-volume' | 'hci.delete-volume',
-  target: string,
-  host: string,
-  approval: unknown,
-  capabilityId: 'volume_create' | 'volume_delete',
-): Promise<{ ok: boolean; error?: string }> {
-  assertLocalAuditAuthorityAllowed();
-  const verdict = verifyExecutionApproval({ action: { type: kind, target }, approval: approval as never, secret: process.env.SANGFOR_OPERATOR_APPROVAL_SECRET });
-  if (!verdict.ok) return { ok: false, error: `approval rejected: ${verdict.reason}` };
-  const a = approval as { nonce: string; expiresAt: string };
-  const consumed = await consumeApprovalNonceAsync({ nonce: a.nonce, expiresAt: a.expiresAt });
-  if (!consumed.ok) return { ok: false, error: `approval rejected: ${consumed.reason}` };
-  // Loopback (mock) rehearses the full gate but is exempt from real-exec + safety-class;
-  // a non-loopback (real device) target additionally needs the real-exec flag AND an
-  // explicit auto_allowed safety class (promoted only after the M4 real-device slice).
-  if (!isLoopback(host)) {
-    if (process.env.SANGFOR_ALLOW_REAL_EXECUTION !== 'true') return { ok: false, error: 'SANGFOR_ALLOW_REAL_EXECUTION=true is required for a non-loopback HCI target.' };
-    const safety = getCapabilitySafety('HCI_SCP', capabilityId);
-    if (!safety.autoAllowed) return { ok: false, error: `capability ${capabilityId} is ${safety.safetyClass} (not auto_allowed) — real-device write refused until the M4 promotion. ${safety.reason}` };
-  }
-  return { ok: true };
+function hciAuthorityReferences() {
+  const manifestPath = process.env.SANGFOR_CAPABILITY_EVIDENCE_MANIFEST;
+  const validationContextPath = process.env.SANGFOR_CAPABILITY_EVIDENCE_CONTEXT;
+  const evidenceRoot = process.env.SANGFOR_CAPABILITY_EVIDENCE_ROOT;
+  const ledgerPath = process.env.SANGFOR_CAPABILITY_PROMOTION_LEDGER_PATH;
+  if (!manifestPath || !validationContextPath || !evidenceRoot || !ledgerPath) return undefined;
+  return { manifestPath, validationContextPath, evidenceRoot, ledgerPath };
 }
 
 // ─── FortiOS / Cisco IOS-XE advisor wiring (read-only GET; never mutates) ──────
@@ -606,8 +589,16 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
     inputSchema: { type: 'object', properties: { name: { type: 'string' }, sizeGb: { type: 'number' }, description: { type: 'string' }, clientToken: { type: 'string' }, approval: { type: 'object' }, identityBaseUrl: { type: 'string' } }, required: ['name', 'sizeGb', 'clientToken', 'approval'] },
     handler: async (args: { name: string; sizeGb: number; description?: string; clientToken: string; approval: unknown; identityBaseUrl?: string }) => {
       const { client, cfg } = hciClientFor(args as Record<string, unknown>);
-      const gate = await hciWriteGate('hci.create-volume', `${cfg.host}:${args.name}`, cfg.host, args.approval, 'volume_create');
-      if (!gate.ok) return { ok: false, mutationPerformed: false, error: gate.error };
+      assertLocalAuditAuthorityAllowed();
+      const authorization = await authorizeHciMutation({
+        action: {
+          kind: 'hci.create-volume', target: `${cfg.host}:${args.name}`,
+          identityBaseUrl: cfg.identityBaseUrl, capabilityId: 'volume_create',
+        },
+        approval: args.approval,
+        authority: hciAuthorityReferences(),
+      });
+      if (authorization.kind === 'REFUSED') return { ok: false, mutationPerformed: false, error: authorization.code };
       const result = await applyCreateVolume(client, { name: args.name, sizeGb: args.sizeGb, description: args.description, clientToken: args.clientToken }, new AuditLedger());
       return { ...result, mutationPerformed: result.finalState === 'SUCCEEDED' || Boolean(result.volumeId), ledger: new AuditLedger().pathFor(result.runId) };
     }
@@ -625,8 +616,16 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
     inputSchema: { type: 'object', properties: { volumeId: { type: 'string' }, approval: { type: 'object' }, identityBaseUrl: { type: 'string' } }, required: ['volumeId', 'approval'] },
     handler: async (args: { volumeId: string; approval: unknown; identityBaseUrl?: string }) => {
       const { client, cfg } = hciClientFor(args as Record<string, unknown>);
-      const gate = await hciWriteGate('hci.delete-volume', `${cfg.host}:${args.volumeId}`, cfg.host, args.approval, 'volume_delete');
-      if (!gate.ok) return { ok: false, mutationPerformed: false, error: gate.error };
+      assertLocalAuditAuthorityAllowed();
+      const authorization = await authorizeHciMutation({
+        action: {
+          kind: 'hci.delete-volume', target: `${cfg.host}:${args.volumeId}`,
+          identityBaseUrl: cfg.identityBaseUrl, capabilityId: 'volume_delete',
+        },
+        approval: args.approval,
+        authority: hciAuthorityReferences(),
+      });
+      if (authorization.kind === 'REFUSED') return { ok: false, mutationPerformed: false, error: authorization.code };
       const before = await getVolume(client, args.volumeId);
       if (!before) return { ok: false, mutationPerformed: false, error: `volume ${args.volumeId} not found` };
       const res = await deleteVolume(client, args.volumeId);
