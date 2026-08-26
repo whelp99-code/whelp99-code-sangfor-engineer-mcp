@@ -12,7 +12,7 @@ export {
   loadCanonicalAuthorityManifest,
   type AuthorityManifestLock,
 } from './authority-manifest-lock.js';
-export { BlroAuthorityStore } from './authority-store.js';
+export { AuthorityStorePersistenceError, BlroAuthorityStore } from './authority-store.js';
 export { PostgresAuthorityEpochPort, AuthorityEpochError, type AuthorityEpochPort } from './authority-epoch.js';
 export {
   PostgresRemoteJobStore,
