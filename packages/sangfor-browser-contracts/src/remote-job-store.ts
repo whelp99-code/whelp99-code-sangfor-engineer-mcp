@@ -16,6 +16,7 @@ export type RemoteJobDispatch = {
   readonly dispatchId: string;
   readonly tenantId: string;
   readonly projectId: string;
+  readonly authorityEpoch: number;
   readonly installationId: string;
   readonly jobId: string;
   readonly requestId: string;

@@ -88,7 +88,7 @@ export async function authorizeToolCall(params: {
     if (isWrite && remoteBind && !allowRemoteWrite) {
       return { allow: false, status: 403, error: `Write tool refused on a remote (non-loopback) bind: ${name}. Set SANGFOR_ALLOW_REMOTE_WRITE=true only for an authorized deployment.` };
     }
-    const consumed = await consumeApprovalNonceAsync({ nonce: approval.nonce, expiresAt: approval.expiresAt });
+    const consumed = await consumeApprovalNonceAsync({ nonce: approval.nonce, expiresAt: approval.expiresAt, authorityEpoch: approval.authorityEpoch });
     if (!consumed.ok) {
       return { allow: false, status: 403, error: `bridge approval rejected: ${consumed.reason}` };
     }

@@ -52,6 +52,7 @@ const promotionDecisionFields = {
   decidedAt: timestampSchema,
   auditRef: relativeArtifactPathSchema,
   approvalDigest: sha256Schema,
+  authorityEpoch: z.number().int().nonnegative(),
   nonce: evidenceIdSchema.optional(),
   expiresAt: timestampSchema.optional(),
 } as const;

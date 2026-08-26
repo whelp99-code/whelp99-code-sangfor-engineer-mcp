@@ -47,6 +47,7 @@ export interface SignedApproval {
   rollbackPlanId: string;
   nonce: string;
   expiresAt: string; // ISO 8601
+  authorityEpoch: number;
 }
 
 function canonicalJson(value: unknown): string {
@@ -75,6 +76,7 @@ export function approvalCanonicalString(
     approval.rollbackPlanId,
     approval.nonce,
     approval.expiresAt,
+    String(approval.authorityEpoch),
     canonicalJson(action),
   ]);
 }

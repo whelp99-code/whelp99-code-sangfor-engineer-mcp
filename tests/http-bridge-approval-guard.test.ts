@@ -53,7 +53,8 @@ function mint(toolName: string, opts: { secret?: string; ttlMs?: number; nonce?:
     rollbackPlanId: 'RB-1',
     nonce: opts.nonce ?? randomBytes(8).toString('hex'),
     expiresAt: new Date(Date.now() + (opts.ttlMs ?? 60_000)).toISOString(),
-  };
+
+  authorityEpoch: 0,};
   return { ...base, approvalToken: signApprovalToken(opts.secret ?? SECRET, { type: BRIDGE_ACTION, target: toolName }, base) };
 }
 

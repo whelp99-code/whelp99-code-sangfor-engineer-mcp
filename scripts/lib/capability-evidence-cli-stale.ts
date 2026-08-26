@@ -1,4 +1,5 @@
 import process from 'node:process';
+import { dirname } from 'node:path';
 import { ZodError } from 'zod';
 import {
   FilePromotionLedger,
@@ -11,6 +12,7 @@ import {
   parseGroundedCapabilityEvidence,
   validateAndPersistEvidenceStaleness,
 } from '@sangfor/competency';
+import { resolveProductionLocalWriteAuthority } from '@sangfor/shared';
 import { CapabilityEvidenceCliError, refusalOutcome } from './capability-evidence-cli-errors.js';
 import { readBoundedFile } from './capability-evidence-cli-io.js';
 
@@ -68,6 +70,11 @@ export async function runStaleCliCommand(command: StaleCliCommand): Promise<void
       command.ledgerPath,
       process.env['SANGFOR_CAPABILITY_PROMOTION_LEDGER_SECRET'],
       process.env['SANGFOR_CAPABILITY_PROMOTION_CHECKPOINT_SECRET'],
+      resolveProductionLocalWriteAuthority({
+        tenantId: process.env.SANGFOR_TENANT_ID ?? 'local-primary',
+        projectId: process.env.SANGFOR_ENGAGEMENT_ID ?? 'local-primary', actorId: 'capability-stale-cli',
+        aggregate: 'capability_evidence_promotion', sourceRoot: dirname(command.ledgerPath),
+      }),
     );
   } catch (error) {
     if (error instanceof PromotionLedgerUnavailableError) {

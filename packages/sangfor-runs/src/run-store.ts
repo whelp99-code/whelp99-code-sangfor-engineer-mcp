@@ -1,6 +1,6 @@
 import { appendFileSync, mkdirSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { nowId, resolveEngagementScopedData } from '@sangfor/shared';
+import { nowId, expectedLocalWriteScope, requireLocalWriteAuthority, resolveEngagementScopedData, type LocalWriteAuthority } from '@sangfor/shared';
 import { maskSecrets } from './mask.js';
 
 export type RunStatus = 'pending_approval' | 'rejected' | 'running' | 'succeeded' | 'failed';
@@ -21,7 +21,9 @@ export interface RunRecord {
   error?: string;
   deviceId?: string;
   sweepId?: string;
-  approval?: { approvedBy: string; approvedAt: string; changeTicketId: string; rollbackPlanId: string };
+  approval?: {
+    approvedBy: string; approvedAt: string; changeTicketId: string; rollbackPlanId: string; authorityEpoch: number;
+  };
   rejectedReason?: string;
   playbookId?: string;
   playbookRunId?: string;      // nowId('pbrun') — 한 플레이북 "실행"의 모든 블록 run이 공유
@@ -60,15 +62,16 @@ function capResultJson(value: unknown): unknown {
 // files — prior snapshots remain for auditability.
 export class RunStore {
   private readonly dir: string;
+  private readonly authority: LocalWriteAuthority;
 
-  constructor(dir?: string) {
-    if (process.env.SANGFOR_BLRO_AUTHORITY_STORE === 'postgres') {
-      throw new Error('JM_LOCAL_RUN_STORE_SUPERSEDED: use BlroAuthorityStore');
-    }
+  constructor(dir: string | undefined, authority: LocalWriteAuthority) {
     this.dir = dir ?? resolveEngagementScopedData('data/runs', 'SANGFOR_RUNS_ROOT');
+    this.authority = requireLocalWriteAuthority(authority, expectedLocalWriteScope(
+      authority, authority?.projectId ?? '', 'runs_steps', this.dir,
+    ));
   }
 
-  createRun(input: {
+  async createRun(input: {
     toolId: string;
     toolSafety: RunSafety;
     args: Record<string, unknown>;
@@ -79,7 +82,7 @@ export class RunStore {
     playbookRev?: number;
     blockId?: string;
     initialStatus: RunStatus;
-  }): RunRecord {
+  }): Promise<RunRecord> {
     const record: RunRecord = {
       schemaVersion: 1,
       runId: nowId('run'),
@@ -95,7 +98,8 @@ export class RunStore {
     if (input.playbookRunId) record.playbookRunId = input.playbookRunId;
     if (input.playbookRev !== undefined) record.playbookRev = input.playbookRev;
     if (input.blockId) record.blockId = input.blockId;
-    this.append(record);
+    const target = join(this.dir, `${record.requestedAt.slice(0, 10)}.jsonl`);
+    await this.authority.fence.write(this.authority, { operation: 'runs.create', targetPaths: [target] }, () => this.append(record));
     return record;
   }
 
@@ -104,22 +108,22 @@ export class RunStore {
   // already-masked args ('***'), so it cannot re-derive the real secret values.
   // Callers that set `error` or `resultSummary` MUST value-scrub them first with
   // scrubSecretValues(text, originalArgs) — see apps/control-tower/src/api.ts execute().
-  transition(runId: string, patch: Partial<RunRecord> & { status: RunStatus }): RunRecord {
-    const current = this.getRun(runId);
-    if (!current) throw new Error(`unknown runId: ${runId}`);
-    const next: RunRecord = {
-      ...current,
-      ...patch,
-      schemaVersion: 1,
-      runId: current.runId,
-      toolId: current.toolId,
-      toolSafety: current.toolSafety,
-      requestedAt: current.requestedAt,
-    };
-    next.args = maskSecrets(patch.args ?? current.args);
-    if ('resultJson' in patch) next.resultJson = capResultJson(maskSecrets(patch.resultJson));
-    this.append(next);
-    return next;
+  async transition(runId: string, patch: Partial<RunRecord> & { status: RunStatus }): Promise<RunRecord> {
+    const existing = this.getRun(runId);
+    if (!existing) throw new Error(`unknown runId: ${runId}`);
+    const target = join(this.dir, `${existing.requestedAt.slice(0, 10)}.jsonl`);
+    return this.authority.fence.write(this.authority, { operation: 'runs.transition', targetPaths: [target] }, () => {
+      const current = this.getRun(runId);
+      if (!current) throw new Error(`unknown runId: ${runId}`);
+      const next: RunRecord = {
+        ...current, ...patch, schemaVersion: 1, runId: current.runId,
+        toolId: current.toolId, toolSafety: current.toolSafety, requestedAt: current.requestedAt,
+      };
+      next.args = maskSecrets(patch.args ?? current.args);
+      if ('resultJson' in patch) next.resultJson = capResultJson(maskSecrets(patch.resultJson));
+      this.append(next);
+      return next;
+    });
   }
 
   getRun(runId: string): RunRecord | undefined {

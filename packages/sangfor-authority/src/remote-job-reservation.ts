@@ -41,6 +41,13 @@ export class RemoteJobReservationRollback extends Error {
 export async function reserveRemoteJobTransaction(
   input: ReserveRemoteJobTransactionInput,
 ): Promise<RemoteJobReservation> {
+  await input.transaction.$executeRawUnsafe(
+    `INSERT INTO "BlroProjectAuthorityEpoch" ("projectId","epoch","revision") SELECT "id",0,0 FROM "BlroProject" WHERE "id"=$1 ON CONFLICT DO NOTHING`, input.scope.projectId,
+  );
+  const epochs = await input.transaction.$queryRawUnsafe<readonly { readonly epoch: number }[]>(
+    `SELECT "epoch" FROM "BlroProjectAuthorityEpoch" WHERE "projectId"=$1 FOR SHARE`, input.scope.projectId,
+  );
+  if (epochs[0]?.epoch !== input.claim.authorityEpoch) return authorizationRefused();
   const authorized = await authorizeRemoteJob({
     transaction: input.transaction,
     scope: input.scope,
@@ -82,8 +89,8 @@ export async function reserveRemoteJobTransaction(
     `INSERT INTO "BlroRemoteJob"
       ("id","tenantId","projectId","installationId","jobId","runId","stepId",
        "requestId","requestDigest","capabilityJti","state","tombstoneCommittedAt",
-       "createdAt","updatedAt")
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'dispatch_committed',$11,$11,$11)
+       "createdAt","updatedAt","authorityEpoch")
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'dispatch_committed',$11,$11,$11,$12)
      ON CONFLICT DO NOTHING RETURNING "id"`,
     input.dispatchId,
     input.scope.tenantId,
@@ -96,6 +103,7 @@ export async function reserveRemoteJobTransaction(
     input.requestDigest,
     input.claim.jti,
     input.now,
+    input.claim.authorityEpoch,
   );
   if (inserted[0]) return { kind: 'dispatch', dispatch: dispatchFrom(input) };
   const concurrent = await readExistingRemoteJob(input);
@@ -110,11 +118,12 @@ async function readExistingRemoteJob(
     `SELECT "id","tenantId","projectId","installationId","jobId","requestId",
       "requestDigest","capabilityJti","state","result","resultDigest"
      FROM "BlroRemoteJob"
-     WHERE "tenantId"=$1 AND "projectId"=$2 AND "installationId"=$3 AND "jobId"=$4`,
+     WHERE "tenantId"=$1 AND "projectId"=$2 AND "installationId"=$3 AND "jobId"=$4 AND "authorityEpoch"=$5`,
     input.scope.tenantId,
     input.scope.projectId,
     input.claim.installationId,
     input.envelope.jobId,
+    input.claim.authorityEpoch,
   );
   return rows[0];
 }
@@ -130,6 +139,7 @@ function dispatchFrom(input: ReserveRemoteJobTransactionInput): RemoteJobDispatc
     dispatchId: input.dispatchId,
     tenantId: input.scope.tenantId,
     projectId: input.scope.projectId,
+    authorityEpoch: input.claim.authorityEpoch,
     installationId: input.claim.installationId,
     jobId: input.envelope.jobId,
     requestId: input.envelope.request.requestId,

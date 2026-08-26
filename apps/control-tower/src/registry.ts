@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { nowId, resolveRepoData, withDirLock, writeFileAtomicSync } from '../../../packages/shared/src/index.js';
+import { nowId, expectedLocalWriteScope, requireLocalWriteAuthority, resolveRepoData, withDirLock, writeFileAtomicSync, type LocalWriteAuthority } from '../../../packages/shared/src/index.js';
 
 export interface VendorDescriptor {
   product: string;             // 열린 값 (enum 아님)
@@ -48,16 +48,25 @@ export const SEED_VENDORS: VendorDescriptor[] = [
 
 export class Registry {
   private readonly dir: string;
+  private readonly authority: LocalWriteAuthority;
 
-  constructor(dir?: string) {
-    if (process.env.SANGFOR_BLRO_AUTHORITY_STORE === 'postgres') {
-      throw new Error('JM_LOCAL_REGISTRY_SUPERSEDED: use BlroAuthorityStore');
-    }
+  constructor(dir: string | undefined, authority: LocalWriteAuthority) {
     this.dir = dir ?? resolveRepoData('data/registry', 'SANGFOR_REGISTRY_ROOT');
+    this.authority = requireLocalWriteAuthority(authority, expectedLocalWriteScope(
+      authority, authority?.projectId ?? '', 'registry_services', this.dir,
+    ));
   }
 
   vendors(): VendorDescriptor[] {
     return this.loadOrSeed<VendorDescriptor[]>(join(this.dir, 'vendors.json'), SEED_VENDORS);
+  }
+
+  async seedVendors(): Promise<VendorDescriptor[]> {
+    const path = join(this.dir, 'vendors.json');
+    return this.authority.fence.write(this.authority, { operation: 'registry.seed-vendors', targetPaths: [path] }, () => {
+      this.atomicWrite(path, SEED_VENDORS);
+      return structuredClone(SEED_VENDORS);
+    });
   }
 
   vendorFor(product: string): VendorDescriptor | undefined {
@@ -76,69 +85,53 @@ export class Registry {
     return join(this.dir, 'devices.json.lock');
   }
 
-  createDevice(input: {
+  async createDevice(input: {
     name: string; product: string; host: string;
     tags?: string[]; credentialEnv?: Record<string, string>;
-  }): Device {
-    return withDirLock(this.devicesLockPath, () => {
+  }): Promise<Device> {
+    return this.authority.fence.write(this.authority, { operation: 'registry.create-device', targetPaths: [join(this.dir, 'devices.json')] }, () => withDirLock(this.devicesLockPath, () => {
       if (!input.name?.trim()) throw new RegistryValidationError('name is required');
       if (!input.host?.trim()) throw new RegistryValidationError('host is required');
-      if (!this.vendorFor(input.product)) {
-        throw new RegistryValidationError(`unknown product (vendors.json에 없음): ${input.product}`);
-      }
+      if (!this.vendorFor(input.product)) throw new RegistryValidationError(`unknown product (vendors.json에 없음): ${input.product}`);
       const now = new Date().toISOString();
       const device: Device = {
-        id: nowId('dev'),
-        name: input.name.trim(),
-        product: input.product,
-        host: input.host.trim(),
-        tags: input.tags ?? [],
-        createdAt: now,
-        updatedAt: now,
+        id: nowId('dev'), name: input.name.trim(), product: input.product, host: input.host.trim(),
+        tags: input.tags ?? [], createdAt: now, updatedAt: now,
       };
       if (input.credentialEnv) device.credentialEnv = input.credentialEnv;
       this.writeDevices([...this.devices(), device]);
       return device;
-    });
+    }));
   }
 
-  updateDevice(id: string, patch: Partial<Omit<Device, 'id' | 'createdAt' | 'updatedAt'>>): Device {
-    return withDirLock(this.devicesLockPath, () => {
+  async updateDevice(id: string, patch: Partial<Omit<Device, 'id' | 'createdAt' | 'updatedAt'>>): Promise<Device> {
+    return this.authority.fence.write(this.authority, { operation: 'registry.update-device', targetPaths: [join(this.dir, 'devices.json')] }, () => withDirLock(this.devicesLockPath, () => {
       const devices = this.devices();
-      const index = devices.findIndex((d) => d.id === id);
+      const index = devices.findIndex((device) => device.id === id);
       if (index === -1) throw new RegistryValidationError(`unknown device: ${id}`);
-      if (patch.product !== undefined && !this.vendorFor(patch.product)) {
-        throw new RegistryValidationError(`unknown product (vendors.json에 없음): ${patch.product}`);
-      }
-      const updated: Device = {
-        ...devices[index],
-        ...patch,
-        id,
-        createdAt: devices[index].createdAt,
-        updatedAt: new Date().toISOString(),
-      };
+      const current = devices[index];
+      if (!current) throw new RegistryValidationError(`unknown device: ${id}`);
+      if (patch.product !== undefined && !this.vendorFor(patch.product)) throw new RegistryValidationError(`unknown product (vendors.json에 없음): ${patch.product}`);
+      const updated: Device = { ...current, ...patch, id, createdAt: current.createdAt, updatedAt: new Date().toISOString() };
       devices[index] = updated;
       this.writeDevices(devices);
       return updated;
-    });
+    }));
   }
 
-  deleteDevice(id: string): void {
-    withDirLock(this.devicesLockPath, () => {
+  async deleteDevice(id: string): Promise<void> {
+    await this.authority.fence.write(this.authority, { operation: 'registry.delete-device', targetPaths: [join(this.dir, 'devices.json')] }, () => withDirLock(this.devicesLockPath, () => {
       const devices = this.devices();
-      if (!devices.some((d) => d.id === id)) throw new RegistryValidationError(`unknown device: ${id}`);
-      this.writeDevices(devices.filter((d) => d.id !== id));
-    });
+      if (!devices.some((device) => device.id === id)) throw new RegistryValidationError(`unknown device: ${id}`);
+      this.writeDevices(devices.filter((device) => device.id !== id));
+    }));
   }
 
   private loadOrSeed<T>(path: string, seed: T): T {
     try {
       return JSON.parse(readFileSync(path, 'utf8')) as T;
     } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-        this.atomicWrite(path, seed);
-        return structuredClone(seed);
-      }
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') return structuredClone(seed);
       throw error; // corrupt registry must fail loud, not silently reset
     }
   }

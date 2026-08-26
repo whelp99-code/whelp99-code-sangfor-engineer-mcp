@@ -12,6 +12,7 @@ export interface MintInput {
   approvedBy: string;
   changeTicketId: string;
   rollbackPlanId: string;
+  authorityEpoch: number;
   ttlSec?: number;
   now?: Date;
 }
@@ -22,6 +23,7 @@ export function mintApproval(input: MintInput): SignedApproval {
     approvedBy: input.approvedBy,
     changeTicketId: input.changeTicketId,
     rollbackPlanId: input.rollbackPlanId,
+    authorityEpoch: input.authorityEpoch,
     nonce: randomBytes(12).toString('hex'),
     expiresAt: new Date(now.getTime() + (input.ttlSec ?? 120) * 1000).toISOString(),
   };

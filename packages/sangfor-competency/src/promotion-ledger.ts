@@ -1,6 +1,7 @@
 import { createHash, createHmac } from 'node:crypto';
 import { appendFileSync, closeSync, fsyncSync, openSync, readFileSync } from 'node:fs';
-import { withDirLock } from '../../shared/src/index.js';
+import { dirname } from 'node:path';
+import { expectedLocalWriteScope, requireLocalWriteAuthority, withDirLock, type LocalWriteAuthority } from '../../shared/src/index.js';
 import {
   PROMOTION_GENESIS,
   assertCheckpointMatches,
@@ -92,22 +93,32 @@ export class FilePromotionLedger implements PromotionLedger {
     private readonly ledgerSecret: string,
     private readonly checkpointSecret: string,
     private readonly faults: PromotionLedgerFaults,
+    private readonly authority?: LocalWriteAuthority,
   ) {}
 
-  static initialize(path: string, ledgerSecret: string, checkpointSecret: string, faults: PromotionLedgerFaults = {}): FilePromotionLedger {
+  static async initialize(
+    path: string, ledgerSecret: string, checkpointSecret: string,
+    faults: PromotionLedgerFaults = {}, injectedAuthority?: LocalWriteAuthority,
+  ): Promise<FilePromotionLedger> {
     assertPromotionSecrets(ledgerSecret, checkpointSecret);
-    initializePromotionStore(path, checkpointSecret);
-    const ledger = new FilePromotionLedger(path, ledgerSecret, checkpointSecret, faults);
+    const authority = requireLocalWriteAuthority(injectedAuthority, expectedLocalWriteScope(
+      injectedAuthority, injectedAuthority?.projectId ?? '', 'capability_evidence_promotion', dirname(path),
+    ));
+    await initializePromotionStore(path, checkpointSecret, authority);
+    const ledger = new FilePromotionLedger(path, ledgerSecret, checkpointSecret, faults, authority);
     assertPromotionStoreFiles(path);
     ledger.read();
     return ledger;
   }
 
-  static open(path: string, ledgerSecret: string | undefined, checkpointSecret: string | undefined): FilePromotionLedger {
+  static open(
+    path: string, ledgerSecret: string | undefined, checkpointSecret: string | undefined,
+    injectedAuthority?: LocalWriteAuthority,
+  ): FilePromotionLedger {
     if (ledgerSecret === undefined || checkpointSecret === undefined) throw new PromotionLedgerUnavailableError();
     assertPromotionSecrets(ledgerSecret, checkpointSecret);
     assertPromotionStoreFiles(path);
-    return new FilePromotionLedger(path, ledgerSecret, checkpointSecret, {});
+    return new FilePromotionLedger(path, ledgerSecret, checkpointSecret, {}, injectedAuthority);
   }
 
   private readLedger(): readonly PromotionLedgerEvent[] {
@@ -126,8 +137,13 @@ export class FilePromotionLedger implements PromotionLedger {
     return withDirLock(`${this.path}.lock`, () => this.readVerified());
   }
 
-  append(input: PromotionLedgerEventInput): PromotionLedgerEvent {
-    return withDirLock(`${this.path}.lock`, () => {
+  async append(input: PromotionLedgerEventInput): Promise<PromotionLedgerEvent> {
+    const authority = requireLocalWriteAuthority(this.authority, expectedLocalWriteScope(
+      this.authority, this.authority?.projectId ?? '', 'capability_evidence_promotion', dirname(this.path),
+    ));
+    return authority.fence.write(authority, {
+      operation: 'capability-promotion.append', targetPaths: [this.path, promotionCheckpointPath(this.path)],
+    }, () => withDirLock(`${this.path}.lock`, () => {
       const events = this.readVerified();
       const priorApplied = [...events].reverse().find((event) => event.outcome === 'applied'
         && samePromotionTarget(event.target, input.target));
@@ -162,11 +178,16 @@ export class FilePromotionLedger implements PromotionLedger {
         this.faults.afterCheckpointDurable?.();
       } catch { throw new PromotionLedgerIndeterminateError(); }
       return event;
-    });
+    }));
   }
 
-  reconcile(): readonly PromotionLedgerEvent[] {
-    return withDirLock(`${this.path}.lock`, () => {
+  async reconcile(): Promise<readonly PromotionLedgerEvent[]> {
+    const authority = requireLocalWriteAuthority(this.authority, expectedLocalWriteScope(
+      this.authority, this.authority?.projectId ?? '', 'capability_evidence_promotion', dirname(this.path),
+    ));
+    return authority.fence.write(authority, {
+      operation: 'capability-promotion.reconcile', targetPaths: [this.path, promotionCheckpointPath(this.path)],
+    }, () => withDirLock(`${this.path}.lock`, () => {
       const events = this.readLedger();
       const hashes = events.map(({ hash }) => hash);
       assertCheckpointPrefix(readPromotionCheckpoint(this.path, this.checkpointSecret), hashes);
@@ -174,7 +195,7 @@ export class FilePromotionLedger implements PromotionLedger {
         promotionCheckpointPath(this.path), this.checkpointSecret, events.length, hashes.at(-1) ?? PROMOTION_GENESIS,
       );
       return this.readVerified();
-    });
+    }));
   }
   verify(): { readonly ok: boolean } {
     try { this.read(); return { ok: true }; }

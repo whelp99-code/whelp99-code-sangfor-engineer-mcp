@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { SignedApproval } from '../../../packages/sangfor-operator/src/approval.js';
-import { nowId, resolveRepoData } from '../../../packages/shared/src/index.js';
+import { resolveProductionLocalWriteAuthority, nowId, resolveEngagementScopedData, resolveRepoData, type LocalWriteAuthority } from '../../../packages/shared/src/index.js';
 import { RunStore, maskSecrets, scrubSecretValues, type ListRunsOptions, type RunRecord, type RunStatus } from '../../../packages/sangfor-runs/src/index.js';
 import { BridgeClient, safetyOf, type BridgeTool } from './bridge-client.js';
 import { Registry, mergeDeviceArgs, applyMockCredentialFallback, RegistryValidationError, type Device, type VendorDescriptor } from './registry.js';
@@ -9,6 +9,7 @@ import { PlaybookStore, AnalysisStore, AgentTaskStore, PlaybookValidationError, 
 import { resolveTemplates, derivePlaybookRunStatus, renderReport, TemplateError, type PlaybookRunStatus } from './playbook-engine.js';
 import { planSeedPlaybooks } from './playbook-seed.js';
 import { mintBridgeApproval, mintApproval } from './approval-mint.js';
+import { PostgresAuthorityWriteFence } from '../../../packages/sangfor-authority/src/index.js';
 
 export class ApiError extends Error {
   constructor(public readonly status: number, message: string) {
@@ -29,7 +30,9 @@ export interface TowerOptions {
   registryDir?: string;
   approvalSecret?: string;
   mockConsoleUrl?: string;
-  playbookOutputDir?: string;   // 리포트 산출물 경로 (테스트 주입용, 기본 resolveRepoData('outputs/playbooks'))
+  playbookOutputDir?: string;
+  authorityMode?: 'local' | 'postgres';
+  localAuthorities?: Partial<Record<'registry_services' | 'runs_steps' | 'pm_tasks', LocalWriteAuthority>>;   // 리포트 산출물 경로 (테스트 주입용, 기본 resolveRepoData('outputs/playbooks'))
 }
 
 export interface HealthEntry { ok: boolean; detail: string }
@@ -117,18 +120,36 @@ export function summarize(result: unknown): string {
 }
 
 export function createApi(opts: TowerOptions = {}) {
+  const selected = opts.authorityMode ?? process.env.SANGFOR_BLRO_AUTHORITY_STORE;
+  const requiredAggregates = ['registry_services', 'runs_steps', 'pm_tasks'] as const;
+  if (selected !== 'local' && selected !== 'postgres') throw new ApiError(503, 'LOCAL_AUTHORITY_MODE_REQUIRED');
+  if (selected === 'postgres' && requiredAggregates.some((aggregate) =>
+    !(opts.localAuthorities?.[aggregate]?.fence instanceof PostgresAuthorityWriteFence))) {
+    throw new ApiError(503, 'POSTGRES_AUTHORITY_FENCE_REQUIRED');
+  }
   const bridge = new BridgeClient(opts.bridgeUrl, opts.token);
-  const store = new RunStore(opts.runsDir);
-  const registry = new Registry(opts.registryDir);
+  const projectId = process.env.SANGFOR_ENGAGEMENT_ID ?? 'local-primary';
+  const tenantId = process.env.SANGFOR_TENANT_ID ?? 'local-primary';
+  const actorId = process.env.SANGFOR_ACTOR_ID ?? 'local-primary';
+  const runsRoot = opts.runsDir ?? resolveEngagementScopedData('data/runs', 'SANGFOR_RUNS_ROOT');
+  const registryRoot = opts.registryDir ?? resolveRepoData('data/registry', 'SANGFOR_REGISTRY_ROOT');
+  const local = (aggregate: 'registry_services' | 'runs_steps' | 'pm_tasks', sourceRoot: string): LocalWriteAuthority => {
+    const injected = opts.localAuthorities?.[aggregate];
+    if (injected) return injected;
+    if (selected !== 'local') throw new ApiError(503, 'POSTGRES_AUTHORITY_FENCE_REQUIRED');
+    return resolveProductionLocalWriteAuthority({ tenantId, projectId, actorId, aggregate, sourceRoot }, undefined, selected);
+  };
+  const store = new RunStore(runsRoot, local('runs_steps', runsRoot));
+  const registry = new Registry(registryRoot, local('registry_services', registryRoot));
   const approvalSecret = opts.approvalSecret ?? process.env.SANGFOR_OPERATOR_APPROVAL_SECRET;
   const mockConsoleUrl = opts.mockConsoleUrl ?? process.env.MOCK_CONSOLE_URL ?? 'http://127.0.0.1:3400';
   // 승인 대기 run의 실행용 원본(무마스킹) args. 저장소에는 마스킹본만 있으므로 타워
   // 재시작으로 소실되면 해당 pending은 승인 시 400 — 마스킹본('***')을 실제 장비에
   // 보내는 사고를 막는다 (스펙 §6.2).
   const originalArgs = new Map<string, Record<string, unknown>>();
-  const playbooks = new PlaybookStore(opts.registryDir);
-  const analyses = new AnalysisStore(opts.runsDir);
-  const agentTasks = new AgentTaskStore(opts.registryDir);
+  const playbooks = new PlaybookStore(registryRoot, local('registry_services', registryRoot));
+  const analyses = new AnalysisStore(runsRoot, local('runs_steps', runsRoot));
+  const agentTasks = new AgentTaskStore(registryRoot, local('pm_tasks', registryRoot));
   const playbookOutputDir = opts.playbookOutputDir ?? resolveRepoData('outputs/playbooks');
 
   async function listBridgeTools(): Promise<BridgeTool[]> {
@@ -150,11 +171,11 @@ export function createApi(opts: TowerOptions = {}) {
     const finishedAt = new Date().toISOString();
     const durationMs = Date.now() - started;
     if (call.ok) {
-      return store.transition(runId, {
+      return await store.transition(runId, {
         status: 'succeeded', resultJson: call.data, resultSummary: scrubSecretValues(summarize(maskSecrets(call.data)), args), durationMs, finishedAt,
       });
     }
-    return store.transition(runId, {
+    return await store.transition(runId, {
       status: 'failed', error: scrubSecretValues(call.errorText ?? 'unknown bridge error', args), durationMs, finishedAt,
     });
   }
@@ -192,26 +213,26 @@ export function createApi(opts: TowerOptions = {}) {
     const tools = await listBridgeTools();
     const tool = tools.find((t) => t.name === block.toolId);
     if (!tool) {
-      const rec = store.createRun({ toolId: block.toolId ?? 'unknown', toolSafety: 'read_only', args: block.args ?? {}, initialStatus: 'running', ...tags });
-      store.transition(rec.runId, { status: 'failed', error: `unknown tool: ${block.toolId}`, finishedAt: new Date().toISOString() });
+      const rec = await store.createRun({ toolId: block.toolId ?? 'unknown', toolSafety: 'read_only', args: block.args ?? {}, initialStatus: 'running', ...tags });
+      await store.transition(rec.runId, { status: 'failed', error: `unknown tool: ${block.toolId}`, finishedAt: new Date().toISOString() });
       return 'failed';
     }
     let args: Record<string, unknown>;
     try {
       args = await resolveBlockArgs(block, playbookRunId, tool);
     } catch (error) {
-      const rec = store.createRun({ toolId: tool.name, toolSafety: safetyOf(tool), args: block.args ?? {}, initialStatus: 'running', ...tags });
+      const rec = await store.createRun({ toolId: tool.name, toolSafety: safetyOf(tool), args: block.args ?? {}, initialStatus: 'running', ...tags });
       const msg = error instanceof TemplateError ? error.message : error instanceof ApiError ? error.message : String(error);
-      store.transition(rec.runId, { status: 'failed', error: msg, finishedAt: new Date().toISOString() });
+      await store.transition(rec.runId, { status: 'failed', error: msg, finishedAt: new Date().toISOString() });
       return 'failed';
     }
     const safety = safetyOf(tool);
     if (safety === 'read_only') {
-      const rec = store.createRun({ toolId: tool.name, toolSafety: 'read_only', args, deviceId: block.deviceId, initialStatus: 'running', ...tags });
+      const rec = await store.createRun({ toolId: tool.name, toolSafety: 'read_only', args, deviceId: block.deviceId, initialStatus: 'running', ...tags });
       const final = await execute(rec.runId, tool.name, args);
       return final.status === 'succeeded' ? 'succeeded' : 'failed';
     }
-    const rec = store.createRun({ toolId: tool.name, toolSafety: safety, args, deviceId: block.deviceId, initialStatus: 'pending_approval', ...tags });
+    const rec = await store.createRun({ toolId: tool.name, toolSafety: safety, args, deviceId: block.deviceId, initialStatus: 'pending_approval', ...tags });
     originalArgs.set(rec.runId, args); // 승인 시 실행용 (v1과 동일 규약)
     return 'paused';
   }
@@ -219,15 +240,15 @@ export function createApi(opts: TowerOptions = {}) {
   async function runReportBlock(pb: Playbook, rev: number, playbookRunId: string, block: PlaybookBlock): Promise<void> {
     const priorRuns = blockRunsOf(playbookRunId); // report run 생성 전에 조회 → 자기 자신 제외
     const tags = makeTags(pb, rev, playbookRunId, block.id);
-    const rec = store.createRun({ toolId: 'tower.report', toolSafety: 'read_only', args: {}, initialStatus: 'running', ...tags });
+    const rec = await store.createRun({ toolId: 'tower.report', toolSafety: 'read_only', args: {}, initialStatus: 'running', ...tags });
     try {
       const markdown = renderReport(pb, rev, playbookRunId, priorRuns);
       mkdirSync(playbookOutputDir, { recursive: true });
       const path = join(playbookOutputDir, `${playbookRunId}.md`);
       writeFileSync(path, markdown);
-      store.transition(rec.runId, { status: 'succeeded', resultJson: { markdown, path }, resultSummary: markdown.split('\n')[0].slice(0, 200), finishedAt: new Date().toISOString() });
+      await store.transition(rec.runId, { status: 'succeeded', resultJson: { markdown, path }, resultSummary: markdown.split('\n')[0].slice(0, 200), finishedAt: new Date().toISOString() });
     } catch (error) {
-      store.transition(rec.runId, { status: 'failed', error: error instanceof Error ? error.message : String(error), finishedAt: new Date().toISOString() });
+      await store.transition(rec.runId, { status: 'failed', error: error instanceof Error ? error.message : String(error), finishedAt: new Date().toISOString() });
     }
   }
 
@@ -311,11 +332,11 @@ export function createApi(opts: TowerOptions = {}) {
       }
       const toolSafety = safetyOf(tool);
       if (toolSafety === 'read_only') {
-        const record = store.createRun({ toolId: tool.name, toolSafety, args, deviceId: input.deviceId, initialStatus: 'running' });
+        const record = await store.createRun({ toolId: tool.name, toolSafety, args, deviceId: input.deviceId, initialStatus: 'running' });
         return execute(record.runId, tool.name, args);
       }
       assertLocalApprovalAuthorityAllowed();
-      const record = store.createRun({ toolId: tool.name, toolSafety, args, deviceId: input.deviceId, initialStatus: 'pending_approval' });
+      const record = await store.createRun({ toolId: tool.name, toolSafety, args, deviceId: input.deviceId, initialStatus: 'pending_approval' });
       originalArgs.set(record.runId, args);
       return record;
     },
@@ -348,11 +369,14 @@ export function createApi(opts: TowerOptions = {}) {
       const changeTicketId = input.changeTicketId?.trim() || `run:${runId}`;
       const rollbackPlanId = input.rollbackPlanId?.trim() || 'n/a-read-back-verify';
       const signed = mintBridgeApproval(record.toolId, {
-        secret: approvalSecret, approvedBy: input.approvedBy, changeTicketId, rollbackPlanId, ttlSec: 120,
+        secret: approvalSecret, approvedBy: input.approvedBy, changeTicketId, rollbackPlanId, authorityEpoch: 0, ttlSec: 120,
       });
-      store.transition(runId, {
+      await store.transition(runId, {
         status: 'running',
-        approval: { approvedBy: input.approvedBy, approvedAt: new Date().toISOString(), changeTicketId, rollbackPlanId },
+        approval: {
+          approvedBy: input.approvedBy, approvedAt: new Date().toISOString(), changeTicketId, rollbackPlanId,
+          authorityEpoch: signed.authorityEpoch,
+        },
       });
       const final = await execute(runId, record.toolId, args, signed);
       originalArgs.delete(runId);
@@ -365,41 +389,41 @@ export function createApi(opts: TowerOptions = {}) {
       return final;
     },
 
-    rejectRun(runId: string, input: { reason?: string }): RunRecord {
+    async rejectRun(runId: string, input: { reason?: string }): Promise<RunRecord> {
       assertLocalApprovalAuthorityAllowed();
       const record = store.getRun(runId);
       if (!record) throw new ApiError(404, `unknown run: ${runId}`);
       if (record.status !== 'pending_approval') throw new ApiError(409, `run is not pending_approval: ${record.status}`);
       if (!input.reason?.trim()) throw new ApiError(400, 'reason is required');
       originalArgs.delete(runId);
-      return store.transition(runId, { status: 'rejected', rejectedReason: input.reason.trim() });
+      return await store.transition(runId, { status: 'rejected', rejectedReason: input.reason.trim() });
     },
 
     listDevices(): { devices: Device[]; vendors: VendorDescriptor[] } {
       return { devices: registry.devices(), vendors: registry.vendors() };
     },
 
-    createDevice(input: { name: string; product: string; host: string; tags?: string[]; credentialEnv?: Record<string, string> }): Device {
+    async createDevice(input: { name: string; product: string; host: string; tags?: string[]; credentialEnv?: Record<string, string> }): Promise<Device> {
       try {
-        return registry.createDevice(input);
+        return await registry.createDevice(input);
       } catch (error) {
         if (error instanceof RegistryValidationError) throw new ApiError(400, error.message);
         throw error;
       }
     },
 
-    updateDevice(id: string, patch: Partial<Omit<Device, 'id' | 'createdAt' | 'updatedAt'>>): Device {
+    async updateDevice(id: string, patch: Partial<Omit<Device, 'id' | 'createdAt' | 'updatedAt'>>): Promise<Device> {
       try {
-        return registry.updateDevice(id, patch);
+        return await registry.updateDevice(id, patch);
       } catch (error) {
         if (error instanceof RegistryValidationError) throw new ApiError(400, error.message);
         throw error;
       }
     },
 
-    deleteDevice(id: string): { ok: true } {
+    async deleteDevice(id: string): Promise<{ ok: true }> {
       try {
-        registry.deleteDevice(id);
+        await registry.deleteDevice(id);
         return { ok: true };
       } catch (error) {
         if (error instanceof RegistryValidationError) throw new ApiError(400, error.message);
@@ -439,18 +463,18 @@ export function createApi(opts: TowerOptions = {}) {
       const runs = await promisePool(jobs, 3, async ({ device, vendor, toolId }) => {
         const tool = tools.find((t) => t.name === toolId);
         if (!tool || safetyOf(tool) !== 'read_only') {
-          const record = store.createRun({
+          const record = await store.createRun({
             toolId, toolSafety: tool ? safetyOf(tool) : 'write', args: {},
             deviceId: device.id, sweepId, initialStatus: 'running',
           });
-          return store.transition(record.runId, {
+          return await store.transition(record.runId, {
             status: 'failed',
             error: tool ? 'sweep은 읽기전용 도구만 실행' : `unknown tool: ${toolId}`,
             finishedAt: new Date().toISOString(),
           });
         }
         const args = applyMockCredentialFallback(mergeDeviceArgs(vendor, device, {}), vendor, tool.inputSchema);
-        const record = store.createRun({
+        const record = await store.createRun({
           toolId, toolSafety: 'read_only', args, deviceId: device.id, sweepId, initialStatus: 'running',
         });
         return execute(record.runId, toolId, args);
@@ -532,20 +556,20 @@ export function createApi(opts: TowerOptions = {}) {
 
     // 기본 제공 플레이북 시드. seedKey로 멱등 — 이미 있는 시드는 건너뛴다. 생성본은 rev 1이
     // draft이므로 사람이 승인해야 실행된다(리뷰 게이트 우회 금지).
-    seedPlaybooks(input: { authoredBy?: string } = {}): { created: Playbook[]; skipped: number } {
+    async seedPlaybooks(input: { authoredBy?: string } = {}): Promise<{ created: Playbook[]; skipped: number }> {
       const candidates = planSeedPlaybooks(registry.devices(), registry.vendors());
       const existing = new Set(playbooks.list().map((p) => p.seedKey).filter(Boolean));
       const fresh = candidates.filter((c) => !existing.has(c.seedKey));
-      const created = fresh.map((c) => playbooks.create({
-        name: c.name, goal: c.goal, blocks: c.blocks, seedKey: c.seedKey,
+      const created = await Promise.all(fresh.map((candidate) => playbooks.create({
+        name: candidate.name, goal: candidate.goal, blocks: candidate.blocks, seedKey: candidate.seedKey,
         authoredBy: input.authoredBy?.trim() || 'tower-seed',
         note: '기본 제공 시드 — 블록을 검토한 뒤 승인하세요',
-      }));
+      })));
       return { created, skipped: candidates.length - created.length };
     },
 
-    createPlaybook(input: { name: string; goal: string; blocks: PlaybookBlock[]; authoredBy: string; note?: string }): Playbook {
-      try { return playbooks.create(input); }
+    async createPlaybook(input: { name: string; goal: string; blocks: PlaybookBlock[]; authoredBy: string; note?: string }): Promise<Playbook> {
+      try { return await playbooks.create(input); }
       catch (error) { throw asApiError(error); }
     },
 
@@ -555,24 +579,24 @@ export function createApi(opts: TowerOptions = {}) {
       return pb;
     },
 
-    addPlaybookRevision(id: string, input: { blocks: PlaybookBlock[]; authoredBy: string; note?: string }): Playbook {
-      try { return playbooks.addRevision(id, input); }
+    async addPlaybookRevision(id: string, input: { blocks: PlaybookBlock[]; authoredBy: string; note?: string }): Promise<Playbook> {
+      try { return await playbooks.addRevision(id, input); }
       catch (error) { throw asApiError(error); }
     },
 
-    reviewPlaybookRevision(id: string, rev: number, verdict: { approve: boolean; reviewedBy: string; rejectReason?: string }): Playbook {
-      try { return playbooks.reviewRevision(id, rev, verdict); }
+    async reviewPlaybookRevision(id: string, rev: number, verdict: { approve: boolean; reviewedBy: string; rejectReason?: string }): Promise<Playbook> {
+      try { return await playbooks.reviewRevision(id, rev, verdict); }
       catch (error) { throw asApiError(error); }
     },
 
-    submitAnalysis(playbookRunId: string, input: Omit<PlaybookAnalysis, 'id' | 'createdAt' | 'schemaVersion'>): PlaybookAnalysis {
+    async submitAnalysis(playbookRunId: string, input: Omit<PlaybookAnalysis, 'id' | 'createdAt' | 'schemaVersion'>): Promise<PlaybookAnalysis> {
       // 존재하는 실행인지 확인 (정보 격리: 임의 playbookRunId로 분석 주입 방지)
       this.getPlaybookRun(playbookRunId);
-      return analyses.append({ ...input, playbookRunId, schemaVersion: 1 } as PlaybookAnalysis);
+      return await analyses.append({ ...input, playbookRunId, schemaVersion: 1 } as PlaybookAnalysis);
     },
 
-    setAnalysisVerdict(id: string, input: { part: 'improvements' | 'proposals'; index: number; verdict: AnalysisVerdict; reviewedBy: string; linkedPlaybookId?: string }): PlaybookAnalysis {
-      try { return analyses.setVerdict(id, input.part, input.index, input.verdict, input.reviewedBy, input.linkedPlaybookId); }
+    async setAnalysisVerdict(id: string, input: { part: 'improvements' | 'proposals'; index: number; verdict: AnalysisVerdict; reviewedBy: string; linkedPlaybookId?: string }): Promise<PlaybookAnalysis> {
+      try { return await analyses.setVerdict(id, input.part, input.index, input.verdict, input.reviewedBy, input.linkedPlaybookId); }
       catch (error) { throw asApiError(error); }
     },
 
@@ -580,17 +604,17 @@ export function createApi(opts: TowerOptions = {}) {
       return { tasks: agentTasks.list(status) };
     },
 
-    createAgentTask(input: { kind: AgentTask['kind']; payload: AgentTask['payload'] }): AgentTask {
-      return agentTasks.create(input);
+    async createAgentTask(input: { kind: AgentTask['kind']; payload: AgentTask['payload'] }): Promise<AgentTask> {
+      return await agentTasks.create(input);
     },
 
-    closeAgentTask(id: string, result: AgentTask['result']): AgentTask {
-      try { return agentTasks.close(id, result); }
+    async closeAgentTask(id: string, result: AgentTask['result']): Promise<AgentTask> {
+      try { return await agentTasks.close(id, result); }
       catch (error) { throw asApiError(error); }
     },
 
-    cancelAgentTask(id: string): AgentTask {
-      try { return agentTasks.cancel(id); }
+    async cancelAgentTask(id: string): Promise<AgentTask> {
+      try { return await agentTasks.cancel(id); }
       catch (error) { throw asApiError(error); }
     },
 
@@ -622,12 +646,13 @@ export function createApi(opts: TowerOptions = {}) {
     // 스펙 §6.4: tool-args용 승인 수동 민팅 (HCI 등). 저장하지 않는다.
     mint(input: {
       actionType?: string; actionTarget?: string; approvedBy?: string;
-      changeTicketId?: string; rollbackPlanId?: string; ttlSec?: number;
+      changeTicketId?: string; rollbackPlanId?: string; authorityEpoch?: number; ttlSec?: number;
     }): SignedApproval {
       if (!approvalSecret) throw new ApiError(500, 'approval secret not configured');
       for (const field of ['actionType', 'approvedBy', 'changeTicketId', 'rollbackPlanId'] as const) {
         if (!input[field] || !String(input[field]).trim()) throw new ApiError(400, `${field} is required`);
       }
+      if (!Number.isInteger(input.authorityEpoch) || Number(input.authorityEpoch) < 0) throw new ApiError(400, 'authorityEpoch is required');
       return mintApproval({
         secret: approvalSecret,
         actionType: String(input.actionType),
@@ -635,6 +660,7 @@ export function createApi(opts: TowerOptions = {}) {
         approvedBy: String(input.approvedBy),
         changeTicketId: String(input.changeTicketId),
         rollbackPlanId: String(input.rollbackPlanId),
+        authorityEpoch: Number(input.authorityEpoch),
         ttlSec: typeof input.ttlSec === 'number' && input.ttlSec > 0 ? Math.min(input.ttlSec, 600) : undefined,
       });
     },

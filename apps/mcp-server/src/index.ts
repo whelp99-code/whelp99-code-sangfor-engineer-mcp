@@ -52,7 +52,7 @@ import { recommendSizing, type SizingInput } from '../../../packages/sangfor-siz
 import { createPmStore } from '../../../packages/sangfor-pm/src/index.js';
 import { checkVersionRequirement, loadVersionRequirements } from '../../../packages/sangfor-version/src/index.js';
 import { generateIntegrationGuide, listIntegrationTypes } from '../../../packages/sangfor-integration/src/index.js';
-import { resolveRepoData, resolveEngagementScopedData, activeEngagementId, nowId, normalizeProduct, paginate, appendJsonl, writeFileAtomicSync } from '../../../packages/shared/src/index.js';
+import { resolveProductionLocalWriteAuthority, resolveRepoData, resolveEngagementScopedData, activeEngagementId, nowId, normalizeProduct, paginate, appendJsonl, writeFileAtomicSync } from '../../../packages/shared/src/index.js';
 import { mapEppPoolToConfigState, mapCcPoolToConfigState } from '../../../packages/sangfor-config-state/src/index.js';
 import { fortios_policy_baseline, fortios_system_health_baseline, fortios_policy_audit_baseline } from '../../../packages/fortios-spec/src/index.js';
 import { mapFortiOSConfigState, mapFortiOSSystemHealth, mapFortiOSPolicyAudit } from '../../../packages/fortios-client/src/index.js';
@@ -102,7 +102,8 @@ type JsonRpcRequest = { jsonrpc: '2.0'; id?: string | number; method: string; pa
 type ToolHandler = (args: any) => unknown | Promise<unknown>;
 
 const plans = new Map<string, any>();
-const learningService = new LearningStrategyService();
+let learningService: LearningStrategyService | undefined;
+const currentLearningService = (): LearningStrategyService => learningService ??= new LearningStrategyService();
 const pendingLearningCaptures = new Map<string, { sessionHandle: string; durationMs?: number; firmwareVersion?: string }>();
 let observerManagerCache: { source: string; manager: ObserverSessionManager } | undefined;
 let browserExecutionPort: BrowserExecutionPort | undefined;
@@ -517,11 +518,13 @@ export async function runSafetySelftest(opts: { operatorGateTimeoutMs?: number }
   let nonceDir: string | undefined;
   try {
     nonceDir = mkdtempSync(join(tmpdir(), 'sangfor-selftest-nonce-'));
-    const store = new FileSingleUseNonceStore(join(nonceDir, 'nonces.json'));
+    const store = new FileSingleUseNonceStore(join(nonceDir, 'nonces.json'), resolveProductionLocalWriteAuthority({
+      tenantId: 'selftest', projectId: 'selftest', actorId: 'selftest', aggregate: 'approvals_nonces', sourceRoot: nonceDir,
+    }));
     const nonce = `selftest-${randomBytes(8).toString('hex')}`;
     const expiresAt = new Date(Date.now() + 60_000).toISOString();
-    const first = store.consume(nonce, expiresAt);
-    const second = store.consume(nonce, expiresAt);
+    const first = await store.consume(nonce, expiresAt);
+    const second = await store.consume(nonce, expiresAt);
     const refused = first.ok === true && second.ok === false;
     checks.push({
       name: 'approval.FileSingleUseNonceStore replay',
@@ -547,6 +550,15 @@ export async function runSafetySelftest(opts: { operatorGateTimeoutMs?: number }
   const skippedCount = checks.length - executed.length;
   return { checks, skippedCount, allPass: executed.every((c) => c.pass) };
 }
+
+const mcpLocalAuthority = (aggregate: string, sourceRoot: string) => resolveProductionLocalWriteAuthority({
+  tenantId: process.env.SANGFOR_TENANT_ID ?? 'local-primary',
+  projectId: process.env.SANGFOR_ENGAGEMENT_ID ?? 'local-primary',
+  actorId: 'mcp-server', aggregate, sourceRoot,
+});
+const auditRoot = () => join(resolveEngagementScopedData('data/evidence'), 'change-runs');
+const wikiRoot = () => resolveRepoData('data/wiki', 'SANGFOR_WIKI_ROOT');
+const evalRoot = () => resolveRepoData('data/evals', 'SANGFOR_EVALS_ROOT');
 
 const tools: Record<string, { description: string; inputSchema: any; handler: ToolHandler }> = {
   'sangfor_products': {
@@ -604,8 +616,11 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
         authority: hciAuthorityReferences(),
       });
       if (authorization.kind === 'REFUSED') return { ok: false, mutationPerformed: false, error: authorization.code };
-      const result = await applyCreateVolume(client, { name: args.name, sizeGb: args.sizeGb, description: args.description, clientToken: args.clientToken }, new AuditLedger());
-      return { ...result, mutationPerformed: result.finalState === 'SUCCEEDED' || Boolean(result.volumeId), ledger: new AuditLedger().pathFor(result.runId) };
+      const result = await applyCreateVolume(client, { name: args.name, sizeGb: args.sizeGb, description: args.description, clientToken: args.clientToken }, new AuditLedger({ authority: mcpLocalAuthority('audit', auditRoot()) }));
+      return {
+        ...result, mutationPerformed: result.finalState === 'SUCCEEDED' || Boolean(result.volumeId),
+        ledger: new AuditLedger({ authority: mcpLocalAuthority('audit', auditRoot()) }).pathFor(result.runId),
+      };
     }
   },
   'sangfor_hci_verify_volume': {
@@ -634,10 +649,10 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
       const before = await getVolume(client, args.volumeId);
       if (!before) return { ok: false, mutationPerformed: false, error: `volume ${args.volumeId} not found` };
       const res = await deleteVolume(client, args.volumeId);
-      const ledger = new AuditLedger();
+      const ledger = new AuditLedger({ authority: mcpLocalAuthority('audit', auditRoot()) });
       const runId = nowId('hci_delete');
-      ledger.append(runId, 'request', { op: 'delete-volume', volumeId: args.volumeId, before });
-      ledger.append(runId, 'response', { status: res.status });
+      await ledger.append(runId, 'request', { op: 'delete-volume', volumeId: args.volumeId, before });
+      await ledger.append(runId, 'response', { status: res.status });
       return { ok: res.status === 202, mutationPerformed: res.status === 202, status: res.status, runId };
     }
   },
@@ -895,7 +910,7 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
   'sangfor_upsert_knowledge_card': {
     description: 'Create or update a source-cited structured knowledge card. Requires at least one citation; does not write to devices.',
     inputSchema: { type: 'object', properties: { card: { type: 'object' } }, required: ['card'] },
-    handler: ({ card }: { card: Parameters<typeof upsertKnowledgeCard>[0] }) => upsertKnowledgeCard(card)
+    handler: ({ card }: { card: Parameters<typeof upsertKnowledgeCard>[0] }) => upsertKnowledgeCard(card, mcpLocalAuthority('wiki_proposals', wikiRoot()))
   },
 
   'sangfor_ingest_document': {
@@ -1068,7 +1083,7 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
     description: 'Submit feedback linked to a product/plan/session.',
     inputSchema: { type: 'object', properties: { product: { type: 'string' }, feedbackType: { type: 'string' }, severity: { type: 'string' }, feedbackText: { type: 'string' }, sourceRole: { type: 'string' } }, required: ['product', 'feedbackType', 'severity', 'feedbackText', 'sourceRole'] },
     handler: async (args) => {
-      const event = submitFeedback(args);
+      const event = await submitFeedback(args, mcpLocalAuthority('feedback_lessons', feedbackRoot()));
       const dbId = await persistFeedbackEvent(event).catch(() => null);
       return dbId ? { ...event, persistedId: dbId } : event;
     }
@@ -1076,38 +1091,47 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
   'sangfor_extract_lesson': {
     description: 'Extract a lesson learned from feedback.',
     inputSchema: { type: 'object', properties: { feedbackId: { type: 'string' } }, required: ['feedbackId'] },
-    handler: ({ feedbackId }) => extractLesson(feedbackId)
+    handler: ({ feedbackId }) => extractLesson(feedbackId, mcpLocalAuthority('feedback_lessons', feedbackRoot()))
   },
   'sangfor_propose_wiki_update': {
     description: 'Create a wiki update proposal from a lesson. Does not directly modify wiki. Creates a pending_review proposal only; applying it requires explicit human approval (reviewer token). Requires explicit reviewer consent before any wiki change.',
     inputSchema: { type: 'object', properties: { lessonTitle: { type: 'string' }, lessonBody: { type: 'string' }, targetPage: { type: 'string' } }, required: ['lessonTitle', 'lessonBody'] },
-    handler: proposeWikiUpdate
+    handler: (input) => proposeWikiUpdate(input, mcpLocalAuthority('wiki_proposals', wikiRoot()))
   },
   'sangfor_approve_wiki_update': {
     description: 'Approve or reject a wiki update proposal. Requires explicit reviewer token to confirm the approve/reject decision.',
     inputSchema: { type: 'object', properties: { proposalId: { type: 'string' }, decision: { type: 'string' }, token: { type: 'string' }, reviewer: { type: 'string' } }, required: ['proposalId', 'decision'] },
-    handler: ({ proposalId, decision, token, reviewer }) => approveWikiUpdate(proposalId, decision, { token, reviewer })
+    handler: ({ proposalId, decision, token, reviewer }) => approveWikiUpdate(proposalId, decision, { token, reviewer }, mcpLocalAuthority('wiki_proposals', wikiRoot()))
   },
   'sangfor_apply_wiki_update': {
     description: 'Apply an approved wiki update proposal. Blocks pending proposals. Gated by explicit human approval: applies only proposals that passed review; pending proposals are blocked.',
     inputSchema: { type: 'object', properties: { proposalId: { type: 'string' } }, required: ['proposalId'] },
-    handler: ({ proposalId }) => applyWikiUpdate(proposalId)
+    handler: ({ proposalId }) => applyWikiUpdate(proposalId, mcpLocalAuthority('wiki_proposals', wikiRoot()))
   },
 
   'sangfor_apply_obsidian_wiki_update': {
     description: 'Apply an approved wiki update proposal to an Obsidian vault path. Gated by explicit human approval: applies only proposals that passed review; pending proposals are blocked.',
     inputSchema: { type: 'object', properties: { proposalId: { type: 'string' }, vaultPath: { type: 'string' } }, required: ['proposalId', 'vaultPath'] },
-    handler: applyObsidianWikiUpdate
+    handler: ({ proposalId, vaultPath }) => applyObsidianWikiUpdate({
+      proposalId, vaultPath, proposalAuthority: mcpLocalAuthority('wiki_proposals', wikiRoot()),
+      adapterAuthority: mcpLocalAuthority('wiki_proposals', vaultPath),
+    })
   },
   'sangfor_apply_github_wiki_update': {
     description: 'Apply an approved wiki update proposal to a GitHub Wiki git repository. Uses git CLI and provided repoUrl/localPath. Gated by explicit human approval: applies only proposals that passed review; pending proposals are blocked.',
     inputSchema: { type: 'object', properties: { proposalId: { type: 'string' }, repoUrl: { type: 'string' }, localPath: { type: 'string' } }, required: ['proposalId', 'repoUrl'] },
-    handler: applyGitHubWikiUpdate
+    handler: ({ proposalId, repoUrl, localPath }) => {
+      const targetRoot = localPath ?? 'data/wiki/github-wiki';
+      return applyGitHubWikiUpdate({
+        proposalId, repoUrl, localPath: targetRoot, proposalAuthority: mcpLocalAuthority('wiki_proposals', wikiRoot()),
+        adapterAuthority: mcpLocalAuthority('wiki_proposals', targetRoot),
+      });
+    }
   },
   'sangfor_create_eval_case_from_feedback': {
     description: 'Create planner regression eval case from feedback. Local-only evals-store write; requires explicit product, name and requiredText, and never touches a device.',
     inputSchema: { type: 'object', properties: { product: { type: 'string' }, name: { type: 'string' }, requiredText: { type: 'string' } }, required: ['product', 'name', 'requiredText'] },
-    handler: createEvalCaseFromFeedback
+    handler: (input) => createEvalCaseFromFeedback(input, mcpLocalAuthority('evals', evalRoot()))
   },
 
   'sangfor_create_finetune_dataset': {
@@ -1486,7 +1510,7 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
       status: { type: 'string', enum: ['draft', 'researched', 'lab_verified', 'device_verified', 'strategy_field_verified', 'stale', 'deprecated'] },
       cursor: { type: 'string' }, limit: { type: 'integer', minimum: 1, maximum: 100 },
     } },
-    handler: (args: unknown) => learningService.list(learningArgs(args, ['strategyId', 'vendor', 'product', 'firmwareVersion', 'status', 'cursor', 'limit'])),
+    handler: (args: unknown) => currentLearningService().list(learningArgs(args, ['strategyId', 'vendor', 'product', 'firmwareVersion', 'status', 'cursor', 'limit'])),
   },
   'sangfor_resolve_learning_strategy': {
     description: 'Resolve one exact eligible learning strategy; returns honest miss, canary, drift, or ambiguity reasons.',
@@ -1494,7 +1518,7 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
       scope: { type: 'object', additionalProperties: false, required: ['product', 'firmwareVersion'], properties: { product: { type: 'string' }, firmwareVersion: { type: 'string' }, capability: { type: 'string' }, fact: { type: 'string' } } },
       context: { type: 'object', additionalProperties: false, required: ['registryDigest', 'versionTruthRecord'], properties: { registryDigest: { type: 'string' }, versionTruthRecord: { type: 'string' }, productVariant: { type: 'string' }, deviceScope: { type: 'string' }, environment: { type: 'string', enum: ['lab', 'poc', 'customer', 'production'] } } },
     } },
-    handler: (args: unknown) => { const input = learningArgs(args, ['scope', 'context']); return learningService.resolve(input.scope, input.context); },
+    handler: (args: unknown) => { const input = learningArgs(args, ['scope', 'context']); return currentLearningService().resolve(input.scope, input.context); },
   },
   'sangfor_attach_observation_session': {
     description: 'WRITE: attach to one exact loopback CDP page owned by the observer profile registry.',
@@ -1528,7 +1552,7 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
       factIds: { type: 'array', minItems: 1, items: { type: 'string' } }, allowCanary: { type: 'boolean', default: false },
       methodResults: { type: 'array', items: { type: 'object' } },
     } },
-    handler: (args: unknown) => learningService.collectFacts(learningArgs(args, ['scope', 'context', 'factIds', 'allowCanary', 'methodResults']) as any),
+    handler: (args: unknown) => currentLearningService().collectFacts(learningArgs(args, ['scope', 'context', 'factIds', 'allowCanary', 'methodResults']) as any),
   },
   'sangfor_research_learning_strategy': {
     description: 'WRITE: create an immutable draft from supplied official citation and optional capture evidence.',
@@ -1537,20 +1561,20 @@ const tools: Record<string, { description: string; inputSchema: any; handler: To
       scope: { type: 'object', additionalProperties: false, required: ['product', 'firmwareVersion'], properties: { product: { type: 'string' }, firmwareVersion: { type: 'string' }, capability: { type: 'string' }, fact: { type: 'string' } } },
       registryDigest: { type: 'string', pattern: '^[a-f0-9]{64}$' }, versionTruthRecord: { type: 'string' }, productVariant: { type: 'string' }, officialCitation: { type: 'string' }, pageVerified: { type: 'boolean' }, captureEvidenceFile: { type: 'string' }, methods: { type: 'array', items: { type: 'string', enum: ['LM-01', 'LM-02', 'LM-03', 'LM-04', 'LM-05', 'LM-06', 'LM-07', 'LM-08'] } },
     } },
-    handler: (args: unknown) => learningService.research(learningArgs(args, ['strategyId', 'vendor', 'scope', 'registryDigest', 'versionTruthRecord', 'productVariant', 'officialCitation', 'pageVerified', 'captureEvidenceFile', 'methods']) as any),
+    handler: (args: unknown) => currentLearningService().research(learningArgs(args, ['strategyId', 'vendor', 'scope', 'registryDigest', 'versionTruthRecord', 'productVariant', 'officialCitation', 'pageVerified', 'captureEvidenceFile', 'methods']) as any),
   },
   'sangfor_validate_learning_strategy': {
     description: 'WRITE: validate exact revision evidence and report eligible next states without promotion.',
     inputSchema: { type: 'object', additionalProperties: false, required: ['strategyId', 'revisionId'], properties: { strategyId: { type: 'string' }, revisionId: { type: 'string' }, evidenceFile: { type: 'string' }, evidenceDigest: { type: 'string', pattern: '^[a-f0-9]{64}$' } } },
-    handler: (args: unknown) => learningService.validate(learningArgs(args, ['strategyId', 'revisionId', 'evidenceFile', 'evidenceDigest']) as any),
+    handler: (args: unknown) => currentLearningService().validate(learningArgs(args, ['strategyId', 'revisionId', 'evidenceFile', 'evidenceDigest']) as any),
   },
   'sangfor_promote_learning_strategy': {
     description: 'WRITE: promote an immutable revision through a signed, action-bound, single-use lifecycle approval.',
     inputSchema: { type: 'object', additionalProperties: false, required: ['strategyId', 'revisionId', 'toState', 'approvalPayload', 'approvalToken', 'evidenceRoot'], properties: {
       strategyId: { type: 'string' }, revisionId: { type: 'string' }, toState: { type: 'string', enum: ['researched', 'lab_verified', 'device_verified', 'strategy_field_verified', 'stale', 'deprecated'] }, evidenceFile: { type: 'string' }, evidenceDigest: { type: 'string' }, approvalToken: { type: 'string', pattern: '^[a-f0-9]{64}$' }, evidenceRoot: { type: 'string' },
-      approvalPayload: { type: 'object', additionalProperties: false, required: ['entityType', 'entityId', 'revisionId', 'contentHash', 'fromState', 'toState', 'evidenceFile', 'evidenceDigest', 'nonce', 'expiresAt'], properties: { entityType: { type: 'string' }, entityId: { type: 'string' }, revisionId: { type: 'string' }, contentHash: { type: 'string' }, fromState: { type: 'string' }, toState: { type: 'string' }, evidenceFile: { type: 'string' }, evidenceDigest: { type: 'string' }, nonce: { type: 'string' }, expiresAt: { type: 'string' } } },
+      approvalPayload: { type: 'object', additionalProperties: false, required: ['entityType', 'entityId', 'revisionId', 'contentHash', 'fromState', 'toState', 'evidenceFile', 'evidenceDigest', 'nonce', 'expiresAt', 'authorityEpoch'], properties: { entityType: { type: 'string' }, entityId: { type: 'string' }, revisionId: { type: 'string' }, contentHash: { type: 'string' }, fromState: { type: 'string' }, toState: { type: 'string' }, evidenceFile: { type: 'string' }, evidenceDigest: { type: 'string' }, nonce: { type: 'string' }, expiresAt: { type: 'string' }, authorityEpoch: { type: 'integer', minimum: 0 } } },
     } },
-    handler: (args: unknown) => learningService.promote(learningArgs(args, ['strategyId', 'revisionId', 'toState', 'evidenceFile', 'evidenceDigest', 'approvalPayload', 'approvalToken', 'evidenceRoot']) as any),
+    handler: (args: unknown) => currentLearningService().promote(learningArgs(args, ['strategyId', 'revisionId', 'toState', 'evidenceFile', 'evidenceDigest', 'approvalPayload', 'approvalToken', 'evidenceRoot']) as any),
   },
 
   // ── 플레이북 (Control Tower :3700 프록시) ─────────────────────────────────

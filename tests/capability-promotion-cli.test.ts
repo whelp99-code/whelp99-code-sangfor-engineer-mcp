@@ -14,6 +14,7 @@ import {
   signCapabilityApproval,
 } from '../packages/sangfor-competency/src/index.js';
 import { writeValidationFixture } from './helpers/capability-evidence-validation-fixture.js';
+import { testPromotionLedger } from './helpers/local-write-authority.js';
 
 const CLI = 'scripts/capability-evidence-cli.ts';
 const APPROVAL_SECRET = 'capability-cli-approval-secret-32-bytes';
@@ -80,7 +81,8 @@ function signedPromotion(manifestSource: string, manifest: ReturnType<typeof wri
       fromMaturity: request.fromMaturity, reviewer: { actorId: 'human-reviewer-1', actorType: 'human_pm' }, decidedAt: '2026-08-25T12:10:00.000Z',
       auditRef: 'decision.jsonl', approvalDigest: '0'.repeat(64), nonce: 'cli-nonce-1',
       expiresAt: '2026-08-25T12:20:00.000Z', decision: 'promote', promotedMaturity: 'field_verified',
-    },
+
+    authorityEpoch: 0,},
   });
   const decision = envelope.decision;
   if (decision === null) throw new Error('decision fixture missing');
@@ -130,7 +132,7 @@ describe('capability promotion CLI', () => {
       reviewer: { actorId: fixture.context.reviewerActorId, actorType: 'human_pm' },
       runIdentities: fixture.context.runIdentities,
     }));
-    FilePromotionLedger.initialize(ledgerPath, LEDGER_SECRET, CHECKPOINT_SECRET);
+    await testPromotionLedger(ledgerPath, LEDGER_SECRET, CHECKPOINT_SECRET);
     writeFileSync(`${ledgerPath}.head.json`, '{');
 
     const indeterminate = capabilityPromotionCliOutput({ status: 'indeterminate', reason: 'ledger_commit_unknown' });
@@ -159,7 +161,7 @@ describe('capability promotion CLI', () => {
       reviewer: { actorId: fixture.context.reviewerActorId, actorType: 'human_pm' },
       runIdentities: fixture.context.runIdentities,
     }));
-    const ledger = FilePromotionLedger.initialize(ledgerPath, LEDGER_SECRET, CHECKPOINT_SECRET);
+    const ledger = await testPromotionLedger(ledgerPath, LEDGER_SECRET, CHECKPOINT_SECRET);
 
     const applied = await runCli({ manifest, promotion, evidenceRoot, context, nonce, ledger: ledgerPath }, registryUrl);
     const replayed = await runCli({ manifest, promotion, evidenceRoot, context, nonce, ledger: ledgerPath }, registryUrl);

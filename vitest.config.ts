@@ -30,6 +30,7 @@ export default defineConfig({
     }
   },
   test: {
+    env: { SANGFOR_BLRO_AUTHORITY_STORE: 'local' },
     include: ['tests/**/*.test.ts'],
     exclude: ['**/node_modules/**', '**/dist/**']
   }

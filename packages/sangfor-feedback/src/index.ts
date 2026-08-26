@@ -1,4 +1,4 @@
-import { nowId, normalizeProduct, resolveEngagementScopedData, appendJsonl, foldJsonlById } from '@sangfor/shared';
+import { nowId, normalizeProduct, expectedLocalWriteScope, requireLocalWriteAuthority, resolveEngagementScopedData, appendJsonl, foldJsonlById, type LocalWriteAuthority } from '@sangfor/shared';
 import { join } from 'node:path';
 
 export interface FeedbackEvent {
@@ -30,13 +30,20 @@ const dir = () => resolveEngagementScopedData('data/feedback', 'SANGFOR_FEEDBACK
 const feedbackFile = () => join(dir(), 'feedback.jsonl');
 const lessonsFile = () => join(dir(), 'lessons.jsonl');
 
-export function submitFeedback(input: Omit<FeedbackEvent, 'id' | 'status'>): FeedbackEvent {
+export async function submitFeedback(input: Omit<FeedbackEvent, 'id' | 'status'>, injectedAuthority: LocalWriteAuthority): Promise<FeedbackEvent> {
   const event: FeedbackEvent = { ...input, product: normalizeProduct(input.product).toString(), id: nowId('feedback'), status: 'new' };
-  appendJsonl(feedbackFile(), event);
+  const authority = requireLocalWriteAuthority(injectedAuthority, expectedLocalWriteScope(
+    injectedAuthority, injectedAuthority?.projectId ?? '', 'feedback_lessons', dir(),
+  ));
+  await authority.fence.write(authority, { operation: 'feedback.submit', targetPaths: [feedbackFile()] }, () => appendJsonl(feedbackFile(), event));
   return event;
 }
 
-export function extractLesson(feedbackId: string): LessonLearned {
+export async function extractLesson(feedbackId: string, injectedAuthority: LocalWriteAuthority): Promise<LessonLearned> {
+  const authority = requireLocalWriteAuthority(injectedAuthority, expectedLocalWriteScope(
+    injectedAuthority, injectedAuthority?.projectId ?? '', 'feedback_lessons', dir(),
+  ));
+  return authority.fence.write(authority, { operation: 'feedback.extract-lesson', targetPaths: [feedbackFile(), lessonsFile()] }, () => {
   const event = foldJsonlById<FeedbackEvent>(feedbackFile()).get(feedbackId);
   if (!event) throw new Error(`Unknown feedback: ${feedbackId}`);
   const lesson: LessonLearned = {
@@ -53,6 +60,7 @@ export function extractLesson(feedbackId: string): LessonLearned {
   appendJsonl(lessonsFile(), lesson);
   appendJsonl(feedbackFile(), { ...event, status: 'lesson_extracted' });
   return lesson;
+  });
 }
 
 export function listLessons(): LessonLearned[] {

@@ -7,7 +7,7 @@ import {
   loadWorkAtomCatalog,
   type ToolRegistrySource,
 } from '../../../packages/sangfor-competency/src/index.js';
-import { resolveRepoData } from '../../../packages/shared/src/index.js';
+import { resolveProductionLocalWriteAuthority, resolveEngagementScopedData, resolveRepoData } from '../../../packages/shared/src/index.js';
 import { listSpecCoverage } from '../../../packages/sangfor-spec/src/index.js';
 import { listCapabilitySafety } from '../../../packages/sangfor-safety/src/index.js';
 import { analyzeProject, generateConfigPlanAsync } from '../../../packages/sangfor-planner/src/index.js';
@@ -128,7 +128,11 @@ export async function postImportExcel(body: {
 }
 
 export async function postFeedback(body: Record<string, unknown>) {
-  const event = submitFeedback(body as Parameters<typeof submitFeedback>[0]);
+  const sourceRoot = resolveEngagementScopedData('data/feedback', 'SANGFOR_FEEDBACK_ROOT');
+  const event = await submitFeedback(body as Parameters<typeof submitFeedback>[0], resolveProductionLocalWriteAuthority({
+    tenantId: 'local-primary', projectId: process.env.SANGFOR_ENGAGEMENT_ID ?? 'local-primary', actorId: 'operator-console',
+    aggregate: 'feedback_lessons', sourceRoot,
+  }));
   const dbId = await persistFeedbackEvent(event).catch(() => null);
   return dbId ? { ...event, persistedId: dbId } : event;
 }

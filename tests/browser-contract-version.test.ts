@@ -72,7 +72,8 @@ function envelopeOptions() {
       expiresAt,
       jti: `cap-${jobId}`,
       privateKey,
-    }),
+
+    authorityEpoch: 0,}),
   };
 }
 

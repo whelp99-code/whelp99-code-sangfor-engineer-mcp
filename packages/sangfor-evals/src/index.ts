@@ -1,4 +1,4 @@
-import { ConfigPlan, nowId, resolveRepoData, appendJsonl, foldJsonlById } from '@sangfor/shared';
+import { ConfigPlan, nowId, expectedLocalWriteScope, requireLocalWriteAuthority, resolveRepoData, appendJsonl, foldJsonlById, type LocalWriteAuthority } from '@sangfor/shared';
 import { join } from 'node:path';
 
 export interface EvalCase {
@@ -22,9 +22,15 @@ export function allEvalCases(): EvalCase[] {
   return [...SEED_EVAL_CASES, ...foldJsonlById<EvalCase>(evalsFile()).values()];
 }
 
-export function createEvalCaseFromFeedback(input: { product: string; name: string; requiredText: string }): EvalCase {
+export async function createEvalCaseFromFeedback(
+  input: { product: string; name: string; requiredText: string },
+  injectedAuthority: LocalWriteAuthority,
+): Promise<EvalCase> {
   const evalCase: EvalCase = { id: nowId('eval'), ...input };
-  appendJsonl(evalsFile(), evalCase);
+  const authority = requireLocalWriteAuthority(injectedAuthority, expectedLocalWriteScope(
+    injectedAuthority, injectedAuthority?.projectId ?? '', 'evals', resolveRepoData('data/evals', 'SANGFOR_EVALS_ROOT'),
+  ));
+  await authority.fence.write(authority, { operation: 'evals.create-from-feedback', targetPaths: [evalsFile()] }, () => appendJsonl(evalsFile(), evalCase));
   return evalCase;
 }
 

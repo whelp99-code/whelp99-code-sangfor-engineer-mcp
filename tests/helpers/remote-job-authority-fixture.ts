@@ -119,6 +119,7 @@ export class RemoteJobAuthorityFixture {
       ttlMs: expiresAt.getTime() - issuedAt.getTime(),
       capability: ({ runId, stepId }) => mintJobCapability({
         ...scope,
+        authorityEpoch: 0,
         runId,
         stepId,
         jobId,

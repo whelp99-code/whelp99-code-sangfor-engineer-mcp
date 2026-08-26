@@ -9,15 +9,15 @@ import {
 } from '../packages/sangfor-competency/src/index.js';
 import { createEffectiveFixture } from './helpers/effective-maturity-fixture.js';
 
-const fixtures: ReturnType<typeof createEffectiveFixture>[] = [];
-const setup = () => {
-  const value = createEffectiveFixture();
+const fixtures: Awaited<ReturnType<typeof createEffectiveFixture>>[] = [];
+const setup = async () => {
+  const value = await createEffectiveFixture();
   fixtures.push(value);
   return value;
 };
 afterEach(() => { for (const fixture of fixtures.splice(0)) fixture.cleanup(); });
 
-function input(value: ReturnType<typeof setup>, context: EvidenceValidationContext) {
+function input(value: Awaited<ReturnType<typeof setup>>, context: EvidenceValidationContext) {
   return {
     manifestSource: value.claim.manifestSource,
     manifest: value.fixture.manifest,
@@ -29,7 +29,7 @@ function input(value: ReturnType<typeof setup>, context: EvidenceValidationConte
   };
 }
 
-function driftContext(value: ReturnType<typeof setup>): EvidenceValidationContext {
+function driftContext(value: Awaited<ReturnType<typeof setup>>): EvidenceValidationContext {
   return {
     ...value.fixture.context,
     clock: { now: () => new Date('2026-08-25T12:11:00.000Z') },
@@ -43,7 +43,7 @@ function driftContext(value: ReturnType<typeof setup>): EvidenceValidationContex
 describe('validate-and-persist evidence staleness boundary', () => {
   it('Given a forged caller stale union and active evidence, When the boundary runs, Then no public raw seam exists and nothing appends', async () => {
     // Given
-    const value = setup();
+    const value = await setup();
     const forged = {
       ...input(value, value.fixture.context),
       validation: { status: 'stale', issues: [{ code: 'identity_drift', path: ['forged'] }] },
@@ -60,7 +60,7 @@ describe('validate-and-persist evidence staleness boundary', () => {
 
   it('Given active context, When the boundary recomputes Todo 8 validation, Then it does not append', async () => {
     // Given
-    const value = setup();
+    const value = await setup();
 
     // When
     const result = await validateAndPersistEvidenceStaleness(input(value, value.fixture.context));
@@ -71,11 +71,11 @@ describe('validate-and-persist evidence staleness boundary', () => {
   });
 
   it.each([
-    ['drift', (value: ReturnType<typeof setup>) => driftContext(value), 'identity_drift'],
-    ['expiry', (value: ReturnType<typeof setup>) => ({ ...value.fixture.context, clock: { now: () => new Date('2027-02-21T12:00:00.001Z') } }), 'evidence_expired'],
+    ['drift', (value: Awaited<ReturnType<typeof setup>>) => driftContext(value), 'identity_drift'],
+    ['expiry', (value: Awaited<ReturnType<typeof setup>>) => ({ ...value.fixture.context, clock: { now: () => new Date('2027-02-21T12:00:00.001Z') } }), 'evidence_expired'],
   ] as const)('Given genuine %s, When validation runs immediately before append, Then a computed stale event is persisted', async (_name, context, reason) => {
     // Given
-    const value = setup();
+    const value = await setup();
 
     // When
     const result = await validateAndPersistEvidenceStaleness(input(value, context(value)));
@@ -87,7 +87,7 @@ describe('validate-and-persist evidence staleness boundary', () => {
 
   it('Given context changes between calls, When the boundary runs each time, Then only the newly computed stale call appends', async () => {
     // Given
-    const value = setup();
+    const value = await setup();
 
     // When
     const active = await validateAndPersistEvidenceStaleness(input(value, value.fixture.context));
@@ -101,7 +101,7 @@ describe('validate-and-persist evidence staleness boundary', () => {
 
   it('Given validation infrastructure is unavailable, When the boundary recomputes, Then it returns indeterminate without append', async () => {
     // Given
-    const value = setup();
+    const value = await setup();
     const unavailable = {
       ...input(value, driftContext(value)),
       context: {
@@ -120,7 +120,7 @@ describe('validate-and-persist evidence staleness boundary', () => {
 
   it('Given refused evidence bytes, When the boundary validates, Then it returns refusal without append', async () => {
     // Given
-    const value = setup();
+    const value = await setup();
     const firstArtifact = value.fixture.manifest.artifacts[0];
     if (firstArtifact === undefined) throw new Error('artifact fixture unavailable');
     writeFileSync(join(value.claim.evidenceRoot, firstArtifact.path), '{"forged":true}');

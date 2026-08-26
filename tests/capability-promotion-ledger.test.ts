@@ -2,6 +2,7 @@ import { appendFileSync, mkdtempSync, readFileSync, rmSync, unlinkSync, writeFil
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { testPromotionLedger, testOpenPromotionLedger } from './helpers/local-write-authority.js';
 import {
   FilePromotionLedger,
   PromotionLedgerIndeterminateError,
@@ -46,16 +47,16 @@ describe('file capability promotion decision ledger', () => {
 
   afterEach(() => rmSync(root, { recursive: true, force: true }));
 
-  it('fails closed for a missing ledger, checkpoint, or dedicated secret', () => {
-    expect(() => FilePromotionLedger.open(path, SECRET, CHECKPOINT_SECRET)).toThrow(PromotionLedgerUnavailableError);
-    FilePromotionLedger.initialize(path, SECRET, CHECKPOINT_SECRET);
-    expect(() => FilePromotionLedger.open(path, undefined, CHECKPOINT_SECRET)).toThrow(PromotionLedgerUnavailableError);
-    expect(() => FilePromotionLedger.open(path, SECRET, undefined)).toThrow(PromotionLedgerUnavailableError);
+  it('fails closed for a missing ledger, checkpoint, or dedicated secret', async () => {
+    expect(() => testOpenPromotionLedger(path, SECRET, CHECKPOINT_SECRET)).toThrow(PromotionLedgerUnavailableError);
+    await testPromotionLedger(path, SECRET, CHECKPOINT_SECRET);
+    expect(() => testOpenPromotionLedger(path, undefined, CHECKPOINT_SECRET)).toThrow(PromotionLedgerUnavailableError);
+    expect(() => testOpenPromotionLedger(path, SECRET, undefined)).toThrow(PromotionLedgerUnavailableError);
   });
 
-  it('detects malformed, truncated, and hash-modified lines', () => {
-    const ledger = FilePromotionLedger.initialize(path, SECRET, CHECKPOINT_SECRET);
-    ledger.append(event(1));
+  it('detects malformed, truncated, and hash-modified lines', async () => {
+    const ledger = await testPromotionLedger(path, SECRET, CHECKPOINT_SECRET);
+    await ledger.append(event(1));
     const valid = readFileSync(path, 'utf8');
     for (const corrupt of ['not-json\n', valid.slice(0, -12), valid.replace('signature_mismatch', 'forged')]) {
       writeFileSync(path, corrupt);
@@ -64,8 +65,8 @@ describe('file capability promotion decision ledger', () => {
   });
 
   it('serializes 32 appenders into one contiguous masked chain', async () => {
-    const ledger = FilePromotionLedger.initialize(path, SECRET, CHECKPOINT_SECRET);
-    await Promise.all(Array.from({ length: 32 }, (_, index) => Promise.resolve().then(() => ledger.append(event(index)))));
+    const ledger = await testPromotionLedger(path, SECRET, CHECKPOINT_SECRET);
+    await Promise.all(Array.from({ length: 32 }, async (_, index) => Promise.resolve().then(async () => await ledger.append(event(index)))));
     const events = ledger.read();
     expect(events.map(({ seq }) => seq)).toEqual(Array.from({ length: 32 }, (_, index) => index));
     expect(ledger.verify()).toEqual({ ok: true });
@@ -74,11 +75,11 @@ describe('file capability promotion decision ledger', () => {
     expect(persisted).not.toContain('nonce-');
   });
 
-  it('refuses deleted, stale, ahead, behind, mismatched, and corrupt checkpoints', () => {
-    const ledger = FilePromotionLedger.initialize(path, SECRET, CHECKPOINT_SECRET);
+  it('refuses deleted, stale, ahead, behind, mismatched, and corrupt checkpoints', async () => {
+    const ledger = await testPromotionLedger(path, SECRET, CHECKPOINT_SECRET);
     const checkpointPath = `${path}.head.json`;
     const emptyHead = readFileSync(checkpointPath, 'utf8');
-    ledger.append(event(1));
+    await ledger.append(event(1));
     const validLedger = readFileSync(path, 'utf8');
     const validHead = readFileSync(checkpointPath, 'utf8');
     const corruptions = [
@@ -99,24 +100,24 @@ describe('file capability promotion decision ledger', () => {
 
   it.each(['afterEventDurable', 'afterCheckpointDurable'] as const)(
     'returns an indeterminate append at %s and requires verified restart reconciliation',
-    (faultPoint) => {
-      const ledger = FilePromotionLedger.initialize(path, SECRET, CHECKPOINT_SECRET, {
+    async (faultPoint) => {
+      const ledger = await testPromotionLedger(path, SECRET, CHECKPOINT_SECRET, {
         [faultPoint]: () => { throw new Error('simulated acknowledgement loss'); },
       });
-      expect(() => ledger.append(event(1))).toThrow(PromotionLedgerIndeterminateError);
-      const restarted = FilePromotionLedger.open(path, SECRET, CHECKPOINT_SECRET);
+      await expect(async () => await ledger.append(event(1))).rejects.toThrow(PromotionLedgerIndeterminateError);
+      const restarted = testOpenPromotionLedger(path, SECRET, CHECKPOINT_SECRET);
       if (faultPoint === 'afterEventDurable') {
         expect(() => restarted.read()).toThrow(PromotionLedgerUnavailableError);
       } else {
         expect(restarted.read()).toHaveLength(1);
       }
-      expect(restarted.reconcile()).toHaveLength(1);
+      expect(await restarted.reconcile()).toHaveLength(1);
       expect(restarted.read()).toHaveLength(1);
     },
   );
 
-  it('refuses a nonempty legacy ledger with no checkpoint instead of rebuilding it', () => {
+  it('refuses a nonempty legacy ledger with no checkpoint instead of rebuilding it', async () => {
     writeFileSync(path, '{}\n');
-    expect(() => FilePromotionLedger.initialize(path, SECRET, CHECKPOINT_SECRET)).toThrow(PromotionLedgerUnavailableError);
+    await expect(async () => await testPromotionLedger(path, SECRET, CHECKPOINT_SECRET)).rejects.toThrow(PromotionLedgerUnavailableError);
   });
 });

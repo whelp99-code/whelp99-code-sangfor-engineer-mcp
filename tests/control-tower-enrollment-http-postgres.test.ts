@@ -79,7 +79,7 @@ describeDb('Control Tower enrollment HTTP routes on PostgreSQL', () => {
     };
     runtime = createAuthorityRuntime({ environment });
     await runtime.start();
-    server = createTowerServer({ authorityRuntime: runtime, apiToken: bearer });
+    server = createTowerServer({ authorityMode: 'local', authorityRuntime: runtime, apiToken: bearer });
     await new Promise<void>((resolve, reject) => {
       server.once('error', reject);
       server.listen(0, '127.0.0.1', resolve);

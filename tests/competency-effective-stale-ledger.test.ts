@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { writeFileSync } from 'node:fs';
 import { afterEach, describe, expect, it } from 'vitest';
+import { testPromotionLedger, testOpenPromotionLedger } from './helpers/local-write-authority.js';
 import {
   FilePromotionLedger,
   PromotionLedgerStaleEvidenceError,
@@ -23,15 +24,15 @@ import {
 } from './helpers/effective-maturity-fixture.js';
 
 const APPROVAL_SECRET = 'todo-10-stale-approval-secret-at-least-32';
-const fixtures: ReturnType<typeof createEffectiveFixture>[] = [];
-const setup = () => {
-  const value = createEffectiveFixture();
+const fixtures: Awaited<ReturnType<typeof createEffectiveFixture>>[] = [];
+const setup = async () => {
+  const value = await createEffectiveFixture();
   fixtures.push(value);
   return value;
 };
 afterEach(() => { for (const fixture of fixtures.splice(0)) fixture.cleanup(); });
 
-function driftContext(value: ReturnType<typeof setup>): EvidenceValidationContext {
+function driftContext(value: Awaited<ReturnType<typeof setup>>): EvidenceValidationContext {
   return {
     ...value.fixture.context,
     clock: { now: () => new Date('2026-08-25T12:11:00.000Z') },
@@ -67,7 +68,8 @@ function signedEnvelope(
       reviewer: { actorId: 'human-reviewer-1', actorType: 'human_pm' }, decidedAt: '2026-08-25T12:10:00.000Z',
       auditRef: 'decision.jsonl', approvalDigest: '0'.repeat(64), nonce: `nonce-${decisionId}`,
       expiresAt: '2026-08-25T12:20:00.000Z', decision: 'promote', promotedMaturity: 'field_verified',
-    },
+
+    authorityEpoch: 0,},
   });
   const decision = unsigned.decision;
   if (decision === null) throw new Error('decision fixture missing');
@@ -75,10 +77,10 @@ function signedEnvelope(
   return JSON.stringify({ ...unsigned, decision: { ...decision, approvalDigest } });
 }
 
-async function promote(value: ReturnType<typeof setup>, manifestSource: string, decisionId: string) {
+async function promote(value: Awaited<ReturnType<typeof setup>>, manifestSource: string, decisionId: string) {
   const catalog = loadWorkAtomCatalog(value.context.catalogRoot);
   if (!catalog.ok) throw new Error('catalog fixture unavailable');
-  return executeCapabilityPromotion({
+  return await executeCapabilityPromotion({
     manifestSource,
     promotionSource: signedEnvelope(manifestSource, decisionId),
     grounding: { atoms: catalog.atoms, context: value.context },
@@ -90,7 +92,7 @@ async function promote(value: ReturnType<typeof setup>, manifestSource: string, 
   });
 }
 
-function stalenessInput(value: ReturnType<typeof setup>, context = driftContext(value)) {
+function stalenessInput(value: Awaited<ReturnType<typeof setup>>, context = driftContext(value)) {
   return {
     manifestSource: value.claim.manifestSource,
     manifest: value.fixture.manifest,
@@ -105,7 +107,7 @@ function stalenessInput(value: ReturnType<typeof setup>, context = driftContext(
 describe('durable evidence invalidation', () => {
   it('Given persisted drift, When the original active context is replayed, Then the old promotion remains stale', async () => {
     // Given
-    const value = setup();
+    const value = await setup();
     expect((await promote(value, value.claim.manifestSource, 'initial')).status).toBe('applied');
     const persisted = await validateAndPersistEvidenceStaleness(stalenessInput(value));
 
@@ -129,7 +131,7 @@ describe('durable evidence invalidation', () => {
 
   it('Given a stale event, When the same digest is promoted again, Then it is refused before reactivation', async () => {
     // Given
-    const value = setup();
+    const value = await setup();
     expect((await promote(value, value.claim.manifestSource, 'initial')).status).toBe('applied');
     await validateAndPersistEvidenceStaleness(stalenessInput(value));
 
@@ -138,12 +140,12 @@ describe('durable evidence invalidation', () => {
 
     // Then
     expect(replay).toMatchObject({ status: 'refused', refusalCode: 'stale_evidence_digest' });
-    expect(() => value.ledger.append(value.event({ index: 9, action: 'promote', fromMaturity: 'tested_mock', toMaturity: 'field_verified' }))).toThrow(PromotionLedgerStaleEvidenceError);
+    await expect(async () => await value.ledger.append(value.event({ index: 9, action: 'promote', fromMaturity: 'tested_mock', toMaturity: 'field_verified' }))).rejects.toThrow(PromotionLedgerStaleEvidenceError);
   });
 
   it('Given a stale old digest, When new evidence receives a signed adjacent promotion, Then replacement reactivates', async () => {
     // Given
-    const value = setup();
+    const value = await setup();
     expect((await promote(value, value.claim.manifestSource, 'initial')).status).toBe('applied');
     await validateAndPersistEvidenceStaleness(stalenessInput(value));
     const newManifest = { ...value.fixture.manifest, manifestId: 'manifest-new-evidence-cycle' };
@@ -160,15 +162,15 @@ describe('durable evidence invalidation', () => {
 
   it('Given unknown stale append acknowledgement or a corrupt checkpoint, When drift is observed, Then coverage is invalid', async () => {
     // Given
-    const interrupted = setup();
+    const interrupted = await setup();
     expect((await promote(interrupted, interrupted.claim.manifestSource, 'initial')).status).toBe('applied');
-    const interruptedLedger = FilePromotionLedger.initialize(
+    const interruptedLedger = await testPromotionLedger(
       interrupted.ledgerPath,
       'todo-10-ledger-secret-at-least-32-bytes',
       'todo-10-checkpoint-secret-at-least-32-bytes',
       { afterEventDurable: () => { throw new Error('simulated stale-event acknowledgement loss'); } },
     );
-    const corrupt = setup();
+    const corrupt = await setup();
     expect((await promote(corrupt, corrupt.claim.manifestSource, 'initial')).status).toBe('applied');
     writeFileSync(`${corrupt.ledgerPath}.head.json`, '{}');
 
@@ -181,7 +183,7 @@ describe('durable evidence invalidation', () => {
 
     // Then
     expect(interruptedResult).toEqual({ ok: false, violations: [expect.objectContaining({ kind: 'promotionLedgerUnavailable' })] });
-    expect(() => FilePromotionLedger.open(
+    expect(() => testOpenPromotionLedger(
       interrupted.ledgerPath,
       'todo-10-ledger-secret-at-least-32-bytes',
       'todo-10-checkpoint-secret-at-least-32-bytes',

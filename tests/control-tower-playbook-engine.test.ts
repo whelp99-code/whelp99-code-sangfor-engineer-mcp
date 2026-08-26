@@ -1,3 +1,4 @@
+import { testFileLocalWriteAuthority, testLocalWriteAuthority } from './helpers/local-write-authority.js';
 import { describe, expect, it } from 'vitest';
 import { resolveTemplates, derivePlaybookRunStatus, renderReport, TemplateError } from '../apps/control-tower/src/playbook-engine.js';
 import type { RunRecord } from '@sangfor/runs';
@@ -173,7 +174,7 @@ describe('플레이북 실행 엔진 (T-PB-4)', () => {
     return new Promise((r) => bridge.listen(0, '127.0.0.1', () => { bridgeUrl = `http://127.0.0.1:${(bridge.address() as AddressInfo).port}`; r(); }));
   }
 
-  const mkApi = () => createApi({ bridgeUrl, runsDir, registryDir, playbookOutputDir: outDir, approvalSecret: 'sec', mockConsoleUrl: 'http://127.0.0.1:1' });
+  const mkApi = () => createApi({ authorityMode: 'local', bridgeUrl, runsDir, registryDir, playbookOutputDir: outDir, approvalSecret: 'sec', mockConsoleUrl: 'http://127.0.0.1:1' });
 
   beforeEach(async () => {
     runsDir = mkdtempSync(join(tmpdir(), 'eng-runs-'));
@@ -186,16 +187,16 @@ describe('플레이북 실행 엔진 (T-PB-4)', () => {
     for (const d of [runsDir, registryDir, outDir]) rmSync(d, { recursive: true, force: true });
   });
 
-  function seedApproved(blocks: import('../apps/control-tower/src/playbook-store.js').PlaybookBlock[]): string {
-    const store = new PlaybookStore(registryDir);
-    const pb = store.create({ name: 'p', goal: 'g', authoredBy: 'a', blocks });
-    store.reviewRevision(pb.id, 1, { approve: true, reviewedBy: 'jmpark' });
+  async function seedApproved(blocks: import('../apps/control-tower/src/playbook-store.js').PlaybookBlock[]): Promise<string> {
+    const store = new PlaybookStore(registryDir, testLocalWriteAuthority('registry_services', registryDir));
+    const pb = await store.create({ name: 'p', goal: 'g', authoredBy: 'a', blocks });
+    await store.reviewRevision(pb.id, 1, { approve: true, reviewedBy: 'jmpark' });
     return pb.id;
   }
 
   it('read 체인 + report → succeeded, report md 파일 생성', async () => {
     const api = mkApi();
-    const id = seedApproved([
+    const id = await seedApproved([
       { id: 'b1', type: 'tool', toolId: 'eng.read', args: { host: 'h1' } },
       { id: 'b2', type: 'tool', toolId: 'eng.read', args: { host: '{{blocks.b1.result.evaluation.specId}}' } }, // 템플릿 해석
       { id: 'r1', type: 'report' },
@@ -211,7 +212,7 @@ describe('플레이북 실행 엔진 (T-PB-4)', () => {
 
   it('read 실패 → 이후 tool 건너뛰고 report만 실행 → partial', async () => {
     const api = mkApi();
-    const id = seedApproved([
+    const id = await seedApproved([
       { id: 'b1', type: 'tool', toolId: 'eng.fail' },
       { id: 'b2', type: 'tool', toolId: 'eng.read', args: { host: 'x' } },
       { id: 'r1', type: 'report' },
@@ -226,7 +227,7 @@ describe('플레이북 실행 엔진 (T-PB-4)', () => {
 
   it('write 블록 도달 → pending_approval + 엔진 정지 (waiting_approval), report 미실행', async () => {
     const api = mkApi();
-    const id = seedApproved([
+    const id = await seedApproved([
       { id: 'b1', type: 'tool', toolId: 'eng.read', args: { host: 'h' } },
       { id: 'b2', type: 'tool', toolId: 'eng.write', args: { customer: 'acme' } },
       { id: 'r1', type: 'report' },
@@ -240,7 +241,7 @@ describe('플레이북 실행 엔진 (T-PB-4)', () => {
 
   it('write 승인 → continueRun으로 후속 report까지 → succeeded', async () => {
     const api = mkApi();
-    const id = seedApproved([
+    const id = await seedApproved([
       { id: 'b1', type: 'tool', toolId: 'eng.write', args: { customer: 'acme' } },
       { id: 'r1', type: 'report' },
     ]);
@@ -254,8 +255,8 @@ describe('플레이북 실행 엔진 (T-PB-4)', () => {
 
   it('활성 리비전 없이 execute → 403', async () => {
     const api = mkApi();
-    const store = new PlaybookStore(registryDir);
-    const pb = store.create({ name: 'p', goal: 'g', authoredBy: 'a', blocks: [{ id: 'b1', type: 'tool', toolId: 'eng.read' }] });
+    const store = new PlaybookStore(registryDir, testLocalWriteAuthority('registry_services', registryDir));
+    const pb = await store.create({ name: 'p', goal: 'g', authoredBy: 'a', blocks: [{ id: 'b1', type: 'tool', toolId: 'eng.read' }] });
     await expect(api.executePlaybook(pb.id)).rejects.toMatchObject({ status: 403 });
   });
 });

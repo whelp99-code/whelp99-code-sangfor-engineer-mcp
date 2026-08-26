@@ -26,6 +26,7 @@ const bootstrapApprovalSchema = z.object({
   purpose: z.string().min(1),
   nonce: z.string().min(1),
   expiresAt: z.string().min(1),
+  authorityEpoch: z.number().int().nonnegative(),
 }).strict().readonly();
 
 export type IagBootstrapApprovalFields = {
@@ -35,6 +36,7 @@ export type IagBootstrapApprovalFields = {
   readonly purpose: string;
   readonly nonce: string;
   readonly expiresAt: string;
+  readonly authorityEpoch: number;
 };
 
 export type IagBootstrapApproval = IagBootstrapApprovalFields & {
@@ -51,7 +53,7 @@ export type IagBootstrapAuthorizationInput = {
 function canonicalBootstrapApproval(scope: IagBootstrapScope, approval: IagBootstrapApprovalFields): string {
   return canonicalizeApprovalPayload([
     'iag-evidence-bootstrap.v1', approval.approvedBy, approval.changeTicketId,
-    approval.rollbackPlanId, approval.purpose, approval.nonce, approval.expiresAt,
+    approval.rollbackPlanId, approval.purpose, approval.nonce, approval.expiresAt, String(approval.authorityEpoch),
     scope.product, scope.capabilityId, scope.actionKind, scope.targetEnvironment,
     scope.deviceId, scope.firmwareId, scope.windowId, scope.sessionId,
     scope.originId, scope.campaignId,

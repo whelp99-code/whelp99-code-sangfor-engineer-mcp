@@ -73,6 +73,7 @@
     "decidedAt": "2026-08-25T12:10:00.000Z",
     "auditRef": "audit/promotion-decision-001.jsonl",
     "approvalDigest": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+    "authorityEpoch": 0,
     "decision": "promote",
     "promotedMaturity": "field_verified",
     "deviceIdentityDigest": "7777777777777777777777777777777777777777777777777777777777777777",

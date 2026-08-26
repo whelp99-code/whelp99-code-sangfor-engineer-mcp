@@ -37,6 +37,7 @@ const capabilityClaimSchema = z.object({
   version: z.literal(JOB_CAPABILITY_VERSION),
   tenantId: idSchema,
   projectId: idSchema,
+  authorityEpoch: z.number().int().nonnegative(),
   runId: idSchema,
   stepId: idSchema,
   jobId: idSchema,
@@ -57,6 +58,7 @@ export interface CapabilityNonceStore {
 export interface MintJobCapabilityInput {
   readonly tenantId: string;
   readonly projectId: string;
+  readonly authorityEpoch: number;
   readonly runId: string;
   readonly stepId: string;
   readonly jobId: string;
@@ -142,6 +144,7 @@ export function mintJobCapability(input: MintJobCapabilityInput): string {
     version: JOB_CAPABILITY_VERSION,
     tenantId: input.tenantId,
     projectId: input.projectId,
+    authorityEpoch: input.authorityEpoch,
     runId: input.runId,
     stepId: input.stepId,
     jobId: input.jobId,

@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { FilePromotionLedger } from '../packages/sangfor-competency/src/index.js';
 import { writeValidationFixture } from './helpers/capability-evidence-validation-fixture.js';
+import { testPromotionLedger } from './helpers/local-write-authority.js';
 
 const REPO_ROOT = join(import.meta.dirname, '..');
 const CLI = join(REPO_ROOT, 'scripts', 'capability-evidence-cli.ts');
@@ -60,7 +61,7 @@ describe('capability stale CLI', () => {
     });
   }
 
-  function authority(evaluatedAt: string) {
+  async function authority(evaluatedAt: string) {
     const evidenceRoot = join(root, `evidence-${evaluatedAt.slice(0, 10)}`);
     const fixture = writeValidationFixture(evidenceRoot);
     const manifestPath = join(root, `manifest-${evaluatedAt.slice(0, 10)}.json`);
@@ -75,7 +76,7 @@ describe('capability stale CLI', () => {
       reviewer: { actorId: fixture.context.reviewerActorId, actorType: 'human_pm' },
       runIdentities: fixture.context.runIdentities,
     }));
-    const ledger = FilePromotionLedger.initialize(ledgerPath, LEDGER_SECRET, CHECKPOINT_SECRET);
+    const ledger = await testPromotionLedger(ledgerPath, LEDGER_SECRET, CHECKPOINT_SECRET);
     const args = [
       'stale', '--manifest', manifestPath, '--validation-context', contextPath,
       '--evidence-root', evidenceRoot, '--promotion-ledger', ledgerPath,
@@ -84,7 +85,7 @@ describe('capability stale CLI', () => {
   }
 
   it('Given active exact authority, When stale validation runs, Then it reports no change and appends nothing', async () => {
-    const value = authority('2026-08-25T12:00:00.000Z');
+    const value = await authority('2026-08-25T12:00:00.000Z');
 
     const result = await run(value.args);
 
@@ -93,7 +94,7 @@ describe('capability stale CLI', () => {
   });
 
   it('Given genuinely expired evidence, When stale validation runs, Then Todo 10 persists one conservative invalidation', async () => {
-    const value = authority('2027-02-21T12:00:00.001Z');
+    const value = await authority('2027-02-21T12:00:00.001Z');
 
     const result = await run(value.args);
 
@@ -102,7 +103,7 @@ describe('capability stale CLI', () => {
   });
 
   it('Given caller stale flags or extra arguments, When stale runs, Then it refuses without touching the ledger', async () => {
-    const value = authority('2026-08-25T12:00:00.000Z');
+    const value = await authority('2026-08-25T12:00:00.000Z');
     const before = readFileSync(value.ledgerPath, 'utf8');
 
     const result = await run([...value.args, '--stale', 'true']);

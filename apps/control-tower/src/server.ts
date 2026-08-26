@@ -26,12 +26,10 @@ export interface TowerServerOptions extends TowerOptions {
 }
 
 export function createTowerServer(opts: TowerServerOptions = {}): http.Server {
-  const api = opts.authorityRuntime ? undefined : createApi(opts);
+  const api = createApi(opts);
   const apiToken = opts.apiToken ?? process.env.SANGFOR_API_TOKEN;
 
-  seedLegacyApi(api, opts.seedOnStart);
-
-  return http.createServer(async (req, res) => {
+  const server = http.createServer(async (req, res) => {
     const url = new URL(req.url ?? '/', 'http://localhost');
     const method = req.method ?? 'GET';
     const path = url.pathname;
@@ -60,7 +58,7 @@ export function createTowerServer(opts: TowerServerOptions = {}): http.Server {
       if (method === 'GET' && path === '/api/devices') return json(res, api.listDevices());
       if (method === 'POST' && path === '/api/devices') {
         const b = await readJsonBody(req);
-        return json(res, api.createDevice({
+        return json(res, await api.createDevice({
           name: String(b.name ?? ''),
           product: String(b.product ?? ''),
           host: String(b.host ?? ''),
@@ -72,9 +70,9 @@ export function createTowerServer(opts: TowerServerOptions = {}): http.Server {
       const deviceMatch = path.match(/^\/api\/devices\/([^/]+)$/);
       if (method === 'PUT' && deviceMatch) {
         const b = await readJsonBody(req);
-        return json(res, api.updateDevice(deviceMatch[1], b as Record<string, never>));
+        return json(res, await api.updateDevice(deviceMatch[1], b as Record<string, never>));
       }
-      if (method === 'DELETE' && deviceMatch) return json(res, api.deleteDevice(deviceMatch[1]));
+      if (method === 'DELETE' && deviceMatch) return json(res, await api.deleteDevice(deviceMatch[1]));
       if (method === 'POST' && path === '/api/sweep') {
         const b = await readJsonBody(req);
         return json(res, await api.sweep({
@@ -111,11 +109,11 @@ export function createTowerServer(opts: TowerServerOptions = {}): http.Server {
       if (method === 'GET' && path === '/api/playbooks') return json(res, api.listPlaybooks());
       if (method === 'POST' && path === '/api/playbooks/seed') {
         const b = await readJsonBody(req);
-        return json(res, api.seedPlaybooks({ authoredBy: typeof b.authoredBy === 'string' ? b.authoredBy : undefined }));
+        return json(res, await api.seedPlaybooks({ authoredBy: typeof b.authoredBy === 'string' ? b.authoredBy : undefined }));
       }
       if (method === 'POST' && path === '/api/playbooks') {
         const b = await readJsonBody(req);
-        return json(res, api.createPlaybook({
+        return json(res, await api.createPlaybook({
           name: String(b.name ?? ''), goal: String(b.goal ?? ''), authoredBy: String(b.authoredBy ?? ''),
           note: typeof b.note === 'string' ? b.note : undefined,
           blocks: Array.isArray(b.blocks) ? (b.blocks as PlaybookBlock[]) : [],
@@ -124,17 +122,17 @@ export function createTowerServer(opts: TowerServerOptions = {}): http.Server {
       const pbRevApprove = path.match(/^\/api\/playbooks\/([^/]+)\/revisions\/(\d+)\/approve$/);
       if (method === 'POST' && pbRevApprove) {
         const b = await readJsonBody(req);
-        return json(res, api.reviewPlaybookRevision(pbRevApprove[1], Number(pbRevApprove[2]), { approve: true, reviewedBy: String(b.reviewedBy ?? '') }));
+        return json(res, await api.reviewPlaybookRevision(pbRevApprove[1], Number(pbRevApprove[2]), { approve: true, reviewedBy: String(b.reviewedBy ?? '') }));
       }
       const pbRevReject = path.match(/^\/api\/playbooks\/([^/]+)\/revisions\/(\d+)\/reject$/);
       if (method === 'POST' && pbRevReject) {
         const b = await readJsonBody(req);
-        return json(res, api.reviewPlaybookRevision(pbRevReject[1], Number(pbRevReject[2]), { approve: false, reviewedBy: String(b.reviewedBy ?? ''), rejectReason: typeof b.reason === 'string' ? b.reason : undefined }));
+        return json(res, await api.reviewPlaybookRevision(pbRevReject[1], Number(pbRevReject[2]), { approve: false, reviewedBy: String(b.reviewedBy ?? ''), rejectReason: typeof b.reason === 'string' ? b.reason : undefined }));
       }
       const pbRevisions = path.match(/^\/api\/playbooks\/([^/]+)\/revisions$/);
       if (method === 'POST' && pbRevisions) {
         const b = await readJsonBody(req);
-        return json(res, api.addPlaybookRevision(pbRevisions[1], {
+        return json(res, await api.addPlaybookRevision(pbRevisions[1], {
           authoredBy: String(b.authoredBy ?? ''), note: typeof b.note === 'string' ? b.note : undefined,
           blocks: Array.isArray(b.blocks) ? (b.blocks as PlaybookBlock[]) : [],
         }));
@@ -147,7 +145,7 @@ export function createTowerServer(opts: TowerServerOptions = {}): http.Server {
       const pbRunAnalysis = path.match(/^\/api\/playbook-runs\/([^/]+)\/analysis$/);
       if (method === 'POST' && pbRunAnalysis) {
         const b = await readJsonBody(req);
-        return json(res, api.submitAnalysis(pbRunAnalysis[1], {
+        return json(res, await api.submitAnalysis(pbRunAnalysis[1], {
           playbookId: String(b.playbookId ?? ''), playbookRunId: pbRunAnalysis[1],
           summary: String(b.summary ?? ''), authoredBy: String(b.authoredBy ?? ''),
           improvements: Array.isArray(b.improvements) ? (b.improvements as never[]) : [],
@@ -160,7 +158,7 @@ export function createTowerServer(opts: TowerServerOptions = {}): http.Server {
       const anlVerdict = path.match(/^\/api\/analyses\/([^/]+)\/verdict$/);
       if (method === 'POST' && anlVerdict) {
         const b = await readJsonBody(req);
-        return json(res, api.setAnalysisVerdict(anlVerdict[1], {
+        return json(res, await api.setAnalysisVerdict(anlVerdict[1], {
           part: b.part === 'proposals' ? 'proposals' : 'improvements',
           index: Number(b.index), verdict: b.verdict === 'dismissed' ? 'dismissed' : 'accepted',
           reviewedBy: String(b.reviewedBy ?? ''), linkedPlaybookId: typeof b.linkedPlaybookId === 'string' ? b.linkedPlaybookId : undefined,
@@ -173,13 +171,13 @@ export function createTowerServer(opts: TowerServerOptions = {}): http.Server {
       }
       if (method === 'POST' && path === '/api/agent-tasks') {
         const b = await readJsonBody(req);
-        return json(res, api.createAgentTask({ kind: b.kind as AgentTask['kind'], payload: (b.payload && typeof b.payload === 'object' ? b.payload : {}) as AgentTask['payload'] }));
+        return json(res, await api.createAgentTask({ kind: b.kind as AgentTask['kind'], payload: (b.payload && typeof b.payload === 'object' ? b.payload : {}) as AgentTask['payload'] }));
       }
       const ataskPatch = path.match(/^\/api\/agent-tasks\/([^/]+)$/);
       if (method === 'PATCH' && ataskPatch) {
         const b = await readJsonBody(req);
-        if (b.cancel === true) return json(res, api.cancelAgentTask(ataskPatch[1]));
-        return json(res, api.closeAgentTask(ataskPatch[1], (b.result && typeof b.result === 'object' ? b.result : {}) as AgentTask['result']));
+        if (b.cancel === true) return json(res, await api.cancelAgentTask(ataskPatch[1]));
+        return json(res, await api.closeAgentTask(ataskPatch[1], (b.result && typeof b.result === 'object' ? b.result : {}) as AgentTask['result']));
       }
 
       const approveMatch = path.match(/^\/api\/runs\/([^/]+)\/approve$/);
@@ -194,7 +192,7 @@ export function createTowerServer(opts: TowerServerOptions = {}): http.Server {
       const rejectMatch = path.match(/^\/api\/runs\/([^/]+)\/reject$/);
       if (method === 'POST' && rejectMatch) {
         const b = await readJsonBody(req);
-        return json(res, api.rejectRun(rejectMatch[1], {
+        return json(res, await api.rejectRun(rejectMatch[1], {
           reason: typeof b.reason === 'string' ? b.reason : undefined,
         }));
       }
@@ -207,6 +205,8 @@ export function createTowerServer(opts: TowerServerOptions = {}): http.Server {
       return json(res, { error: error instanceof Error ? error.message : String(error) }, 500);
     }
   });
+  (server as http.Server & { startup?: () => Promise<void> }).startup = () => seedLegacyApi(api, opts.seedOnStart);
+  return server;
 }
 
 // Auto-start only when run as a process (not when imported by tests).

@@ -1,3 +1,4 @@
+import { testFileLocalWriteAuthority, testLocalWriteAuthority } from './helpers/local-write-authority.js';
 import { afterEach, describe, expect, it } from 'vitest';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -19,9 +20,9 @@ function wikiRoot(): string {
 }
 
 describe('knowledge cards', () => {
-  it('requires citations and participates in wiki search', () => {
+  it('requires citations and participates in wiki search', async () => {
     wikiRoot();
-    expect(() => upsertKnowledgeCard({
+    await expect(async () => await upsertKnowledgeCard({
       type: 'procedure',
       product: 'HCI',
       title: 'Invalid',
@@ -32,9 +33,9 @@ describe('knowledge cards', () => {
       rollback: [],
       citations: [],
       trustLevel: 'internal'
-    })).toThrow(/citation/);
+    }, testLocalWriteAuthority('wiki_proposals'))).rejects.toThrow(/citation/);
 
-    const card = upsertKnowledgeCard({
+    const card = await upsertKnowledgeCard({
       type: 'troubleshooting',
       product: 'HCI',
       version: '6.12',
@@ -48,7 +49,7 @@ describe('knowledge cards', () => {
       rollback: ['Restore previous MTU if validation fails.'],
       citations: [{ sourceId: 'raw/hci.md', sourceRevision: 'rev-1', spanText: 'MTU consistency check', quoteHash: 'quote-1' }],
       trustLevel: 'internal'
-    });
+    }, testLocalWriteAuthority('wiki_proposals'));
 
     expect(listKnowledgeCards()).toHaveLength(1);
     const hits = searchWiki({ product: 'HCI', query: 'heartbeat MTU', limit: 5 });

@@ -76,7 +76,8 @@ function bridgeApproval() {
   const fields = {
     approvedBy: 'bridge-replay', changeTicketId: 'CHG-BRIDGE', rollbackPlanId: 'RB-BRIDGE',
     nonce: `bridge-replay-${bridgeNonce += 1}`, expiresAt: new Date(Date.now() + 60_000).toISOString(),
-  };
+
+  authorityEpoch: 0,};
   return {
     ...fields,
     approvalToken: signApprovalToken(secret, {

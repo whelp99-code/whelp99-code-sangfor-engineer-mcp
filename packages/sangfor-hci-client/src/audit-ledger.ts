@@ -1,7 +1,7 @@
 import { createHash, createHmac } from 'node:crypto';
 import { appendFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { resolveEngagementScopedData, withDirLock } from '@sangfor/shared';
+import { expectedLocalWriteScope, requireLocalWriteAuthority, resolveEngagementScopedData, withDirLock, type LocalWriteAuthority } from '@sangfor/shared';
 
 // Masked, append-only JSONL ledger with a hash chain. Every HCI change request,
 // response, state transition, and verdict is recorded with secrets masked. When
@@ -40,13 +40,16 @@ function digest(secret: string | undefined, prevHash: string, seq: number, kind:
 export class AuditLedger {
   private readonly dir: string;
   private readonly secret: string | undefined;
+  private readonly authority: LocalWriteAuthority;
 
-  constructor(opts: { dir?: string; secret?: string } = {}) {
-    assertLocalAuditAuthorityAllowed();
+  constructor(opts: { dir?: string; secret?: string; authority: LocalWriteAuthority }) {
     // Engagement-scoped: change-run audit lines are per-project evidence, so an
     // unscoped root would pool several projects' audit chains in one partition.
-    this.dir = opts.dir ?? join(resolveEngagementScopedData('data/evidence'), 'change-runs');
+    this.dir = opts.dir ?? join(resolveEngagementScopedData('data/evidence', 'SANGFOR_EVIDENCE_ROOT'), 'change-runs');
     this.secret = opts.secret ?? process.env.SANGFOR_CHANGE_LEDGER_SECRET;
+    this.authority = requireLocalWriteAuthority(opts.authority, expectedLocalWriteScope(
+      opts.authority, opts.authority?.projectId ?? '', 'audit', this.dir,
+    ));
   }
 
   pathFor(runId: string): string { return join(this.dir, `${runId}.jsonl`); }
@@ -60,8 +63,9 @@ export class AuditLedger {
     }
   }
 
-  append(runId: string, kind: LedgerKind, payload: unknown): void {
-    mkdirSync(this.dir, { recursive: true });
+  async append(runId: string, kind: LedgerKind, payload: unknown): Promise<void> {
+    await this.authority.fence.write(this.authority, { operation: `audit.append:${kind}`, targetPaths: [this.pathFor(runId)] }, () => {
+      mkdirSync(this.dir, { recursive: true });
     // The hash chain reads the prior line's hash before computing this line's
     // hash — two concurrent appends to the same run would otherwise both read
     // the same "prior" tail and each produce a line claiming the same prevHash,
@@ -76,6 +80,7 @@ export class AuditLedger {
         prevHash, hash: digest(this.secret, prevHash, seq, kind, masked), keyed: Boolean(this.secret),
       };
       appendFileSync(this.pathFor(runId), `${JSON.stringify(line)}\n`);
+      });
     });
   }
 

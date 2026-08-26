@@ -80,7 +80,7 @@ describe('census depth bound — the real maximum is accepted', () => {
     const tools = listTools();
     const registry = await fetchBridgeToolRegistry(await startFakeBridge({ tools }));
 
-    expect(registry.ok).toBe(true);
+    expect(registry.ok, JSON.stringify(registry)).toBe(true);
     if (!registry.ok) return;
     expect(registry.toolNames).toHaveLength(tools.length);
     // Guards the bound against drift: if the server ever emits a deeper schema,

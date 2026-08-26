@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { KnowledgeChunk, ProductCode, normalizeProduct, nowId, resolveRepoData, appendJsonl, foldJsonlById } from '@sangfor/shared';
+import { KnowledgeChunk, ProductCode, normalizeProduct, nowId, expectedLocalWriteScope, requireLocalWriteAuthority, resolveRepoData, appendJsonl, foldJsonlById, type LocalWriteAuthority } from '@sangfor/shared';
 
 const WIKI_CHUNKS: KnowledgeChunk[] = [
   {
@@ -133,7 +133,12 @@ export interface WikiAdapter {
 }
 
 export class ObsidianVaultAdapter implements WikiAdapter {
-  constructor(private readonly vaultPath: string) {}
+  private readonly authority: LocalWriteAuthority;
+  constructor(private readonly vaultPath: string, authority: LocalWriteAuthority) {
+    this.authority = requireLocalWriteAuthority(authority, expectedLocalWriteScope(
+      authority, authority?.projectId ?? '', 'wiki_proposals', this.vaultPath,
+    ));
+  }
 
   private resolvePage(path: string): string {
     const safePath = path.replace(/^\/+/, '').replace(/\.\./g, '');
@@ -147,14 +152,21 @@ export class ObsidianVaultAdapter implements WikiAdapter {
 
   async writePage(path: string, content: string, message: string): Promise<{ ok: boolean; path: string; message: string }> {
     const pagePath = this.resolvePage(path);
-    mkdirSync(dirname(pagePath), { recursive: true });
-    writeFileSync(pagePath, content);
-    return { ok: true, path: pagePath, message };
+    return this.authority.fence.write(this.authority, { operation: 'wiki.obsidian-write', targetPaths: [pagePath] }, () => {
+      mkdirSync(dirname(pagePath), { recursive: true });
+      writeFileSync(pagePath, content);
+      return { ok: true, path: pagePath, message };
+    });
   }
 }
 
 export class GitHubWikiGitAdapter implements WikiAdapter {
-  constructor(private readonly options: { repoUrl: string; localPath: string; branch?: string }) {}
+  private readonly authority: LocalWriteAuthority;
+  constructor(private readonly options: { repoUrl: string; localPath: string; branch?: string }, authority: LocalWriteAuthority) {
+    this.authority = requireLocalWriteAuthority(authority, expectedLocalWriteScope(
+      authority, authority?.projectId ?? '', 'wiki_proposals', this.options.localPath,
+    ));
+  }
 
   private ensureRepo(): void {
     if (!existsSync(this.options.localPath)) {
@@ -176,19 +188,22 @@ export class GitHubWikiGitAdapter implements WikiAdapter {
   }
 
   async writePage(path: string, content: string, message: string): Promise<{ ok: boolean; path: string; message: string }> {
-    this.ensureRepo();
     const pagePath = this.resolvePage(path);
-    mkdirSync(dirname(pagePath), { recursive: true });
-    writeFileSync(pagePath, content);
-    execFileSync('git', ['-C', this.options.localPath, 'add', pagePath], { stdio: 'ignore' });
-    execFileSync('git', ['-C', this.options.localPath, 'commit', '-m', message], { stdio: 'ignore' });
-    execFileSync('git', ['-C', this.options.localPath, 'push'], { stdio: 'ignore' });
-    return { ok: true, path: pagePath, message };
+    return this.authority.fence.write(this.authority, { operation: 'wiki.github-write', targetPaths: [pagePath] }, () => {
+      this.ensureRepo();
+      mkdirSync(dirname(pagePath), { recursive: true });
+      writeFileSync(pagePath, content);
+      execFileSync('git', ['-C', this.options.localPath, 'add', pagePath], { stdio: 'ignore' });
+      execFileSync('git', ['-C', this.options.localPath, 'commit', '-m', message], { stdio: 'ignore' });
+      execFileSync('git', ['-C', this.options.localPath, 'push'], { stdio: 'ignore' });
+      return { ok: true, path: pagePath, message };
+    });
   }
 }
 
-const proposalsFile = () => join(resolveRepoData('data/wiki', 'SANGFOR_WIKI_ROOT'), 'proposals.jsonl');
-const cardsFile = () => join(resolveRepoData('data/wiki', 'SANGFOR_WIKI_ROOT'), 'knowledge-cards.jsonl');
+const wikiRoot = () => resolveRepoData('data/wiki', 'SANGFOR_WIKI_ROOT');
+const proposalsFile = () => join(wikiRoot(), 'proposals.jsonl');
+const cardsFile = () => join(wikiRoot(), 'knowledge-cards.jsonl');
 const getProposal = (id: string) => foldJsonlById<WikiUpdateProposal>(proposalsFile()).get(id);
 const saveProposal = (proposal: WikiUpdateProposal) => appendJsonl(proposalsFile(), proposal);
 const saveCard = (card: KnowledgeCard) => appendJsonl(cardsFile(), card);
@@ -201,7 +216,7 @@ export function listKnowledgeCards(): KnowledgeCard[] {
   return [...foldJsonlById<KnowledgeCard>(cardsFile()).values()];
 }
 
-export function upsertKnowledgeCard(input: Omit<KnowledgeCard, 'id' | 'updatedAt'> & { id?: string }): KnowledgeCard {
+export async function upsertKnowledgeCard(input: Omit<KnowledgeCard, 'id' | 'updatedAt'> & { id?: string }, injectedAuthority: LocalWriteAuthority): Promise<KnowledgeCard> {
   if (input.citations.length === 0) {
     throw new Error('KnowledgeCard requires at least one source citation.');
   }
@@ -210,7 +225,10 @@ export function upsertKnowledgeCard(input: Omit<KnowledgeCard, 'id' | 'updatedAt
     id: input.id ?? nowId('knowledge_card'),
     updatedAt: new Date().toISOString()
   };
-  saveCard(card);
+  const authority = requireLocalWriteAuthority(injectedAuthority, expectedLocalWriteScope(
+    injectedAuthority, injectedAuthority?.projectId ?? '', 'wiki_proposals', wikiRoot(),
+  ));
+  await authority.fence.write(authority, { operation: 'wiki.upsert-card', targetPaths: [cardsFile()] }, () => saveCard(card));
   return card;
 }
 
@@ -247,7 +265,7 @@ export function searchWiki(input: { product?: string; version?: string; query?: 
     .map(item => item.chunk);
 }
 
-export function proposeWikiUpdate(input: { lessonTitle: string; lessonBody: string; targetPage?: string; adapter?: WikiUpdateProposal['adapter'] }): WikiUpdateProposal {
+export async function proposeWikiUpdate(input: { lessonTitle: string; lessonBody: string; targetPage?: string; adapter?: WikiUpdateProposal['adapter'] }, injectedAuthority: LocalWriteAuthority): Promise<WikiUpdateProposal> {
   const id = nowId('wiki_proposal');
   const targetPage = input.targetPage ?? 'Sangfor/Lessons/Pending.md';
   const proposal: WikiUpdateProposal = {
@@ -259,7 +277,10 @@ export function proposeWikiUpdate(input: { lessonTitle: string; lessonBody: stri
     status: 'pending',
     adapter: input.adapter ?? 'memory'
   };
-  saveProposal(proposal);
+  const authority = requireLocalWriteAuthority(injectedAuthority, expectedLocalWriteScope(
+    injectedAuthority, injectedAuthority?.projectId ?? '', 'wiki_proposals', wikiRoot(),
+  ));
+  await authority.fence.write(authority, { operation: 'wiki.propose', targetPaths: [proposalsFile()] }, () => saveProposal(proposal));
   return proposal;
 }
 
@@ -273,61 +294,80 @@ export function mintWikiApproval(proposalId: string): string {
   return wikiApprovalMac(secret, proposalId).toString('hex');
 }
 
-export function approveWikiUpdate(
+export async function approveWikiUpdate(
   proposalId: string,
   decision: 'approved' | 'rejected',
   opts: { reviewer?: string; token?: string } = {},
-): WikiUpdateProposal {
-  const proposal = getProposal(proposalId);
-  if (!proposal) throw new Error(`Unknown proposal: ${proposalId}`);
-  // Approving unlocks a KB write, so the token must be an action-bound HMAC over
-  // this exact proposalId (redteam H3) — a token minted for one proposal cannot
-  // approve another. Rejection is always safe. Fail-closed when no secret is set.
-  if (decision === 'approved') {
-    const secret = process.env.SANGFOR_WIKI_APPROVAL_SECRET;
-    if (!secret) {
-      throw new Error('Wiki approval blocked: SANGFOR_WIKI_APPROVAL_SECRET is not configured (fail-closed).');
+  injectedAuthority: LocalWriteAuthority,
+): Promise<WikiUpdateProposal> {
+  const authority = requireLocalWriteAuthority(injectedAuthority, expectedLocalWriteScope(
+    injectedAuthority, injectedAuthority?.projectId ?? '', 'wiki_proposals', wikiRoot(),
+  ));
+  return authority.fence.write(authority, { operation: 'wiki.approve', targetPaths: [proposalsFile()] }, () => {
+    const proposal = getProposal(proposalId);
+    if (!proposal) throw new Error(`Unknown proposal: ${proposalId}`);
+    if (decision === 'approved') {
+      const secret = process.env.SANGFOR_WIKI_APPROVAL_SECRET;
+      if (!secret) throw new Error('Wiki approval blocked: SANGFOR_WIKI_APPROVAL_SECRET is not configured (fail-closed).');
+      const expected = wikiApprovalMac(secret, proposalId);
+      const provided = Buffer.from(opts.token ?? '', 'hex');
+      if (provided.length !== expected.length || !timingSafeEqual(provided, expected)) throw new Error('Wiki approval token is not a valid HMAC for this proposal.');
     }
-    const expected = wikiApprovalMac(secret, proposalId);
-    const provided = Buffer.from(opts.token ?? '', 'hex');
-    if (provided.length !== expected.length || !timingSafeEqual(provided, expected)) {
-      throw new Error('Wiki approval token is not a valid HMAC for this proposal.');
-    }
-  }
-  proposal.status = decision;
-  proposal.reviewer = opts.reviewer ?? 'manual-reviewer';
-  saveProposal(proposal);
-  return proposal;
+    proposal.status = decision;
+    proposal.reviewer = opts.reviewer ?? 'manual-reviewer';
+    saveProposal(proposal);
+    return proposal;
+  });
 }
 
-export async function applyWikiUpdateWithAdapter(proposalId: string, adapter: WikiAdapter): Promise<WikiUpdateProposal & { writeResult: unknown }> {
-  const proposal = getProposal(proposalId);
-  if (!proposal) throw new Error(`Unknown proposal: ${proposalId}`);
-  if (proposal.status !== 'approved') throw new Error('Wiki update is blocked until approval is granted.');
-  const current = await adapter.readPage(proposal.targetPage);
-  proposal.beforeText = current || '<new page>';
-  const separator = current.trim() ? '\n\n' : '';
-  const next = `${current}${separator}${proposal.afterText}`;
-  const writeResult = await adapter.writePage(proposal.targetPage, next, `docs: ${proposal.title}`);
-  proposal.status = 'applied';
-  saveProposal(proposal);
-  return { ...proposal, writeResult };
+export async function applyWikiUpdateWithAdapter(
+  proposalId: string, adapter: WikiAdapter, injectedAuthority: LocalWriteAuthority,
+): Promise<WikiUpdateProposal & { writeResult: unknown }> {
+  const authority = requireLocalWriteAuthority(injectedAuthority, expectedLocalWriteScope(
+    injectedAuthority, injectedAuthority?.projectId ?? '', 'wiki_proposals', wikiRoot(),
+  ));
+  return authority.fence.write(authority, { operation: 'wiki.apply-adapter', targetPaths: [proposalsFile()] }, async () => {
+    const proposal = getProposal(proposalId);
+    if (!proposal) throw new Error(`Unknown proposal: ${proposalId}`);
+    if (proposal.status !== 'approved') throw new Error('Wiki update is blocked until approval is granted.');
+    const current = await adapter.readPage(proposal.targetPage);
+    proposal.beforeText = current || '<new page>';
+    const next = `${current}${current.trim() ? '\n\n' : ''}${proposal.afterText}`;
+    const writeResult = await adapter.writePage(proposal.targetPage, next, `docs: ${proposal.title}`);
+    proposal.status = 'applied';
+    saveProposal(proposal);
+    return { ...proposal, writeResult };
+  });
 }
 
-export function applyWikiUpdate(proposalId: string): WikiUpdateProposal {
-  const proposal = getProposal(proposalId);
-  if (!proposal) throw new Error(`Unknown proposal: ${proposalId}`);
-  if (proposal.status !== 'approved') throw new Error('Wiki update is blocked until approval is granted.');
-  proposal.status = 'applied';
-  saveProposal(proposal);
-  return proposal;
+export async function applyWikiUpdate(proposalId: string, injectedAuthority: LocalWriteAuthority): Promise<WikiUpdateProposal> {
+  const authority = requireLocalWriteAuthority(injectedAuthority, expectedLocalWriteScope(
+    injectedAuthority, injectedAuthority?.projectId ?? '', 'wiki_proposals', wikiRoot(),
+  ));
+  return authority.fence.write(authority, { operation: 'wiki.apply', targetPaths: [proposalsFile()] }, () => {
+    const proposal = getProposal(proposalId);
+    if (!proposal) throw new Error(`Unknown proposal: ${proposalId}`);
+    if (proposal.status !== 'approved') throw new Error('Wiki update is blocked until approval is granted.');
+    proposal.status = 'applied';
+    saveProposal(proposal);
+    return proposal;
+  });
 }
 
-export async function applyObsidianWikiUpdate(input: { proposalId: string; vaultPath: string }): Promise<WikiUpdateProposal & { writeResult: unknown }> {
-  return applyWikiUpdateWithAdapter(input.proposalId, new ObsidianVaultAdapter(input.vaultPath));
+export async function applyObsidianWikiUpdate(input: {
+  proposalId: string; vaultPath: string; proposalAuthority: LocalWriteAuthority; adapterAuthority: LocalWriteAuthority;
+}): Promise<WikiUpdateProposal & { writeResult: unknown }> {
+  return applyWikiUpdateWithAdapter(
+    input.proposalId, new ObsidianVaultAdapter(input.vaultPath, input.adapterAuthority), input.proposalAuthority,
+  );
 }
 
-export async function applyGitHubWikiUpdate(input: { proposalId: string; repoUrl: string; localPath?: string }): Promise<WikiUpdateProposal & { writeResult: unknown }> {
+export async function applyGitHubWikiUpdate(input: {
+  proposalId: string; repoUrl: string; localPath?: string;
+  proposalAuthority: LocalWriteAuthority; adapterAuthority: LocalWriteAuthority;
+}): Promise<WikiUpdateProposal & { writeResult: unknown }> {
   const localPath = input.localPath ?? 'data/wiki/github-wiki';
-  return applyWikiUpdateWithAdapter(input.proposalId, new GitHubWikiGitAdapter({ repoUrl: input.repoUrl, localPath }));
+  return applyWikiUpdateWithAdapter(
+    input.proposalId, new GitHubWikiGitAdapter({ repoUrl: input.repoUrl, localPath }, input.adapterAuthority), input.proposalAuthority,
+  );
 }

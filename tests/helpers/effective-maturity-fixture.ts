@@ -11,11 +11,12 @@ import {
   type PromotionLedgerEventInput,
 } from '../../packages/sangfor-competency/src/index.js';
 import { writeValidationFixture } from './capability-evidence-validation-fixture.js';
+import { testPromotionLedger } from './local-write-authority.js';
 
 const LEDGER_SECRET = 'todo-10-ledger-secret-at-least-32-bytes';
 const CHECKPOINT_SECRET = 'todo-10-checkpoint-secret-at-least-32-bytes';
 
-export function createEffectiveFixture(campaign: 'api_read_only' | 'browser' = 'api_read_only') {
+export async function createEffectiveFixture(campaign: 'api_read_only' | 'browser' = 'api_read_only') {
   const roots: string[] = [];
   const root = (): string => {
     const value = mkdtempSync(join(tmpdir(), 'effective-maturity-'));
@@ -39,7 +40,7 @@ export function createEffectiveFixture(campaign: 'api_read_only' | 'browser' = '
     maturityPolicy: [{ product: 'HCI_SCP', capabilityId: 'resource_inventory', maturity: 'tested_mock' }],
   });
   const ledgerPath = join(root(), 'promotion.jsonl');
-  const ledger = FilePromotionLedger.initialize(ledgerPath, LEDGER_SECRET, CHECKPOINT_SECRET);
+  const ledger = await testPromotionLedger(ledgerPath, LEDGER_SECRET, CHECKPOINT_SECRET);
   const manifestDigest = createHash('sha256').update(manifestSource).digest('hex');
   const manifestRef = maskedPromotionRef('manifest', manifestDigest);
   const event = (input: {
@@ -70,13 +71,13 @@ export function createEffectiveFixture(campaign: 'api_read_only' | 'browser' = '
 }
 
 export async function computeFixtureCoverage(
-  value: ReturnType<typeof createEffectiveFixture>,
+  value: Awaited<ReturnType<typeof createEffectiveFixture>>,
   overrides: {
     readonly validationContext?: EvidenceValidationContext;
     readonly claims?: readonly (typeof value.claim)[];
   } = {},
 ) {
-  return computeEffectiveReplacementCoverage(value.context, {
+  return await computeEffectiveReplacementCoverage(value.context, {
     claims: overrides.claims ?? [{ ...value.claim, context: overrides.validationContext ?? value.claim.context }],
     ledger: value.ledger,
   });

@@ -17,6 +17,7 @@ import {
   type PromotionNonceStore,
 } from '../packages/sangfor-competency/src/index.js';
 import { writeValidationFixture } from './helpers/capability-evidence-validation-fixture.js';
+import { testPromotionLedger, testOpenPromotionLedger } from './helpers/local-write-authority.js';
 
 const APPROVAL_SECRET = 'reliability-approval-secret-material-32';
 const LEDGER_SECRET = 'reliability-ledger-secret-material-32xx';
@@ -77,7 +78,8 @@ describe('capability promotion durability and stale-state gate', () => {
         fromMaturity, reviewer: { actorId: 'human-reviewer-1', actorType: 'human_pm' },
         decidedAt: NOW.toISOString(), auditRef: 'decision.jsonl', approvalDigest: '0'.repeat(64), nonce,
         expiresAt: '2026-08-25T12:20:00.000Z', decision: 'promote', promotedMaturity: 'field_verified',
-      },
+
+      authorityEpoch: 0,},
     });
     const decision = unsigned.decision;
     if (decision === null) throw new Error('decision fixture missing');
@@ -85,8 +87,8 @@ describe('capability promotion durability and stale-state gate', () => {
     return capabilityPromotionEnvelopeSchema.parse({ ...unsigned, decision: { ...decision, approvalDigest } });
   }
 
-  function execute(promotion: CapabilityPromotionEnvelope, ledger: FilePromotionLedger) {
-    return executeCapabilityPromotion({
+  async function execute(promotion: CapabilityPromotionEnvelope, ledger: FilePromotionLedger) {
+    return await executeCapabilityPromotion({
       manifestSource, promotionSource: JSON.stringify(promotion), grounding,
       validation: { evidenceRoot: root, context: fixture.context },
       secret: APPROVAL_SECRET, nonceStore, ledger, now: NOW,
@@ -97,15 +99,15 @@ describe('capability promotion durability and stale-state gate', () => {
     'returns INDETERMINATE without a maturity claim after %s acknowledgement loss',
     async (faultPoint) => {
       const path = join(root, `${faultPoint}.jsonl`);
-      const ledger = FilePromotionLedger.initialize(path, LEDGER_SECRET, CHECKPOINT_SECRET, {
+      const ledger = await testPromotionLedger(path, LEDGER_SECRET, CHECKPOINT_SECRET, {
         [faultPoint]: () => { throw new Error('simulated acknowledgement loss'); },
       });
       const result = await execute(envelope(`decision-${faultPoint}`, `nonce-${faultPoint}`), ledger);
       expect(result).toMatchObject({ status: 'indeterminate', reason: 'ledger_commit_unknown' });
       expect('effectiveMaturity' in result).toBe(false);
-      const restarted = FilePromotionLedger.open(path, LEDGER_SECRET, CHECKPOINT_SECRET);
+      const restarted = testOpenPromotionLedger(path, LEDGER_SECRET, CHECKPOINT_SECRET);
       if (faultPoint === 'afterEventDurable') expect(() => restarted.read()).toThrow();
-      const reconciled = restarted.reconcile();
+      const reconciled = await restarted.reconcile();
       expect(deriveEffectiveMaturity('tested_mock', fixture.manifest.target, reconciled)).toBe('field_verified');
     },
   );
@@ -122,7 +124,7 @@ describe('capability promotion durability and stale-state gate', () => {
     )],
   ])('returns no final maturity for %s', async (_name, corrupt) => {
     const path = join(root, 'unavailable.jsonl');
-    const ledger = FilePromotionLedger.initialize(path, LEDGER_SECRET, CHECKPOINT_SECRET);
+    const ledger = await testPromotionLedger(path, LEDGER_SECRET, CHECKPOINT_SECRET);
     expect((await execute(envelope('decision-initial', 'nonce-initial'), ledger)).status).toBe('applied');
     corrupt(path);
 
@@ -134,8 +136,8 @@ describe('capability promotion durability and stale-state gate', () => {
 
   it('returns no final maturity when checkpoint authentication uses the wrong key', async () => {
     const path = join(root, 'wrong-key.jsonl');
-    FilePromotionLedger.initialize(path, LEDGER_SECRET, CHECKPOINT_SECRET);
-    const wrongKeyLedger = FilePromotionLedger.open(path, LEDGER_SECRET, 'wrong-checkpoint-secret-material-32');
+    await testPromotionLedger(path, LEDGER_SECRET, CHECKPOINT_SECRET);
+    const wrongKeyLedger = testOpenPromotionLedger(path, LEDGER_SECRET, 'wrong-checkpoint-secret-material-32');
 
     const result = await execute(envelope('decision-wrong-key', 'nonce-wrong-key'), wrongKeyLedger);
 
@@ -144,10 +146,10 @@ describe('capability promotion durability and stale-state gate', () => {
   });
 
   it('allows one of two differently nonced approvals from the same old maturity and rejects the stale one', async () => {
-    const ledger = FilePromotionLedger.initialize(join(root, 'race.jsonl'), LEDGER_SECRET, CHECKPOINT_SECRET);
+    const ledger = await testPromotionLedger(join(root, 'race.jsonl'), LEDGER_SECRET, CHECKPOINT_SECRET);
     const results = await Promise.all([
-      execute(envelope('decision-a', 'nonce-a'), ledger),
-      execute(envelope('decision-b', 'nonce-b'), ledger),
+      await execute(envelope('decision-a', 'nonce-a'), ledger),
+      await execute(envelope('decision-b', 'nonce-b'), ledger),
     ]);
     expect(results.filter(({ status }) => status === 'applied')).toHaveLength(1);
     expect(results.filter((result) => result.status === 'refused' && result.refusalCode === 'stale_maturity')).toHaveLength(1);
@@ -156,7 +158,7 @@ describe('capability promotion durability and stale-state gate', () => {
   });
 
   it('binds fromMaturity into the signature and requires it to equal derived state', async () => {
-    const ledger = FilePromotionLedger.initialize(join(root, 'from.jsonl'), LEDGER_SECRET, CHECKPOINT_SECRET);
+    const ledger = await testPromotionLedger(join(root, 'from.jsonl'), LEDGER_SECRET, CHECKPOINT_SECRET);
     const validSource = JSON.stringify(envelope('decision-from', 'nonce-from'));
     const mutated = validSource.replaceAll('tested_mock', 'implemented_local');
     const forged = await executeCapabilityPromotion({

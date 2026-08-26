@@ -34,6 +34,7 @@ function runtime(ready: boolean): AuthorityRuntimePort {
     }),
     assertReady: async () => undefined,
     enrollments: () => undefined,
+    localWriteAuthority: async () => { throw new Error('not used'); },
     beginDrain: () => undefined,
     close: async () => undefined,
   };
@@ -53,17 +54,17 @@ async function post(baseUrl: string, token?: string): Promise<{ readonly status:
 
 describe('Control Tower enrollment HTTP security', () => {
   it('runs authority readiness before enrollment authentication', async () => {
-    const baseUrl = await listen(createTowerServer({ authorityRuntime: runtime(false), apiToken: 'route-token' }));
+    const baseUrl = await listen(createTowerServer({ authorityMode: 'local', authorityRuntime: runtime(false), apiToken: 'route-token' }));
     await expect(post(baseUrl)).resolves.toMatchObject({
       status: 503, body: { error: 'BLRO authority is not ready' },
     });
   });
 
   it('requires a configured exact bearer token even on loopback', async () => {
-    const gated = await listen(createTowerServer({ authorityRuntime: runtime(true), apiToken: 'route-token' }));
+    const gated = await listen(createTowerServer({ authorityMode: 'local', authorityRuntime: runtime(true), apiToken: 'route-token' }));
     await expect(post(gated)).resolves.toMatchObject({ status: 401 });
     await expect(post(gated, 'wrong')).resolves.toMatchObject({ status: 401 });
-    const unset = await listen(createTowerServer({ authorityRuntime: runtime(true), apiToken: '' }));
+    const unset = await listen(createTowerServer({ authorityMode: 'local', authorityRuntime: runtime(true), apiToken: '' }));
     await expect(post(unset)).resolves.toMatchObject({ status: 503 });
   });
 

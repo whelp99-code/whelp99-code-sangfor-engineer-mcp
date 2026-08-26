@@ -18,7 +18,8 @@ const SCOPED_TABLES = [
   'BlroEvidenceManifest', 'BlroRagDocument', 'BlroRagChunk',
   'BlroEnrollmentIdentity', 'BlroEnrollmentCertificate', 'BlroEnrollmentGrant',
   'BlroEnrollmentBootstrapToken', 'BlroEnrollmentRotation',
-  'BlroRemoteJobCapabilityJti', 'BlroRemoteJob',
+  'BlroRemoteJobCapabilityJti', 'BlroRemoteJob', 'BlroProjectAuthorityEpoch',
+  'BlroAuthorityCutover', 'BlroAuthorityCutoverStaging', 'BlroLocalWriteIntent', 'BlroSourceRootOwner',
 ];
 
 function refuse(reason, detail) {
@@ -70,11 +71,29 @@ if (!databaseUrl) {
         projectId, tenantId, `RLS probe ${label}`,
       );
       await tx.$executeRawUnsafe(
+        `INSERT INTO "BlroProjectAuthorityEpoch" ("projectId","epoch","revision") VALUES ($1,0,0) ON CONFLICT DO NOTHING`, projectId,
+      );
+      await tx.$executeRawUnsafe(
         `INSERT INTO "BlroMembership" ("id","tenantId","projectId","actorId","roleId") VALUES ($1,$2,$3,$4,$5)`,
         `membership-${label}-${suffix}`, tenantId, projectId, actorId, roleId,
       );
       await tx.$executeRawUnsafe(
-        `INSERT INTO "BlroApprovalNonce" ("id","tenantId","projectId","nonce","expiresAt","consumedAt") VALUES ($1,$2,$3,$4,now() + interval '1 hour',now())`,
+        `INSERT INTO "BlroAuthorityCutover" ("projectId","aggregate","state","epoch","revision") VALUES ($1,'evals','BACKFILLING',0,1)`, projectId,
+      );
+      await tx.$executeRawUnsafe(
+        `INSERT INTO "BlroAuthorityCutoverStaging" ("projectId","aggregate","recordKey","highWaterMark","record","recordDigest") VALUES ($1,'evals',$2,'hwm','{}',repeat($3,64))`,
+        projectId, `staging-${label}-${suffix}`, label,
+      );
+      await tx.$executeRawUnsafe(
+        `INSERT INTO "BlroSourceRootOwner" ("sourceDevice","sourceInode","tenantId","projectId","sourceRoot") VALUES ($1,$2,$3,$4,$5)`,
+        `device-${label}-${suffix}`, `inode-${label}-${suffix}`, tenantId, projectId, `/tmp/rls-source-${label}-${suffix}`,
+      );
+      await tx.$executeRawUnsafe(
+        `INSERT INTO "BlroLocalWriteIntent" ("writeId","tenantId","projectId","actorId","aggregate","epoch","sourceRoot","operationDigest","targetPaths","beforeDigests","status") VALUES ($1,$2,$3,$4,'evals',0,$5,repeat($6,64),'[]','{}','PENDING')`,
+        `intent-${label}-${suffix}`, tenantId, projectId, actorId, `/tmp/rls-${label}-${suffix}`, label,
+      );
+      await tx.$executeRawUnsafe(
+        `INSERT INTO "BlroApprovalNonce" ("id","tenantId","projectId","nonce","expiresAt","consumedAt","authorityEpoch") VALUES ($1,$2,$3,$4,now() + interval '1 hour',now(),0)`,
         `nonce-${label}-${suffix}`, tenantId, projectId, `nonce-value-${label}-${suffix}`,
       );
       await tx.$executeRawUnsafe(
@@ -86,7 +105,7 @@ if (!databaseUrl) {
         `device-${label}-${suffix}`, tenantId, projectId, actorId, `device-${label}-${suffix}`,
       );
       await tx.$executeRawUnsafe(
-        `INSERT INTO "BlroRun" ("id","tenantId","projectId","actorId","status","toolProfileVersion","sourceSystem") VALUES ($1,$2,$3,$4,'created','probe-v1','rls-verifier')`,
+        `INSERT INTO "BlroRun" ("id","tenantId","projectId","actorId","status","toolProfileVersion","sourceSystem","authorityEpoch") VALUES ($1,$2,$3,$4,'created','probe-v1','rls-verifier',0)`,
         `run-${label}-${suffix}`, tenantId, projectId, actorId,
       );
       await tx.$executeRawUnsafe(
@@ -94,7 +113,7 @@ if (!databaseUrl) {
         `step-${label}-${suffix}`, tenantId, projectId, `run-${label}-${suffix}`, actorId,
       );
       await tx.$executeRawUnsafe(
-        `INSERT INTO "BlroApproval" ("id","tenantId","projectId","actorId","actionHash","expiresAt","status") VALUES ($1,$2,$3,$4,$5,now() + interval '1 hour','approved')`,
+        `INSERT INTO "BlroApproval" ("id","tenantId","projectId","actorId","actionHash","expiresAt","status","authorityEpoch") VALUES ($1,$2,$3,$4,$5,now() + interval '1 hour','approved',0)`,
         `approval-${label}-${suffix}`, tenantId, projectId, actorId, `action-${label}-${suffix}`,
       );
       await tx.$executeRawUnsafe(
@@ -145,7 +164,7 @@ if (!databaseUrl) {
         remoteJti, tenantId, projectId, installationId, remoteJob, label,
       );
       await tx.$executeRawUnsafe(
-        `INSERT INTO "BlroRemoteJob" ("id","tenantId","projectId","installationId","jobId","runId","stepId","requestId","requestDigest","capabilityJti","state","tombstoneCommittedAt","createdAt","updatedAt") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,repeat($9,64),$10,'dispatch_committed',now(),now(),now())`,
+        `INSERT INTO "BlroRemoteJob" ("id","tenantId","projectId","installationId","jobId","runId","stepId","requestId","requestDigest","capabilityJti","state","tombstoneCommittedAt","createdAt","updatedAt","authorityEpoch") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,repeat($9,64),$10,'dispatch_committed',now(),now(),now(),0)`,
         `remote-dispatch-${label}-${suffix}`, tenantId, projectId, installationId, remoteJob,
         `remote-run-${label}-${suffix}`, `remote-step-${label}-${suffix}`,
         `remote-request-${label}-${suffix}`, label, remoteJti,

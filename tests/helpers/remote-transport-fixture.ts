@@ -74,6 +74,7 @@ export function remoteTransportEnvelopeOptions() {
       expiresAt,
       jti: randomUUID(),
       privateKey,
-    }),
+
+    authorityEpoch: 0,}),
   };
 }

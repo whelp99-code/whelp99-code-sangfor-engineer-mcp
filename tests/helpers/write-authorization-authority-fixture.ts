@@ -9,6 +9,7 @@ import {
   type PromotionLedgerEventInput,
 } from '../../packages/sangfor-competency/src/index.js';
 import { writeValidationFixture } from './capability-evidence-validation-fixture.js';
+import { testFileLocalWriteAuthority } from './local-write-authority.js';
 
 const LEDGER_SECRET = 'write-authority-ledger-secret-32-bytes';
 const CHECKPOINT_SECRET = 'write-authority-checkpoint-secret-32';
@@ -33,14 +34,14 @@ export type AuthorityFixture = {
   };
 };
 
-export function writeAuthorityFixture(input: {
+export async function writeAuthorityFixture(input: {
   readonly root: string;
   readonly product: 'IAG' | 'HCI_SCP';
   readonly capabilityId: 'internet_policy' | 'volume_create';
   readonly toolId: string;
   readonly fieldVerified: boolean;
   readonly mockCampaign: boolean;
-}): AuthorityFixture {
+}): Promise<AuthorityFixture> {
   const evidenceRoot = join(input.root, 'evidence');
   mkdirSync(evidenceRoot, { recursive: true });
   const base = writeValidationFixture(evidenceRoot, 'mutation');
@@ -92,7 +93,7 @@ export function writeAuthorityFixture(input: {
   }] }));
 
   const ledgerPath = join(input.root, 'promotion.jsonl');
-  const ledger = FilePromotionLedger.initialize(ledgerPath, LEDGER_SECRET, CHECKPOINT_SECRET);
+  const ledger = await FilePromotionLedger.initialize(ledgerPath, LEDGER_SECRET, CHECKPOINT_SECRET, {}, testFileLocalWriteAuthority('capability_evidence_promotion', ledgerPath));
   if (input.fieldVerified) {
     const event: PromotionLedgerEventInput = {
       version: 1,
@@ -108,7 +109,7 @@ export function writeAuthorityFixture(input: {
       nonceRef: maskedPromotionRef('nonce', 'field-promotion'),
       refusalCode: null,
     };
-    ledger.append(event);
+    await ledger.append(event);
   }
 
   return {

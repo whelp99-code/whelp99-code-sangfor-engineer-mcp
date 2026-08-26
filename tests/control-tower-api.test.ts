@@ -1,3 +1,4 @@
+import { testFileLocalWriteAuthority, testLocalWriteAuthority } from './helpers/local-write-authority.js';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import http from 'node:http';
 import type { AddressInfo } from 'node:net';
@@ -76,7 +77,7 @@ let tower: http.Server;
 let towerUrl: string;
 
 function startTower(opts: Record<string, unknown> = {}): Promise<http.Server> {
-  const server = createTowerServer({
+  const server = createTowerServer({ authorityMode: 'local',
     bridgeUrl, runsDir, registryDir,
     approvalSecret: 'api-secret', apiToken: 'test-token',
     mockConsoleUrl: 'http://127.0.0.1:1',
@@ -161,7 +162,7 @@ describe('Tower API — 읽기전용 즉시 실행 (T-API-1)', () => {
       advisorTools: ['stub.read'], credentialFields: ['host', 'username', 'password'],
       defaultArgs: { specVersion: '1.0' },
     } satisfies VendorDescriptor]));
-    const device = new Registry(registryDir).createDevice({ name: 's1', product: 'STUB_FW', host: 'http://127.0.0.1:9', tags: [] });
+    const device = await new Registry(registryDir, testLocalWriteAuthority('registry_services', registryDir)).createDevice({ name: 's1', product: 'STUB_FW', host: 'http://127.0.0.1:9', tags: [] });
     const r = await call('POST', '/api/runs', { toolId: 'stub.read', deviceId: device.id, args: { specVersion: '9.9' } });
     expect((r.body as unknown as RunRecord).deviceId).toBe(device.id);
     expect(lastCall!.arguments).toEqual({
@@ -184,7 +185,7 @@ describe('Tower API — 승인 플로우 (T-API-1)', () => {
     const approved = await call('POST', `/api/runs/${pending.runId}/approve`, { approvedBy: 'jmpark' });
     const final = approved.body as unknown as RunRecord;
     expect(final.status).toBe('succeeded');
-    expect(final.approval).toMatchObject({ approvedBy: 'jmpark', changeTicketId: `run:${pending.runId}`, rollbackPlanId: 'n/a-read-back-verify' });
+    expect(final.approval).toMatchObject({ approvedBy: 'jmpark', changeTicketId: `run:${pending.runId}`, rollbackPlanId: 'n/a-read-back-verify' , authorityEpoch: 0});
     expect(JSON.stringify(final)).not.toMatch(/approvalToken|nonce/); // 토큰·nonce 무저장
     expect(String(final.resultSummary)).toContain('***');      // 요약도 마스킹본 기준
     expect(String(final.resultSummary)).not.toContain('hunter2');  // 비밀값 요약 유출 금지
@@ -267,7 +268,7 @@ describe('Tower API — devices/sweep/overview/health (T-API-2)', () => {
 
   it('sweep: 장비×advisorTools 실행, read-only 아닌 도구는 failed 기록, sweepId 태깅', async () => {
     seedStubVendor();
-    const device = new Registry(registryDir).createDevice({ name: 's1', product: 'STUB_FW', host: 'http://127.0.0.1:9', tags: [] });
+    const device = await new Registry(registryDir, testLocalWriteAuthority('registry_services', registryDir)).createDevice({ name: 's1', product: 'STUB_FW', host: 'http://127.0.0.1:9', tags: [] });
     const r = await call('POST', '/api/sweep', {});
     expect(r.status).toBe(200);
     const sweepId = String(r.body.sweepId);
@@ -297,7 +298,7 @@ describe('Tower API — devices/sweep/overview/health (T-API-2)', () => {
 
   it('overview: 4위젯 형태 + 장비 요약의 lastAdvisory 파싱 + 목록 resultJson 제외', async () => {
     seedStubVendor();
-    const device = new Registry(registryDir).createDevice({ name: 's1', product: 'STUB_FW', host: 'http://127.0.0.1:9', tags: [] });
+    const device = await new Registry(registryDir, testLocalWriteAuthority('registry_services', registryDir)).createDevice({ name: 's1', product: 'STUB_FW', host: 'http://127.0.0.1:9', tags: [] });
     await call('POST', '/api/runs', { toolId: 'stub.read', deviceId: device.id });   // 자문 성공 이력
     await call('POST', '/api/runs', { toolId: 'stub.write', args: { customer: 'a' } }); // 승인 대기 1건
     const r = await call('GET', '/api/overview');
@@ -341,7 +342,7 @@ describe('Tower API — devices/sweep/overview/health (T-API-2)', () => {
     const r = await call('POST', '/api/approvals/mint', {
       actionType: 'hci.create-volume', actionTarget: '127.0.0.1:vol-a',
       approvedBy: 'jmpark', changeTicketId: 'CHG-1', rollbackPlanId: 'RB-1', ttlSec: 60,
-    });
+     authorityEpoch: 0});
     expect(r.status).toBe(200);
     expect(typeof r.body.approvalToken).toBe('string');
     expect(typeof r.body.nonce).toBe('string');
@@ -352,7 +353,7 @@ describe('Tower API — devices/sweep/overview/health (T-API-2)', () => {
     const clamped = await call('POST', '/api/approvals/mint', {
       actionType: 'hci.create-volume', actionTarget: 'h:v',
       approvedBy: 'a', changeTicketId: 'c', rollbackPlanId: 'r', ttlSec: 99999,
-    });
+     authorityEpoch: 0});
     const ttlMs = new Date(String(clamped.body.expiresAt)).getTime() - now;
     expect(ttlMs).toBeLessThanOrEqual(600_000 + 5_000); // 600s + 여유
     expect(ttlMs).toBeGreaterThan(590_000);
@@ -364,7 +365,7 @@ describe('Tower API — devices/sweep/overview/health (T-API-2)', () => {
       const r = await call('POST', '/api/approvals/mint', {
         actionType: 'hci.create-volume', actionTarget: 'h:vol',
         approvedBy: 'jmpark', changeTicketId: 'CHG-1', rollbackPlanId: 'RB-1',
-      }, urlOf(bare));
+       authorityEpoch: 0}, urlOf(bare));
       expect(r.status).toBe(500);
       expect(String(r.body.error)).toMatch(/approval secret not configured/);
     } finally {
@@ -405,8 +406,8 @@ describe('Tower API — devices/sweep/overview/health (T-API-2)', () => {
       product: 'MANY_FW', label: 'Many', advisorTools: READONLY_TOOLS,
       credentialFields: [], defaultArgs: {},
     }]));
-    new Registry(cRegDir).createDevice({ name: 'm1', product: 'MANY_FW', host: 'http://127.0.0.1:9', tags: [] });
-    const cTower = createTowerServer({ bridgeUrl: cbUrl, runsDir: cRunsDir, registryDir: cRegDir, approvalSecret: 's', apiToken: 'test-token', mockConsoleUrl: 'http://127.0.0.1:1' });
+    await new Registry(cRegDir, testLocalWriteAuthority('registry_services', cRegDir)).createDevice({ name: 'm1', product: 'MANY_FW', host: 'http://127.0.0.1:9', tags: [] });
+    const cTower = createTowerServer({ authorityMode: 'local', bridgeUrl: cbUrl, runsDir: cRunsDir, registryDir: cRegDir, approvalSecret: 's', apiToken: 'test-token', mockConsoleUrl: 'http://127.0.0.1:1' });
     await new Promise<void>((r) => cTower.listen(0, '127.0.0.1', () => r()));
     try {
       const r = await call('POST', '/api/sweep', {}, urlOf(cTower));

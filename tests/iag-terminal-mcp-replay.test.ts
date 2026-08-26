@@ -77,7 +77,8 @@ function approval(fixture: Fixture, nonce: string, actionDigest = fixture.action
   const fields = {
     approvedBy: 'stdio-replay', changeTicketId: 'CHG-STDIO', rollbackPlanId: 'RB-STDIO',
     purpose: 'ordinary_change' as const, nonce, expiresAt: '2036-08-26T12:00:00.000Z',
-  };
+
+  authorityEpoch: 0,};
   const action = fixture.action;
   return { ...fields, approvalToken: signIagMutationApproval(IAG_ORDINARY_APPROVAL_SECRET, {
     actionDigest, origin: action.target.origin, deviceIdentityDigest: action.target.deviceIdentityDigest,

@@ -43,6 +43,7 @@ export class TestRemoteJobStore implements RemoteJobStore {
         dispatchId: `test-dispatch-${this.sequence}`,
         tenantId: input.envelope.tenantId,
         projectId: input.envelope.projectId,
+        authorityEpoch: 0,
         installationId: 'test-installation',
         jobId: input.envelope.jobId,
         requestId: input.envelope.request.requestId,

@@ -91,14 +91,15 @@ describe('authenticated origin exact scope', () => {
     'https://192.0.2.22/openstack/identity/v2.0',
     'http://192.0.2.22:8080/openstack/identity/v2.0',
   ])('Given HCI authority for http://192.0.2.22 and retarget %s, When approval matches retarget, Then authority refuses before nonce', async (identityBaseUrl) => {
-    const fixture = writeAuthorityFixture({ root, product: 'HCI_SCP', capabilityId: 'volume_create', toolId: 'sangfor_hci_apply_create_volume', fieldVerified: true, mockCampaign: false });
+    const fixture = await writeAuthorityFixture({ root, product: 'HCI_SCP', capabilityId: 'volume_create', toolId: 'sangfor_hci_apply_create_volume', fieldVerified: true, mockCampaign: false });
     configureAuthorityEnvironment(root);
     const host = new URL(identityBaseUrl).hostname;
     const action = { type: 'hci.create-volume', target: `${host}:field-volume` } as const;
     const fields = {
       approvedBy: 'operator', changeTicketId: 'CHG-O', rollbackPlanId: 'RB-O',
       nonce: `hci-origin-${nonceIndex += 1}`, expiresAt: new Date(Date.now() + 60_000).toISOString(),
-    };
+
+    authorityEpoch: 0,};
     const approval = { ...fields, approvalToken: signApprovalToken(OPERATOR_SECRET, action, fields) };
 
     const result = await authorizeHciMutation({
@@ -107,17 +108,18 @@ describe('authenticated origin exact scope', () => {
     });
 
     expect(result.kind).toBe('REFUSED');
-    expect(consumeApprovalNonce(approval)).toMatchObject({ ok: true });
+    expect(await consumeApprovalNonce(approval)).toMatchObject({ ok: true });
   });
 
   it('Given matched HCI authority and a normalized default port URL, When authorized, Then exact scope passes', async () => {
-    const fixture = writeAuthorityFixture({ root, product: 'HCI_SCP', capabilityId: 'volume_create', toolId: 'sangfor_hci_apply_create_volume', fieldVerified: true, mockCampaign: false });
+    const fixture = await writeAuthorityFixture({ root, product: 'HCI_SCP', capabilityId: 'volume_create', toolId: 'sangfor_hci_apply_create_volume', fieldVerified: true, mockCampaign: false });
     configureAuthorityEnvironment(root);
     const action = { type: 'hci.create-volume', target: '192.0.2.22:field-volume' } as const;
     const fields = {
       approvedBy: 'operator', changeTicketId: 'CHG-H', rollbackPlanId: 'RB-H',
       nonce: `hci-match-${nonceIndex += 1}`, expiresAt: new Date(Date.now() + 60_000).toISOString(),
-    };
+
+    authorityEpoch: 0,};
     const approval = { ...fields, approvalToken: signApprovalToken(OPERATOR_SECRET, action, fields) };
 
     const result = await authorizeHciMutation({
@@ -129,29 +131,31 @@ describe('authenticated origin exact scope', () => {
   });
 
   it('Given IAG authority for one origin and a validly re-signed retarget, When authorized, Then authority refuses before nonce', async () => {
-    const fixture = writeAuthorityFixture({ root, product: 'IAG', capabilityId: 'internet_policy', toolId: 'iag_o1_evidence_campaign', fieldVerified: false, mockCampaign: true });
+    const fixture = await writeAuthorityFixture({ root, product: 'IAG', capabilityId: 'internet_policy', toolId: 'iag_o1_evidence_campaign', fieldVerified: false, mockCampaign: true });
     configureAuthorityEnvironment(root);
     const action = { ...fixture.scope, originId: 'https://192.0.2.23', actionKind: 'single_url_exception', targetEnvironment: 'lab' };
     const fields: IagBootstrapApprovalFields = {
       approvedBy: 'operator', changeTicketId: 'CHG-I', rollbackPlanId: 'RB-I', purpose: 'evidence_bootstrap',
       nonce: `iag-origin-${nonceIndex += 1}`, expiresAt: new Date(Date.now() + 60_000).toISOString(),
-    };
+
+    authorityEpoch: 0,};
     const approval = { ...fields, approvalToken: signIagBootstrapApproval(BOOTSTRAP_SECRET, action, fields) };
 
     const result = await authorizeIagEvidenceBootstrap({ action, approval, authority: fixture.refs });
 
     expect(result.kind).toBe('REFUSED');
-    expect(consumeApprovalNonce(approval)).toMatchObject({ ok: true });
+    expect(await consumeApprovalNonce(approval)).toMatchObject({ ok: true });
   });
 
   it('Given matched IAG authority and an equivalent default port origin, When authorized, Then exact scope passes', async () => {
-    const fixture = writeAuthorityFixture({ root, product: 'IAG', capabilityId: 'internet_policy', toolId: 'iag_o1_evidence_campaign', fieldVerified: false, mockCampaign: true });
+    const fixture = await writeAuthorityFixture({ root, product: 'IAG', capabilityId: 'internet_policy', toolId: 'iag_o1_evidence_campaign', fieldVerified: false, mockCampaign: true });
     configureAuthorityEnvironment(root);
     const action = { ...fixture.scope, originId: 'https://192.0.2.21:443', actionKind: 'single_url_exception', targetEnvironment: 'lab' };
     const fields: IagBootstrapApprovalFields = {
       approvedBy: 'operator', changeTicketId: 'CHG-M', rollbackPlanId: 'RB-M', purpose: 'evidence_bootstrap',
       nonce: `iag-match-${nonceIndex += 1}`, expiresAt: new Date(Date.now() + 60_000).toISOString(),
-    };
+
+    authorityEpoch: 0,};
     const approval = { ...fields, approvalToken: signIagBootstrapApproval(BOOTSTRAP_SECRET, action, fields) };
 
     const result = await authorizeIagEvidenceBootstrap({ action, approval, authority: fixture.refs });
@@ -160,13 +164,14 @@ describe('authenticated origin exact scope', () => {
   });
 
   it('Given approval bound to the original IAG origin, When only the action origin changes, Then it refuses before nonce', async () => {
-    const fixture = writeAuthorityFixture({ root, product: 'IAG', capabilityId: 'internet_policy', toolId: 'iag_o1_evidence_campaign', fieldVerified: false, mockCampaign: true });
+    const fixture = await writeAuthorityFixture({ root, product: 'IAG', capabilityId: 'internet_policy', toolId: 'iag_o1_evidence_campaign', fieldVerified: false, mockCampaign: true });
     configureAuthorityEnvironment(root);
     const original = { ...fixture.scope, actionKind: 'single_url_exception', targetEnvironment: 'lab' };
     const fields: IagBootstrapApprovalFields = {
       approvedBy: 'operator', changeTicketId: 'CHG-A', rollbackPlanId: 'RB-A', purpose: 'evidence_bootstrap',
       nonce: `iag-altered-${nonceIndex += 1}`, expiresAt: new Date(Date.now() + 60_000).toISOString(),
-    };
+
+    authorityEpoch: 0,};
     const approval = { ...fields, approvalToken: signIagBootstrapApproval(BOOTSTRAP_SECRET, original, fields) };
 
     const result = await authorizeIagEvidenceBootstrap({
@@ -174,11 +179,11 @@ describe('authenticated origin exact scope', () => {
     });
 
     expect(result.kind).toBe('REFUSED');
-    expect(consumeApprovalNonce(approval)).toMatchObject({ ok: true });
+    expect(await consumeApprovalNonce(approval)).toMatchObject({ ok: true });
   });
 
   it('Given a legacy live manifest without originDigest, When HCI authorizes, Then no compatibility shim exists and nonce remains reusable', async () => {
-    const fixture = writeAuthorityFixture({ root, product: 'HCI_SCP', capabilityId: 'volume_create', toolId: 'sangfor_hci_apply_create_volume', fieldVerified: true, mockCampaign: false });
+    const fixture = await writeAuthorityFixture({ root, product: 'HCI_SCP', capabilityId: 'volume_create', toolId: 'sangfor_hci_apply_create_volume', fieldVerified: true, mockCampaign: false });
     configureAuthorityEnvironment(root);
     const manifest = capabilityEvidenceManifestSchema.parse(JSON.parse(readFileSync(fixture.refs.manifestPath, 'utf8')));
     const { originDigest: _originDigest, ...legacyDigests } = manifest.digests;
@@ -187,7 +192,8 @@ describe('authenticated origin exact scope', () => {
     const fields = {
       approvedBy: 'operator', changeTicketId: 'CHG-L', rollbackPlanId: 'RB-L',
       nonce: `hci-legacy-${nonceIndex += 1}`, expiresAt: new Date(Date.now() + 60_000).toISOString(),
-    };
+
+    authorityEpoch: 0,};
     const approval = { ...fields, approvalToken: signApprovalToken(OPERATOR_SECRET, action, fields) };
 
     const result = await authorizeHciMutation({
@@ -196,6 +202,6 @@ describe('authenticated origin exact scope', () => {
     });
 
     expect(result.kind).toBe('REFUSED');
-    expect(consumeApprovalNonce(approval)).toMatchObject({ ok: true });
+    expect(await consumeApprovalNonce(approval)).toMatchObject({ ok: true });
   });
 });

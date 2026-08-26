@@ -7,6 +7,12 @@ export const IDENTITY_REFS = [
 ] as const;
 
 export const PROJECT_REFS = [
+  "persist:packages/sangfor-authority/src/cutover/postgres-repository.ts#PostgresCutoverRepository",
+  "persist:packages/sangfor-authority/src/cutover/postgres-target-base.ts#AggregatePostgresTarget",
+  "persist:packages/sangfor-authority/src/cutover/write-intents.ts#PostgresLocalWriteIntentRepository",
+  "persist:packages/sangfor-authority/src/authority-epoch.ts#read",
+  "persist:packages/sangfor-authority/src/cutover/safety-marker.ts#writeLocalSafetyMarker",
+  "persist:packages/sangfor-authority/src/cutover/target-common.ts#checkpointRecords",
   "persist:packages/sangfor-authority/src/enrollment-bootstrap.ts#claimScopedBootstrapToken",
   "persist:packages/sangfor-authority/src/enrollment-bootstrap.ts#issueScopedBootstrapToken",
   "persist:packages/sangfor-authority/src/enrollment-lifecycle.ts#acknowledgeScopedRotation",
@@ -18,6 +24,11 @@ export const PROJECT_REFS = [
   "prisma:model:BlroEnrollmentGrant",
   "prisma:model:BlroEnrollmentIdentity",
   "prisma:model:BlroEnrollmentRotation",
+  "prisma:model:BlroAuthorityCutover",
+  "prisma:model:BlroAuthorityCutoverStaging",
+  "prisma:model:BlroProjectAuthorityEpoch",
+  "prisma:model:BlroLocalWriteIntent",
+  "prisma:model:BlroSourceRootOwner",
   "prisma:model:BlroMembership",
   "prisma:model:BlroProject",
 ] as const;
@@ -25,6 +36,7 @@ export const PROJECT_REFS = [
 export const REGISTRY_REFS = [
   "persist:apps/control-tower/src/playbook-store.ts#PlaybookStore",
   "persist:apps/control-tower/src/registry.ts#Registry",
+  "persist:packages/sangfor-authority/src/cutover/core-aggregate-targets.ts#RegistryCutoverTarget",
   "prisma:model:BlroDevice",
   "prisma:model:BlroServiceRegistry",
   "prisma:model:SangforProduct",
@@ -33,6 +45,7 @@ export const REGISTRY_REFS = [
 export const RUNS_REFS = [
   "persist:apps/control-tower/src/playbook-store.ts#AnalysisStore",
   "persist:packages/sangfor-runs/src/run-store.ts#RunStore",
+  "persist:packages/sangfor-authority/src/cutover/core-aggregate-targets.ts#RunsCutoverTarget",
   "prisma:model:BlroRun",
   "prisma:model:BlroRunStep",
 ] as const;
@@ -46,11 +59,13 @@ export const APPROVAL_REFS = [
 
 export const AUDIT_REFS = [
   "persist:packages/sangfor-hci-client/src/audit-ledger.ts#AuditLedger",
+  "persist:packages/sangfor-authority/src/cutover/core-aggregate-targets.ts#AuditCutoverTarget",
   "prisma:model:BlroAuditEvent",
 ] as const;
 
 export const EVIDENCE_REFS = [
   "persist:packages/sangfor-engineer-report/src/ledger.ts#appendEngineerReport",
+  "persist:packages/sangfor-authority/src/cutover/core-aggregate-targets.ts#EvidenceCutoverTarget",
   "prisma:model:BlroEvidenceManifest",
 ] as const;
 

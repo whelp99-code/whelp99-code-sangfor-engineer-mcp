@@ -20,7 +20,8 @@ function makeApproval(
     nonce: 'nonce-abc',
     expiresAt: new Date(Date.now() + 60_000).toISOString(),
     ...overrides,
-  };
+
+  authorityEpoch: 0,};
   return { ...base, approvalToken: signApprovalToken(SECRET, action, base) };
 }
 
@@ -83,6 +84,7 @@ describe('verifyExecutionApproval — action-bound, time-bound, signed', () => {
       approval.rollbackPlanId,
       approval.nonce,
       approval.expiresAt,
+      String(approval.authorityEpoch),
       '{"target":"button#create-volume","type":"click"}',
     ].join('\n'));
     expect(verifyExecutionApproval({

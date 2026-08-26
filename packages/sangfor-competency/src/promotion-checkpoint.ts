@@ -1,7 +1,7 @@
 import { createHmac } from 'node:crypto';
 import { existsSync, lstatSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname } from 'node:path';
-import { writeFileAtomicSync } from '../../shared/src/index.js';
+import { expectedLocalWriteScope, requireLocalWriteAuthority, writeFileAtomicSync, type LocalWriteAuthority } from '../../shared/src/index.js';
 import { z } from 'zod';
 import { sha256Schema } from './evidence-primitives.js';
 import { PromotionLedgerUnavailableError } from './promotion-ledger-errors.js';
@@ -33,7 +33,17 @@ export function assertPromotionSecrets(ledgerSecret: string, checkpointSecret: s
   }
 }
 
-export function initializePromotionStore(ledgerPath: string, checkpointSecret: string): void {
+export async function initializePromotionStore(
+  ledgerPath: string,
+  checkpointSecret: string,
+  injectedAuthority: LocalWriteAuthority,
+): Promise<void> {
+  const authority = requireLocalWriteAuthority(injectedAuthority, expectedLocalWriteScope(
+    injectedAuthority, injectedAuthority?.projectId ?? '', 'capability_evidence_promotion', dirname(ledgerPath),
+  ));
+  await authority.fence.write(authority, {
+    operation: 'capability-promotion.initialize', targetPaths: [ledgerPath, promotionCheckpointPath(ledgerPath)],
+  }, () => {
   const headPath = promotionCheckpointPath(ledgerPath);
   const ledgerExists = existsSync(ledgerPath);
   const checkpointExists = existsSync(headPath);
@@ -43,6 +53,7 @@ export function initializePromotionStore(ledgerPath: string, checkpointSecret: s
     writeFileAtomicSync(ledgerPath, '');
     writePromotionCheckpoint(headPath, checkpointSecret, 0, PROMOTION_GENESIS);
   }
+  });
 }
 
 export function assertPromotionStoreFiles(ledgerPath: string): void {

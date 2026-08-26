@@ -1,6 +1,6 @@
 import { appendFileSync, mkdirSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { nowId, resolveEngagementScopedData, resolveRepoData, withDirLock, writeFileAtomicSync } from '../../../packages/shared/src/index.js';
+import { nowId, expectedLocalWriteScope, requireLocalWriteAuthority, resolveEngagementScopedData, resolveRepoData, withDirLock, writeFileAtomicSync, type LocalWriteAuthority } from '../../../packages/shared/src/index.js';
 import { maskSecrets } from '../../../packages/sangfor-runs/src/index.js';
 
 // ── 플레이북 정의 ────────────────────────────────────────────────────────────
@@ -122,10 +122,18 @@ function maskBlocks(blocks: PlaybookBlock[]): PlaybookBlock[] {
 export class PlaybookStore {
   private readonly dir: string;
   private readonly path: string;
+  private readonly authority: LocalWriteAuthority;
 
-  constructor(dir?: string) {
+  constructor(dir: string | undefined, authority: LocalWriteAuthority) {
     this.dir = dir ?? resolveRepoData('data/registry', 'SANGFOR_REGISTRY_ROOT');
     this.path = join(this.dir, 'playbooks.json');
+    this.authority = requireLocalWriteAuthority(authority, expectedLocalWriteScope(
+      authority, authority?.projectId ?? '', 'registry_services', this.dir,
+    ));
+  }
+
+  private fenced<T>(operation: string, write: () => T): Promise<T> {
+    return this.authority.fence.write(this.authority, { operation, targetPaths: [this.path] }, write);
   }
 
   list(): Playbook[] { return this.load(); }
@@ -135,9 +143,9 @@ export class PlaybookStore {
     return `${this.path}.lock`;
   }
 
-  create(input: { name: string; goal: string; blocks: PlaybookBlock[]; authoredBy: string; note?: string; seedKey?: string }): Playbook {
+  async create(input: { name: string; goal: string; blocks: PlaybookBlock[]; authoredBy: string; note?: string; seedKey?: string }): Promise<Playbook> {
     validateBlocks(input.blocks);
-    return withDirLock(this.lockPath, () => {
+    return this.fenced('playbooks.create', () => withDirLock(this.lockPath, () => {
       const now = new Date().toISOString();
       const pb: Playbook = {
         id: nowId('pb'), name: input.name, goal: input.goal,
@@ -147,12 +155,12 @@ export class PlaybookStore {
       };
       this.save([...this.load(), pb]);
       return pb;
-    });
+    }));
   }
 
-  addRevision(id: string, input: { blocks: PlaybookBlock[]; authoredBy: string; note?: string }): Playbook {
+  async addRevision(id: string, input: { blocks: PlaybookBlock[]; authoredBy: string; note?: string }): Promise<Playbook> {
     validateBlocks(input.blocks);
-    return withDirLock(this.lockPath, () => {
+    return this.fenced('playbooks.add-revision', () => withDirLock(this.lockPath, () => {
       const pbs = this.load();
       const pb = pbs.find((p) => p.id === id);
       if (!pb) throw new PlaybookValidationError(`unknown playbook: ${id}`, 404);
@@ -161,11 +169,11 @@ export class PlaybookStore {
       pb.updatedAt = new Date().toISOString();
       this.save(pbs);
       return pb;
-    });
+    }));
   }
 
-  reviewRevision(id: string, rev: number, verdict: { approve: boolean; reviewedBy: string; rejectReason?: string }): Playbook {
-    return withDirLock(this.lockPath, () => {
+  async reviewRevision(id: string, rev: number, verdict: { approve: boolean; reviewedBy: string; rejectReason?: string }): Promise<Playbook> {
+    return this.fenced('playbooks.review-revision', () => withDirLock(this.lockPath, () => {
       const pbs = this.load();
       const pb = pbs.find((p) => p.id === id);
       if (!pb) throw new PlaybookValidationError(`unknown playbook: ${id}`, 404);
@@ -181,7 +189,7 @@ export class PlaybookStore {
       pb.updatedAt = new Date().toISOString();
       this.save(pbs);
       return pb;
-    });
+    }));
   }
 
   activeRevision(pb: Playbook): PlaybookRevision | undefined {
@@ -208,23 +216,30 @@ const ANALYSIS_FILE_RE = /^\d{4}-\d{2}-\d{2}\.jsonl$/;
 // createdAt를 보존한 새 스냅샷을 같은 날짜 파일에 append (RunStore.transition과 동형).
 export class AnalysisStore {
   private readonly dir: string;
+  private readonly authority: LocalWriteAuthority;
 
-  constructor(dir?: string) {
+  constructor(dir: string | undefined, authority: LocalWriteAuthority) {
     // Engagement-scoped, matching RunStore: both write under data/runs, so an
     // unscoped root here would split one project's runs across two partitions.
     const root = dir ?? resolveEngagementScopedData('data/runs', 'SANGFOR_RUNS_ROOT');
     this.dir = join(root, 'analyses');
+    this.authority = requireLocalWriteAuthority(authority, expectedLocalWriteScope(
+      authority, authority?.projectId ?? '', 'runs_steps', root,
+    ));
   }
 
-  append(analysis: PlaybookAnalysis): PlaybookAnalysis {
+  async append(analysis: PlaybookAnalysis): Promise<PlaybookAnalysis> {
     const record: PlaybookAnalysis = maskSecrets({
       ...analysis,
       schemaVersion: 1,
       id: analysis.id ?? nowId('anl'),
       createdAt: analysis.createdAt ?? new Date().toISOString(),
     });
-    mkdirSync(this.dir, { recursive: true });
-    appendFileSync(join(this.dir, `${record.createdAt.slice(0, 10)}.jsonl`), `${JSON.stringify(record)}\n`);
+    const target = join(this.dir, `${record.createdAt.slice(0, 10)}.jsonl`);
+    await this.authority.fence.write(this.authority, { operation: 'analyses.append', targetPaths: [target] }, () => {
+      mkdirSync(this.dir, { recursive: true });
+      appendFileSync(target, `${JSON.stringify(record)}\n`);
+    });
     return record;
   }
 
@@ -238,10 +253,10 @@ export class AnalysisStore {
       .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
   }
 
-  setVerdict(
+  async setVerdict(
     id: string, part: 'improvements' | 'proposals', index: number,
     verdict: AnalysisVerdict, reviewedBy: string, linkedPlaybookId?: string,
-  ): PlaybookAnalysis {
+  ): Promise<PlaybookAnalysis> {
     const current = this.get(id);
     if (!current) throw new PlaybookValidationError(`unknown analysis: ${id}`, 404);
     const arr = current[part];
@@ -281,10 +296,14 @@ export class AnalysisStore {
 export class AgentTaskStore {
   private readonly dir: string;
   private readonly path: string;
+  private readonly authority: LocalWriteAuthority;
 
-  constructor(dir?: string) {
+  constructor(dir: string | undefined, authority: LocalWriteAuthority) {
     this.dir = dir ?? resolveRepoData('data/registry', 'SANGFOR_REGISTRY_ROOT');
     this.path = join(this.dir, 'agent-tasks.json');
+    this.authority = requireLocalWriteAuthority(authority, expectedLocalWriteScope(
+      authority, authority?.projectId ?? '', 'pm_tasks', this.dir,
+    ));
   }
 
   private get lockPath(): string {
@@ -296,18 +315,18 @@ export class AgentTaskStore {
     return status ? all.filter((t) => t.status === status) : all;
   }
 
-  create(input: { kind: AgentTaskKind; payload: AgentTask['payload'] }): AgentTask {
-    return withDirLock(this.lockPath, () => {
+  async create(input: { kind: AgentTaskKind; payload: AgentTask['payload'] }): Promise<AgentTask> {
+    return this.authority.fence.write(this.authority, { operation: 'agent-tasks.create', targetPaths: [this.path] }, () => withDirLock(this.lockPath, () => {
       const task: AgentTask = {
         id: nowId('atask'), kind: input.kind, payload: maskSecrets(input.payload ?? {}),
         status: 'open', createdAt: new Date().toISOString(),
       };
       this.save([...this.load(), task]);
       return task;
-    });
+    }));
   }
 
-  close(id: string, result: AgentTask['result']): AgentTask {
+  async close(id: string, result: AgentTask['result']): Promise<AgentTask> {
     return this.transition(id, (t) => {
       t.status = 'done';
       t.result = maskSecrets(result ?? {});
@@ -315,15 +334,15 @@ export class AgentTaskStore {
     });
   }
 
-  cancel(id: string): AgentTask {
+  async cancel(id: string): Promise<AgentTask> {
     return this.transition(id, (t) => {
       t.status = 'cancelled';
       t.closedAt = new Date().toISOString();
     });
   }
 
-  private transition(id: string, mutate: (t: AgentTask) => void): AgentTask {
-    return withDirLock(this.lockPath, () => {
+  private async transition(id: string, mutate: (t: AgentTask) => void): Promise<AgentTask> {
+    return this.authority.fence.write(this.authority, { operation: 'agent-tasks.transition', targetPaths: [this.path] }, () => withDirLock(this.lockPath, () => {
       const tasks = this.load();
       const t = tasks.find((x) => x.id === id);
       if (!t) throw new PlaybookValidationError(`unknown agent-task: ${id}`, 404);
@@ -331,7 +350,7 @@ export class AgentTaskStore {
       mutate(t);
       this.save(tasks);
       return t;
-    });
+    }));
   }
 
   private load(): AgentTask[] {

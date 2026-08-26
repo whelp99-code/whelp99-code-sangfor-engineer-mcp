@@ -23,7 +23,7 @@ export const APP_ID = 'app.vendor-suite_42';
 const digest = (value: string): string => value.repeat(64);
 
 export async function resolveTestIagMutationAuthority(root: string): Promise<IagMutationActionAuthority> {
-  const fixture = writeAuthorityFixture({
+  const fixture = await writeAuthorityFixture({
     root, product: 'IAG', capabilityId: 'internet_policy',
     toolId: 'iag_o1_evidence_campaign', fieldVerified: false, mockCampaign: true,
   });

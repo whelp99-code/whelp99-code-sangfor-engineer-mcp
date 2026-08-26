@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { resolveRepoData } from '@sangfor/shared';
+import { resolveProductionLocalWriteAuthority, resolveRepoData, type LocalWriteAuthority } from '@sangfor/shared';
 import { promoteLearningApproval, type LearningApprovalEvent, type LearningApprovalPayload } from './approval.js';
 import { FactService, type FactQueryResult as LegacyFactResult } from './fact-service.js';
 import { getTransitionRequirements, isValidTransition } from './lifecycle.js';
@@ -130,7 +130,13 @@ function decodeCursor(cursor: string | undefined): string | undefined {
 }
 
 export class LearningStrategyService {
-  constructor(private readonly root = resolveRepoData('data/runtime/learning-strategies')) {}
+  private readonly authority: LocalWriteAuthority;
+  constructor(private readonly root = resolveRepoData('data/runtime/learning-strategies'), authority?: LocalWriteAuthority) {
+    this.authority = authority ?? resolveProductionLocalWriteAuthority({
+      tenantId: 'local-primary', projectId: process.env.SANGFOR_ENGAGEMENT_ID ?? 'local-primary', actorId: 'local-primary',
+      aggregate: 'learning_strategy_lifecycle', sourceRoot: this.root,
+    });
+  }
 
   private stores(): Array<{ manager: StrategyStoreManager; store: StrategyStore }> {
     if (!existsSync(this.root)) return [];
@@ -138,7 +144,7 @@ export class LearningStrategyService {
       .filter((entry) => entry.isFile() && entry.name.endsWith('.json'))
       .sort((left, right) => left.name.localeCompare(right.name))
       .map((entry) => {
-        const manager = new StrategyStoreManager(join(this.root, entry.name));
+        const manager = new StrategyStoreManager(join(this.root, entry.name), this.authority);
         const store = manager.load();
         if (!store) throw new Error(`STORE_CORRUPT: ${entry.name}`);
         return { manager, store };
@@ -186,11 +192,11 @@ export class LearningStrategyService {
     return resolveExactStrategy(this.revisions(), scope, context);
   }
 
-  research(request: ResearchStrategyRequest): { strategyId: string; revision: StrategyRevision; evidenceGaps: string[]; benchmark: { officialSource: boolean; captureEvidence: boolean } } {
+  async research(request: ResearchStrategyRequest): Promise<{ strategyId: string; revision: StrategyRevision; evidenceGaps: string[]; benchmark: { officialSource: boolean; captureEvidence: boolean } }> {
     assertSafeLearningInput(request, ['strategyId', 'vendor', 'scope', 'registryDigest', 'versionTruthRecord', 'productVariant', 'officialCitation', 'pageVerified', 'captureEvidenceFile', 'methods']);
     if (!request.pageVerified || !/^https:\/\//u.test(request.officialCitation)) throw new Error('OFFICIAL_SOURCE_REQUIRED: an HTTPS page-verified citation is required.');
     if (!SHA256.test(request.registryDigest)) throw new Error('INVALID_INPUT: registryDigest must be lowercase SHA-256.');
-    const manager = new StrategyStoreManager(strategyPath(this.root, request.strategyId));
+    const manager = new StrategyStoreManager(strategyPath(this.root, request.strategyId), this.authority);
     const current = manager.load() ?? manager.createStrategy(request.strategyId);
     const evidenceGaps = request.captureEvidenceFile ? [] : ['capture evidence is not supplied'];
     const contentHash = sha256(canonicalJson(request));
@@ -206,7 +212,7 @@ export class LearningStrategyService {
       ...(request.captureEvidenceFile === undefined ? {} : { evidenceFile: request.captureEvidenceFile }),
       ...(request.methods === undefined ? {} : { methods: request.methods }),
     });
-    const committed = manager.commit(next, current.currentGeneration);
+    const committed = await manager.commit(next, current.currentGeneration);
     if (!committed.ok) throw new Error(`STORE_COMMIT_FAILED: ${committed.error ?? 'unknown'}`);
     const revision = uniqueRevisions(manager.load()!).at(-1)!;
     return { strategyId: request.strategyId, revision, evidenceGaps, benchmark: { officialSource: true, captureEvidence: evidenceGaps.length === 0 } };
@@ -214,7 +220,7 @@ export class LearningStrategyService {
 
   validate(request: ValidateStrategyRequest): { valid: boolean; revision: StrategyRevision; eligibleNextStates: StrategyState[]; errors: string[] } {
     assertSafeLearningInput(request, ['strategyId', 'revisionId', 'evidenceFile', 'evidenceDigest']);
-    const manager = new StrategyStoreManager(strategyPath(this.root, request.strategyId));
+    const manager = new StrategyStoreManager(strategyPath(this.root, request.strategyId), this.authority);
     const store = manager.load();
     if (!store) throw new Error('STORE_UNAVAILABLE: strategy is missing or corrupt.');
     const revision = uniqueRevisions(store).find((candidate) => candidate.revisionId === request.revisionId);
@@ -227,7 +233,7 @@ export class LearningStrategyService {
     return { valid: errors.length === 0, revision, eligibleNextStates, errors };
   }
 
-  promote(request: PromoteStrategyRequest): { revision: StrategyRevision; event: LearningApprovalEvent } {
+  async promote(request: PromoteStrategyRequest): Promise<{ revision: StrategyRevision; event: LearningApprovalEvent }> {
     assertSafeLearningInput(request, ['strategyId', 'revisionId', 'evidenceFile', 'evidenceDigest', 'toState', 'approvalPayload', 'approvalToken', 'evidenceRoot']);
     const validation = this.validate({
       strategyId: request.strategyId,
@@ -246,18 +252,18 @@ export class LearningStrategyService {
     }
     const requirements = getTransitionRequirements(validation.revision.state, request.toState);
     if (!requirements?.requiresHumanHmac) throw new Error('APPROVAL_REQUIRED: transition is not configured for signed approval.');
-    const manager = new StrategyStoreManager(strategyPath(this.root, request.strategyId));
+    const manager = new StrategyStoreManager(strategyPath(this.root, request.strategyId), this.authority);
     const store = manager.load();
     if (!store) throw new Error('STORE_UNAVAILABLE: strategy is missing or corrupt.');
     let event: LearningApprovalEvent | undefined;
     let promotedRevision: StrategyRevision | undefined;
-    promoteLearningApproval({
+    await promoteLearningApproval({
       payload: request.approvalPayload,
       approvalToken: request.approvalToken,
       currentState: validation.revision.state,
       currentContentHash: validation.revision.contentHash,
       evidenceRoot: request.evidenceRoot,
-      appendEvent: (value) => {
+      appendEvent: async (value) => {
         const next = manager.addRevision(store, {
           ...validation.revision,
           state: request.toState,
@@ -268,7 +274,7 @@ export class LearningStrategyService {
           contentHash: validation.revision.contentHash,
         });
         next.lifecycleEvents = [...store.lifecycleEvents, value];
-        const committed = manager.commit(next, store.currentGeneration);
+        const committed = await manager.commit(next, store.currentGeneration);
         if (!committed.ok) throw new Error(`STORE_COMMIT_FAILED: ${committed.error ?? 'unknown'}`);
         event = value;
         promotedRevision = uniqueRevisions(manager.load()!).at(-1)!;

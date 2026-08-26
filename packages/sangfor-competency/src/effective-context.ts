@@ -2,6 +2,7 @@ import { lstatSync, readFileSync } from 'node:fs';
 import { parseEvidenceValidationContext } from './evidence-validation-context.js';
 import type { EffectiveEvidenceClaim, EffectiveMaturityAuthority } from './effective-maturity.js';
 import { FilePromotionLedger, PromotionLedgerUnavailableError } from './promotion-ledger.js';
+import type { LocalWriteAuthority } from '@sangfor/shared';
 import { violation, type CoverageViolation } from './violations.js';
 
 export type EffectiveEvidenceClaimSource = {
@@ -15,6 +16,7 @@ export type EffectiveAuthoritySource = {
   readonly ledgerPath: string | undefined;
   readonly ledgerSecret: string | undefined;
   readonly checkpointSecret: string | undefined;
+  readonly authority: LocalWriteAuthority;
 };
 
 export type EffectiveAuthorityLoad =
@@ -70,7 +72,7 @@ export function loadEffectiveMaturityAuthority(source: EffectiveAuthoritySource)
       ok: true,
       authority: {
         claims,
-        ledger: FilePromotionLedger.open(ledgerPath, ledgerSecret, checkpointSecret),
+        ledger: FilePromotionLedger.open(ledgerPath, ledgerSecret, checkpointSecret, source.authority),
       },
     };
   } catch (error) {

@@ -1,3 +1,4 @@
+import { testFileLocalWriteAuthority, testLocalWriteAuthority } from './helpers/local-write-authority.js';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import http from 'node:http';
 import type { AddressInfo } from 'node:net';
@@ -72,7 +73,7 @@ describe('T-INT-1 — 타워 민팅 → 실제 bridge guard → 실행 → 이�
   });
 
   it('읽기 실행 → 이력 / 쓰기 pending → 승인 → guard 통과 → succeeded / 같은 승인 재사용 → 403', async () => {
-    const api = createApi({
+    const api = createApi({ authorityMode: 'local',
       bridgeUrl,
       runsDir: join(dir, 'runs'),
       registryDir: join(dir, 'registry'),
@@ -115,7 +116,7 @@ describe('T-INT-1 — 타워 민팅 → 실제 bridge guard → 실행 → 이�
 
     // ⑥ 거부 플로우
     const pending2 = await api.createRun({ toolId: 'itest.write', args: {} });
-    const rejected = api.rejectRun(pending2.runId, { reason: 'not now' });
+    const rejected = await api.rejectRun(pending2.runId, { reason: 'not now' });
     expect(rejected.status).toBe('rejected');
   });
 });
@@ -186,17 +187,17 @@ describe('T-PB-7 — 플레이북 협업 루프 1바퀴', () => {
   });
 
   it('read 2 + write 1 + report → 일시정지 → 승인 → 재개 → report md → 분석 제출 → 채택', async () => {
-    const api = createApi({ bridgeUrl: url7, runsDir: join(dir7, 'runs'), registryDir: join(dir7, 'reg'), playbookOutputDir: out7, approvalSecret: 'sec', mockConsoleUrl: 'http://127.0.0.1:1' });
+    const api = createApi({ authorityMode: 'local', bridgeUrl: url7, runsDir: join(dir7, 'runs'), registryDir: join(dir7, 'reg'), playbookOutputDir: out7, approvalSecret: 'sec', mockConsoleUrl: 'http://127.0.0.1:1' });
     // 조립(draft) — 에이전트 대행
-    const store = new PlaybookStore(join(dir7, 'reg'));
-    const pb = store.create({ name: '자문 루프', goal: '전체분석→보고서→개선안', authoredBy: 'agent:claude', blocks: [
+    const store = new PlaybookStore(join(dir7, 'reg'), testLocalWriteAuthority('registry_services', join(dir7, 'reg')));
+    const pb = await store.create({ name: '자문 루프', goal: '전체분석→보고서→개선안', authoredBy: 'agent:claude', blocks: [
       { id: 'b1', type: 'tool', toolId: 'e.read', args: { host: 'h1' } },
       { id: 'b2', type: 'tool', toolId: 'e.read', args: { host: 'h2' } },
       { id: 'b3', type: 'tool', toolId: 'e.write', args: { customer: 'acme' } },
       { id: 'r1', type: 'report' },
     ] });
     // 승인
-    store.reviewRevision(pb.id, 1, { approve: true, reviewedBy: 'jmpark' });
+    await store.reviewRevision(pb.id, 1, { approve: true, reviewedBy: 'jmpark' });
     // 실행 → write에서 일시정지
     const started = await api.executePlaybook(pb.id);
     expect(started.status).toBe('waiting_approval');
@@ -209,13 +210,13 @@ describe('T-PB-7 — 플레이북 협업 루프 1바퀴', () => {
     const reportRun = api.listRuns({ playbookRunId: started.playbookRunId }).find((r) => r.toolId === 'tower.report')!;
     expect(reportRun.status).toBe('succeeded');
     // 분석 제출 → 채택(제안에 linkedPlaybookId)
-    const anl = api.submitAnalysis(started.playbookRunId, {
+    const anl = await api.submitAnalysis(started.playbookRunId, {
       playbookId: pb.id, playbookRunId: started.playbookRunId, summary: 'HA 미설정 관측',
       authoredBy: 'agent:claude',
       improvements: [{ observation: 'HA off', recommendation: 'HA 설정' }],
       proposals: [{ action: 'HA 설정 플레이북', rationale: '가용성' }],
     });
-    const v = api.setAnalysisVerdict(anl.id, { part: 'proposals', index: 0, verdict: 'accepted', reviewedBy: 'jmpark', linkedPlaybookId: 'pb_followup' });
+    const v = await api.setAnalysisVerdict(anl.id, { part: 'proposals', index: 0, verdict: 'accepted', reviewedBy: 'jmpark', linkedPlaybookId: 'pb_followup' });
     expect(v.proposals[0].verdict).toBe('accepted');
     expect(v.proposals[0].linkedPlaybookId).toBe('pb_followup');
     // 분석이 실행 상세에 붙는다

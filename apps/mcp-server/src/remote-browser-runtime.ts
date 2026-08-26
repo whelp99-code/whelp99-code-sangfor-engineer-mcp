@@ -26,6 +26,8 @@ export function createRemoteBrowserExecutionPortFromEnv(
   if (!endpointUrl) return undefined;
   const tenantId = required(env, 'SANGFOR_TENANT_ID');
   const projectId = required(env, 'SANGFOR_PROJECT_ID');
+  const authorityEpoch = Number(required(env, 'SANGFOR_AUTHORITY_EPOCH'));
+  if (!Number.isInteger(authorityEpoch) || authorityEpoch < 0) throw new Error('REMOTE_BROWSER_CONFIG_INVALID: SANGFOR_AUTHORITY_EPOCH');
   const installationId = required(env, 'SANGFOR_REMOTE_BROWSER_INSTALLATION_ID');
   const clientIdentityId = required(env, 'SANGFOR_REMOTE_BROWSER_CLIENT_IDENTITY_ID');
   const privateKey = readRequiredFile(
@@ -55,6 +57,7 @@ export function createRemoteBrowserExecutionPortFromEnv(
       capability: capabilityFactory({
         tenantId,
         projectId,
+        authorityEpoch,
         installationId,
         clientIdentityId,
         privateKey,
@@ -66,6 +69,7 @@ export function createRemoteBrowserExecutionPortFromEnv(
 function capabilityFactory(scope: {
   readonly tenantId: string;
   readonly projectId: string;
+  readonly authorityEpoch: number;
   readonly installationId: string;
   readonly clientIdentityId: string;
   readonly privateKey: string;

@@ -32,7 +32,8 @@ function input(overrides: Partial<IagBootstrapAuthorizationInput> = {}): IagBoot
     approvedBy: 'operator-1', changeTicketId: 'CHG-O1', rollbackPlanId: 'RB-O1',
     purpose: 'evidence_bootstrap', nonce: `bootstrap-${nonceIndex += 1}`,
     expiresAt: new Date(Date.now() + 60_000).toISOString(),
-  };
+
+  authorityEpoch: 0,};
   const approval = { ...fields, approvalToken: signIagBootstrapApproval(SECRET, action, fields) };
   return {
     action,
@@ -42,9 +43,9 @@ function input(overrides: Partial<IagBootstrapAuthorizationInput> = {}): IagBoot
   };
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   root = mkdtempSync(join(tmpdir(), 'iag-bootstrap-'));
-  fixture = writeAuthorityFixture({
+  fixture = await writeAuthorityFixture({
     root, product: 'IAG', capabilityId: 'internet_policy',
     toolId: 'iag_o1_evidence_campaign', fieldVerified: false, mockCampaign: true,
   });
@@ -83,7 +84,7 @@ describe('O1 IAG candidate bootstrap authorization', () => {
     const changed = { ...base, action: { ...base.action, ...actionChange } };
 
     expect(await authorizeIagEvidenceBootstrap(changed)).toMatchObject({ kind: 'REFUSED' });
-    expect(consumeApprovalNonce(base.approval)).toMatchObject({ ok: true });
+    expect(await consumeApprovalNonce(base.approval)).toMatchObject({ ok: true });
   });
 
   it('Given wrong approval purpose, When preflight runs, Then it refuses without nonce consumption', async () => {
@@ -91,7 +92,7 @@ describe('O1 IAG candidate bootstrap authorization', () => {
     const changed = { ...base, approval: { ...base.approval, purpose: 'ordinary_execution' } };
 
     expect(await authorizeIagEvidenceBootstrap(changed)).toMatchObject({ kind: 'REFUSED' });
-    expect(consumeApprovalNonce(base.approval)).toMatchObject({ ok: true });
+    expect(await consumeApprovalNonce(base.approval)).toMatchObject({ ok: true });
   });
 
   it('Given one approval and 32 concurrent consumers, When authorization races, Then exactly one wins', async () => {
@@ -113,6 +114,6 @@ describe('O1 IAG candidate bootstrap authorization', () => {
     });
 
     expect(result).toMatchObject({ allow: false, status: 403 });
-    expect(consumeApprovalNonce(request.approval)).toMatchObject({ ok: true });
+    expect(await consumeApprovalNonce(request.approval)).toMatchObject({ ok: true });
   });
 });

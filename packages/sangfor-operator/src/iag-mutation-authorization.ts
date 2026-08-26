@@ -15,7 +15,8 @@ const approvalSchema = z.object({
   approvedBy: z.string().min(1).max(256), approvalToken: z.string().regex(/^[a-f0-9]{64}$/u),
   changeTicketId: z.string().min(1).max(256), rollbackPlanId: z.string().min(1).max(256),
   purpose: z.enum(['ordinary_change', 'evidence_bootstrap']), nonce: z.string().min(1).max(256),
-  expiresAt: z.string().datetime(), maintenanceWindow: z.string().min(1).max(256).optional(),
+  expiresAt: z.string().datetime(), authorityEpoch: z.number().int().nonnegative(),
+  maintenanceWindow: z.string().min(1).max(256).optional(),
 }).strict().readonly();
 export type IagMutationApproval = z.infer<typeof approvalSchema>;
 export type IagMutationApprovalFields = Omit<IagMutationApproval, 'approvalToken'>;

@@ -45,6 +45,7 @@ export interface LiveExecutionApproval {
   rollbackPlanId: string;
   nonce: string;
   expiresAt: string;
+  authorityEpoch: number;
   maintenanceWindow?: string;
 }
 

@@ -1,3 +1,4 @@
+import { testFileLocalWriteAuthority, testLocalWriteAuthority } from './helpers/local-write-authority.js';
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
@@ -81,19 +82,19 @@ describe('RunStore — engagement scoping isolates the runs root (W5 C3)', () =>
     rmSync(root, { recursive: true, force: true });
   });
 
-  it('writes into <root> unchanged when no engagement is set', () => {
+  it('writes into <root> unchanged when no engagement is set', async () => {
     delete process.env.SANGFOR_ENGAGEMENT_ID;
-    const store = new RunStore();
-    const run = store.createRun({ toolId: 't', toolSafety: 'read_only', args: {}, initialStatus: 'succeeded' });
+    const store = new RunStore(undefined, testLocalWriteAuthority('runs_steps'));
+    const run = await store.createRun({ toolId: 't', toolSafety: 'read_only', args: {}, initialStatus: 'succeeded' });
     const file = join(root, `${run.requestedAt.slice(0, 10)}.jsonl`);
     expect(existsSync(file)).toBe(true);
     expect(existsSync(join(root, 'acme-1'))).toBe(false);
   });
 
-  it('writes into <root>/<engagementId> when an engagement is set', () => {
+  it('writes into <root>/<engagementId> when an engagement is set', async () => {
     process.env.SANGFOR_ENGAGEMENT_ID = 'acme-1';
-    const store = new RunStore();
-    const run = store.createRun({ toolId: 't', toolSafety: 'read_only', args: {}, initialStatus: 'succeeded' });
+    const store = new RunStore(undefined, testLocalWriteAuthority('runs_steps'));
+    const run = await store.createRun({ toolId: 't', toolSafety: 'read_only', args: {}, initialStatus: 'succeeded' });
     const scopedFile = join(root, 'acme-1', `${run.requestedAt.slice(0, 10)}.jsonl`);
     expect(existsSync(scopedFile)).toBe(true);
     // Nothing lands directly under the unscoped root.
@@ -147,11 +148,11 @@ describe('sangfor_session_report save path — engagement scoping isolates data/
     rmSync(root, { recursive: true, force: true });
   });
 
-  it('saves under <root>/reports/<runId>.md when no engagement is set (unchanged behavior)', () => {
+  it('saves under <root>/reports/<runId>.md when no engagement is set (unchanged behavior)', async () => {
     delete process.env.SANGFOR_ENGAGEMENT_ID;
-    const ledger = new AuditLedger({ dir: join(root, 'change-runs') });
+    const ledger = new AuditLedger({ dir: join(root, 'change-runs') , authority: testLocalWriteAuthority('audit', join(root, 'change-runs'))});
     const runId = 'run_unscoped';
-    ledger.append(runId, 'state', { state: 'PENDING' });
+    await ledger.append(runId, 'state', { state: 'PENDING' });
     const handler = getToolHandler('sangfor_session_report')!;
     const result: any = handler({ runId, save: true });
     const expectedPath = join(root, 'reports', `${runId}.md`);
@@ -159,11 +160,11 @@ describe('sangfor_session_report save path — engagement scoping isolates data/
     expect(existsSync(expectedPath)).toBe(true);
   });
 
-  it('saves under <root>/<engagementId>/reports/<runId>.md when an engagement is set', () => {
+  it('saves under <root>/<engagementId>/reports/<runId>.md when an engagement is set', async () => {
     process.env.SANGFOR_ENGAGEMENT_ID = 'acme-1';
-    const ledger = new AuditLedger({ dir: join(root, 'change-runs') });
+    const ledger = new AuditLedger({ dir: join(root, 'change-runs') , authority: testLocalWriteAuthority('audit', join(root, 'change-runs'))});
     const runId = 'run_scoped';
-    ledger.append(runId, 'state', { state: 'PENDING' });
+    await ledger.append(runId, 'state', { state: 'PENDING' });
     const handler = getToolHandler('sangfor_session_report')!;
     const result: any = handler({ runId, save: true });
     const expectedPath = join(root, 'acme-1', 'reports', `${runId}.md`);

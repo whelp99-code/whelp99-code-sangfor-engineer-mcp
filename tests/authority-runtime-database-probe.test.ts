@@ -88,7 +88,7 @@ describe('authority runtime database probe isolation', () => {
       },
     });
     const stale = createAuthorityRuntime({ environment, expectedSchemaComponent });
-    const server = createTowerServer({ authorityRuntime: canonical, apiToken: 'parallel-readiness-token' });
+    const server = createTowerServer({ authorityMode: 'local', authorityRuntime: canonical, apiToken: 'parallel-readiness-token' });
     try {
       await canonical.start();
       await new Promise<void>((resolve, reject) => {

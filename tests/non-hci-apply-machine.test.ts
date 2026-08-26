@@ -26,8 +26,8 @@ afterEach(() => {
   rmSync(root, { recursive: true, force: true });
 });
 
-function setup(observed: 'ABSENT' | 'EXACT_MATCH' = 'ABSENT', dryRun = false) {
-  return iagOrchestratorFixture({ root, observed, dryRun });
+async function setup(observed: 'ABSENT' | 'EXACT_MATCH' = 'ABSENT', dryRun = false) {
+  return await iagOrchestratorFixture({ root, observed, dryRun });
 }
 
 describe('non-HCI IAG apply state machine', () => {

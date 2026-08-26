@@ -25,7 +25,8 @@ describe('capability evidence contract foundations', () => {
       contentHash: 'a'.repeat(64), fromState: 'draft', toState: 'researched',
       evidenceFile: 'evidence/run.json', evidenceDigest: 'b'.repeat(64), nonce: 'nonce-1',
       expiresAt: '2099-01-01T00:00:00.000Z', unexpected: true,
-    };
+
+    authorityEpoch: 0,};
 
     // When
     const atomResult = workAtomSchema.safeParse(atom);

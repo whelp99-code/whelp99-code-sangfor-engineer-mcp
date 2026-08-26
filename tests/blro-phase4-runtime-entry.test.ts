@@ -44,6 +44,7 @@ describe('Phase 4 MCP remote runtime entry', () => {
       SANGFOR_REMOTE_BROWSER_URL: 'https://127.0.0.1:4443/v1/browser-jobs',
       SANGFOR_TENANT_ID: 'tenant-a',
       SANGFOR_PROJECT_ID: 'project-a',
+      SANGFOR_AUTHORITY_EPOCH: '0',
       SANGFOR_REMOTE_BROWSER_INSTALLATION_ID: 'install-a',
       SANGFOR_REMOTE_BROWSER_CLIENT_IDENTITY_ID: 'client:install-a',
       SANGFOR_REMOTE_BROWSER_CAPABILITY_PRIVATE_KEY_PATH: join(dir, 'capability.key'),

@@ -20,6 +20,23 @@ import { createHash, randomUUID, timingSafeEqual } from 'node:crypto';
 import { isIP } from 'node:net';
 
 export {
+  assertNoLocalSafetyMarker,
+  explicitLocalPrimaryAuthority,
+  expectedLocalWriteScope,
+  localSafetyMarkerPath,
+  localSourceRootIdentity,
+  normalizeLocalWriteIntent,
+  requireLocalWriteAuthority,
+  resolveProductionLocalWriteAuthority,
+  type LocalWriteAuthority,
+  type LocalWriteExpectedScope,
+  type LocalWriteFencePort,
+  type LocalWriteIntent,
+  type LocalWriteIntentInput,
+  type LocalWriteScope,
+} from './local-write-fence.js';
+
+export {
   CanonicalOriginError,
   canonicalizeUrlOrigin,
   digestCanonicalOrigin,

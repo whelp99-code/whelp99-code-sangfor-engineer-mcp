@@ -56,7 +56,8 @@ function mint(
     jti: 'capability-a',
     privateKey,
     ...overrides,
-  });
+
+  authorityEpoch: 0,});
 }
 
 function envelope(

@@ -11,7 +11,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
-import { withDirLock, writeFileAtomicSync } from '@sangfor/shared';
+import { expectedLocalWriteScope, requireLocalWriteAuthority, withDirLock, writeFileAtomicSync, type LocalWriteAuthority } from '@sangfor/shared';
 import { canonicalJson } from './canonical.js';
 import { buildEngineerReport, type EngineerReport, type EngineerReportInput, type EngineerReportRecord } from './report.js';
 
@@ -53,9 +53,16 @@ export interface AppendEngineerReportResult {
 }
 
 /** Validate, chain and durably append one report. Returns the committed record. */
-export function appendEngineerReport(dir: string, input: EngineerReportInput): AppendEngineerReportResult {
+export async function appendEngineerReport(
+  dir: string,
+  input: EngineerReportInput,
+  injectedAuthority: LocalWriteAuthority,
+): Promise<AppendEngineerReportResult> {
   const report = buildEngineerReport(input);
-  return withDirLock(join(dir, LOCK_DIR), () => {
+  const authority = requireLocalWriteAuthority(injectedAuthority, expectedLocalWriteScope(
+    injectedAuthority, injectedAuthority?.projectId ?? '', 'evidence', dir,
+  ));
+  return authority.fence.write(authority, { operation: 'engineer-report.append', targetPaths: [ledgerPath(dir)] }, () => withDirLock(join(dir, LOCK_DIR), () => {
     const records = readRecords(dir);
     const head = records.at(-1);
     const prevHash = head ? head.hash : GENESIS;
@@ -68,7 +75,7 @@ export function appendEngineerReport(dir: string, input: EngineerReportInput): A
     const serialized = [...records, record].map((r) => canonicalJson(r)).join('\n');
     writeFileAtomicSync(ledgerPath(dir), `${serialized}\n`);
     return { report, record };
-  });
+  }));
 }
 
 /** All committed records, oldest first. */

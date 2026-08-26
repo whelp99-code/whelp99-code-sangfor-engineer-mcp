@@ -1,5 +1,7 @@
 import { existsSync, lstatSync } from 'node:fs';
 import process from 'node:process';
+import { dirname } from 'node:path';
+import { resolveProductionLocalWriteAuthority } from '@sangfor/shared';
 import { FileSingleUseNonceStore } from '@sangfor/approval';
 import { ZodError } from 'zod';
 import {
@@ -90,10 +92,16 @@ export async function runExistingCommand(command: ExistingCommand): Promise<void
       || approvalSecret === ledgerSecret || approvalSecret === checkpointSecret) {
       throw new CapabilityEvidenceCliError({ code: 'promotion_store_unavailable', path: [] });
     }
-    const ledger = FilePromotionLedger.open(ledgerPath, ledgerSecret, checkpointSecret);
+    const ledger = FilePromotionLedger.open(ledgerPath, ledgerSecret, checkpointSecret, resolveProductionLocalWriteAuthority({
+      tenantId: 'local-primary', projectId: process.env.SANGFOR_ENGAGEMENT_ID ?? 'local-primary', actorId: 'capability-cli',
+      aggregate: 'capability_evidence_promotion', sourceRoot: dirname(ledgerPath),
+    }));
     const nonceFile = noncePath !== undefined && noncePath !== '' && existsSync(noncePath) ? lstatSync(noncePath) : undefined;
     const nonceStore = noncePath !== undefined && nonceFile?.isFile() === true && !nonceFile.isSymbolicLink()
-      ? new FileSingleUseNonceStore(noncePath)
+      ? new FileSingleUseNonceStore(noncePath, resolveProductionLocalWriteAuthority({
+        tenantId: 'local-primary', projectId: process.env.SANGFOR_ENGAGEMENT_ID ?? 'local-primary', actorId: 'capability-cli',
+        aggregate: 'approvals_nonces', sourceRoot: dirname(noncePath),
+      }))
       : undefined;
     const result = await executeCapabilityPromotion({
       manifestSource: grounded.source,

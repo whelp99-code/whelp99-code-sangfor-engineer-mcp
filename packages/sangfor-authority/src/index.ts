@@ -1,3 +1,4 @@
+export * from './cutover/index.js';
 export {
   buildAuditEvent,
   verifyAuditEvents,
@@ -12,6 +13,7 @@ export {
   type AuthorityManifestLock,
 } from './authority-manifest-lock.js';
 export { BlroAuthorityStore } from './authority-store.js';
+export { PostgresAuthorityEpochPort, AuthorityEpochError, type AuthorityEpochPort } from './authority-epoch.js';
 export {
   PostgresRemoteJobStore,
   type PostgresRemoteJobStoreOptions,

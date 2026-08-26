@@ -6,6 +6,8 @@ import {
   type EffectiveCoverageResult,
   type EffectiveEvidenceClaimSource,
 } from '../../packages/sangfor-competency/src/index.js';
+import { resolveProductionLocalWriteAuthority } from '../../packages/shared/src/index.js';
+import { dirname } from 'node:path';
 
 export type EffectiveCliSource = {
   readonly evidenceRoot: string;
@@ -29,6 +31,11 @@ function authoritySource(source: EffectiveCliSource): EffectiveAuthoritySource {
     ledgerPath: source.promotionLedger.length === 0 ? undefined : source.promotionLedger,
     ledgerSecret: source.ledgerSecret,
     checkpointSecret: source.checkpointSecret,
+    authority: resolveProductionLocalWriteAuthority({
+      tenantId: process.env.SANGFOR_TENANT_ID ?? 'local-primary',
+      projectId: process.env.SANGFOR_ENGAGEMENT_ID ?? 'local-primary', actorId: 'completeness-cli',
+      aggregate: 'capability_evidence_promotion', sourceRoot: dirname(source.promotionLedger),
+    }),
   };
 }
 

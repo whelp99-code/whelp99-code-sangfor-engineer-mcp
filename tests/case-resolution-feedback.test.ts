@@ -69,7 +69,7 @@ describe('postCaseResolution', () => {
       lessonTitle: 'HCI storage heartbeat flapping after node join',
       lessonBody: 'Ran MTU consistency check on the storage network before rejoining nodes.',
       targetPage: 'Sangfor/Lessons/HCI.md'
-    });
+    }, expect.anything());
     expect(applyWikiUpdateWithAdapterMock).not.toHaveBeenCalled();
     expect(approveWikiUpdateMock).not.toHaveBeenCalled();
     expect(result).toEqual({ feedbackId: null, proposalId: 'wiki_proposal_test_001' });

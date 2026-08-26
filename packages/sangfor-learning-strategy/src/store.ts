@@ -12,6 +12,7 @@ import {
   writeSync,
 } from 'node:fs';
 import { dirname, join } from 'node:path';
+import { expectedLocalWriteScope, requireLocalWriteAuthority, type LocalWriteAuthority } from '@sangfor/shared';
 import type { MethodCode } from './methods.js';
 import type { LearningApprovalEvent } from './approval.js';
 import {
@@ -125,7 +126,13 @@ export function computeContentHash(revisions: StrategyRevision[]): string {
 }
 
 export class StrategyStoreManager {
-  constructor(private readonly storePath: string) {}
+  private readonly authority: LocalWriteAuthority;
+
+  constructor(private readonly storePath: string, authority: LocalWriteAuthority) {
+    this.authority = requireLocalWriteAuthority(authority, expectedLocalWriteScope(
+      authority, authority?.projectId ?? '', 'learning_strategy_lifecycle', dirname(this.storePath),
+    ));
+  }
 
   load(): StrategyStore | null {
     if (!existsSync(this.storePath)) return null;
@@ -159,7 +166,8 @@ export class StrategyStoreManager {
     }
   }
 
-  commit(store: StrategyStore, expectedGeneration: number): { ok: boolean; error?: string } {
+  async commit(store: StrategyStore, expectedGeneration: number): Promise<{ ok: boolean; error?: string }> {
+    return this.authority.fence.write(this.authority, { operation: 'learning-strategy.commit', targetPaths: [this.storePath] }, () => {
     const lockPath = `${this.storePath}.lock`;
     let lockAcquired = false;
     try {
@@ -200,6 +208,7 @@ export class StrategyStoreManager {
         try { rmdirSync(lockPath); } catch { /* leave failed lock fail-closed */ }
       }
     }
+    });
   }
 
   createStrategy(strategyId: string): StrategyStore {

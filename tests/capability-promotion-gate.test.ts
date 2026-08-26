@@ -18,6 +18,7 @@ import {
   type PromotionNonceStore,
 } from '../packages/sangfor-competency/src/index.js';
 import { writeValidationFixture } from './helpers/capability-evidence-validation-fixture.js';
+import { testPromotionLedger } from './helpers/local-write-authority.js';
 
 const SECRET = 'promotion-only-secret-material-32-bytes-minimum';
 const LEDGER_SECRET = 'promotion-ledger-secret-material-32-bytes';
@@ -47,7 +48,7 @@ describe('action-bound capability promotion gate', () => {
   let nonceStore: MemoryNonceStore;
   let grounding: Parameters<typeof executeCapabilityPromotion>[0]['grounding'];
 
-  beforeEach(() => {
+  beforeEach(async () => {
     root = mkdtempSync(join(tmpdir(), 'capability-promotion-'));
     fixture = writeValidationFixture(root);
     manifestSource = JSON.stringify(fixture.manifest);
@@ -81,10 +82,11 @@ describe('action-bound capability promotion gate', () => {
         fromMaturity: request.fromMaturity, reviewer: { actorId: 'human-reviewer-1', actorType: 'human_pm' }, decidedAt: NOW.toISOString(),
         auditRef: 'decision.jsonl', approvalDigest: '0'.repeat(64), nonce: 'nonce-1',
         expiresAt: '2026-08-25T12:20:00.000Z', decision: 'promote', promotedMaturity: 'field_verified',
-      },
+
+      authorityEpoch: 0,},
     });
     promotionSource = signedSource(unsigned);
-    ledger = FilePromotionLedger.initialize(join(root, 'promotion.jsonl'), LEDGER_SECRET, CHECKPOINT_SECRET);
+    ledger = await testPromotionLedger(join(root, 'promotion.jsonl'), LEDGER_SECRET, CHECKPOINT_SECRET);
     nonceStore = new MemoryNonceStore();
   });
 
@@ -102,8 +104,8 @@ describe('action-bound capability promotion gate', () => {
     return signedSource(capabilityPromotionEnvelopeSchema.parse(transform(parsed)));
   }
 
-  function execute(overrides: Partial<Parameters<typeof executeCapabilityPromotion>[0]> = {}) {
-    return executeCapabilityPromotion({
+  async function execute(overrides: Partial<Parameters<typeof executeCapabilityPromotion>[0]> = {}) {
+    return await executeCapabilityPromotion({
       manifestSource, promotionSource, grounding,
       validation: { evidenceRoot: root, filesystem: fixture.context.clock ? undefined : undefined, context: fixture.context },
       secret: SECRET, nonceStore, ledger, now: NOW,
@@ -160,8 +162,8 @@ describe('action-bound capability promotion gate', () => {
       },
     }));
     const results = await Promise.all([
-      execute({ promotionSource: o5Source }),
-      execute({ promotionSource: roleSource }),
+      await execute({ promotionSource: o5Source }),
+      await execute({ promotionSource: roleSource }),
     ]);
     expect(results.every(({ status }) => status === 'refused')).toBe(true);
     expect(ledger.read().every(({ outcome }) => outcome === 'rejected')).toBe(true);
@@ -230,7 +232,7 @@ describe('action-bound capability promotion gate', () => {
   });
 
   it('allows exactly one of 32 consumers and keeps a contiguous valid chain', async () => {
-    const results = await Promise.all(Array.from({ length: 32 }, () => execute()));
+    const results = await Promise.all(Array.from({ length: 32 }, async () => await execute()));
     expect(results.filter(({ status }) => status === 'applied')).toHaveLength(1);
     expect(ledger.read()).toHaveLength(32);
     expect(ledger.verify()).toEqual({ ok: true });

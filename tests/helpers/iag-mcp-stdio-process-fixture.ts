@@ -91,7 +91,7 @@ export async function startIagMcpStdioProcess(input: {
   writeFileSync(capabilityPath, capability);
   const env = { ...process.env, ...input.environment,
     SANGFOR_REMOTE_BROWSER_URL: server.baseUrl, SANGFOR_TENANT_ID: 'todo17-tenant',
-    SANGFOR_PROJECT_ID: 'todo17-project', SANGFOR_REMOTE_BROWSER_INSTALLATION_ID: 'todo17-installation',
+    SANGFOR_PROJECT_ID: 'todo17-project', SANGFOR_AUTHORITY_EPOCH: '0', SANGFOR_REMOTE_BROWSER_INSTALLATION_ID: 'todo17-installation',
     SANGFOR_REMOTE_BROWSER_CLIENT_IDENTITY_ID: 'todo17-client',
     SANGFOR_REMOTE_BROWSER_CAPABILITY_PRIVATE_KEY_PATH: capabilityPath,
     SANGFOR_REMOTE_BROWSER_CLIENT_CERT_PATH: tls.clientCertPath,

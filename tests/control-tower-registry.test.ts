@@ -1,3 +1,4 @@
+import { testFileLocalWriteAuthority, testLocalWriteAuthority } from './helpers/local-write-authority.js';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -13,42 +14,43 @@ describe('Registry — 로드/시드/CRUD (T-REG-1)', () => {
   beforeEach(() => { dir = mkdtempSync(join(tmpdir(), 'registry-')); });
   afterEach(() => { rmSync(dir, { recursive: true, force: true }); });
 
-  it('vendors.json 없으면 시드 3종을 생성하고 반환한다', () => {
-    const reg = new Registry(dir);
+  it('vendors.json 없으면 시드 3종을 생성하고 반환한다', async () => {
+    const reg = new Registry(dir, testLocalWriteAuthority('registry_services', dir));
+    await reg.seedVendors();
     const vendors = reg.vendors();
     expect(vendors.map((v) => v.product)).toEqual(['FORTIOS', 'CISCO_IOSXE', 'HCI_SCP']);
     expect(existsSync(join(dir, 'vendors.json'))).toBe(true);
     expect(JSON.parse(readFileSync(join(dir, 'vendors.json'), 'utf8'))).toEqual(SEED_VENDORS);
   });
 
-  it('HCI 시드 credentialFields는 실제 스키마 속성명 identityBaseUrl을 쓴다 (스펙 교정 1)', () => {
+  it('HCI 시드 credentialFields는 실제 스키마 속성명 identityBaseUrl을 쓴다 (스펙 교정 1)', async () => {
     const hci = SEED_VENDORS.find((v) => v.product === 'HCI_SCP')!;
     expect(hci.credentialFields).toEqual(['identityBaseUrl', 'username', 'password']);
   });
 
-  it('devices CRUD: 생성/수정/삭제 + atomic 파일 반영 + 재로드', () => {
-    const reg = new Registry(dir);
-    const dev = reg.createDevice({ name: '본사 FW', product: 'FORTIOS', host: '10.0.0.1', tags: ['lab'] });
+  it('devices CRUD: 생성/수정/삭제 + atomic 파일 반영 + 재로드', async () => {
+    const reg = new Registry(dir, testLocalWriteAuthority('registry_services', dir));
+    const dev = await reg.createDevice({ name: '본사 FW', product: 'FORTIOS', host: '10.0.0.1', tags: ['lab'] });
     expect(dev.id).toMatch(/^dev_/);
-    expect(new Registry(dir).devices()).toHaveLength(1);
-    const updated = reg.updateDevice(dev.id, { name: '본사 FW 1호기' });
+    expect(new Registry(dir, testLocalWriteAuthority('registry_services', dir)).devices()).toHaveLength(1);
+    const updated = await reg.updateDevice(dev.id, { name: '본사 FW 1호기' });
     expect(updated.name).toBe('본사 FW 1호기');
     expect(updated.updatedAt >= dev.updatedAt).toBe(true);
-    reg.deleteDevice(dev.id);
+    await reg.deleteDevice(dev.id);
     expect(reg.devices()).toHaveLength(0);
     expect(existsSync(join(dir, 'devices.json.tmp'))).toBe(false); // atomic write 잔여물 없음
   });
 
-  it('vendors.json에 없는 product 등록/수정은 RegistryValidationError', () => {
-    const reg = new Registry(dir);
-    expect(() => reg.createDevice({ name: 'x', product: 'NOPE', host: 'h' })).toThrow(RegistryValidationError);
-    const dev = reg.createDevice({ name: 'x', product: 'FORTIOS', host: 'h' });
-    expect(() => reg.updateDevice(dev.id, { product: 'NOPE' })).toThrow(/unknown product/);
-    expect(() => reg.updateDevice(dev.id, { product: '' })).toThrow(/unknown product/);
-    expect(() => reg.updateDevice('dev_none', { name: 'y' })).toThrow(/unknown device/);
-    expect(() => reg.deleteDevice('dev_none')).toThrow(/unknown device/);
-    expect(() => reg.createDevice({ name: '', product: 'FORTIOS', host: 'h' })).toThrow(/name is required/);
-    expect(() => reg.createDevice({ name: 'x', product: 'FORTIOS', host: ' ' })).toThrow(/host is required/);
+  it('vendors.json에 없는 product 등록/수정은 RegistryValidationError', async () => {
+    const reg = new Registry(dir, testLocalWriteAuthority('registry_services', dir));
+    await expect(async () => await reg.createDevice({ name: 'x', product: 'NOPE', host: 'h' })).rejects.toThrow(RegistryValidationError);
+    const dev = await reg.createDevice({ name: 'x', product: 'FORTIOS', host: 'h' });
+    await expect(async () => await reg.updateDevice(dev.id, { product: 'NOPE' })).rejects.toThrow(/unknown product/);
+    await expect(async () => await reg.updateDevice(dev.id, { product: '' })).rejects.toThrow(/unknown product/);
+    await expect(async () => await reg.updateDevice('dev_none', { name: 'y' })).rejects.toThrow(/unknown device/);
+    await expect(async () => await reg.deleteDevice('dev_none')).rejects.toThrow(/unknown device/);
+    await expect(async () => await reg.createDevice({ name: '', product: 'FORTIOS', host: 'h' })).rejects.toThrow(/name is required/);
+    await expect(async () => await reg.createDevice({ name: 'x', product: 'FORTIOS', host: ' ' })).rejects.toThrow(/host is required/);
   });
 });
 
@@ -66,7 +68,7 @@ describe('mergeDeviceArgs — 병합 우선순위 (T-REG-2)', () => {
 
   afterEach(() => { delete process.env.T_REG2_USER; delete process.env.T_REG2_PASS; });
 
-  it('defaultArgs < device.host < credentialEnv < 사용자입력', () => {
+  it('defaultArgs < device.host < credentialEnv < 사용자입력', async () => {
     process.env.T_REG2_USER = 'env-admin';
     process.env.T_REG2_PASS = 'env-pass';
     const merged = mergeDeviceArgs(vendor, device, { password: 'user-wins' });
@@ -78,13 +80,13 @@ describe('mergeDeviceArgs — 병합 우선순위 (T-REG-2)', () => {
     });
   });
 
-  it('credentialEnv의 env 변수가 없으면 해당 키는 생략된다', () => {
+  it('credentialEnv의 env 변수가 없으면 해당 키는 생략된다', async () => {
     const merged = mergeDeviceArgs(vendor, device, {});
     expect(merged.username).toBeUndefined();
     expect(merged.password).toBeUndefined();
   });
 
-  it('applyMockCredentialFallback: 스키마 required인 credentialField만 mock으로 채운다', () => {
+  it('applyMockCredentialFallback: 스키마 required인 credentialField만 mock으로 채운다', async () => {
     const merged = mergeDeviceArgs(vendor, device, {});
     const filled = applyMockCredentialFallback(merged, vendor, { required: ['host', 'username', 'password'] });
     expect(filled.username).toBe('mock');
@@ -104,7 +106,7 @@ describe('개방성 — 가상 벤더 주입 (T-REG-3)', () => {
   beforeEach(() => { dir = mkdtempSync(join(tmpdir(), 'registry-acme-')); });
   afterEach(() => { rmSync(dir, { recursive: true, force: true }); });
 
-  it('ACME_FW 디스크립터를 파일로 주입하면 코드 수정 없이 등록·인자구성이 동작한다', () => {
+  it('ACME_FW 디스크립터를 파일로 주입하면 코드 수정 없이 등록·인자구성이 동작한다', async () => {
     const acme: VendorDescriptor = {
       product: 'ACME_FW', label: 'Acme Firewall',
       advisorTools: ['sangfor_advisor_acme'],
@@ -112,8 +114,8 @@ describe('개방성 — 가상 벤더 주입 (T-REG-3)', () => {
       defaultArgs: { profile: 'strict' },
     };
     writeFileSync(join(dir, 'vendors.json'), JSON.stringify([acme], null, 2));
-    const reg = new Registry(dir);
-    const dev = reg.createDevice({ name: 'acme1', product: 'ACME_FW', host: 'http://127.0.0.1:9999', tags: [] });
+    const reg = new Registry(dir, testLocalWriteAuthority('registry_services', dir));
+    const dev = await reg.createDevice({ name: 'acme1', product: 'ACME_FW', host: 'http://127.0.0.1:9999', tags: [] });
     const args = applyMockCredentialFallback(
       mergeDeviceArgs(reg.vendorFor(dev.product)!, dev, {}),
       reg.vendorFor(dev.product)!,

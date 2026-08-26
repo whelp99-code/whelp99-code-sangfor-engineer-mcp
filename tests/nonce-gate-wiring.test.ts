@@ -1,5 +1,5 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { randomUUID } from 'node:crypto';
@@ -51,7 +51,8 @@ async function applyCreateVolumeWith(nonce: string, expiresAt: string, secret: s
   const base = {
     approvedBy: 'tester', changeTicketId: 'CHG-1', rollbackPlanId: 'RB-1',
     nonce, expiresAt,
-  };
+
+  authorityEpoch: 0,};
   return (await getToolHandler('sangfor_hci_apply_create_volume')!({
     name: volumeName,
     sizeGb: 1,
@@ -81,7 +82,7 @@ describe('nonce store selection — explicit and fail-closed (C2)', () => {
     expect(selection.ok).toBe(true);
     expect(selection.ok && selection.kind).toBe('file');
 
-    const result = await consumeApprovalNonceAsync({ nonce: 'n1', expiresAt: future() });
+    const result = await consumeApprovalNonceAsync({ nonce: 'n1', expiresAt: future() , authorityEpoch: 0});
     expect(result.ok).toBe(true);
     // Proof it really was the file store: the record is on disk.
     expect(readFileSync(process.env.SANGFOR_NONCE_STORE_PATH!, 'utf8')).toContain('n1');
@@ -95,7 +96,7 @@ describe('nonce store selection — explicit and fail-closed (C2)', () => {
     const selection = resolveNonceStoreSelection(process.env);
     expect(selection.ok, 'a postgres selection with no connection string must not resolve').toBe(false);
 
-    const result = await consumeApprovalNonceAsync({ nonce: 'n-no-url', expiresAt: future() });
+    const result = await consumeApprovalNonceAsync({ nonce: 'n-no-url', expiresAt: future() , authorityEpoch: 0});
     expect(result.ok, 'a misconfigured store must refuse, never allow').toBe(false);
     expect(result.reason ?? '').toMatch(/fail-closed/i);
     expect(result.reason ?? '').toMatch(/DATABASE_URL|connection string/i);
@@ -107,7 +108,7 @@ describe('nonce store selection — explicit and fail-closed (C2)', () => {
     delete process.env.SANGFOR_PROJECT_ID;
     delete process.env.SANGFOR_ENGAGEMENT_ID;
 
-    const result = await consumeApprovalNonceAsync({ nonce: 'n-no-scope', expiresAt: future() });
+    const result = await consumeApprovalNonceAsync({ nonce: 'n-no-scope', expiresAt: future() , authorityEpoch: 0});
     expect(result.ok).toBe(false);
     expect(result.reason ?? '').toMatch(/fail-closed/i);
     expect(result.reason ?? '').toMatch(/scope|project/i);
@@ -115,19 +116,26 @@ describe('nonce store selection — explicit and fail-closed (C2)', () => {
 
   it('REFUSES an unknown store kind rather than guessing one', async () => {
     process.env.SANGFOR_NONCE_STORE = 'sqlite-ish';
-    const result = await consumeApprovalNonceAsync({ nonce: 'n-bogus', expiresAt: future() });
+    const result = await consumeApprovalNonceAsync({ nonce: 'n-bogus', expiresAt: future() , authorityEpoch: 0});
     expect(result.ok).toBe(false);
     expect(result.reason ?? '').toMatch(/fail-closed/i);
   });
 
-  it('REFUSES an unreachable database instead of allowing execution', async () => {
-    process.env.SANGFOR_NONCE_STORE = 'postgres';
-    process.env.DATABASE_URL = 'postgresql://nobody:nobody@127.0.0.1:1/nonexistent';
-    process.env.SANGFOR_PROJECT_ID = 'proj-a';
-
-    const result = await consumeApprovalNonceAsync({ nonce: 'n-unreachable', expiresAt: future() });
-    expect(result.ok, 'an unreachable store must refuse, never allow').toBe(false);
-    expect(result.reason ?? '').toMatch(/unavailable|refus|connect|ECONNREFUSED/i);
+  it('REFUSES the explicitly selected unreachable database without ambient-environment dependence', async () => {
+    const unreachable='postgresql://nobody:nobody@127.0.0.1:1/nonexistent?connect_timeout=1';
+    const environment=Object.freeze({
+      SANGFOR_BLRO_AUTHORITY_STORE:'postgres', SANGFOR_NONCE_STORE:'postgres',
+      SANGFOR_BLRO_DATABASE_URL:unreachable, DATABASE_URL:unreachable,
+      SANGFOR_PROJECT_ID:'proj-unreachable', SANGFOR_NONCE_STORE_PATH:join(dir,'must-not-exist.json'),
+    });
+    const selection=resolveNonceStoreSelection(environment);
+    expect(selection).toMatchObject({ok:true,kind:'postgres',connectionString:unreachable,projectId:'proj-unreachable'});
+    const result=await consumeApprovalNonceAsync(
+      {nonce:'n-unreachable',expiresAt:future(),authorityEpoch:0},new Date(),environment,
+    );
+    expect(result).toMatchObject({ok:false,code:'STORE_UNAVAILABLE'});
+    expect(result.reason??'').not.toMatch(/already used/i);
+    expect(existsSync(environment.SANGFOR_NONCE_STORE_PATH)).toBe(false);
   });
 
   it('never echoes the connection password in a refusal reason', async () => {
@@ -136,17 +144,17 @@ describe('nonce store selection — explicit and fail-closed (C2)', () => {
     process.env.DATABASE_URL = `postgresql://user:${secret}@127.0.0.1:1/nonexistent`;
     process.env.SANGFOR_PROJECT_ID = 'proj-a';
 
-    const result = await consumeApprovalNonceAsync({ nonce: 'n-secret', expiresAt: future() });
+    const result = await consumeApprovalNonceAsync({ nonce: 'n-secret', expiresAt: future() , authorityEpoch: 0});
     expect(result.ok).toBe(false);
     expect(JSON.stringify(result)).not.toContain(secret);
   });
 
-  it('the synchronous entry point refuses under a non-file store rather than splitting the control across two stores', () => {
+  it('the synchronous entry point refuses under a non-file store rather than splitting the control across two stores', async () => {
     process.env.SANGFOR_NONCE_STORE = 'postgres';
     process.env.DATABASE_URL = 'postgresql://user:pw@127.0.0.1:55432/blro';
     process.env.SANGFOR_PROJECT_ID = 'proj-a';
 
-    const result = consumeApprovalNonce({ nonce: 'n-sync', expiresAt: future() });
+    const result = await consumeApprovalNonce({ nonce: 'n-sync', expiresAt: future() , authorityEpoch: 0});
     expect(result.ok, 'the sync path must not consume from the file store while postgres is selected').toBe(false);
     expect(result.reason ?? '').toMatch(/fail-closed/i);
   });
@@ -166,7 +174,8 @@ describe('one store backs every call site (C1)', () => {
     const base = {
       approvedBy: 'tester', changeTicketId: 'CHG-1', rollbackPlanId: 'RB-1',
       nonce, expiresAt: future(),
-    };
+
+    authorityEpoch: 0,};
 
     await expect(assertRealExecutionAllowed(session, action, {
       ...base, approvalToken: signApprovalToken('wiring-secret', action, base),
@@ -193,7 +202,8 @@ describe('one store backs every call site (C1)', () => {
     const base = {
       approvedBy: 'tester', changeTicketId: 'CHG-1', rollbackPlanId: 'RB-1',
       nonce, expiresAt,
-    };
+
+    authorityEpoch: 0,};
 
     await expect(assertRealExecutionAllowed(session, action, {
       ...base, approvalToken: signApprovalToken('wiring-secret', action, base),
@@ -262,7 +272,7 @@ describe.runIf(DATABASE_URL)('the selected postgres store is what the gate actua
 
   it('records the consumption in postgres, not in the file store', async () => {
     const nonce = `pg-${randomUUID()}`;
-    const first = await consumeApprovalNonceAsync({ nonce, expiresAt: future() });
+    const first = await consumeApprovalNonceAsync({ nonce, expiresAt: future() , authorityEpoch: 0});
     expect(first.ok).toBe(true);
 
     // A brand-new EMPTY file store cannot know about this nonce. If the replay
@@ -270,8 +280,9 @@ describe.runIf(DATABASE_URL)('the selected postgres store is what the gate actua
     const freshDir = mkdtempSync(join(tmpdir(), 'nonce-wiring-fresh-'));
     try {
       process.env.SANGFOR_NONCE_STORE_PATH = join(freshDir, 'nonces.json');
-      const replay = await consumeApprovalNonceAsync({ nonce, expiresAt: future() });
+      const replay = await consumeApprovalNonceAsync({ nonce, expiresAt: future() , authorityEpoch: 0});
       expect(replay.ok, 'a postgres-backed consumption must survive a fresh file store').toBe(false);
+      expect(replay).toMatchObject({ ok: false, code: 'ALREADY_USED' });
       expect(replay.reason ?? '').toContain('approval nonce already used:');
     } finally {
       rmSync(freshDir, { recursive: true, force: true });
@@ -281,7 +292,7 @@ describe.runIf(DATABASE_URL)('the selected postgres store is what the gate actua
   it('elects exactly one winner when the wired gate is raced', async () => {
     const nonce = `pg-race-${randomUUID()}`;
     const attempts = await Promise.all(
-      Array.from({ length: 8 }, () => consumeApprovalNonceAsync({ nonce, expiresAt: future() })),
+      Array.from({ length: 8 }, async () => await consumeApprovalNonceAsync({ nonce, expiresAt: future() , authorityEpoch: 0})),
     );
     const winners = attempts.filter((r) => r.ok);
     expect(winners, `expected exactly 1 winner, got ${winners.length}`).toHaveLength(1);
@@ -294,7 +305,8 @@ describe.runIf(DATABASE_URL)('the selected postgres store is what the gate actua
     const base = {
       approvedBy: 'tester', changeTicketId: 'CHG-1', rollbackPlanId: 'RB-1',
       nonce, expiresAt: future(),
-    };
+
+    authorityEpoch: 0,};
 
     await expect(assertRealExecutionAllowed(session, action, {
       ...base, approvalToken: signApprovalToken('wiring-secret', action, base),

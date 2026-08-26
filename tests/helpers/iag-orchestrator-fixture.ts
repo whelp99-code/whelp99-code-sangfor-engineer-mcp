@@ -38,7 +38,7 @@ export async function iagOrchestratorFixture(input: {
 }) {
   const observed = input.observed ?? 'ABSENT';
   const ordinary = input.authorityKind === 'ordinary_active';
-  const fixture = writeAuthorityFixture({
+  const fixture = await writeAuthorityFixture({
     root: input.root, product: 'IAG', capabilityId: 'internet_policy',
     toolId: 'iag_o1_evidence_campaign', fieldVerified: ordinary, mockCampaign: !ordinary,
   });
@@ -56,7 +56,8 @@ export async function iagOrchestratorFixture(input: {
     approvedBy: 'operator-15', changeTicketId: 'CHG-15', rollbackPlanId: 'RB-15',
     purpose: ordinary ? 'ordinary_change' : 'evidence_bootstrap', nonce: `nonce-${observed}-${input.dryRun ?? false}`,
     expiresAt: '2026-08-20T12:00:00.000Z',
-  } as const;
+
+  authorityEpoch: 0,} as const;
   const scope = {
     actionDigest: digestIagMutationAction(parsed.value), origin: parsed.value.target.origin,
     deviceIdentityDigest: parsed.value.target.deviceIdentityDigest,

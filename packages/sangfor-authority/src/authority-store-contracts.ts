@@ -6,7 +6,7 @@ export interface SqlExecutor {
 export interface AuthorityDatabase extends SqlExecutor {
   $transaction<T>(
     work: (transaction: SqlExecutor) => Promise<T>,
-    options?: { readonly isolationLevel?: 'Serializable' },
+    options?: { readonly isolationLevel?: 'Serializable' | 'ReadCommitted' },
   ): Promise<T>;
 }
 

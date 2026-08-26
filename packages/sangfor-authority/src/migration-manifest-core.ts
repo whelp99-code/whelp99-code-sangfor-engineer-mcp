@@ -22,7 +22,8 @@ export const CORE_MIGRATIONS = [
     sources: sourcesFor(PROJECT_REFS), target: { kind: 'postgres', tables: [
       'BlroMembership', 'BlroClientEnrollment', 'BlroEnrollmentIdentity',
       'BlroEnrollmentCertificate', 'BlroEnrollmentGrant', 'BlroEnrollmentBootstrapToken',
-      'BlroEnrollmentRotation',
+      'BlroEnrollmentRotation', 'BlroAuthorityCutover', 'BlroAuthorityCutoverStaging',
+      'BlroProjectAuthorityEpoch', 'BlroLocalWriteIntent', 'BlroSourceRootOwner',
     ] },
     projectScope: 'required', rlsRequired: true, secretPolicy: 'digest_only', prerequisites: ['rls-scope'], dependsOn: ['m001-tenant-identity'], inventoryRefs: [...PROJECT_REFS],
   },

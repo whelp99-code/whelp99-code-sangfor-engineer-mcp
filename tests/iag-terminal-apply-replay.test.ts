@@ -48,7 +48,8 @@ function mint(fixture: Awaited<ReturnType<typeof iagOrchestratorFixture>>, nonce
   const fields = {
     approvedBy: 'operator-replay', changeTicketId: 'CHG-REPLAY', rollbackPlanId: 'RB-REPLAY',
     purpose: 'ordinary_change' as const, nonce, expiresAt: '2026-08-20T12:00:00.000Z',
-  };
+
+  authorityEpoch: 0,};
   const action = fixture.action;
   const scope = {
     actionDigest: fixture.actionDigest, origin: action.target.origin,

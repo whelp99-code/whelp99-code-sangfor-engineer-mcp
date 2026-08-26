@@ -1,3 +1,4 @@
+import { testLocalWriteAuthority } from './helpers/local-write-authority.js';
 import { afterEach, describe, expect, it } from 'vitest';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
@@ -16,13 +17,13 @@ afterEach(() => {
 });
 
 describe('BLRO Phase 3 cutover gates', () => {
-  it('refuses every superseded JM-local authority before it can write', () => {
+  it('does not use a process-wide selector as a substitute for exact-scoped writer authority', () => {
     process.env.SANGFOR_BLRO_AUTHORITY_STORE = 'postgres';
     const root = mkdtempSync(join(tmpdir(), 'blro-cutover-'));
     try {
-      expect(() => new Registry(join(root, 'registry'))).toThrow('JM_LOCAL_REGISTRY_SUPERSEDED');
-      expect(() => new RunStore(join(root, 'runs'))).toThrow('JM_LOCAL_RUN_STORE_SUPERSEDED');
-      expect(() => new AuditLedger({ dir: join(root, 'audit') })).toThrow('JM_LOCAL_AUDIT_SUPERSEDED');
+      expect(new Registry(join(root, 'registry'), testLocalWriteAuthority('registry_services', join(root, 'registry')))).toBeDefined();
+      expect(new RunStore(join(root, 'runs'), testLocalWriteAuthority('runs_steps', join(root, 'runs')))).toBeDefined();
+      expect(new AuditLedger({ dir: join(root, 'audit'), authority: testLocalWriteAuthority('audit', join(root, 'audit')) })).toBeDefined();
       expect(() => assertLocalRagAuthorityAllowed()).toThrow('JM_LOCAL_RAG_INDEX_SUPERSEDED');
       expect(() => assertLocalApprovalAuthorityAllowed()).toThrow('JM_LOCAL_APPROVAL_SUPERSEDED');
     } finally {
@@ -34,9 +35,9 @@ describe('BLRO Phase 3 cutover gates', () => {
     delete process.env.SANGFOR_BLRO_AUTHORITY_STORE;
     const root = mkdtempSync(join(tmpdir(), 'jm-before-cutover-'));
     try {
-      expect(new Registry(join(root, 'registry'))).toBeDefined();
-      expect(new RunStore(join(root, 'runs'))).toBeDefined();
-      expect(new AuditLedger({ dir: join(root, 'audit') })).toBeDefined();
+      expect(new Registry(join(root, 'registry'), testLocalWriteAuthority('registry_services', join(root, 'registry')))).toBeDefined();
+      expect(new RunStore(join(root, 'runs'), testLocalWriteAuthority('runs_steps', join(root, 'runs')))).toBeDefined();
+      expect(new AuditLedger({ dir: join(root, 'audit') , authority: testLocalWriteAuthority('audit', join(root, 'audit'))})).toBeDefined();
       expect(() => assertLocalRagAuthorityAllowed()).not.toThrow();
       expect(() => assertLocalApprovalAuthorityAllowed()).not.toThrow();
     } finally {

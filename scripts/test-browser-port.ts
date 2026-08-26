@@ -58,7 +58,8 @@ function approval(
     rollbackPlanId: 'RBK-JM-BROWSER-QA',
     nonce: randomUUID(),
     expiresAt: new Date(Date.now() + 60_000).toISOString(),
-  };
+
+  authorityEpoch: 0,};
   return {
     ...unsigned,
     approvalToken: signApprovalToken(secret, action, unsigned),

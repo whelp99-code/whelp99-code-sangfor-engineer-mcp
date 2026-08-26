@@ -115,7 +115,8 @@ describe('verified IAG MCP and HTTP catalog surface', () => {
     const approvalFields = {
       approvedBy: 'operator-16', changeTicketId: 'CHG-16', rollbackPlanId: 'RB-16',
       nonce: 'bridge-iag-ordinary-apply', expiresAt: new Date(Date.now() + 60_000).toISOString(),
-    };
+
+    authorityEpoch: 0,};
     const approval = {
       ...approvalFields,
       approvalToken: signApprovalToken(secret, {

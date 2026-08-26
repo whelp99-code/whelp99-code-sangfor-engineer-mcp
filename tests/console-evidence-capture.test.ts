@@ -1,3 +1,4 @@
+import { testFileLocalWriteAuthority, testLocalWriteAuthority } from './helpers/local-write-authority.js';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
@@ -101,7 +102,7 @@ function portDeps(port: BrowserExecutionPort, ledger: AuditLedger) {
 describe('captureConsoleEvidence — browser port injection (no real browser)', () => {
   it('captures 3 items via an injected port: filenames, sha256, capturedAt, chainOk', async () => {
     const port = makeFakePort();
-    const ledger = new AuditLedger({ dir: ledgerDir });
+    const ledger = new AuditLedger({ dir: ledgerDir , authority: testLocalWriteAuthority('audit', ledgerDir)});
 
     const result = await captureConsoleEvidence(
       {
@@ -142,7 +143,7 @@ describe('captureConsoleEvidence — browser port injection (no real browser)', 
   });
 
   it('masks embedded secrets before filenames and ledger persistence', async () => {
-    const ledger = new AuditLedger({ dir: ledgerDir });
+    const ledger = new AuditLedger({ dir: ledgerDir , authority: testLocalWriteAuthority('audit', ledgerDir)});
     const result = await captureConsoleEvidence({
       product: 'IAG',
       dateStamp: '20260804',
@@ -169,7 +170,7 @@ describe('captureConsoleEvidence — browser port injection (no real browser)', 
 
   it('normalizes filename segments and blocks path traversal from untrusted reqId/menuLabel', async () => {
     const port = makeFakePort();
-    const ledger = new AuditLedger({ dir: ledgerDir });
+    const ledger = new AuditLedger({ dir: ledgerDir , authority: testLocalWriteAuthority('audit', ledgerDir)});
 
     const result = await captureConsoleEvidence(
       {
@@ -198,7 +199,7 @@ describe('captureConsoleEvidence — browser port injection (no real browser)', 
 
   it('a failing capture item is recorded ok:false and does not stop the remaining items', async () => {
     const port = makeFakePort({ failNavigateUrl: 'https://bad.example/fail' });
-    const ledger = new AuditLedger({ dir: ledgerDir });
+    const ledger = new AuditLedger({ dir: ledgerDir , authority: testLocalWriteAuthority('audit', ledgerDir)});
 
     const result = await captureConsoleEvidence(
       {
@@ -229,7 +230,7 @@ describe('captureConsoleEvidence — browser port injection (no real browser)', 
   });
 
   it('missing BrowserExecutionPort throws a clear composition error', async () => {
-    const ledger = new AuditLedger({ dir: ledgerDir });
+    const ledger = new AuditLedger({ dir: ledgerDir , authority: testLocalWriteAuthority('audit', ledgerDir)});
 
     await expect(
       captureConsoleEvidence(
@@ -273,7 +274,7 @@ describe('S1 — outputDir confinement (security)', () => {
   });
 
   it('captureConsoleEvidence rejects an out-of-root outputDir before calling the port', async () => {
-    const ledger = new AuditLedger({ dir: ledgerDir });
+    const ledger = new AuditLedger({ dir: ledgerDir , authority: testLocalWriteAuthority('audit', ledgerDir)});
     const port = makeFakePort();
 
     await expect(
@@ -289,7 +290,7 @@ describe('S1 — outputDir confinement (security)', () => {
 describe('S2 — destructive-label denylist (security)', () => {
   it('refuses a capture item whose menuPath clicks a denylisted label, and does not screenshot it', async () => {
     const port = makeFakePort();
-    const ledger = new AuditLedger({ dir: ledgerDir });
+    const ledger = new AuditLedger({ dir: ledgerDir , authority: testLocalWriteAuthority('audit', ledgerDir)});
 
     const result = await captureConsoleEvidence(
       {
@@ -321,7 +322,7 @@ describe('S2 — destructive-label denylist (security)', () => {
 
   it('matches case-insensitively, as a substring, and in Korean', async () => {
     const port = makeFakePort();
-    const ledger = new AuditLedger({ dir: ledgerDir });
+    const ledger = new AuditLedger({ dir: ledgerDir , authority: testLocalWriteAuthority('audit', ledgerDir)});
 
     const result = await captureConsoleEvidence(
       {
@@ -343,7 +344,7 @@ describe('S2 — destructive-label denylist (security)', () => {
 
   it('also refuses based on menuLabel alone (defense in depth), even with no menuPath', async () => {
     const port = makeFakePort();
-    const ledger = new AuditLedger({ dir: ledgerDir });
+    const ledger = new AuditLedger({ dir: ledgerDir , authority: testLocalWriteAuthority('audit', ledgerDir)});
 
     const result = await captureConsoleEvidence(
       { product: 'IAG', dateStamp: '20260804', outputDir: 'out', captures: [{ reqId: '01', menuLabel: 'Confirm Removal Screen' }] },
@@ -356,7 +357,7 @@ describe('S2 — destructive-label denylist (security)', () => {
 
   it('does not refuse an ordinary safe label', async () => {
     const port = makeFakePort();
-    const ledger = new AuditLedger({ dir: ledgerDir });
+    const ledger = new AuditLedger({ dir: ledgerDir , authority: testLocalWriteAuthority('audit', ledgerDir)});
 
     const result = await captureConsoleEvidence(
       { product: 'IAG', dateStamp: '20260804', outputDir: 'out', captures: [{ reqId: '01', menuLabel: 'Dashboard Overview', menuPath: [{ menu: 'Dashboard' }] }] },
@@ -370,7 +371,7 @@ describe('S2 — destructive-label denylist (security)', () => {
 describe('verifyCaptureLedger — tamper detection (read-only, S3 single-read + S4 shape guard)', () => {
   it('reports chainOk + per-file match:true right after a clean capture', async () => {
     const port = makeFakePort();
-    const ledger = new AuditLedger({ dir: ledgerDir });
+    const ledger = new AuditLedger({ dir: ledgerDir , authority: testLocalWriteAuthority('audit', ledgerDir)});
 
     const result = await captureConsoleEvidence(
       { product: 'NDR', dateStamp: '20260804', outputDir: 'out', captures: [{ reqId: '01', menuLabel: 'Dashboard' }] },
@@ -388,7 +389,7 @@ describe('verifyCaptureLedger — tamper detection (read-only, S3 single-read + 
 
   it('detects a modified screenshot file after capture (match:false)', async () => {
     const port = makeFakePort();
-    const ledger = new AuditLedger({ dir: ledgerDir });
+    const ledger = new AuditLedger({ dir: ledgerDir , authority: testLocalWriteAuthority('audit', ledgerDir)});
 
     const result = await captureConsoleEvidence(
       { product: 'NDR', dateStamp: '20260804', outputDir: 'out', captures: [{ reqId: '01', menuLabel: 'Dashboard' }] },
@@ -407,7 +408,7 @@ describe('verifyCaptureLedger — tamper detection (read-only, S3 single-read + 
 
   it('reports match:false, currentHash:null for a missing/deleted screenshot file', async () => {
     const port = makeFakePort();
-    const ledger = new AuditLedger({ dir: ledgerDir });
+    const ledger = new AuditLedger({ dir: ledgerDir , authority: testLocalWriteAuthority('audit', ledgerDir)});
 
     const result = await captureConsoleEvidence(
       { product: 'NDR', dateStamp: '20260804', outputDir: 'out', captures: [{ reqId: '01', menuLabel: 'Dashboard' }] },
@@ -424,7 +425,7 @@ describe('verifyCaptureLedger — tamper detection (read-only, S3 single-read + 
 
   it('detects a broken hash chain (ledger line tampered directly)', async () => {
     const port = makeFakePort();
-    const ledger = new AuditLedger({ dir: ledgerDir });
+    const ledger = new AuditLedger({ dir: ledgerDir , authority: testLocalWriteAuthority('audit', ledgerDir)});
 
     const result = await captureConsoleEvidence(
       { product: 'NDR', dateStamp: '20260804', outputDir: 'out', captures: [{ reqId: '01', menuLabel: 'Dashboard' }] },
@@ -443,7 +444,7 @@ describe('verifyCaptureLedger — tamper detection (read-only, S3 single-read + 
 
   it('S4: a ledger line with an unexpected payload shape is reported, not silently skipped', async () => {
     const port = makeFakePort();
-    const ledger = new AuditLedger({ dir: ledgerDir });
+    const ledger = new AuditLedger({ dir: ledgerDir , authority: testLocalWriteAuthority('audit', ledgerDir)});
 
     const result = await captureConsoleEvidence(
       { product: 'NDR', dateStamp: '20260804', outputDir: 'out', captures: [{ reqId: '01', menuLabel: 'Dashboard' }] },
@@ -452,7 +453,7 @@ describe('verifyCaptureLedger — tamper detection (read-only, S3 single-read + 
 
     // Append a well-formed ledger line (valid hash chain) but with a payload
     // shape this module never produces itself (no filePath/sha256).
-    ledger.append(result.runId, 'response', { note: 'not a capture record' });
+    await ledger.append(result.runId, 'response', { note: 'not a capture record' });
 
     const verify = verifyCaptureLedger(result.runId, { ledger });
     expect(verify.chainOk).toBe(true); // the chain math itself is still internally consistent

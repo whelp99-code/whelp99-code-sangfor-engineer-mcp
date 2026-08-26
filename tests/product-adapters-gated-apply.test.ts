@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { generateProductChangePlan, applyApprovedProductChange, type ProductChangeExecutor } from '../packages/sangfor-product-adapters/src/index.js';
 
-const APPROVAL = { approvedBy: 'jmpark', approvalToken: 'signed', changeTicketId: 'CHG-1', rollbackPlanId: 'RB-1' };
+const APPROVAL = { approvedBy: 'jmpark', approvalToken: 'signed', changeTicketId: 'CHG-1', rollbackPlanId: 'RB-1' , authorityEpoch: 0};
 
 function criticalPlan() {
   return generateProductChangePlan({ product: 'HCI_SCP', requirements: ['Enable DRS for the HCI resource pool and verify HA status'] });

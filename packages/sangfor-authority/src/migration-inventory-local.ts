@@ -5,6 +5,7 @@ export const FINETUNE_REFS = [
 ] as const;
 
 export const CREDENTIAL_REFS = [
+  "credential:scripts/blro-migrate-authority.ts#runAuthorityCutoverCli",
   "credential:apps/control-tower/src/api.ts#createApi",
   "credential:apps/control-tower/src/bridge-client.ts#BridgeClient",
   "credential:apps/control-tower/src/server.ts#createTowerServer",

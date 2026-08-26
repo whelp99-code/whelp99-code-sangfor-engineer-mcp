@@ -1,7 +1,7 @@
 /** Mint a SignedApproval for an HCI write. Usage:
  *  SANGFOR_OPERATOR_APPROVAL_SECRET=... pnpm exec tsx scripts/mint-hci-approval.ts \
  *    --type hci.create-volume --target 127.0.0.1:vol-a --approvedBy jmpark \
- *    --ticket CHG-123 --rollback RB-123 --ttlSec 300
+ *    --ticket CHG-123 --rollback RB-123 --authorityEpoch 0 --ttlSec 300
  */
 import { randomBytes } from 'node:crypto';
 import { signApprovalToken } from '../packages/sangfor-operator/src/approval.js';
@@ -23,12 +23,19 @@ if (!action.target) {
   process.exit(1);
 }
 
+const authorityEpochText = arg('authorityEpoch');
+const authorityEpoch = authorityEpochText === undefined ? Number.NaN : Number(authorityEpochText);
+if (!Number.isInteger(authorityEpoch) || authorityEpoch < 0) {
+  console.error('--authorityEpoch is required and must be a non-negative integer.');
+  process.exit(1);
+}
 const base = {
   approvedBy: arg('approvedBy', 'unknown')!,
   changeTicketId: arg('ticket', '')!,
   rollbackPlanId: arg('rollback', '')!,
   nonce: randomBytes(12).toString('hex'),
   expiresAt: new Date(Date.now() + Number(arg('ttlSec', '300')) * 1000).toISOString(),
+  authorityEpoch,
 };
 
 console.log(JSON.stringify({ ...base, approvalToken: signApprovalToken(secret, action, base) }, null, 2));

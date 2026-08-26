@@ -12,9 +12,9 @@ import {
   requireEffectiveReport,
 } from './helpers/effective-maturity-fixture.js';
 
-const fixtures: ReturnType<typeof createEffectiveFixture>[] = [];
-const setup = (): ReturnType<typeof createEffectiveFixture> => {
-  const value = createEffectiveFixture();
+const fixtures: Awaited<ReturnType<typeof createEffectiveFixture>>[] = [];
+const setup = async (): Promise<Awaited<ReturnType<typeof createEffectiveFixture>>> => {
+  const value = await createEffectiveFixture();
   fixtures.push(value);
   return value;
 };
@@ -31,8 +31,8 @@ const promotion = (index: number, manifestRef?: string) => ({
 describe('effective replacement maturity', () => {
   it('Given exact active evidence and a valid human promotion, When coverage is computed, Then the exact atom is replaced', async () => {
     // Given
-    const value = setup();
-    value.ledger.append(value.event(promotion(1)));
+    const value = await setup();
+    await value.ledger.append(value.event(promotion(1)));
 
     // When
     const report = requireEffectiveReport(await computeFixtureCoverage(value));
@@ -44,7 +44,7 @@ describe('effective replacement maturity', () => {
 
   it('Given active evidence without an exact promotion, When coverage is computed, Then it reports an unverified claim rather than trusting catalog maturity', async () => {
     // Given
-    const value = setup();
+    const value = await setup();
 
     // When
     const report = requireEffectiveReport(await computeFixtureCoverage(value));
@@ -56,8 +56,8 @@ describe('effective replacement maturity', () => {
 
   it('Given missing or duplicate current evidence claims, When coverage is computed, Then the report is invalid and keeps the denominator out of output', async () => {
     // Given
-    const missing = setup();
-    const duplicate = setup();
+    const missing = await setup();
+    const duplicate = await setup();
 
     // When
     const missingResult = await computeFixtureCoverage(missing, { claims: [] });
@@ -70,10 +70,10 @@ describe('effective replacement maturity', () => {
 
   it('Given an invalid applied event or corrupt authenticated checkpoint, When coverage is computed, Then the report is invalid', async () => {
     // Given
-    const invalid = setup();
-    invalid.ledger.append(invalid.event({ ...promotion(1), fromMaturity: 'field_verified' }));
-    const corrupt = setup();
-    corrupt.ledger.append(corrupt.event(promotion(1)));
+    const invalid = await setup();
+    await invalid.ledger.append(invalid.event({ ...promotion(1), fromMaturity: 'field_verified' }));
+    const corrupt = await setup();
+    await corrupt.ledger.append(corrupt.event(promotion(1)));
     writeFileSync(`${corrupt.ledgerPath}.head.json`, '{}');
 
     // When
@@ -87,7 +87,7 @@ describe('effective replacement maturity', () => {
 
   it('Given an interrupted authenticated ledger read, When coverage is computed, Then the report is invalid without fallback', async () => {
     // Given
-    const value = setup();
+    const value = await setup();
     const interruptedLedger = {
       read: async () => { throw new PromotionLedgerUnavailableError(); },
       append: value.ledger.append.bind(value.ledger),
@@ -102,18 +102,18 @@ describe('effective replacement maturity', () => {
 
   it('Given demotion, When the same digest is re-promoted and then a new evidence digest is promoted, Then only the new cycle reactivates', async () => {
     // Given
-    const value = setup();
-    value.ledger.append(value.event(promotion(1)));
-    value.ledger.append(value.event({ index: 2, action: 'emergency_demote', fromMaturity: 'field_verified', toMaturity: 'tested_mock' }));
-    value.ledger.append(value.event(promotion(3)));
+    const value = await setup();
+    await value.ledger.append(value.event(promotion(1)));
+    await value.ledger.append(value.event({ index: 2, action: 'emergency_demote', fromMaturity: 'field_verified', toMaturity: 'tested_mock' }));
+    await value.ledger.append(value.event(promotion(3)));
 
     // When
     const reused = requireEffectiveReport(await computeFixtureCoverage(value));
     const newManifest = { ...value.fixture.manifest, manifestId: 'manifest-api-read-only-new-cycle' };
     const newSource = JSON.stringify(newManifest);
     const newRef = maskedPromotionRef('manifest', createHash('sha256').update(newSource).digest('hex'));
-    value.ledger.append(value.event({ index: 4, action: 'emergency_demote', fromMaturity: 'field_verified', toMaturity: 'tested_mock' }));
-    value.ledger.append(value.event(promotion(5, newRef)));
+    await value.ledger.append(value.event({ index: 4, action: 'emergency_demote', fromMaturity: 'field_verified', toMaturity: 'tested_mock' }));
+    await value.ledger.append(value.event(promotion(5, newRef)));
     const reactivated = requireEffectiveReport(await computeFixtureCoverage(value, { claims: [{ ...value.claim, manifestSource: newSource }] }));
 
     // Then

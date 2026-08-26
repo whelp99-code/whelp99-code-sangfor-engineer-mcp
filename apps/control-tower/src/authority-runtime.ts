@@ -5,7 +5,10 @@ import {
   BlroAuthorityStore,
   PostgresEnrollmentRegistry,
   PostgresRemoteJobStore,
+  PostgresAuthorityEpochPort,
+  PostgresAuthorityWriteFence,
 } from '../../../packages/sangfor-authority/src/index.js';
+import type { LocalWriteAuthority } from '../../../packages/shared/src/index.js';
 import {
   parseAuthorityConfig,
   type AuthorityConfig,
@@ -49,6 +52,7 @@ export interface AuthorityRuntimePort {
   readiness(): Promise<AuthorityReadiness>;
   assertReady(): Promise<void>;
   enrollments(): EnrollmentAuthorityApi | undefined;
+  localWriteAuthority(aggregate: string, sourceRoot: string, actorId: string): Promise<LocalWriteAuthority>;
   beginDrain(): void;
   close(): Promise<void>;
 }
@@ -213,6 +217,15 @@ export function createAuthorityRuntime(options: RuntimeOptions = {}) {
       if (degraded) throw new AuthorityUnavailableError(firstReadinessFailure(report()));
     },
     enrollments: (): EnrollmentAuthorityApi | undefined => resources?.enrollmentStore,
+    async localWriteAuthority(aggregate: string, sourceRoot: string, actorId: string): Promise<LocalWriteAuthority> {
+      const current = await readiness();
+      if (!current.ok || !resources || !parsed.success) throw new AuthorityUnavailableError(firstReadinessFailure(current));
+      return {
+        tenantId: parsed.data.tenantId, projectId: parsed.data.projectId, actorId, aggregate, sourceRoot,
+        epoch: await new PostgresAuthorityEpochPort(resources.prisma).current(parsed.data.projectId),
+        fence: new PostgresAuthorityWriteFence(resources.prisma),
+      };
+    },
     beginDrain(): void { if (state === 'running') state = 'draining'; },
     async close(): Promise<void> {
       if (closed) return;

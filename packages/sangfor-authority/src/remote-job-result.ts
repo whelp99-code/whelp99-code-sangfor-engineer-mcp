@@ -87,7 +87,8 @@ export async function readRemoteJobByDispatch(
       "requestDigest","capabilityJti","state","result","resultDigest"
      FROM "BlroRemoteJob"
      WHERE "id"=$1 AND "tenantId"=$2 AND "projectId"=$3 AND "installationId"=$4
-       AND "jobId"=$5 AND "requestDigest"=$6 AND "capabilityJti"=$7`,
+       AND "jobId"=$5 AND "requestDigest"=$6 AND "capabilityJti"=$7 AND "authorityEpoch"=$8
+       AND EXISTS (SELECT 1 FROM "BlroProjectAuthorityEpoch" e WHERE e."projectId"=$3 AND e."epoch"=$8)`,
     dispatch.dispatchId,
     dispatch.tenantId,
     dispatch.projectId,
@@ -95,6 +96,7 @@ export async function readRemoteJobByDispatch(
     dispatch.jobId,
     dispatch.requestDigest,
     dispatch.capabilityJti,
+    dispatch.authorityEpoch,
   );
   return rows[0];
 }
@@ -107,6 +109,7 @@ export async function retainRemoteJobResultTransaction(
       "resultDigest"=$9,"resultCommittedAt"=$10,"updatedAt"=$10
      WHERE "id"=$1 AND "tenantId"=$2 AND "projectId"=$3 AND "installationId"=$4
        AND "jobId"=$5 AND "requestDigest"=$6 AND "capabilityJti"=$7
+       AND "authorityEpoch"=$11 AND EXISTS (SELECT 1 FROM "BlroProjectAuthorityEpoch" e WHERE e."projectId"=$3 AND e."epoch"=$11)
        AND "state"='dispatch_committed' AND EXISTS (
          SELECT 1 FROM "BlroRemoteJobCapabilityJti" c
          WHERE c."jti"=$7 AND c."tenantId"=$2 AND c."projectId"=$3
@@ -122,6 +125,7 @@ export async function retainRemoteJobResultTransaction(
     JSON.stringify(input.result),
     input.resultDigest,
     input.now,
+    input.dispatch.authorityEpoch,
   );
 }
 
@@ -138,7 +142,8 @@ export async function markRemoteJobIndeterminateTransaction(
   await input.transaction.$executeRawUnsafe(
     `UPDATE "BlroRemoteJob" SET "state"='indeterminate',"indeterminateAt"=$8,"updatedAt"=$8
      WHERE "id"=$1 AND "tenantId"=$2 AND "projectId"=$3 AND "installationId"=$4
-       AND "jobId"=$5 AND "requestDigest"=$6 AND "capabilityJti"=$7
+       AND "jobId"=$5 AND "requestDigest"=$6 AND "capabilityJti"=$7 AND "authorityEpoch"=$9
+       AND EXISTS (SELECT 1 FROM "BlroProjectAuthorityEpoch" e WHERE e."projectId"=$3 AND e."epoch"=$9)
        AND "state"='dispatch_committed'`,
     input.dispatch.dispatchId,
     input.dispatch.tenantId,
@@ -148,5 +153,6 @@ export async function markRemoteJobIndeterminateTransaction(
     input.dispatch.requestDigest,
     input.dispatch.capabilityJti,
     input.now,
+    input.dispatch.authorityEpoch,
   );
 }

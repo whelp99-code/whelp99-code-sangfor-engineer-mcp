@@ -45,7 +45,8 @@ function approval(action: { readonly type: string; readonly target: string }) {
   const fields = {
     approvedBy: 'operator-1', changeTicketId: 'CHG-11', rollbackPlanId: 'RB-11',
     nonce: `authority-${nonceIndex += 1}`, expiresAt: new Date(Date.now() + 60_000).toISOString(),
-  };
+
+  authorityEpoch: 0,};
   return { ...fields, approvalToken: signApprovalToken(OPERATOR_SECRET, action, fields) };
 }
 
@@ -54,7 +55,8 @@ function bootstrapApproval(fixture: AuthorityFixture) {
     approvedBy: 'operator-1', changeTicketId: 'CHG-O1', rollbackPlanId: 'RB-O1',
     purpose: 'evidence_bootstrap', nonce: `bootstrap-${nonceIndex += 1}`,
     expiresAt: new Date(Date.now() + 60_000).toISOString(),
-  };
+
+  authorityEpoch: 0,};
   return { ...fields, approvalToken: signIagBootstrapApproval(BOOTSTRAP_SECRET, {
     ...fixture.scope, actionKind: 'single_url_exception', targetEnvironment: 'lab',
   }, fields) };
@@ -116,7 +118,7 @@ async function bootstrapAttempt(fixture: AuthorityFixture) {
 
 describe('non-loopback double execution flag gate', () => {
   it.each(flagCases)('Given %s flags for HCI, When authority is valid, Then only both flags authorize', async (_name, real, production) => {
-    const fixture = writeAuthorityFixture({ root, product: 'HCI_SCP', capabilityId: 'volume_create', toolId: 'sangfor_hci_apply_create_volume', fieldVerified: true, mockCampaign: false });
+    const fixture = await writeAuthorityFixture({ root, product: 'HCI_SCP', capabilityId: 'volume_create', toolId: 'sangfor_hci_apply_create_volume', fieldVerified: true, mockCampaign: false });
     configureAuthorityEnvironment(root);
     if (real) process.env.SANGFOR_ALLOW_REAL_EXECUTION = 'true';
     if (production) process.env.SANGFOR_ALLOW_PRODUCTION_EXECUTION = 'true';
@@ -124,11 +126,11 @@ describe('non-loopback double execution flag gate', () => {
     const { result, signed } = await hciAttempt(fixture);
 
     expect(result.kind).toBe(real && production ? 'NORMAL_ACTIVE_EVIDENCE' : 'REFUSED');
-    if (!(real && production)) expect(consumeApprovalNonce(signed)).toMatchObject({ ok: true });
+    if (!(real && production)) expect(await consumeApprovalNonce(signed)).toMatchObject({ ok: true });
   });
 
   it.each(flagCases)('Given %s flags for bootstrap, When the candidate is valid, Then only both flags authorize', async (_name, real, production) => {
-    const fixture = writeAuthorityFixture({ root, product: 'IAG', capabilityId: 'internet_policy', toolId: 'iag_o1_evidence_campaign', fieldVerified: false, mockCampaign: true });
+    const fixture = await writeAuthorityFixture({ root, product: 'IAG', capabilityId: 'internet_policy', toolId: 'iag_o1_evidence_campaign', fieldVerified: false, mockCampaign: true });
     configureAuthorityEnvironment(root);
     if (real) process.env.SANGFOR_ALLOW_REAL_EXECUTION = 'true';
     if (production) process.env.SANGFOR_ALLOW_PRODUCTION_EXECUTION = 'true';
@@ -136,13 +138,13 @@ describe('non-loopback double execution flag gate', () => {
     const { result, signed } = await bootstrapAttempt(fixture);
 
     expect(result.kind).toBe(real && production ? 'O1_IAG_CANDIDATE_BOOTSTRAP' : 'REFUSED');
-    if (!(real && production)) expect(consumeApprovalNonce(signed)).toMatchObject({ ok: true });
+    if (!(real && production)) expect(await consumeApprovalNonce(signed)).toMatchObject({ ok: true });
   });
 });
 
 describe('internally derived write authority', () => {
   it('Given valid authenticated field authority, When HCI authorizes, Then the dispatch seam is reached exactly once', async () => {
-    const fixture = writeAuthorityFixture({ root, product: 'HCI_SCP', capabilityId: 'volume_create', toolId: 'sangfor_hci_apply_create_volume', fieldVerified: true, mockCampaign: false });
+    const fixture = await writeAuthorityFixture({ root, product: 'HCI_SCP', capabilityId: 'volume_create', toolId: 'sangfor_hci_apply_create_volume', fieldVerified: true, mockCampaign: false });
     configureAuthorityEnvironment(root);
     process.env.SANGFOR_ALLOW_REAL_EXECUTION = 'true';
     process.env.SANGFOR_ALLOW_PRODUCTION_EXECUTION = 'true';
@@ -156,7 +158,7 @@ describe('internally derived write authority', () => {
   });
 
   it('Given caller production=false on a remote bootstrap action, When only the real flag is set, Then the label cannot bypass the second flag', async () => {
-    const fixture = writeAuthorityFixture({ root, product: 'IAG', capabilityId: 'internet_policy', toolId: 'iag_o1_evidence_campaign', fieldVerified: false, mockCampaign: true });
+    const fixture = await writeAuthorityFixture({ root, product: 'IAG', capabilityId: 'internet_policy', toolId: 'iag_o1_evidence_campaign', fieldVerified: false, mockCampaign: true });
     configureAuthorityEnvironment(root);
     process.env.SANGFOR_ALLOW_REAL_EXECUTION = 'true';
     const base = inputForProductionLabel(fixture);
@@ -164,11 +166,11 @@ describe('internally derived write authority', () => {
     const result = await authorizeIagEvidenceBootstrap(base);
 
     expect(result.kind).toBe('REFUSED');
-    expect(consumeApprovalNonce(base.approval)).toMatchObject({ ok: true });
+    expect(await consumeApprovalNonce(base.approval)).toMatchObject({ ok: true });
   });
 
   it('Given caller-forged field evidence and policy without an authenticated promotion, When HCI authorizes, Then it refuses before nonce', async () => {
-    const fixture = writeAuthorityFixture({ root, product: 'HCI_SCP', capabilityId: 'volume_create', toolId: 'sangfor_hci_apply_create_volume', fieldVerified: false, mockCampaign: false });
+    const fixture = await writeAuthorityFixture({ root, product: 'HCI_SCP', capabilityId: 'volume_create', toolId: 'sangfor_hci_apply_create_volume', fieldVerified: false, mockCampaign: false });
     configureAuthorityEnvironment(root);
     process.env.SANGFOR_ALLOW_REAL_EXECUTION = 'true';
     process.env.SANGFOR_ALLOW_PRODUCTION_EXECUTION = 'true';
@@ -182,11 +184,11 @@ describe('internally derived write authority', () => {
     const { result, signed } = await hciAttempt(fixture);
 
     expect(result).toMatchObject({ kind: 'REFUSED' });
-    expect(consumeApprovalNonce(signed)).toMatchObject({ ok: true });
+    expect(await consumeApprovalNonce(signed)).toMatchObject({ ok: true });
   });
 
   it.each(['manifest', 'context', 'ledger', 'checkpoint'] as const)('Given corrupt %s authority, When HCI authorizes, Then it refuses before nonce', async (part) => {
-    const fixture = writeAuthorityFixture({ root, product: 'HCI_SCP', capabilityId: 'volume_create', toolId: 'sangfor_hci_apply_create_volume', fieldVerified: true, mockCampaign: false });
+    const fixture = await writeAuthorityFixture({ root, product: 'HCI_SCP', capabilityId: 'volume_create', toolId: 'sangfor_hci_apply_create_volume', fieldVerified: true, mockCampaign: false });
     configureAuthorityEnvironment(root);
     process.env.SANGFOR_ALLOW_REAL_EXECUTION = 'true';
     process.env.SANGFOR_ALLOW_PRODUCTION_EXECUTION = 'true';
@@ -198,11 +200,11 @@ describe('internally derived write authority', () => {
     const { result, signed } = await hciAttempt(fixture);
 
     expect(result).toMatchObject({ kind: 'REFUSED' });
-    expect(consumeApprovalNonce(signed)).toMatchObject({ ok: true });
+    expect(await consumeApprovalNonce(signed)).toMatchObject({ ok: true });
   });
 
   it.each(['missing_ledger_secret', 'missing_checkpoint_secret', 'secret_domain_collision'] as const)('Given %s, When HCI authorizes, Then it refuses before nonce', async (part) => {
-    const fixture = writeAuthorityFixture({ root, product: 'HCI_SCP', capabilityId: 'volume_create', toolId: 'sangfor_hci_apply_create_volume', fieldVerified: true, mockCampaign: false });
+    const fixture = await writeAuthorityFixture({ root, product: 'HCI_SCP', capabilityId: 'volume_create', toolId: 'sangfor_hci_apply_create_volume', fieldVerified: true, mockCampaign: false });
     configureAuthorityEnvironment(root);
     process.env.SANGFOR_ALLOW_REAL_EXECUTION = 'true';
     process.env.SANGFOR_ALLOW_PRODUCTION_EXECUTION = 'true';
@@ -215,11 +217,11 @@ describe('internally derived write authority', () => {
     const { result, signed } = await hciAttempt(fixture);
 
     expect(result).toMatchObject({ kind: 'REFUSED' });
-    expect(consumeApprovalNonce(signed)).toMatchObject({ ok: true });
+    expect(await consumeApprovalNonce(signed)).toMatchObject({ ok: true });
   });
 
   it.each(['artifact', 'stale_context', 'real_device_mock'] as const)('Given forged %s evidence, When bootstrap authorizes, Then it refuses before nonce', async (part) => {
-    const fixture = writeAuthorityFixture({ root, product: 'IAG', capabilityId: 'internet_policy', toolId: 'iag_o1_evidence_campaign', fieldVerified: false, mockCampaign: true });
+    const fixture = await writeAuthorityFixture({ root, product: 'IAG', capabilityId: 'internet_policy', toolId: 'iag_o1_evidence_campaign', fieldVerified: false, mockCampaign: true });
     configureAuthorityEnvironment(root);
     process.env.SANGFOR_ALLOW_REAL_EXECUTION = 'true';
     process.env.SANGFOR_ALLOW_PRODUCTION_EXECUTION = 'true';
@@ -241,11 +243,11 @@ describe('internally derived write authority', () => {
     const { result, signed } = await bootstrapAttempt(fixture);
 
     expect(result).toMatchObject({ kind: 'REFUSED' });
-    expect(consumeApprovalNonce(signed)).toMatchObject({ ok: true });
+    expect(await consumeApprovalNonce(signed)).toMatchObject({ ok: true });
   });
 
   it('Given active field promotion already exists, When bootstrap authorizes, Then it refuses before nonce', async () => {
-    const fixture = writeAuthorityFixture({ root, product: 'IAG', capabilityId: 'internet_policy', toolId: 'iag_o1_evidence_campaign', fieldVerified: true, mockCampaign: true });
+    const fixture = await writeAuthorityFixture({ root, product: 'IAG', capabilityId: 'internet_policy', toolId: 'iag_o1_evidence_campaign', fieldVerified: true, mockCampaign: true });
     configureAuthorityEnvironment(root);
     process.env.SANGFOR_ALLOW_REAL_EXECUTION = 'true';
     process.env.SANGFOR_ALLOW_PRODUCTION_EXECUTION = 'true';
@@ -253,11 +255,11 @@ describe('internally derived write authority', () => {
     const { result, signed } = await bootstrapAttempt(fixture);
 
     expect(result).toMatchObject({ kind: 'REFUSED' });
-    expect(consumeApprovalNonce(signed)).toMatchObject({ ok: true });
+    expect(await consumeApprovalNonce(signed)).toMatchObject({ ok: true });
   });
 
   it('Given a forged completed mock boolean is impossible to pass, When candidate negatives are incomplete, Then bootstrap refuses before nonce', async () => {
-    const fixture = writeAuthorityFixture({ root, product: 'IAG', capabilityId: 'internet_policy', toolId: 'iag_o1_evidence_campaign', fieldVerified: false, mockCampaign: true });
+    const fixture = await writeAuthorityFixture({ root, product: 'IAG', capabilityId: 'internet_policy', toolId: 'iag_o1_evidence_campaign', fieldVerified: false, mockCampaign: true });
     configureAuthorityEnvironment(root);
     process.env.SANGFOR_ALLOW_REAL_EXECUTION = 'true';
     process.env.SANGFOR_ALLOW_PRODUCTION_EXECUTION = 'true';
@@ -271,6 +273,6 @@ describe('internally derived write authority', () => {
     const { result, signed } = await bootstrapAttempt(fixture);
 
     expect(result).toMatchObject({ kind: 'REFUSED' });
-    expect(consumeApprovalNonce(signed)).toMatchObject({ ok: true });
+    expect(await consumeApprovalNonce(signed)).toMatchObject({ ok: true });
   });
 });

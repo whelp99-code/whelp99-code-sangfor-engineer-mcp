@@ -44,6 +44,7 @@ function readinessRuntime(): AuthorityRuntimePort & { setReady(value: boolean): 
       if (!ready || state !== 'running') throw new AuthorityUnavailableError('DATABASE_UNAVAILABLE');
     },
     enrollments: () => undefined,
+    localWriteAuthority: async () => { throw new Error('not used'); },
     beginDrain() { state = 'draining'; },
     async close() { state = 'closed'; },
   };
@@ -63,7 +64,7 @@ describe('control-tower process health', () => {
     const runtime = readinessRuntime();
     const root = mkdtempSync(join(tmpdir(), 'tower-ready-'));
     roots.push(root);
-    const server = createTowerServer({
+    const server = createTowerServer({ authorityMode: 'local',
       authorityRuntime: runtime,
       apiToken: 'test-token',
       runsDir: join(root, 'runs'), registryDir: join(root, 'registry'),
@@ -96,7 +97,7 @@ describe('control-tower process health', () => {
     runtime.setReady(false);
     const root = mkdtempSync(join(tmpdir(), 'tower-unready-'));
     roots.push(root);
-    const tower = createTowerServer({
+    const tower = createTowerServer({ authorityMode: 'local',
       authorityRuntime: runtime, bridgeUrl, apiToken: 'test-token',
       runsDir: join(root, 'runs'), registryDir: join(root, 'registry'),
       approvalSecret: 'test-secret', mockConsoleUrl: 'http://127.0.0.1:1',

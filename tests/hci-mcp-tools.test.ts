@@ -60,7 +60,8 @@ describe('hci apply tool gates (mock target, loopback)', () => {
       approvedBy: 'tester', changeTicketId: 'CHG-1', rollbackPlanId: 'RB-1',
       nonce: `n-${name}-${Math.round(performance.now() * 1000)}`,
       expiresAt: new Date(Date.now() + 5 * 60_000).toISOString(),
-    };
+
+    authorityEpoch: 0,};
     return { ...base, approvalToken: signApprovalToken(SECRET, { type: 'hci.create-volume', target: `${host}:${name}` }, base) };
   };
 
@@ -98,6 +99,6 @@ describe('hci apply tool gates (mock target, loopback)', () => {
     }) as any;
 
     expect(result).toMatchObject({ ok: false, error: 'HCI_AUTHORITY_REFERENCES_REQUIRED' });
-    expect(consumeApprovalNonce(approval)).toMatchObject({ ok: true });
+    expect(await consumeApprovalNonce(approval)).toMatchObject({ ok: true });
   });
 });

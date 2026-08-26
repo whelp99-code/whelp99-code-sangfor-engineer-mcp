@@ -12,7 +12,7 @@ import {
   writeSync,
 } from 'node:fs';
 import { dirname } from 'node:path';
-import { ApprovalDecision, ConsoleAction, RiskLevel } from '@sangfor/shared';
+import { ApprovalDecision, ConsoleAction, RiskLevel, expectedLocalWriteScope, requireLocalWriteAuthority, type LocalWriteAuthority } from '@sangfor/shared';
 
 export {
   PostgresSingleUseNonceStore,
@@ -42,7 +42,7 @@ export function verifyDomainApprovalSignature(
 
 export interface NonceConsumeResult { ok: boolean; reason?: string; }
 
-interface NonceRecord { nonce: string; expiresAt: string; consumedAt: string; }
+interface NonceRecord { nonce: string; expiresAt: string; consumedAt: string; authorityEpoch: number; }
 interface NonceStoreShape { consumed: NonceRecord[]; }
 
 const NONCE_LOCK_WAIT_MS = 2_000;
@@ -91,10 +91,11 @@ function readNonceStore(filePath: string): NonceStoreShape {
   }
   const consumed = (parsed as { consumed: unknown[] }).consumed.map((record) => {
     if (!record || typeof record !== 'object' || Array.isArray(record)
-      || Object.keys(record).length !== 3
+      || Object.keys(record).length !== 4
       || typeof (record as Partial<NonceRecord>).nonce !== 'string'
       || typeof (record as Partial<NonceRecord>).expiresAt !== 'string'
       || typeof (record as Partial<NonceRecord>).consumedAt !== 'string'
+      || !Number.isInteger((record as Partial<NonceRecord>).authorityEpoch)
       || (record as Partial<NonceRecord>).nonce!.length === 0
       || !Number.isFinite(Date.parse((record as Partial<NonceRecord>).expiresAt!))
       || !Number.isFinite(Date.parse((record as Partial<NonceRecord>).consumedAt!))) {
@@ -111,9 +112,16 @@ function syncParentDirectory(path: string): void {
 }
 
 export class FileSingleUseNonceStore {
-  constructor(private readonly filePath: string) {}
+  private readonly authority: LocalWriteAuthority;
 
-  consume(nonce: string, expiresAt: string, now: Date = new Date()): NonceConsumeResult {
+  constructor(private readonly filePath: string, authority: LocalWriteAuthority) {
+    this.authority = requireLocalWriteAuthority(authority, expectedLocalWriteScope(
+      authority, authority?.projectId ?? '', 'approvals_nonces', dirname(this.filePath),
+    ));
+  }
+
+  async consume(nonce: string, expiresAt: string, now: Date = new Date()): Promise<NonceConsumeResult> {
+    return this.authority.fence.write(this.authority, { operation: 'approval-nonce.consume', targetPaths: [this.filePath] }, () => {
     if (typeof nonce !== 'string' || nonce.length === 0 || !Number.isFinite(Date.parse(expiresAt)) || !Number.isFinite(now.getTime())) {
       return { ok: false, reason: 'invalid nonce input' };
     }
@@ -126,10 +134,10 @@ export class FileSingleUseNonceStore {
       lockAcquired = true;
       const state = readNonceStore(this.filePath);
       const live = state.consumed.filter((record) => Date.parse(record.expiresAt) >= now.getTime());
-      if (live.some((record) => record.nonce === nonce)) {
+      if (live.some((record) => record.nonce === nonce && record.authorityEpoch === this.authority.epoch)) {
         return { ok: false, reason: `approval nonce already used: ${nonce}` };
       }
-      live.push({ nonce, expiresAt, consumedAt: now.toISOString() });
+      live.push({ nonce, expiresAt, consumedAt: now.toISOString(), authorityEpoch: this.authority.epoch });
       tempPath = `${this.filePath}.${process.pid}.${randomUUID()}.tmp`;
       const fd = openSync(tempPath, 'wx', 0o600);
       try {
@@ -159,6 +167,7 @@ export class FileSingleUseNonceStore {
         try { rmdirSync(lockPath); } catch { /* leave a failed lock fail-closed */ }
       }
     }
+    });
   }
 }
 

@@ -7,7 +7,7 @@ import {
 } from '@sangfor/learning-strategy';
 import { syncLearningMirrorToPrisma } from '@sangfor/store';
 import { StrategyStoreManager } from '@sangfor/learning-strategy';
-import { resolveRepoData } from '@sangfor/shared';
+import { resolveProductionLocalWriteAuthority, resolveRepoData } from '@sangfor/shared';
 
 /** Public CLI contract for PR-011.  Keep the numeric values stable. */
 export const STRATEGY_EXIT = Object.freeze({ success: 0, input: 2, precondition: 3, security: 4, store: 5, capture: 6, partial: 7 });
@@ -121,7 +121,10 @@ export async function runStrategyCli(argv = process.argv.slice(2)): Promise<numb
       only(args, ['strategy-id', 'root']);
       const strategyId = required(args, 'strategy-id');
       if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/u.test(strategyId)) throw new Error('INPUT: --strategy-id is invalid.');
-      print(await syncLearningMirrorToPrisma(new StrategyStoreManager(join(root, `${strategyId}.json`)))); return STRATEGY_EXIT.success;
+      print(await syncLearningMirrorToPrisma(new StrategyStoreManager(join(root, `${strategyId}.json`), resolveProductionLocalWriteAuthority({
+        tenantId: 'local-primary', projectId: process.env.SANGFOR_ENGAGEMENT_ID ?? 'local-primary', actorId: 'strategy-cli',
+        aggregate: 'learning_strategy_lifecycle', sourceRoot: root,
+      })))); return STRATEGY_EXIT.success;
     }
     throw new Error(`INPUT: unsupported strategy subcommand ${command}.`);
   } catch (error) {

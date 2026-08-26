@@ -134,25 +134,45 @@ export class BlroAuthorityStore {
     ).then(() => undefined));
   }
 
-  async createRun(input: AuthorityActorScope & { id: string; status: string; toolProfileVersion: string; sourceSystem: string }): Promise<void> {
-    await this.authorized(input, 'run:write', (tx) => tx.$executeRawUnsafe(
-      `INSERT INTO "BlroRun" ("id","tenantId","projectId","actorId","status","toolProfileVersion","sourceSystem") VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-      input.id, input.tenantId, input.projectId, input.actorId, input.status, input.toolProfileVersion, input.sourceSystem,
-    ).then(() => undefined));
+  async createRun(input: AuthorityActorScope & { id: string; status: string; toolProfileVersion: string; sourceSystem: string; authorityEpoch: number }): Promise<void> {
+    await this.authorized(input, 'run:write', async (tx) => {
+      await this.requireCurrentEpoch(tx, input.projectId, input.authorityEpoch);
+      await tx.$executeRawUnsafe(
+      `INSERT INTO "BlroRun" ("id","tenantId","projectId","actorId","status","toolProfileVersion","sourceSystem","authorityEpoch") VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+      input.id, input.tenantId, input.projectId, input.actorId, input.status, input.toolProfileVersion, input.sourceSystem, input.authorityEpoch,
+    );
+    }).then(() => undefined);
   }
 
-  async appendStep(input: AuthorityActorScope & { id: string; runId: string; ordinal: number; status: string; payload: unknown }): Promise<void> {
-    await this.authorized(input, 'run:write', (tx) => tx.$executeRawUnsafe(
+  private async requireCurrentEpoch(tx: SqlExecutor, projectId: string, signedEpoch: number): Promise<void> {
+    const rows = await tx.$queryRawUnsafe<Array<{ epoch: number }>>(
+      `SELECT "epoch" FROM "BlroProjectAuthorityEpoch" WHERE "projectId"=$1 FOR SHARE`, projectId,
+    );
+    if (rows[0]?.epoch !== signedEpoch) throw new Error('AUTHORITY_EPOCH_STALE');
+  }
+
+  async appendStep(input: AuthorityActorScope & { id: string; runId: string; ordinal: number; status: string; payload: unknown; authorityEpoch: number }): Promise<void> {
+    await this.authorized(input, 'run:write', async (tx) => {
+      await this.requireCurrentEpoch(tx, input.projectId, input.authorityEpoch);
+      const run = await tx.$queryRawUnsafe<Array<{ id: string }>>(
+        `SELECT "id" FROM "BlroRun" WHERE "id"=$1 AND "projectId"=$2 AND "authorityEpoch"=$3`, input.runId, input.projectId, input.authorityEpoch,
+      );
+      if (!run[0]) throw new Error('AUTHORITY_EPOCH_STALE');
+      await tx.$executeRawUnsafe(
       `INSERT INTO "BlroRunStep" ("id","tenantId","projectId","runId","actorId","ordinal","status","payload") VALUES ($1,$2,$3,$4,$5,$6,$7,$8::jsonb)`,
       input.id, input.tenantId, input.projectId, input.runId, input.actorId, input.ordinal, input.status, JSON.stringify(mask(input.payload)),
-    ).then(() => undefined));
+    );
+    }).then(() => undefined);
   }
 
-  async recordApproval(input: AuthorityActorScope & { id: string; actionHash: string; expiresAt: string; status: string }): Promise<void> {
-    await this.authorized(input, 'approval:write', (tx) => tx.$executeRawUnsafe(
-      `INSERT INTO "BlroApproval" ("id","tenantId","projectId","actorId","actionHash","expiresAt","status") VALUES ($1,$2,$3,$4,$5,$6::timestamptz,$7)`,
-      input.id, input.tenantId, input.projectId, input.actorId, input.actionHash, input.expiresAt, input.status,
-    ).then(() => undefined));
+  async recordApproval(input: AuthorityActorScope & { id: string; actionHash: string; expiresAt: string; status: string; authorityEpoch: number }): Promise<void> {
+    await this.authorized(input, 'approval:write', async (tx) => {
+      await this.requireCurrentEpoch(tx, input.projectId, input.authorityEpoch);
+      await tx.$executeRawUnsafe(
+      `INSERT INTO "BlroApproval" ("id","tenantId","projectId","actorId","actionHash","expiresAt","status","authorityEpoch") VALUES ($1,$2,$3,$4,$5,$6::timestamptz,$7,$8)`,
+      input.id, input.tenantId, input.projectId, input.actorId, input.actionHash, input.expiresAt, input.status, input.authorityEpoch,
+    );
+    }).then(() => undefined);
   }
 
   async appendAudit(input: AuthorityActorScope & { kind: string; payload: unknown }): Promise<AuditEvent> {

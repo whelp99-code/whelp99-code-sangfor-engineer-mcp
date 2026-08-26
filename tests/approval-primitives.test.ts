@@ -1,3 +1,4 @@
+import { testFileLocalWriteAuthority, testLocalWriteAuthority } from './helpers/local-write-authority.js';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createHash, createHmac, randomBytes } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
@@ -12,7 +13,7 @@ import {
   statSync,
   writeFileSync,
 } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import {
   canonicalizeApprovalPayload,
@@ -84,8 +85,12 @@ function runNonceChild(
   nonce: string,
 ): Promise<{ code: number | null; output: string }> {
   const script = `import { FileSingleUseNonceStore } from ${JSON.stringify(sourcePath)};
-const result = new FileSingleUseNonceStore(${JSON.stringify(filePath)}).consume(${JSON.stringify(nonce)}, ${JSON.stringify(FUTURE)});
-process.stdout.write(JSON.stringify(result));`;
+import { explicitLocalPrimaryAuthority } from '@sangfor/shared';
+void (async () => {
+  const authority = explicitLocalPrimaryAuthority({ tenantId: 'test-tenant', projectId: 'local-primary', actorId: 'test-actor', aggregate: 'approvals_nonces', sourceRoot: ${JSON.stringify(dirname(filePath))} });
+  const result = await new FileSingleUseNonceStore(${JSON.stringify(filePath)}, authority).consume(${JSON.stringify(nonce)}, ${JSON.stringify(FUTURE)});
+  process.stdout.write(JSON.stringify(result));
+})();`;
   const child = spawn(fileURLToPath(new URL('../node_modules/.bin/tsx', import.meta.url)), ['-e', script], {
     cwd: fileURLToPath(new URL('..', import.meta.url)),
     env: process.env,
@@ -98,7 +103,7 @@ process.stdout.write(JSON.stringify(result));`;
 }
 
 describe('shared approval primitives', () => {
-  it('preserves ordered UTF-8 fields without an extra newline and signs bytes deterministically', () => {
+  it('preserves ordered UTF-8 fields without an extra newline and signs bytes deterministically', async () => {
     const canonical = canonicalizeApprovalPayload(['approved', '한글', 'target']);
     expect(canonical).toBe('approved\n한글\ntarget');
     expect(canonical.endsWith('\n')).toBe(false);
@@ -115,22 +120,22 @@ describe('shared approval primitives', () => {
     });
   });
 
-  it('uses a durable lock, atomic 0600 replacement, replay rejection, and corruption fail-closed', () => {
+  it('uses a durable lock, atomic 0600 replacement, replay rejection, and corruption fail-closed', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'approval-primitive-'));
     try {
       const path = join(dir, 'nonces.json');
-      const store = new FileSingleUseNonceStore(path);
-      expect(store.consume('n1', FUTURE).ok).toBe(true);
+      const store = new FileSingleUseNonceStore(path, testFileLocalWriteAuthority('approvals_nonces', path));
+      expect((await store.consume('n1', FUTURE)).ok).toBe(true);
       expect(statSync(path).mode & 0o777).toBe(0o600);
-      expect(store.consume('n1', FUTURE)).toMatchObject({ ok: false, reason: expect.stringContaining('already used') });
+      expect(await store.consume('n1', FUTURE)).toMatchObject({ ok: false, reason: expect.stringContaining('already used') });
       writeFileSync(path, '{not-json');
-      const corrupt = store.consume('n2', FUTURE);
+      const corrupt = await store.consume('n2', FUTURE);
       expect(corrupt.ok).toBe(false);
       expect(corrupt.reason).toBeTruthy();
       expect(corrupt.reason).not.toMatch(/already used/u);
       mkdirSync(`${path}.lock`, { mode: 0o700 });
       const started = Date.now();
-      const locked = new FileSingleUseNonceStore(path).consume('n3', FUTURE);
+      const locked = await new FileSingleUseNonceStore(path, testFileLocalWriteAuthority('approvals_nonces', path)).consume('n3', FUTURE);
       expect(Date.now() - started).toBeLessThan(2_300);
       expect(locked).toMatchObject({ ok: false, reason: expect.stringContaining('NONCE_STORE_LOCK_TIMEOUT') });
     } finally {
@@ -138,7 +143,7 @@ describe('shared approval primitives', () => {
     }
   });
 
-  it('fails closed on malformed records inside valid JSON and leaves the file unchanged', () => {
+  it('fails closed on malformed records inside valid JSON and leaves the file unchanged', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'approval-malformed-'));
     try {
       const path = join(dir, 'nonces.json');
@@ -153,7 +158,7 @@ describe('shared approval primitives', () => {
       ];
       for (const doc of malformedDocs) {
         writeFileSync(path, doc);
-        const result = new FileSingleUseNonceStore(path).consume('n2', FUTURE);
+        const result = await new FileSingleUseNonceStore(path, testFileLocalWriteAuthority('approvals_nonces', path)).consume('n2', FUTURE);
         expect(result.ok).toBe(false);
         expect(result.reason).not.toMatch(/already used/u);
         expect(readFileSync(path, 'utf8')).toBe(doc);
@@ -164,16 +169,16 @@ describe('shared approval primitives', () => {
     }
   });
 
-  it('fails closed when rename fails and leaves the existing store unchanged', () => {
+  it('fails closed when rename fails and leaves the existing store unchanged', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'approval-rename-fail-'));
     try {
       const path = join(dir, 'nonces.json');
-      const store = new FileSingleUseNonceStore(path);
-      expect(store.consume('n1', FUTURE).ok).toBe(true);
+      const store = new FileSingleUseNonceStore(path, testFileLocalWriteAuthority('approvals_nonces', path));
+      expect((await store.consume('n1', FUTURE)).ok).toBe(true);
       const before = readFileSync(path, 'utf8');
       fsFailure.rename = true;
       try {
-        const result = store.consume('n2', FUTURE);
+        const result = await store.consume('n2', FUTURE);
         expect(result.ok).toBe(false);
         expect(result.reason).toMatch(/simulated rename failure/u);
       } finally {
@@ -187,16 +192,16 @@ describe('shared approval primitives', () => {
     }
   });
 
-  it('fails closed when fsync fails and leaves the existing store unchanged', () => {
+  it('fails closed when fsync fails and leaves the existing store unchanged', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'approval-fsync-fail-'));
     try {
       const path = join(dir, 'nonces.json');
-      const store = new FileSingleUseNonceStore(path);
-      expect(store.consume('n1', FUTURE).ok).toBe(true);
+      const store = new FileSingleUseNonceStore(path, testFileLocalWriteAuthority('approvals_nonces', path));
+      expect((await store.consume('n1', FUTURE)).ok).toBe(true);
       const before = readFileSync(path, 'utf8');
       fsFailure.fsync = true;
       try {
-        const result = store.consume('n2', FUTURE);
+        const result = await store.consume('n2', FUTURE);
         expect(result.ok).toBe(false);
         expect(result.reason).toMatch(/simulated fsync failure/u);
       } finally {
@@ -210,23 +215,23 @@ describe('shared approval primitives', () => {
     }
   });
 
-  it('fails closed on parent-directory fsync failure while retaining the consumed nonce as a replay', () => {
+  it('fails closed on parent-directory fsync failure while retaining the consumed nonce as a replay', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'approval-parent-fsync-'));
     try {
       const path = join(dir, 'nonces.json');
-      const store = new FileSingleUseNonceStore(path);
-      expect(store.consume('n1', FUTURE).ok).toBe(true);
+      const store = new FileSingleUseNonceStore(path, testFileLocalWriteAuthority('approvals_nonces', path));
+      expect((await store.consume('n1', FUTURE)).ok).toBe(true);
       fsFailure.fsyncCalls = 0;
       fsFailure.fsyncCallToFail = 2;
       try {
-        const result = store.consume('n2', FUTURE);
+        const result = await store.consume('n2', FUTURE);
         expect(result).toMatchObject({ ok: false, reason: expect.stringContaining('simulated fsync failure') });
       } finally {
         fsFailure.fsyncCallToFail = 0;
       }
       const persisted = JSON.parse(readFileSync(path, 'utf8')) as { consumed: Array<{ nonce: string }> };
       expect(persisted.consumed.map((record) => record.nonce)).toEqual(['n1', 'n2']);
-      expect(store.consume('n2', FUTURE)).toMatchObject({
+      expect(await store.consume('n2', FUTURE)).toMatchObject({
         ok: false,
         reason: expect.stringContaining('approval nonce already used: n2'),
       });
@@ -237,21 +242,21 @@ describe('shared approval primitives', () => {
     }
   });
 
-  it('uses a unique 0600 temp file and does not retry non-EEXIST lock errors', () => {
+  it('uses a unique 0600 temp file and does not retry non-EEXIST lock errors', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'approval-lock-error-'));
     try {
       const path = join(dir, 'nonces.json');
-      const store = new FileSingleUseNonceStore(path);
+      const store = new FileSingleUseNonceStore(path, testFileLocalWriteAuthority('approvals_nonces', path));
       fsFailure.renamedTempMode = null;
       fsFailure.renamedTempPath = null;
-      expect(store.consume('mode-nonce', FUTURE)).toEqual({ ok: true });
+      expect(await store.consume('mode-nonce', FUTURE)).toEqual({ ok: true });
       expect(fsFailure.renamedTempMode).toBe(0o600);
       expect(fsFailure.renamedTempPath).toMatch(/nonces\.json\.\d+\.[0-9a-f-]+\.tmp$/u);
 
       fsFailure.lockAttempts = 0;
       fsFailure.lockErrorCode = 'EACCES';
       try {
-        const result = store.consume('lock-error-nonce', FUTURE);
+        const result = await store.consume('lock-error-nonce', FUTURE);
         expect(result).toMatchObject({ ok: false, reason: expect.stringContaining('simulated lock EACCES') });
         expect(fsFailure.lockAttempts).toBe(1);
       } finally {
@@ -269,8 +274,8 @@ describe('shared approval primitives', () => {
       const path = join(dir, 'nonces.json');
       const sourcePath = fileURLToPath(new URL('../packages/sangfor-approval/src/index.ts', import.meta.url));
       const results = await Promise.all([
-        runNonceChild(path, sourcePath, 'same-child-nonce'),
-        runNonceChild(path, sourcePath, 'same-child-nonce'),
+        await runNonceChild(path, sourcePath, 'same-child-nonce'),
+        await runNonceChild(path, sourcePath, 'same-child-nonce'),
       ]);
       const parsed = results.map((result) => JSON.parse(result.output) as { ok: boolean; reason?: string });
       expect(parsed.filter((result) => result.ok)).toHaveLength(1);
@@ -291,8 +296,8 @@ describe('shared approval primitives', () => {
       const path = join(dir, 'nonces.json');
       const sourcePath = fileURLToPath(new URL('../packages/sangfor-approval/src/index.ts', import.meta.url));
       const results = await Promise.all([
-        runNonceChild(path, sourcePath, 'distinct-nonce-a'),
-        runNonceChild(path, sourcePath, 'distinct-nonce-b'),
+        await runNonceChild(path, sourcePath, 'distinct-nonce-a'),
+        await runNonceChild(path, sourcePath, 'distinct-nonce-b'),
       ]);
       const parsed = results.map((result) => JSON.parse(result.output) as { ok: boolean; reason?: string });
       expect(parsed.filter((result) => result.ok)).toHaveLength(2);
@@ -332,7 +337,7 @@ describe('learning-strategy-v1 approval adapter', () => {
     };
   }
 
-  it('canonicalizes the fixed domain payload and enforces strict base64 32-byte secrets', () => {
+  it('canonicalizes the fixed domain payload and enforces strict base64 32-byte secrets', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'learning-approval-'));
     try {
       const { payload } = fixture(dir);
@@ -356,7 +361,7 @@ describe('learning-strategy-v1 approval adapter', () => {
     }
   });
 
-  it('rejects CR/LF in any field so distinct payloads cannot collide on the canonical string', () => {
+  it('rejects CR/LF in any field so distinct payloads cannot collide on the canonical string', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'learning-collision-'));
     try {
       const { payload } = fixture(dir);
@@ -369,7 +374,7 @@ describe('learning-strategy-v1 approval adapter', () => {
     }
   });
 
-  it('rejects non-strict base64 secrets (whitespace/base64url/padding/length) and accepts exactly 32 bytes', () => {
+  it('rejects non-strict base64 secrets (whitespace/base64url/padding/length) and accepts exactly 32 bytes', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'learning-base64-'));
     try {
       const { payload } = fixture(dir);
@@ -396,7 +401,7 @@ describe('learning-strategy-v1 approval adapter', () => {
     }
   });
 
-  it('rejects malformed learning signatures as INVALID_SIGNATURE_ENCODING and wrong values as SIGNATURE_MISMATCH', () => {
+  it('rejects malformed learning signatures as INVALID_SIGNATURE_ENCODING and wrong values as SIGNATURE_MISMATCH', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'learning-sig-'));
     try {
       const { payload } = fixture(dir);
@@ -412,7 +417,7 @@ describe('learning-strategy-v1 approval adapter', () => {
     }
   });
 
-  it('treats now === expiresAt as valid and +1ms as expired', () => {
+  it('treats now === expiresAt as valid and +1ms as expired', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'learning-expiry-'));
     try {
       const { payload: base } = fixture(dir);
@@ -430,7 +435,7 @@ describe('learning-strategy-v1 approval adapter', () => {
     }
   });
 
-  it('checks state/content/evidence before HMAC, then consumes nonce before appending an event', () => {
+  it('checks state/content/evidence before HMAC, then consumes nonce before appending an event', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'learning-promotion-'));
     const noncePath = join(dir, 'learning-nonces.json');
     process.env.SANGFOR_LEARNING_APPROVAL_SECRET = SECRET;
@@ -438,43 +443,43 @@ describe('learning-strategy-v1 approval adapter', () => {
       const { payload, evidenceRoot } = fixture(dir, 'promotion-nonce');
       const token = signLearningApproval(payload);
       const events: unknown[] = [];
-      expect(() => promoteLearningApproval({
+      await expect(async () => await promoteLearningApproval({
         payload,
         approvalToken: token,
         currentState: 'draft',
         currentContentHash: '0'.repeat(64),
         evidenceRoot,
-        nonceStore: new FileSingleUseNonceStore(noncePath),
+        nonceStore: new FileSingleUseNonceStore(noncePath, testFileLocalWriteAuthority('approvals_nonces', noncePath)),
         appendEvent: (value) => { events.push(value); },
-      })).toThrowError(/INVALID_PAYLOAD/);
-      const event = promoteLearningApproval({
+      })).rejects.toThrowError(/INVALID_PAYLOAD/);
+      const event = await promoteLearningApproval({
         payload,
         approvalToken: token,
         currentState: 'draft',
         currentContentHash: payload.contentHash,
         evidenceRoot,
-        nonceStore: new FileSingleUseNonceStore(noncePath),
+        nonceStore: new FileSingleUseNonceStore(noncePath, testFileLocalWriteAuthority('approvals_nonces', noncePath)),
         appendEvent: (value) => { events.push(value); },
       });
       expect(event.type).toBe('learning.lifecycle.approval');
       expect(events).toHaveLength(1);
       expect(JSON.stringify(event)).not.toContain(token);
-      expect(() => promoteLearningApproval({
+      await expect(async () => await promoteLearningApproval({
         payload,
         approvalToken: token,
         currentState: 'draft',
         currentContentHash: payload.contentHash,
         evidenceRoot,
-        nonceStore: new FileSingleUseNonceStore(noncePath),
+        nonceStore: new FileSingleUseNonceStore(noncePath, testFileLocalWriteAuthority('approvals_nonces', noncePath)),
         appendEvent: () => { events.push('unexpected'); },
-      })).toThrowError(/NONCE_REPLAY/);
+      })).rejects.toThrowError(/NONCE_REPLAY/);
       expect(events).toHaveLength(1);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
   });
 
-  it('keeps state unchanged and nonce consumed when event append fails', () => {
+  it('keeps state unchanged and nonce consumed when event append fails', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'learning-append-failure-'));
     const noncePath = join(dir, 'learning-nonces.json');
     process.env.SANGFOR_LEARNING_APPROVAL_SECRET = SECRET;
@@ -482,31 +487,31 @@ describe('learning-strategy-v1 approval adapter', () => {
     try {
       const { payload, evidenceRoot } = fixture(dir, 'append-failure-nonce');
       const token = signLearningApproval(payload);
-      expect(() => promoteLearningApproval({
+      await expect(async () => await promoteLearningApproval({
         payload,
         approvalToken: token,
         currentState: state,
         currentContentHash: payload.contentHash,
         evidenceRoot,
-        nonceStore: new FileSingleUseNonceStore(noncePath),
+        nonceStore: new FileSingleUseNonceStore(noncePath, testFileLocalWriteAuthority('approvals_nonces', noncePath)),
         appendEvent: () => { throw new Error('append unavailable'); },
-      })).toThrowError(new LearningApprovalError('EVENT_APPEND_FAILED', 'append unavailable'));
+      })).rejects.toThrowError(new LearningApprovalError('EVENT_APPEND_FAILED', 'append unavailable'));
       expect(state).toBe('draft');
-      expect(() => promoteLearningApproval({
+      await expect(async () => await promoteLearningApproval({
         payload,
         approvalToken: token,
         currentState: state,
         currentContentHash: payload.contentHash,
         evidenceRoot,
-        nonceStore: new FileSingleUseNonceStore(noncePath),
+        nonceStore: new FileSingleUseNonceStore(noncePath, testFileLocalWriteAuthority('approvals_nonces', noncePath)),
         appendEvent: () => undefined,
-      })).toThrowError(/NONCE_REPLAY/);
+      })).rejects.toThrowError(/NONCE_REPLAY/);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
   });
 
-  it('rejects accessor, inherited, and non-plain payload fields as INVALID_PAYLOAD', () => {
+  it('rejects accessor, inherited, and non-plain payload fields as INVALID_PAYLOAD', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'learning-proto-'));
     try {
       const { payload } = fixture(dir);
@@ -529,7 +534,7 @@ describe('learning-strategy-v1 approval adapter', () => {
     }
   });
 
-  it('maps an unusable learning nonce store to NONCE_STORE_UNAVAILABLE without appending', () => {
+  it('maps an unusable learning nonce store to NONCE_STORE_UNAVAILABLE without appending', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'learning-store-unavailable-'));
     const noncePath = join(dir, 'learning-nonces.json');
     process.env.SANGFOR_LEARNING_APPROVAL_SECRET = SECRET;
@@ -538,15 +543,15 @@ describe('learning-strategy-v1 approval adapter', () => {
       const token = signLearningApproval(payload);
       writeFileSync(noncePath, '{corrupt');
       const events: unknown[] = [];
-      expect(() => promoteLearningApproval({
+      await expect(async () => await promoteLearningApproval({
         payload,
         approvalToken: token,
         currentState: 'draft',
         currentContentHash: payload.contentHash,
         evidenceRoot,
-        nonceStore: new FileSingleUseNonceStore(noncePath),
+        nonceStore: new FileSingleUseNonceStore(noncePath, testFileLocalWriteAuthority('approvals_nonces', noncePath)),
         appendEvent: (value) => { events.push(value); },
-      })).toThrowError(/NONCE_STORE_UNAVAILABLE/u);
+      })).rejects.toThrowError(/NONCE_STORE_UNAVAILABLE/u);
       expect(events).toHaveLength(0);
     } finally {
       rmSync(dir, { recursive: true, force: true });

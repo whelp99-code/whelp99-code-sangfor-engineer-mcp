@@ -50,7 +50,7 @@ describe('docs/SECURITY.md — 브리지 게이트 서술이 실제 동작과 �
     const approval = mintApproval({
       secret: SECRET, actionType: 'bridge.tool-call', actionTarget: 'destructive',
       approvedBy: 'jmpark', changeTicketId: 'tkt-1', rollbackPlanId: 'rb-1',
-    });
+     authorityEpoch: 0});
     const d = (await authorizeToolCall({
       name: 'destructive', toolListResult: TOOL_LIST, enforceWhitelist: true,
       approval, approvalSecret: SECRET,

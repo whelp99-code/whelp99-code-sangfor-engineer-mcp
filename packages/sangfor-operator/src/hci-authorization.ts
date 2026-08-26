@@ -16,6 +16,7 @@ const signedApprovalSchema = z.object({
   rollbackPlanId: z.string().min(1),
   nonce: z.string().min(1),
   expiresAt: z.string().min(1),
+  authorityEpoch: z.number().int().nonnegative(),
 }).strict().readonly();
 
 export type HciMutationAuthorizationInput = {

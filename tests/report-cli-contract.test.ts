@@ -14,6 +14,7 @@ import { type AddressInfo } from 'node:net';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { testPromotionLedger } from './helpers/local-write-authority.js';
 import {
   FilePromotionLedger,
   capabilityEvidenceManifestSchema,
@@ -84,9 +85,9 @@ const validCatalog = (): string => {
   return catalogRoot;
 };
 
-const effectiveAuthority = (
+const effectiveAuthority = async (
   state: 'active' | 'stale' | 'drift' | 'demoted' = 'active',
-): { readonly args: readonly string[]; readonly env: Readonly<Record<string, string>>; readonly evidenceRoot: string; readonly ledgerPath: string } => {
+): Promise<{ readonly args: readonly string[]; readonly env: Readonly<Record<string, string>>; readonly evidenceRoot: string; readonly ledgerPath: string }> => {
   const fixtureRoot = join(REPO_ROOT, 'tests', 'fixtures', 'capability-evidence');
   const evidenceRoot = join(fixtureRoot, 'evidence');
   const manifestPath = join(fixtureRoot, 'active-advisory-manifest.json');
@@ -107,16 +108,16 @@ const effectiveAuthority = (
   const ledgerPath = join(mkRoot(), 'promotion.jsonl');
   const ledgerSecret = 'report-cli-ledger-secret-at-least-32-bytes';
   const checkpointSecret = 'report-cli-checkpoint-secret-at-least-32';
-  const ledger = FilePromotionLedger.initialize(ledgerPath, ledgerSecret, checkpointSecret);
+  const ledger = await testPromotionLedger(ledgerPath, ledgerSecret, checkpointSecret);
   const manifestRef = maskedPromotionRef('manifest', createHash('sha256').update(manifestSource).digest('hex'));
-  ledger.append({
+  await ledger.append({
     version: 1, eventId: 'event-report-cli', at: '2026-08-25T13:00:00.000Z', outcome: 'applied', action: 'promote',
     target: manifest.target, fromMaturity: 'tested_mock', toMaturity: 'field_verified',
     decisionRef: maskedPromotionRef('decision', 'report-cli'), manifestRef,
     nonceRef: maskedPromotionRef('nonce', 'report-cli'), refusalCode: null,
   });
   if (state === 'demoted') {
-    ledger.append({
+    await ledger.append({
       version: 1, eventId: 'event-report-cli-demotion', at: '2026-08-25T14:00:00.000Z', outcome: 'applied', action: 'emergency_demote',
       target: manifest.target, fromMaturity: 'field_verified', toMaturity: 'tested_mock',
       decisionRef: maskedPromotionRef('decision', 'report-cli-demotion'), manifestRef,
@@ -162,7 +163,7 @@ describe('report CLI — closed flag surface', () => {
 
 describe('report CLI — tools come from the canonical live registry', () => {
   it('Given a bridge advertising the covering tool, When the CLI runs strict, Then it exits 0 with one grounded report', async () => {
-    const authority = effectiveAuthority();
+    const authority = await effectiveAuthority();
     const catalogRoot = validCatalog();
     const registryUrl = await startFakeBridge(['sangfor_evaluate_config']);
 
@@ -179,13 +180,13 @@ describe('report CLI — tools come from the canonical live registry', () => {
     ['drift', 'stale'],
     ['demoted', 'demoted'],
   ] as const)('Given %s effective authority, When the CLI runs strict, Then it lowers the numerator and reports the explicit state', async (authorityState, expectedState) => {
-    const authority = effectiveAuthority(authorityState);
+    const authority = await effectiveAuthority(authorityState);
     const catalogRoot = validCatalog();
     const registryUrl = await startFakeBridge(['sangfor_evaluate_config']);
 
     const result = await run(['--strict', '--json', '--catalog-root', catalogRoot, '--evidence-root', authority.evidenceRoot, '--registry-url', registryUrl, ...authority.args], authority.env);
 
-    expect(result.status).toBe(0);
+    expect(result.status, `${result.stdout}\n${result.stderr}`).toBe(0);
     const payload = JSON.parse(result.stdout) as { report: { replacedAtoms: number; automatableAtoms: number; claimIssues: readonly { state: string }[] } };
     expect(payload.report.replacedAtoms).toBe(0);
     expect(payload.report.automatableAtoms).toBe(1);
@@ -193,7 +194,7 @@ describe('report CLI — tools come from the canonical live registry', () => {
   });
 
   it('Given a corrupt authenticated checkpoint, When the CLI runs strict, Then it refuses the report without a rate', async () => {
-    const authority = effectiveAuthority();
+    const authority = await effectiveAuthority();
     const catalogRoot = validCatalog();
     const registryUrl = await startFakeBridge(['sangfor_evaluate_config']);
     writeFileSync(`${authority.ledgerPath}.head.json`, '{}');
@@ -206,7 +207,7 @@ describe('report CLI — tools come from the canonical live registry', () => {
   });
 
   it('Given a bridge that does NOT advertise the covering tool, When the CLI runs strict, Then it refuses — no hardcoded name rescues the claim', async () => {
-    const authority = effectiveAuthority();
+    const authority = await effectiveAuthority();
     const catalogRoot = validCatalog();
     const registryUrl = await startFakeBridge(['sangfor_suggest_rca']);
 
