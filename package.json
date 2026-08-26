@@ -67,6 +67,8 @@
     "check:browser-boundary": "node scripts/check-browser-boundary.mjs",
     "check:data-scope-boundary": "node scripts/check-data-scope-boundary.mjs",
     "verify:rls": "tsx scripts/verify-rls-isolation.ts --require",
+    "blro:backup": "node scripts/blro-backup.mjs",
+    "blro:restore-drill": "node scripts/blro-restore-drill.mjs",
     "test:postgres:mandatory": "tsx scripts/run-mandatory-postgres-tests.ts --require",
     "jm:endpoint:preflight": "node scripts/jm-endpoint-preflight.mjs",
     "jm:endpoint:doctor": "node scripts/jm-endpoint-install.mjs --doctor",

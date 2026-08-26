@@ -81,6 +81,30 @@ psql -h 127.0.0.1 -p 55432 -U postgres -d postgres \
 
 Observed: `blro_app` and `blro_owner` both `rolsuper=f`, `rolbypassrls=f`.
 
+### A third role: the backup reader
+
+RLS is `FORCE`d, so it filters the **table owner** as well. `pg_dump` run as `blro_owner` aborts
+with `query would be affected by row-level security policy` — a loud failure rather than a silent
+empty dump, but a failure nonetheless. Backups therefore use a dedicated `SELECT`-only role with
+`BYPASSRLS` and nothing else:
+
+```bash
+psql -h 127.0.0.1 -p 55432 -U postgres -d postgres <<'SQL'
+CREATE ROLE blro_backup LOGIN PASSWORD 'blro_backup_local'
+  BYPASSRLS NOSUPERUSER NOCREATEDB NOCREATEROLE;
+GRANT CONNECT ON DATABASE blro TO blro_backup;
+SQL
+
+psql -h 127.0.0.1 -p 55432 -U postgres -d blro <<'SQL'
+GRANT USAGE ON SCHEMA public TO blro_backup;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO blro_backup;
+ALTER DEFAULT PRIVILEGES FOR ROLE blro_owner IN SCHEMA public GRANT SELECT ON TABLES TO blro_backup;
+SQL
+```
+
+Never grant `BYPASSRLS` to `blro_app`. The runtime role stays fail-closed; only the backup reader
+sees across projects, and it cannot write.
+
 ## Apply the schema
 
 Migrations run as the **owner**; the application never does DDL.
@@ -130,12 +154,53 @@ the enforcement working. Never "fix" it by granting `BYPASSRLS` or by dropping `
 `SET LOCAL` outside a transaction block is a no-op that only emits a warning — a real pitfall,
 since the surrounding statements then run with no scope at all.
 
+## Backup and restore drill against this cluster
+
+```bash
+export BLRO_BACKUP_DATABASE_URL="postgresql://blro_backup:blro_backup_local@127.0.0.1:55432/blro"
+export BLRO_SCRATCH_ADMIN_DATABASE_URL="postgresql://postgres@127.0.0.1:55432/postgres"
+export SANGFOR_BLRO_AUDIT_SECRET="$(head -c 32 /dev/urandom | base64)"
+
+node -e "const{generateKeyPairSync}=require('node:crypto'),fs=require('node:fs');
+const k=generateKeyPairSync('ed25519');
+fs.writeFileSync('/tmp/blro-task.pem',k.privateKey.export({type:'pkcs8',format:'pem'}),{mode:0o600});
+fs.writeFileSync('/tmp/blro-task.pub.pem',k.publicKey.export({type:'spki',format:'pem'}));"
+
+pnpm run blro:backup --out /tmp/blro-backups --signing-key /tmp/blro-task.pem --backup-id local \
+  --verification-scratch-target \
+  "postgresql://postgres@127.0.0.1:55432/blro_scratch_backup_verify_local" --apply
+pnpm run blro:restore-drill --backup-dir /tmp/blro-backups --backup-id local \
+  --public-key /tmp/blro-task.pub.pem --signing-key /tmp/blro-task.pem \
+  --scratch-target "postgresql://postgres@127.0.0.1:55432/blro_scratch_local"
+# expect: BLRO_RESTORE_DRILL_PASS
+```
+
+Backup apply first creates and drops **only** `blro_scratch_backup_verify_local`; publication waits
+for an exact scratch restore and zero-difference PRE-recovery verification. The drill separately
+creates and drops **only** `blro_scratch_local`. Both refuse a non-loopback, non-reserved, source,
+or existing target. The source database is never a `pg_restore` target. See
+[BLRO Operations Runbook §5](BLRO_OPERATIONS_RUNBOOK.md#5-backup-and-restore) for the RPO contract
+and the recovery policy.
+
+A local single-node cluster has `archive_mode=off` and no standby, so the manifest honestly records
+`syncDurabilityProven: false` and claims only dump-age RPO. That is the correct output here, not a
+failure — `--mode production` is what fails closed on the same evidence.
+
 ## Stop, reset, remove
 
 ```bash
 pg_ctl -D "$PGDATA" -m fast stop          # stop
 rm -rf "$HOME/.local/share/blro-pg"       # destroy the cluster and all local data
 rm -rf /tmp/pgvenv                        # remove the bundled binaries
+```
+
+A drill cleans up after itself, but if one was interrupted, drop the leftovers explicitly — the
+prefix is what makes this safe to glob:
+
+```bash
+psql -h 127.0.0.1 -p 55432 -U postgres -Atc \
+  "SELECT datname FROM pg_database WHERE datname LIKE 'blro\_scratch\_%'" |
+  xargs -r -I{} psql -h 127.0.0.1 -p 55432 -U postgres -c 'DROP DATABASE IF EXISTS "{}" WITH (FORCE)'
 ```
 
 The credentials above are local development values with no production meaning. Real deployments

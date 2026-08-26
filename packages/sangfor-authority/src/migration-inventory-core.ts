@@ -53,6 +53,11 @@ export const RUNS_REFS = [
 export const APPROVAL_REFS = [
   "persist:packages/sangfor-approval/src/index.ts#FileSingleUseNonceStore",
   "persist:packages/sangfor-approval/src/postgres-nonce-store.ts#PostgresSingleUseNonceStore",
+  // Backup captures outstanding approval/nonce authority; the scratch-only restore drill spends it.
+  "persist:scripts/blro-backup.mjs#runBackup",
+  "persist:scripts/blro-restore-drill.mjs#runDrill",
+  "persist:scripts/lib/blro-drill-fixture.mjs#dropDrillFixture",
+  "persist:scripts/lib/blro-drill-fixture.mjs#seedDrillFixture",
   "prisma:model:BlroApproval",
   "prisma:model:BlroApprovalNonce",
 ] as const;
@@ -60,6 +65,8 @@ export const APPROVAL_REFS = [
 export const AUDIT_REFS = [
   "persist:packages/sangfor-hci-client/src/audit-ledger.ts#AuditLedger",
   "persist:packages/sangfor-authority/src/cutover/core-aggregate-targets.ts#AuditCutoverTarget",
+  // Recovery policy appends one keyed audit event per project, in scratch only.
+  "persist:scripts/lib/blro-recovery-policy.mjs#applyRecoveryPolicy",
   "prisma:model:BlroAuditEvent",
 ] as const;
 

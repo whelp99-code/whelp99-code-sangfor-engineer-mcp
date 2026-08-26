@@ -59,6 +59,15 @@ The sole pre-promotion exception is the internal O1 IAG evidence campaign bootst
   `SANGFOR_NONCE_STORE=postgres`, `DATABASE_URL`, and `SANGFOR_PROJECT_ID`
   together; a partial configuration is a refusal.
 
+## Backup and restore-drill trust boundary
+- Backups run as a dedicated `BYPASSRLS`, `SELECT`-only `blro_backup` role. Runtime verifies the role is non-superuser, cannot create roles/databases/schema objects, and has no table-write privilege before exporting one `REPEATABLE READ READ ONLY DEFERRABLE` snapshot for manifest capture and `pg_dump`. The runtime role never gets `BYPASSRLS`, and RLS is never weakened.
+- The backup manifest and drill receipt are signed with an Ed25519 key **path**. The private key is read inside the signing frame and never enters output; only the SPKI digest of the public half is recorded.
+- Published bytes pass a machine gate (`assertNoSecretMaterial`) that refuses private-key PEMs, credentialed connection URLs, `PGPASSWORD`, cookie headers, and secret-shaped fields. Approval nonces appear only as SHA-256 digests, never as values.
+- Connections are rendered as `host:port/database` only. Credentials reach `pg_dump`/`pg_restore`/`psql` through `PGPASSWORD` in the child environment, never on a command line, and tool output is scrubbed before it is surfaced.
+- Evidence-object paths are containment-checked against the evidence root: traversal, symlink escape, and NUL bytes are refused. A referenced object that is missing or whose bytes changed is a refusal — the code never synthesises a hash.
+- Backup apply and restore drill have **no production target path**. Apply requires the exact local admin identity and a fresh `blro_scratch_backup_verify_*` target; it restores and proves the unsigned draft before signing. The drill requires a fresh loopback `blro_scratch_*` target. Neither promotes or rolls back anything, and each drops only the database it created.
+- The recovery policy spends outstanding approvals and nonces and bumps the project epoch so pre-recovery-point authority refuses on replay. It never deletes them, and it never resets, deletes, or promotes an `INDETERMINATE` remote job.
+
 ## Knowledge/data trust
 - RAG runs local-first; cloud embeddings/rerank need `SANGFOR_ALLOW_CLOUD_RAG`; customer-trust docs excluded from results unless `SANGFOR_ALLOW_CLOUD_RAG_CUSTOMER=1`.
 - Wiki writes are review-gated: proposal → `approveWikiUpdate` (action-bound HMAC over the `proposalId`, keyed by `SANGFOR_WIKI_APPROVAL_SECRET`, timing-safe verify, fail-closed if unset) → apply.
@@ -71,4 +80,4 @@ The sole pre-promotion exception is the internal O1 IAG evidence campaign bootst
 - When in doubt, **refuse and surface** rather than proceed.
 
 ## Security env vars (gates & secrets)
-`SANGFOR_ALLOW_REAL_EXECUTION`, `SANGFOR_ALLOW_PRODUCTION_EXECUTION`, `SANGFOR_OPERATOR_APPROVAL_SECRET`, `SANGFOR_IAG_BOOTSTRAP_APPROVAL_SECRET`, `SANGFOR_ALLOW_REMOTE_WRITE`, `SANGFOR_API_TOKEN`, `SANGFOR_BLRO_AUTHORITY_STORE`, `SANGFOR_NONCE_STORE`, `SANGFOR_NONCE_STORE_PATH`, `SANGFOR_PROJECT_ID`, `DATABASE_URL`, `SANGFOR_CHANGE_LEDGER_SECRET`, `SANGFOR_PM_CHAIN_SECRET`, `SANGFOR_WIKI_APPROVAL_SECRET`, `SANGFOR_CAPABILITY_PROMOTION_SECRET`, `SANGFOR_CAPABILITY_PROMOTION_LEDGER_SECRET`, `SANGFOR_CAPABILITY_PROMOTION_CHECKPOINT_SECRET`, `SANGFOR_CAPABILITY_PROMOTION_NONCE_STORE_PATH`, `SANGFOR_CAPABILITY_PROMOTION_LEDGER_PATH`, `SANGFOR_ALLOW_CLOUD_RAG`, `SANGFOR_ALLOW_CLOUD_RAG_CUSTOMER`. See `.env.example` for the full set.
+`SANGFOR_ALLOW_REAL_EXECUTION`, `SANGFOR_ALLOW_PRODUCTION_EXECUTION`, `SANGFOR_OPERATOR_APPROVAL_SECRET`, `SANGFOR_IAG_BOOTSTRAP_APPROVAL_SECRET`, `SANGFOR_ALLOW_REMOTE_WRITE`, `SANGFOR_API_TOKEN`, `SANGFOR_BLRO_AUTHORITY_STORE`, `SANGFOR_NONCE_STORE`, `SANGFOR_NONCE_STORE_PATH`, `SANGFOR_PROJECT_ID`, `DATABASE_URL`, `SANGFOR_CHANGE_LEDGER_SECRET`, `SANGFOR_PM_CHAIN_SECRET`, `SANGFOR_WIKI_APPROVAL_SECRET`, `SANGFOR_CAPABILITY_PROMOTION_SECRET`, `SANGFOR_CAPABILITY_PROMOTION_LEDGER_SECRET`, `SANGFOR_CAPABILITY_PROMOTION_CHECKPOINT_SECRET`, `SANGFOR_CAPABILITY_PROMOTION_NONCE_STORE_PATH`, `SANGFOR_CAPABILITY_PROMOTION_LEDGER_PATH`, `SANGFOR_ALLOW_CLOUD_RAG`, `SANGFOR_ALLOW_CLOUD_RAG_CUSTOMER`, `BLRO_BACKUP_DATABASE_URL`, `BLRO_SCRATCH_ADMIN_DATABASE_URL`, `SANGFOR_BLRO_AUDIT_SECRET`. See `.env.example` for the full set.

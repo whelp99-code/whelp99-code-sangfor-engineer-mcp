@@ -34,8 +34,8 @@
     "credential_local": 1,
     "curated_seed": 1
   },
-  "manifestSemanticSha256": "3f932ac352e723edcda2dac33702a263252452a5b9a73ebb04c3a6829d4a7284",
-  "repositoryCensusDigest": "950047271b405b2cb1835d83b7580e65b2bc33cb244303af0198f32582f8655e",
+  "manifestSemanticSha256": "73a3947d41cd782aa54105ce149fb7bf93e9554868057e08137a6e912c774bde",
+  "repositoryCensusDigest": "466b53e0e32fc5df8a0950adbba8663da96fbd5d352e2fa2504cb9efaef00150",
   "sourceOnlyRefs": [
     "m026-spec-registry:data/specs#curated-seed:v1"
   ]
