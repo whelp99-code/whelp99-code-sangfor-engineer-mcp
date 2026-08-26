@@ -44,7 +44,41 @@ export {
   type ToolRegistryLoad,
   type ToolRegistrySource,
 } from './tool-registry.js';
-export { loadWorkAtomCatalog, defaultCatalogRoot, type CatalogLoad } from './loader.js';
+export {
+  loadWorkAtomCatalog, loadCanonicalWorkAtomCatalog, defaultCatalogRoot,
+  CatalogAuthorityError, assertCanonicalCatalogAuthority,
+  type CatalogLoad, type CanonicalCatalogLoad, type CanonicalWorkAtomCatalog,
+} from './loader.js';
+export {
+  WORK_ATOM_CATALOG_MANIFEST_FILE, WORK_ATOM_CATALOG_MANIFEST_VERSION, deriveWorkAtomCatalogManifest,
+  type WorkAtomCatalogManifest,
+} from './catalog-manifest.js';
+export {
+  CAPABILITY_CAMPAIGN_VERSION,
+  CAMPAIGN_PRODUCTS,
+  CAMPAIGN_READINESS,
+  type CampaignProduct,
+  type CampaignRequirement,
+  type CapabilityCampaignManifest,
+} from './campaign-schema.js';
+export {
+  CampaignAuthorityError,
+  buildCapabilityCampaign,
+  campaignAtoms,
+  parseCapabilityCampaign,
+  verifyCapabilityCampaign,
+} from './campaign.js';
+export {
+  CENSUS_CLAIM_STATES,
+  CensusAuthorityError,
+  buildProductEvidenceCensus,
+  parseProductEvidenceCensus,
+  verifyProductEvidenceCensus,
+  type CensusClaimState,
+  type ProductBlockedPrerequisite,
+  type ProductEvidenceCensus,
+  type ProductEvidenceCensusAtom,
+} from './census.js';
 export {
   computeReplacementCoverage,
   type CoverageBucket,

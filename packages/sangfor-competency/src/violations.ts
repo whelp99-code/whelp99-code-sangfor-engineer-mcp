@@ -7,6 +7,7 @@
  */
 export const COVERAGE_VIOLATION_KINDS = [
   'missingCatalog',
+  'catalogManifestInvalid',
   'corruptFile',
   'schemaInvalid',
   'duplicateId',
