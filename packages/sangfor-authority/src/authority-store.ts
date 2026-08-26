@@ -15,6 +15,14 @@ import type {
   SqlExecutor,
 } from './authority-store-contracts.js';
 
+export class AuthorityStorePersistenceError extends Error {
+  readonly name = 'AuthorityStorePersistenceError';
+
+  constructor(readonly code: 'STORE_UNAVAILABLE' | 'INDETERMINATE', options: ErrorOptions) {
+    super(code, options);
+  }
+}
+
 function requireId(value: string, label: string): void {
   if (!/^[A-Za-z0-9._-]{1,64}$/u.test(value) || value === '.' || value === '..' || value.includes('..')) {
     throw new Error(`AUTHORITY_INPUT_INVALID: ${label}`);
@@ -40,12 +48,17 @@ function mask(value: unknown): unknown {
 export class BlroAuthorityStore {
   constructor(private readonly db: AuthorityDatabase, private readonly auditSecret?: string) {}
 
-  private async scoped<T>(projectId: string, work: (tx: SqlExecutor) => Promise<T>): Promise<T> {
+  private async scoped<T>(
+    projectId: string,
+    work: (tx: SqlExecutor) => Promise<T>,
+    advisoryLock?: string,
+  ): Promise<T> {
     requireId(projectId, 'projectId');
     return this.db.$transaction(async (tx) => {
+      if (advisoryLock) await tx.$executeRawUnsafe(`SELECT pg_advisory_xact_lock(hashtext($1))`, advisoryLock);
       await tx.$executeRawUnsafe(`SELECT set_config('app.project_id', $1, true)`, projectId);
       return work(tx);
-    }, { isolationLevel: 'Serializable' });
+    }, { isolationLevel: advisoryLock ? 'ReadCommitted' : 'Serializable' });
   }
 
   private async authorizationRows(
@@ -124,7 +137,7 @@ export class BlroAuthorityStore {
         membershipActive: row?.membershipActive,
       }).ok) throw new Error('AUTHORITY_SCOPE_UNAUTHORIZED');
       return work(tx);
-    });
+    }, permission === 'audit:write' ? `blro-audit:${input.projectId}` : undefined);
   }
 
   async registerDevice(input: AuthorityActorScope & { id: string; name: string; product: string; host: string; metadata?: unknown }): Promise<void> {
@@ -176,21 +189,27 @@ export class BlroAuthorityStore {
   }
 
   async appendAudit(input: AuthorityActorScope & { kind: string; payload: unknown }): Promise<AuditEvent> {
-    return this.authorized(input, 'audit:write', async (tx) => {
-      await tx.$executeRawUnsafe(`SELECT pg_advisory_xact_lock(hashtext($1))`, `blro-audit:${input.projectId}`);
-      const rows = await tx.$queryRawUnsafe<Array<{ projectId: string; seq: bigint | number; kind: string; payload: unknown; prevHash: string; actorId?: string; at: Date | string; hash: string; keyed: boolean }>>(
-        `SELECT "projectId","seq","kind","payload","prevHash","actorId","at","hash","keyed" FROM "BlroAuditEvent" WHERE "projectId"=$1 ORDER BY "seq"`, input.projectId,
-      );
-      const existing: AuditEvent[] = rows.map((row) => ({ ...row, seq: Number(row.seq), at: new Date(row.at).toISOString() }));
-      const check = verifyAuditEvents(existing, this.auditSecret);
-      if (!check.ok) throw new Error(`AUDIT_CHAIN_TAMPERED: ${check.brokenAt}`);
-      const event = buildAuditEvent({ projectId: input.projectId, seq: existing.length, kind: input.kind, payload: mask(input.payload), prevHash: existing.at(-1)?.hash ?? 'GENESIS', actorId: input.actorId }, this.auditSecret);
-      await tx.$executeRawUnsafe(
-        `INSERT INTO "BlroAuditEvent" ("id","tenantId","projectId","seq","at","actorId","kind","payload","prevHash","hash","keyed") VALUES ($1,$2,$3,$4,$5::timestamptz,$6,$7,$8::jsonb,$9,$10,$11)`,
-        randomUUID(), input.tenantId, event.projectId, event.seq, event.at, event.actorId ?? null, event.kind, JSON.stringify(event.payload), event.prevHash, event.hash, event.keyed,
-      );
-      return event;
-    });
+    let appendAttempted = false;
+    try {
+      return await this.authorized(input, 'audit:write', async (tx) => {
+        const rows = await tx.$queryRawUnsafe<Array<{ projectId: string; seq: bigint | number; kind: string; payload: unknown; prevHash: string; actorId?: string; at: Date | string; hash: string; keyed: boolean }>>(
+          `SELECT "projectId","seq","kind","payload","prevHash","actorId","at","hash","keyed" FROM "BlroAuditEvent" WHERE "projectId"=$1 ORDER BY "seq"`, input.projectId,
+        );
+        const existing: AuditEvent[] = rows.map((row) => ({ ...row, seq: Number(row.seq), at: new Date(row.at).toISOString() }));
+        const check = verifyAuditEvents(existing, this.auditSecret);
+        if (!check.ok) throw new Error(`AUDIT_CHAIN_TAMPERED: ${check.brokenAt}`);
+        const event = buildAuditEvent({ projectId: input.projectId, seq: existing.length, kind: input.kind, payload: mask(input.payload), prevHash: existing.at(-1)?.hash ?? 'GENESIS', actorId: input.actorId }, this.auditSecret);
+        appendAttempted = true;
+        await tx.$executeRawUnsafe(
+          `INSERT INTO "BlroAuditEvent" ("id","tenantId","projectId","seq","at","actorId","kind","payload","prevHash","hash","keyed") VALUES ($1,$2,$3,$4,$5::timestamptz,$6,$7,$8::jsonb,$9,$10,$11)`,
+          randomUUID(), input.tenantId, event.projectId, event.seq, event.at, event.actorId ?? null, event.kind, JSON.stringify(event.payload), event.prevHash, event.hash, event.keyed,
+        );
+        return event;
+      });
+    } catch (error) {
+      if (error instanceof Error && /^(?:AUTHORITY_|AUDIT_)/u.test(error.message)) throw error;
+      throw new AuthorityStorePersistenceError(appendAttempted ? 'INDETERMINATE' : 'STORE_UNAVAILABLE', { cause: error });
+    }
   }
 
   async putEvidenceManifest(input: AuthorityActorScope & { id: string; runId: string; contentHash: string; manifest: unknown }): Promise<void> {

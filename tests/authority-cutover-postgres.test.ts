@@ -18,6 +18,7 @@ const suffix = randomUUID();
 const tenantId = `cutover-tenant-${suffix}`;
 const projectId = `cutover-project-${suffix}`;
 const actorId = `cutover-actor-${suffix}`;
+const roleId = `cutover-role-${suffix}`;
 
 describeDatabase('authority cutover PostgreSQL coordination', () => {
   let prisma: PrismaClient;
@@ -34,11 +35,18 @@ describeDatabase('authority cutover PostgreSQL coordination', () => {
     await prisma.$executeRawUnsafe(
       `INSERT INTO "BlroActor" ("id","tenantId","displayName","actorType") VALUES ($1,$2,'cutover actor','service')`, actorId, tenantId,
     );
+    await prisma.$executeRawUnsafe(
+      `INSERT INTO "BlroRole" ("id","tenantId","name","permissions") VALUES ($1,$2,'cutover writer',ARRAY['cutover:write'])`, roleId, tenantId,
+    );
     await prisma.$transaction(async (tx) => {
       await tx.$executeRawUnsafe(`SELECT set_config('app.project_id', $1, true)`, projectId);
       await tx.$executeRawUnsafe(
         `INSERT INTO "BlroProject" ("id","tenantId","name") VALUES ($1,$2,$3)`,
         projectId, tenantId, 'cutover project',
+      );
+      await tx.$executeRawUnsafe(
+        `INSERT INTO "BlroMembership" ("id","tenantId","projectId","actorId","roleId") VALUES ($1,$2,$3,$4,$5)`,
+        `cutover-membership-${suffix}`, tenantId, projectId, actorId, roleId,
       );
     });
   });
@@ -50,8 +58,10 @@ describeDatabase('authority cutover PostgreSQL coordination', () => {
       await tx.$executeRawUnsafe(`DELETE FROM "BlroLocalWriteIntent" WHERE "projectId"=$1`, projectId);
       await tx.$executeRawUnsafe(`DELETE FROM "BlroAuthorityCutover" WHERE "projectId"=$1`, projectId);
       await tx.$executeRawUnsafe(`DELETE FROM "BlroProjectAuthorityEpoch" WHERE "projectId"=$1`, projectId);
+      await tx.$executeRawUnsafe(`DELETE FROM "BlroMembership" WHERE "projectId"=$1`, projectId);
       await tx.$executeRawUnsafe(`DELETE FROM "BlroProject" WHERE "id"=$1`, projectId);
     });
+    await prisma.$executeRawUnsafe(`DELETE FROM "BlroRole" WHERE "id"=$1`, roleId);
     await prisma.$executeRawUnsafe(`DELETE FROM "BlroActor" WHERE "id"=$1`, actorId);
     await prisma.$executeRawUnsafe(`DELETE FROM "BlroTenant" WHERE "id"=$1`, tenantId);
     await prisma.$disconnect();

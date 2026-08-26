@@ -56,7 +56,6 @@ export const GENERATED_REFS = [
   "persist:scripts/run-issue-16-remediation-rag-ab-eval.mjs#<module>",
   "persist:scripts/strategy-cli.ts#runStrategyCli",
   "persist:scripts/support-content-crawl.ts#crawlProduct",
-  "persist:scripts/verify-rls-isolation.mjs#<module>",
-  "persist:scripts/verify-rls-isolation.mjs#seedProject",
+  "persist:scripts/verify-rls-isolation.ts#isolationProblems",
 ] as const;
 

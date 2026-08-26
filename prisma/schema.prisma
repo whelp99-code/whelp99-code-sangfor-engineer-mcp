@@ -286,6 +286,7 @@ model BlroProject {
   sourceRootOwnerships      BlroSourceRootOwner[]
 
   @@unique([id, tenantId])
+  @@unique([tenantId, id])
   @@index([tenantId])
 }
 
@@ -300,7 +301,7 @@ model BlroActor {
   createdAt         DateTime               @default(now())
   tenant            BlroTenant             @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   memberships       BlroMembership[]
-  localWriteIntents BlroLocalWriteIntent[]
+  localWriteIntents BlroLocalWriteIntent[] @relation("LocalWriteIntentActor")
 
   @@unique([id, tenantId])
   @@index([tenantId])
@@ -327,7 +328,7 @@ model BlroMembership {
   roleId            String
   createdAt         DateTime               @default(now())
   revokedAt         DateTime?
-  project           BlroProject            @relation(fields: [projectId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  project           BlroProject            @relation(fields: [tenantId, projectId], references: [tenantId, id], onDelete: Restrict)
   actor             BlroActor              @relation(fields: [actorId, tenantId], references: [id, tenantId], onDelete: Restrict)
   role              BlroRole               @relation(fields: [roleId, tenantId], references: [id, tenantId], onDelete: Restrict)
   consumedNonces    BlroApprovalNonce[]
@@ -338,8 +339,10 @@ model BlroMembership {
   approvals         BlroApproval[]
   evidenceManifests BlroEvidenceManifest[]
   ragDocuments      BlroRagDocument[]
+  localWriteIntents BlroLocalWriteIntent[] @relation("LocalWriteIntentMembership")
 
   @@unique([projectId, actorId])
+  @@unique([tenantId, projectId, actorId])
   @@index([actorId])
 }
 
@@ -354,7 +357,7 @@ model BlroApprovalNonce {
   authorityEpoch       Int
   createdAt            DateTime        @default(now())
   tenant               BlroTenant      @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  project              BlroProject     @relation(fields: [projectId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  project              BlroProject     @relation(fields: [tenantId, projectId], references: [tenantId, id], onDelete: Restrict)
   consumedByMembership BlroMembership? @relation(fields: [projectId, consumedByActorId], references: [projectId, actorId], onDelete: Restrict)
 
   @@index([expiresAt])
@@ -366,7 +369,7 @@ model BlroAuditEvent {
   tenantId        String
   projectId       String
   seq             BigInt
-  at              DateTime        @default(now())
+  at              DateTime        @default(now()) @db.Timestamptz(3)
   actorId         String?
   kind            String
   payload         Json
@@ -374,7 +377,7 @@ model BlroAuditEvent {
   hash            String
   keyed           Boolean         @default(false)
   tenant          BlroTenant      @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  project         BlroProject     @relation(fields: [projectId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  project         BlroProject     @relation(fields: [tenantId, projectId], references: [tenantId, id], onDelete: Restrict)
   actorMembership BlroMembership? @relation(fields: [projectId, actorId], references: [projectId, actorId], onDelete: Restrict)
 
   @@unique([projectId, seq])
@@ -392,7 +395,7 @@ model BlroDevice {
   createdAt           DateTime       @default(now())
   updatedAt           DateTime       @updatedAt
   tenant              BlroTenant     @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  project             BlroProject    @relation(fields: [projectId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  project             BlroProject    @relation(fields: [tenantId, projectId], references: [tenantId, id], onDelete: Restrict)
   createdByMembership BlroMembership @relation(fields: [projectId, createdByActorId], references: [projectId, actorId], onDelete: Restrict)
 
   @@unique([projectId, name])
@@ -410,7 +413,7 @@ model BlroRun {
   createdAt          DateTime               @default(now())
   updatedAt          DateTime               @updatedAt
   tenant             BlroTenant             @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  project            BlroProject            @relation(fields: [projectId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  project            BlroProject            @relation(fields: [tenantId, projectId], references: [tenantId, id], onDelete: Restrict)
   actorMembership    BlroMembership         @relation(fields: [projectId, actorId], references: [projectId, actorId], onDelete: Restrict)
   steps              BlroRunStep[]
   evidence           BlroEvidenceManifest[]
@@ -431,7 +434,7 @@ model BlroRunStep {
   payload         Json
   createdAt       DateTime       @default(now())
   tenant          BlroTenant     @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  project         BlroProject    @relation(fields: [projectId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  project         BlroProject    @relation(fields: [tenantId, projectId], references: [tenantId, id], onDelete: Restrict)
   run             BlroRun        @relation(fields: [runId, projectId], references: [id, projectId], onDelete: Restrict)
   actorMembership BlroMembership @relation(fields: [projectId, actorId], references: [projectId, actorId], onDelete: Restrict)
 
@@ -450,7 +453,7 @@ model BlroApproval {
   authorityEpoch  Int
   createdAt       DateTime       @default(now())
   tenant          BlroTenant     @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  project         BlroProject    @relation(fields: [projectId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  project         BlroProject    @relation(fields: [tenantId, projectId], references: [tenantId, id], onDelete: Restrict)
   actorMembership BlroMembership @relation(fields: [projectId, actorId], references: [projectId, actorId], onDelete: Restrict)
 
   @@index([projectId, actionHash])
@@ -467,7 +470,7 @@ model BlroEvidenceManifest {
   manifest        Json
   createdAt       DateTime       @default(now())
   tenant          BlroTenant     @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  project         BlroProject    @relation(fields: [projectId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  project         BlroProject    @relation(fields: [tenantId, projectId], references: [tenantId, id], onDelete: Restrict)
   actorMembership BlroMembership @relation(fields: [projectId, actorId], references: [projectId, actorId], onDelete: Restrict)
   run             BlroRun        @relation(fields: [runId, projectId], references: [id, projectId], onDelete: Restrict)
 
@@ -485,7 +488,7 @@ model BlroRagDocument {
   provenance      Json
   createdAt       DateTime       @default(now())
   tenant          BlroTenant     @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  project         BlroProject    @relation(fields: [projectId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  project         BlroProject    @relation(fields: [tenantId, projectId], references: [tenantId, id], onDelete: Restrict)
   actorMembership BlroMembership @relation(fields: [projectId, actorId], references: [projectId, actorId], onDelete: Restrict)
   chunks          BlroRagChunk[]
 
@@ -504,7 +507,7 @@ model BlroRagChunk {
   aclActorIds String[]
   createdAt   DateTime        @default(now())
   tenant      BlroTenant      @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  project     BlroProject     @relation(fields: [projectId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  project     BlroProject     @relation(fields: [tenantId, projectId], references: [tenantId, id], onDelete: Restrict)
   document    BlroRagDocument @relation(fields: [documentId, projectId], references: [id, projectId], onDelete: Restrict)
 
   @@unique([projectId, contentHash])
@@ -526,7 +529,7 @@ model BlroClientEnrollment {
   record            Json
   updatedAt         DateTime    @updatedAt
   tenant            BlroTenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  project           BlroProject @relation(fields: [projectId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  project           BlroProject @relation(fields: [tenantId, projectId], references: [tenantId, id], onDelete: Restrict)
 
   @@unique([projectId, certificateSerial])
   @@index([projectId, installationId])
@@ -548,7 +551,7 @@ model BlroEnrollmentIdentity {
   revocationReason         String?
   revocationRevision       Int?
   tenant                   BlroTenant                   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  project                  BlroProject                  @relation(fields: [projectId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  project                  BlroProject                  @relation(fields: [tenantId, projectId], references: [tenantId, id], onDelete: Restrict)
   certificates             BlroEnrollmentCertificate[]
   grants                   BlroEnrollmentGrant[]
   rotations                BlroEnrollmentRotation[]
@@ -583,7 +586,7 @@ model BlroEnrollmentCertificate {
   revocationReason  String?
   createdAt         DateTime
   tenant            BlroTenant             @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  project           BlroProject            @relation(fields: [projectId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  project           BlroProject            @relation(fields: [tenantId, projectId], references: [tenantId, id], onDelete: Restrict)
   enrollment        BlroEnrollmentIdentity @relation(fields: [enrollmentId, projectId], references: [id, projectId], onDelete: Restrict)
 
   @@unique([projectId, serial])
@@ -601,7 +604,7 @@ model BlroEnrollmentGrant {
   revision     Int
   createdAt    DateTime
   tenant       BlroTenant             @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  project      BlroProject            @relation(fields: [projectId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  project      BlroProject            @relation(fields: [tenantId, projectId], references: [tenantId, id], onDelete: Restrict)
   enrollment   BlroEnrollmentIdentity @relation(fields: [enrollmentId, projectId], references: [id, projectId], onDelete: Restrict)
 
   @@unique([projectId, enrollmentId, originDigest, scope])
@@ -621,7 +624,7 @@ model BlroEnrollmentBootstrapToken {
   revision            Int
   createdAt           DateTime
   tenant              BlroTenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  project             BlroProject @relation(fields: [projectId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  project             BlroProject @relation(fields: [tenantId, projectId], references: [tenantId, id], onDelete: Restrict)
 
   @@unique([projectId, tokenDigest])
   @@index([projectId, installationId])
@@ -642,7 +645,7 @@ model BlroEnrollmentRotation {
   revision              Int
   createdAt             DateTime
   tenant                BlroTenant             @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  project               BlroProject            @relation(fields: [projectId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  project               BlroProject            @relation(fields: [tenantId, projectId], references: [tenantId, id], onDelete: Restrict)
   enrollment            BlroEnrollmentIdentity @relation(fields: [enrollmentId, projectId], references: [id, projectId], onDelete: Restrict)
 
   @@unique([projectId, enrollmentId, oldSerial, newSerial])
@@ -660,7 +663,7 @@ model BlroRemoteJobCapabilityJti {
   capabilityExpiresAt DateTime
   consumedAt          DateTime
   tenant              BlroTenant             @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  project             BlroProject            @relation(fields: [projectId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  project             BlroProject            @relation(fields: [tenantId, projectId], references: [tenantId, id], onDelete: Restrict)
   enrollment          BlroEnrollmentIdentity @relation(fields: [tenantId, projectId, installationId], references: [tenantId, projectId, installationId], onDelete: Restrict)
   remoteJob           BlroRemoteJob?
 
@@ -689,7 +692,7 @@ model BlroRemoteJob {
   createdAt            DateTime
   updatedAt            DateTime
   tenant               BlroTenant                 @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  project              BlroProject                @relation(fields: [projectId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  project              BlroProject                @relation(fields: [tenantId, projectId], references: [tenantId, id], onDelete: Restrict)
   enrollment           BlroEnrollmentIdentity     @relation(fields: [tenantId, projectId, installationId], references: [tenantId, projectId, installationId], onDelete: Restrict)
   capability           BlroRemoteJobCapabilityJti @relation(fields: [capabilityJti, tenantId, projectId, installationId, jobId, requestDigest], references: [jti, tenantId, projectId, installationId, jobId, requestDigest], onDelete: Restrict)
 
@@ -738,7 +741,7 @@ model BlroSourceRootOwner {
   projectId    String
   sourceRoot   String
   createdAt    DateTime    @default(now()) @db.Timestamptz(3)
-  project      BlroProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project      BlroProject @relation(fields: [tenantId, projectId], references: [tenantId, id], onDelete: Cascade)
 
   @@id([sourceDevice, sourceInode])
 }
@@ -759,8 +762,9 @@ model BlroLocalWriteIntent {
   createdAt       DateTime             @default(now()) @db.Timestamptz(3)
   resolvedAt      DateTime?            @db.Timestamptz(3)
   tenant          BlroTenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  project         BlroProject          @relation(fields: [projectId], references: [id], onDelete: Restrict)
-  actor           BlroActor            @relation(fields: [actorId], references: [id], onDelete: Restrict)
+  project         BlroProject          @relation(fields: [tenantId, projectId], references: [tenantId, id], onDelete: Restrict)
+  actor           BlroActor            @relation("LocalWriteIntentActor", fields: [actorId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  actorMembership BlroMembership       @relation("LocalWriteIntentMembership", fields: [tenantId, projectId, actorId], references: [tenantId, projectId, actorId], onDelete: Restrict)
   cutover         BlroAuthorityCutover @relation(fields: [projectId, aggregate], references: [projectId, aggregate], onDelete: Restrict)
 
   @@index([projectId, aggregate, status])
@@ -788,7 +792,7 @@ model BlroServiceRegistry {
   payload   Json
   createdAt DateTime    @default(now())
   tenant    BlroTenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  project   BlroProject @relation(fields: [projectId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  project   BlroProject @relation(fields: [tenantId, projectId], references: [tenantId, id], onDelete: Restrict)
 
   @@index([projectId, kind])
 }
@@ -801,7 +805,7 @@ model BlroPmRecord {
   payload   Json
   createdAt DateTime    @default(now())
   tenant    BlroTenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  project   BlroProject @relation(fields: [projectId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  project   BlroProject @relation(fields: [tenantId, projectId], references: [tenantId, id], onDelete: Restrict)
 
   @@index([projectId, kind])
 }
@@ -814,7 +818,7 @@ model BlroFeedbackLesson {
   payload   Json
   createdAt DateTime    @default(now())
   tenant    BlroTenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  project   BlroProject @relation(fields: [projectId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  project   BlroProject @relation(fields: [tenantId, projectId], references: [tenantId, id], onDelete: Restrict)
 
   @@index([projectId, kind])
 }
@@ -827,7 +831,7 @@ model BlroEvalRecord {
   payload   Json
   createdAt DateTime    @default(now())
   tenant    BlroTenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  project   BlroProject @relation(fields: [projectId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  project   BlroProject @relation(fields: [tenantId, projectId], references: [tenantId, id], onDelete: Restrict)
 
   @@index([projectId, kind])
 }
@@ -840,7 +844,7 @@ model BlroWikiProposal {
   payload   Json
   createdAt DateTime    @default(now())
   tenant    BlroTenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  project   BlroProject @relation(fields: [projectId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  project   BlroProject @relation(fields: [tenantId, projectId], references: [tenantId, id], onDelete: Restrict)
 
   @@index([projectId, kind])
 }
@@ -853,7 +857,7 @@ model BlroLearningRecord {
   payload   Json
   createdAt DateTime    @default(now())
   tenant    BlroTenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  project   BlroProject @relation(fields: [projectId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  project   BlroProject @relation(fields: [tenantId, projectId], references: [tenantId, id], onDelete: Restrict)
 
   @@index([projectId, kind])
 }
@@ -866,7 +870,7 @@ model BlroFirmwareEvidence {
   payload   Json
   createdAt DateTime    @default(now())
   tenant    BlroTenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  project   BlroProject @relation(fields: [projectId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  project   BlroProject @relation(fields: [tenantId, projectId], references: [tenantId, id], onDelete: Restrict)
 
   @@index([projectId, kind])
 }
@@ -879,7 +883,7 @@ model BlroConfigChronicle {
   payload   Json
   createdAt DateTime    @default(now())
   tenant    BlroTenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  project   BlroProject @relation(fields: [projectId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  project   BlroProject @relation(fields: [tenantId, projectId], references: [tenantId, id], onDelete: Restrict)
 
   @@index([projectId, kind])
 }
@@ -892,7 +896,7 @@ model BlroCapabilityEvidence {
   payload   Json
   createdAt DateTime    @default(now())
   tenant    BlroTenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  project   BlroProject @relation(fields: [projectId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  project   BlroProject @relation(fields: [tenantId, projectId], references: [tenantId, id], onDelete: Restrict)
 
   @@index([projectId, kind])
 }
@@ -907,7 +911,7 @@ model BlroRagSourceChunk {
   aclActorIds String[]
   createdAt   DateTime    @default(now())
   tenant      BlroTenant  @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  project     BlroProject @relation(fields: [projectId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  project     BlroProject @relation(fields: [tenantId, projectId], references: [tenantId, id], onDelete: Restrict)
 
   @@unique([projectId, contentHash])
   @@index([projectId, documentId])

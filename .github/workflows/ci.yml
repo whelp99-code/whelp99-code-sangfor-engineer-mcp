@@ -62,6 +62,51 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: pnpm run check:tracker-truth
 
+  postgres-authority:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      PGPASSWORD: postgres
+      DATABASE_URL: postgresql://blro_app:blro_app_ci@127.0.0.1:5432/blro
+      BLRO_OWNER_DATABASE_URL: postgresql://blro_owner:blro_owner_ci@127.0.0.1:5432/blro
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.node-version-blro'
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Create non-bypass owner and runtime roles
+        run: |
+          psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE ROLE blro_owner LOGIN PASSWORD 'blro_owner_ci' NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE;
+          CREATE ROLE blro_app LOGIN PASSWORD 'blro_app_ci' NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE;
+          CREATE DATABASE blro OWNER blro_owner;
+          SQL
+          psql -h 127.0.0.1 -U postgres -d blro -v ON_ERROR_STOP=1 <<'SQL'
+          GRANT CONNECT ON DATABASE blro TO blro_app;
+          GRANT USAGE ON SCHEMA public TO blro_app;
+          ALTER DEFAULT PRIVILEGES FOR ROLE blro_owner IN SCHEMA public
+            GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO blro_app;
+          SQL
+      - name: Mandatory PostgreSQL authority profile
+        run: pnpm run test:postgres:mandatory
+
   # JM 엔드포인트 레인. `needs: verify`가 "BLRO 먼저, JM 나중" 순서를 CI에서
   # 강제한다. JM이 앞서 통과하는 배치는 존재할 수 없다.
   verify-jm-endpoint:
