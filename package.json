@@ -51,6 +51,7 @@
     "rag:reembed": "tsx scripts/rag-reembed.ts",
     "rag:eval": "tsx scripts/rag-eval-run.ts",
     "rag:profile": "tsx scripts/rag-embedding-profile.ts",
+    "rag:pgvector:qa": "tsx scripts/rag-pgvector-qa.ts",
     "rag:export-shards": "tsx scripts/rag-export-shards.ts",
     "login:kb:chrome": "tsx scripts/open-kb-and-capture.ts",
     "ingest:docs": "tsx scripts/ingest-documents.ts",

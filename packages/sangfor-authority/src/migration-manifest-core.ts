@@ -54,7 +54,7 @@ export const CORE_MIGRATIONS = [
   },
   {
     id: 'm008-rag-source-chunks', order: 8, aggregate: 'rag_source_chunks', ownerPackage: '@sangfor/rag', classification: 'authoritative',
-    sources: sourcesFor(RAG_SOURCE_REFS), target: { kind: 'postgres', tables: ['BlroRagDocument', 'BlroRagSourceChunk'] },
+    sources: sourcesFor(RAG_SOURCE_REFS), target: { kind: 'postgres', tables: ['BlroRagDocument', 'BlroRagSourceChunk', 'BlroRagAuthoritativeChunk'] },
     projectScope: 'required', rlsRequired: true, secretPolicy: 'redact_before_authority', prerequisites: ['rag-source-schema'], dependsOn: ['m002-project-installation-identity'], inventoryRefs: [...RAG_SOURCE_REFS],
   },
   {

@@ -79,7 +79,9 @@ export function verifyLocalWriterCoverage(root: string): void {
     .flatMap((entry) => entry.inventoryRefs)
     .filter((reference) => reference.startsWith('persist:packages/') || reference.startsWith('persist:apps/'))
     .filter((reference) => !reference.startsWith('persist:packages/sangfor-authority/'))
-    .filter((reference) => !reference.includes('postgres-nonce-store.ts') && !INTERNAL_LOCAL_HELPERS.has(reference)).sort();
+    .filter((reference) => !reference.includes('postgres-nonce-store.ts'))
+    .filter((reference) => !reference.startsWith('persist:packages/sangfor-rag/src/pgvector-store.ts#'))
+    .filter((reference) => !INTERNAL_LOCAL_HELPERS.has(reference)).sort();
   const expected = [...LOCAL_WRITER_REFS].sort();
   if (discovered.join('\n') !== expected.join('\n')) throw new AuthorityCutoverError('LOCAL_WRITER_SET_DRIFT');
   for (const reference of LOCAL_WRITER_REFS) {

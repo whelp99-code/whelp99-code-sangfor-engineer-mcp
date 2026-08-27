@@ -91,6 +91,13 @@ function assertReachable(psql: string, url: string, refusal: string): void {
   if (probe.status !== 0) throw new MandatoryPostgresError(refusal);
 }
 
+function assertPgvectorAvailable(psql: string, ownerUrl: string): void {
+  const probe = spawnSync(psql, [ownerUrl, '-Atc', `SELECT extversion FROM pg_extension WHERE extname='vector'`], { encoding: 'utf8' });
+  if (probe.status !== 0 || probe.stdout.trim() !== '0.8.1') {
+    throw new MandatoryPostgresError('MANDATORY_POSTGRES_PGVECTOR_0_8_1_REQUIRED');
+  }
+}
+
 function run(command: Command): string {
   const result = spawnSync(command.executable, command.arguments, {
     cwd: process.cwd(), env: command.environment, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024,
@@ -119,6 +126,7 @@ function main(): void {
   const psqlBinary = join(bindir, 'psql');
   assertReachable(psqlBinary, backupUrl, 'MANDATORY_POSTGRES_BACKUP_ROLE_UNUSABLE');
   assertReachable(psqlBinary, scratchAdminUrl, 'MANDATORY_POSTGRES_SCRATCH_ADMIN_UNUSABLE');
+  assertPgvectorAvailable(psqlBinary, ownerUrl);
   const environment = {
     ...process.env,
     // Every child inherits the resolved bindir first on PATH.

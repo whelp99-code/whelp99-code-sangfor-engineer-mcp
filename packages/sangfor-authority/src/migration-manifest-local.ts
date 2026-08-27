@@ -1,5 +1,6 @@
 import { sourcesFor } from './migration-manifest-builder.js';
 import { GENERATED_REFS } from './migration-inventory-generated.js';
+import { RAG_PGVECTOR_REFS } from './migration-inventory-core.js';
 import {
   ACQUISITION_REFS,
   BROWSER_JOB_AUTHORITY_REFS,
@@ -61,5 +62,10 @@ export const LOCAL_AND_SEED_MIGRATIONS = [
     id: 'm027-jm-refusal-journal', order: 27, aggregate: 'jm_refusal_journal', ownerPackage: '@sangfor/jm-agent', classification: 'derived',
     sources: sourcesFor(JM_REFUSAL_JOURNAL_REFS), target: { kind: 'excluded' }, projectScope: 'required', rlsRequired: false,
     secretPolicy: 'forbid', prerequisites: ['signed-grant-genesis'], dependsOn: ['m002-project-installation-identity'], inventoryRefs: [...JM_REFUSAL_JOURNAL_REFS],
+  },
+  {
+    id: 'm028-rag-embeddings-pgvector-index', order: 28, aggregate: 'rag_embeddings_pgvector_index', ownerPackage: '@sangfor/rag', classification: 'authoritative',
+    sources: sourcesFor(RAG_PGVECTOR_REFS), target: { kind: 'postgres', tables: ['BlroRagEmbeddingCohort', 'BlroRagEmbedding'] },
+    projectScope: 'required', rlsRequired: true, secretPolicy: 'redact_before_authority', prerequisites: ['pgvector-0.8.1', 'embedding-profile-version'], dependsOn: ['m008-rag-source-chunks'], inventoryRefs: [...RAG_PGVECTOR_REFS],
   },
 ] as const;

@@ -66,7 +66,8 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:16
+        # PostgreSQL 16 with the pinned pgvector 0.8.1 extension files provisioned.
+        image: pgvector/pgvector:0.8.1-pg16
         env:
           POSTGRES_PASSWORD: postgres
         ports:
@@ -99,6 +100,9 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Assert PostgreSQL 16 pgvector 0.8.1 is provisioned
+        run: |
+          test "$(psql -h 127.0.0.1 -U postgres -d postgres -Atc "SELECT default_version FROM pg_available_extensions WHERE name='vector'")" = "0.8.1"
       - name: Create non-bypass owner and runtime roles
         run: |
           psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 <<'SQL'
@@ -110,6 +114,9 @@ jobs:
           CREATE DATABASE blro OWNER blro_owner;
           SQL
           psql -h 127.0.0.1 -U postgres -d blro -v ON_ERROR_STOP=1 <<'SQL'
+          -- pgvector is not a trusted extension. Cluster provisioning installs it;
+          -- the owner migration still declares and version-checks it idempotently.
+          CREATE EXTENSION IF NOT EXISTS vector;
           GRANT CONNECT ON DATABASE blro TO blro_app;
           GRANT USAGE ON SCHEMA public TO blro_app;
           ALTER DEFAULT PRIVILEGES FOR ROLE blro_owner IN SCHEMA public

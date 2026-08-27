@@ -97,10 +97,11 @@ describeDatabase('BLRO backup publication snapshot and scratch equality', () => 
     const ownerSourceUrl = databaseUrl(requiredOwnerUrl, sourceDatabase);
     clusterAdmin = new PrismaClient({ datasources: { db: { url: requiredAdminUrl } } });
     await clusterAdmin.$executeRawUnsafe(`CREATE DATABASE "${sourceDatabase}" OWNER blro_owner`);
+    sourceAdmin = new PrismaClient({ datasources: { db: { url: databaseUrl(requiredAdminUrl, sourceDatabase) } } });
+    await sourceAdmin.$executeRawUnsafe(`CREATE EXTENSION IF NOT EXISTS vector`);
     execFileSync('pnpm', ['exec', 'prisma', 'migrate', 'deploy'], {
       env: { ...process.env, DATABASE_URL: ownerSourceUrl }, stdio: 'pipe',
     });
-    sourceAdmin = new PrismaClient({ datasources: { db: { url: databaseUrl(requiredAdminUrl, sourceDatabase) } } });
     await sourceAdmin.$executeRawUnsafe(`GRANT USAGE ON SCHEMA public TO blro_backup`);
     await sourceAdmin.$executeRawUnsafe(`GRANT SELECT ON ALL TABLES IN SCHEMA public TO blro_backup`);
     owner = new PrismaClient({ datasources: { db: { url: ownerSourceUrl } } });

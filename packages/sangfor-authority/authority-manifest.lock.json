@@ -27,16 +27,17 @@
     "m024-legacy-unscoped-metadata",
     "m025-generated-artifacts",
     "m026-spec-registry",
-    "m027-jm-refusal-journal"
+    "m027-jm-refusal-journal",
+    "m028-rag-embeddings-pgvector-index"
   ],
   "classCounts": {
-    "authoritative": 17,
+    "authoritative": 18,
     "derived": 8,
     "credential_local": 1,
     "curated_seed": 1
   },
-  "manifestSemanticSha256": "a31c8b60eff5e352a3751e69c6c58ada04a5074a174e01585c32b18689fb4f93",
-  "repositoryCensusDigest": "f6eacf9d91df2d9b2ec768c5d56715198de9183386ecacd9c6c2f968d606ecdc",
+  "manifestSemanticSha256": "fbff15f8533141cec52fe9feaa0bebbe6682d23a0efbed6f298c4efc0f55f84f",
+  "repositoryCensusDigest": "98faa33e10b5be297c5355a863a61daf38a81c004ce0c1ebdab915c52f03ea9e",
   "sourceOnlyRefs": [
     "m026-spec-registry:data/specs#curated-seed:v1"
   ]

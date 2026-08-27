@@ -24,7 +24,8 @@ export type AuthorityDatabaseProbeInput = {
 const SCOPED_AUTHORITY_TABLES = [
   'BlroProject', 'BlroApprovalNonce', 'BlroAuditEvent', 'BlroMembership', 'BlroDevice',
   'BlroRun', 'BlroRunStep', 'BlroApproval', 'BlroEvidenceManifest', 'BlroRagDocument',
-  'BlroRagChunk', 'BlroClientEnrollment', 'BlroRemoteJobCapabilityJti', 'BlroRemoteJob',
+  'BlroRagChunk', 'BlroRagEmbeddingCohort', 'BlroRagAuthoritativeChunk', 'BlroRagEmbedding',
+  'BlroClientEnrollment', 'BlroRemoteJobCapabilityJti', 'BlroRemoteJob',
   'BlroEnrollmentIdentity', 'BlroEnrollmentCertificate', 'BlroEnrollmentGrant',
   'BlroEnrollmentBootstrapToken', 'BlroEnrollmentRotation',
 ] as const;

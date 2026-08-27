@@ -82,6 +82,7 @@ export const RAG_SOURCE_REFS = [
   "prisma:model:BlroRagSourceChunk",
   "prisma:model:SangforRagChunk",
   "prisma:model:SangforRagDocument",
+  "prisma:model:BlroRagAuthoritativeChunk",
 ] as const;
 
 export const RAG_EMBEDDING_REFS = [
@@ -91,5 +92,12 @@ export const RAG_EMBEDDING_REFS = [
   "persist:packages/sangfor-rag/src/index.ts#saveRagIndexUnlocked",
   "persist:packages/sangfor-rag/src/storage.ts#saveShardedJsonlIndex",
   "prisma:model:BlroRagChunk",
+] as const;
+
+export const RAG_PGVECTOR_REFS = [
+  "persist:packages/sangfor-rag/src/pgvector-store.ts#PgvectorRagStore",
+  "persist:packages/sangfor-rag/src/pgvector-store.ts#writeChunk",
+  "prisma:model:BlroRagEmbeddingCohort",
+  "prisma:model:BlroRagEmbedding",
 ] as const;
 

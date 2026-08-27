@@ -25,7 +25,9 @@ const RATIONALES: Readonly<Record<string, string>> = {
   approvals_nonces: 'Old approval and nonce capabilities must be spent, never copied.',
   audit: 'Local change-run chains must retain exact sequence and hashes.',
   evidence: 'Local engineer-report manifests must retain content and provenance.',
-  rag_source_chunks: 'Todo20 classifies the local embedding index as derived; source authority starts in PostgreSQL.',
+  rag_source_chunks: 'Authoritative source chunks are project-scoped PostgreSQL rows.',
+  rag_embeddings_local_index: 'The legacy JSON embedding index remains classified as derived and is never an authority fallback.',
+  rag_embeddings_pgvector_index: 'Todo33 makes cohort metadata and pgvector embeddings PostgreSQL-native; local JSON is neither source nor fallback.',
   pm_tasks: 'Legacy agent-task files contain authoritative PM work state.',
   feedback_lessons: 'Legacy feedback and lesson JSONL records are authoritative.',
   evals: 'Feedback-derived eval JSONL records are authoritative.',
@@ -40,7 +42,8 @@ const RATIONALES: Readonly<Record<string, string>> = {
 function localRefs(refs: readonly string[]): readonly string[] {
   return refs.filter((reference) => reference.startsWith('persist:')
     && !reference.startsWith('persist:packages/sangfor-authority/')
-    && !reference.includes('postgres-nonce-store.ts'));
+    && !reference.includes('postgres-nonce-store.ts')
+    && !reference.startsWith('persist:packages/sangfor-rag/src/pgvector-store.ts#'));
 }
 
 const RAW_POLICIES = AUTHORITY_MANIFEST.entries

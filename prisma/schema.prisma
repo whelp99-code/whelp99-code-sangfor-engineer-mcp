@@ -242,6 +242,9 @@ model BlroTenant {
   enrollmentBootstrapTokens BlroEnrollmentBootstrapToken[]
   enrollmentRotations       BlroEnrollmentRotation[]
   localWriteIntents         BlroLocalWriteIntent[]
+  ragEmbeddingCohorts       BlroRagEmbeddingCohort[]
+  ragAuthoritativeChunks    BlroRagAuthoritativeChunk[]
+  ragEmbeddings             BlroRagEmbedding[]
 }
 
 model BlroProject {
@@ -284,6 +287,9 @@ model BlroProject {
   authorityEpoch            BlroProjectAuthorityEpoch?
   localWriteIntents         BlroLocalWriteIntent[]
   sourceRootOwnerships      BlroSourceRootOwner[]
+  ragEmbeddingCohorts       BlroRagEmbeddingCohort[]
+  ragAuthoritativeChunks    BlroRagAuthoritativeChunk[]
+  ragEmbeddings             BlroRagEmbedding[]
 
   @@unique([id, tenantId])
   @@unique([tenantId, id])
@@ -321,16 +327,16 @@ model BlroRole {
 }
 
 model BlroMembership {
-  id                String                 @id
+  id                String                      @id
   tenantId          String
   projectId         String
   actorId           String
   roleId            String
-  createdAt         DateTime               @default(now())
+  createdAt         DateTime                    @default(now())
   revokedAt         DateTime?
-  project           BlroProject            @relation(fields: [tenantId, projectId], references: [tenantId, id], onDelete: Restrict)
-  actor             BlroActor              @relation(fields: [actorId, tenantId], references: [id, tenantId], onDelete: Restrict)
-  role              BlroRole               @relation(fields: [roleId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  project           BlroProject                 @relation(fields: [tenantId, projectId], references: [tenantId, id], onDelete: Restrict)
+  actor             BlroActor                   @relation(fields: [actorId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  role              BlroRole                    @relation(fields: [roleId, tenantId], references: [id, tenantId], onDelete: Restrict)
   consumedNonces    BlroApprovalNonce[]
   auditEvents       BlroAuditEvent[]
   createdDevices    BlroDevice[]
@@ -339,7 +345,8 @@ model BlroMembership {
   approvals         BlroApproval[]
   evidenceManifests BlroEvidenceManifest[]
   ragDocuments      BlroRagDocument[]
-  localWriteIntents BlroLocalWriteIntent[] @relation("LocalWriteIntentMembership")
+  localWriteIntents BlroLocalWriteIntent[]      @relation("LocalWriteIntentMembership")
+  ragChunks         BlroRagAuthoritativeChunk[]
 
   @@unique([projectId, actorId])
   @@unique([tenantId, projectId, actorId])
@@ -915,4 +922,72 @@ model BlroRagSourceChunk {
 
   @@unique([projectId, contentHash])
   @@index([projectId, documentId])
+}
+
+model BlroRagEmbeddingCohort {
+  id         String
+  tenantId   String
+  projectId  String
+  indexEpoch Int
+  backend    String
+  model      String
+  dimensions Int
+  active     Boolean            @default(false)
+  createdAt  DateTime           @default(now()) @db.Timestamptz(3)
+  tenant     BlroTenant         @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  project    BlroProject        @relation(fields: [tenantId, projectId], references: [tenantId, id], onDelete: Restrict)
+  embeddings BlroRagEmbedding[]
+
+  @@id([tenantId, projectId, id])
+  @@unique([tenantId, projectId, indexEpoch, backend, model, dimensions])
+  @@index([tenantId, projectId, indexEpoch])
+}
+
+model BlroRagAuthoritativeChunk {
+  id          String
+  tenantId    String
+  projectId   String
+  actorId     String
+  product     String
+  version     String
+  sourceType  String
+  trustLevel  String
+  title       String
+  text        String
+  sourceRef   String
+  contentHash String
+  aclActorIds String[]
+  createdAt   DateTime           @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime           @updatedAt @db.Timestamptz(3)
+  tenant      BlroTenant         @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  project     BlroProject        @relation(fields: [tenantId, projectId], references: [tenantId, id], onDelete: Restrict)
+  membership  BlroMembership     @relation(fields: [tenantId, projectId, actorId], references: [tenantId, projectId, actorId], onDelete: Restrict)
+  embeddings  BlroRagEmbedding[]
+
+  @@id([tenantId, projectId, id])
+  @@unique([tenantId, projectId, contentHash])
+  @@index([tenantId, projectId, product, version, sourceType, trustLevel])
+}
+
+model BlroRagEmbedding {
+  tenantId    String
+  projectId   String
+  chunkId     String
+  cohortId    String
+  product     String
+  version     String
+  sourceType  String
+  trustLevel  String
+  aclActorIds String[]
+  embedding   Unsupported("vector(384)")
+  createdAt   DateTime                   @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime                   @updatedAt @db.Timestamptz(3)
+  tenant      BlroTenant                 @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  project     BlroProject                @relation(fields: [tenantId, projectId], references: [tenantId, id], onDelete: Restrict)
+  chunk       BlroRagAuthoritativeChunk  @relation(fields: [tenantId, projectId, chunkId], references: [tenantId, projectId, id], onDelete: Cascade)
+  cohort      BlroRagEmbeddingCohort     @relation(fields: [tenantId, projectId, cohortId], references: [tenantId, projectId, id], onDelete: Restrict)
+
+  @@id([tenantId, projectId, chunkId, cohortId])
+  @@index([tenantId, projectId, cohortId])
+  @@index([tenantId, projectId, cohortId, product, version, sourceType, trustLevel])
 }

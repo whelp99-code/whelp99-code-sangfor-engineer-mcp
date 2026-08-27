@@ -23,9 +23,9 @@ describe('canonical authority manifest lock', () => {
     expect(raw).toMatchObject({
       schemaVersion: 1,
       aggregateIds: [...AUTHORITY_MANIFEST.entries.map((entry) => entry.id)].sort(),
-      // derived became 8 when m027-jm-refusal-journal took explicit ownership of
-      // the JM-local hash-chained refusal journal (excluded target, no secret).
-      classCounts: { authoritative: 17, derived: 8, credential_local: 1, curated_seed: 1 },
+      // Todo 33 adds one PostgreSQL-native authoritative pgvector aggregate;
+      // the legacy JSON embedding index remains separately classified derived.
+      classCounts: { authoritative: 18, derived: 8, credential_local: 1, curated_seed: 1 },
       repositoryCensusDigest: census.digest,
       sourceOnlyRefs: ['m026-spec-registry:data/specs#curated-seed:v1'],
     });
@@ -46,14 +46,14 @@ describe('canonical authority manifest lock', () => {
     expect(result.issues).toContain('census_digest_mismatch');
   });
 
-  it('refuses a 27th aggregate under the unchanged lock', () => {
+  it('refuses a 29th aggregate under the unchanged lock', () => {
     const changed = structuredClone(AUTHORITY_MANIFEST);
     const source = changed.entries[changed.entries.length - 1];
     if (!source) throw new AuthorityManifestLockError('fixture_source_missing');
     changed.entries.push({
       ...source,
-      id: 'm027-invented',
-      order: 27,
+      id: 'm029-invented',
+      order: 29,
       aggregate: 'invented',
       sources: [{ path: 'data/specs', symbol: 'curated-seed:v2' }],
     });
@@ -66,7 +66,7 @@ describe('canonical authority manifest lock', () => {
     const changed = structuredClone(AUTHORITY_MANIFEST);
     const source = changed.entries[changed.entries.length - 1];
     if (!source) throw new AuthorityManifestLockError('fixture_source_missing');
-    changed.entries.push({ ...source, id: 'm027-duplicate-seed', order: 27, aggregate: 'duplicate_seed' });
+    changed.entries.push({ ...source, id: 'm029-duplicate-seed', order: 29, aggregate: 'duplicate_seed' });
 
     expect(() => loadCanonicalAuthorityManifest(changed, join(ROOT, AUTHORITY_MANIFEST_LOCK_PATH)))
       .toThrow(AuthorityManifestLockError);
