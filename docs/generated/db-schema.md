@@ -19,6 +19,7 @@
 | `BlroRagAuthoritativeChunk` | composite tenant/project/id, actor membership, product/version/source/trust/ACL | Authoritative scoped source and filter metadata under FORCE RLS. |
 | `BlroRagEmbeddingCohort` | composite scope/id, index epoch, backend/model/dimensions, active | Database-enforced single active cohort per scoped epoch. |
 | `BlroRagEmbedding` | scoped chunk/cohort FKs, duplicated pre-ranking filters, `vector(384)` | pgvector exact cosine and HNSW `vector_cosine_ops` search under FORCE RLS. |
+| `BlroRagIndexPromotion` | composite scope/cohort/epoch, canonical report/digest, state/reason/audit timestamps | One promoted HNSW report per active project scope; FORCE RLS and cohort FK enforce authority boundaries. |
 | `SangforFineTuneDataset` | `productCode`, `taskType`, `path`, `status` (default `draft`), `exampleCount` | JSONL dataset manifest (`data/finetune/*.jsonl`). |
 | `SangforFineTuneJob` | `provider`, `baseModel`, `datasetPath`, `productCode`, `taskType`, `status` (default `ready_for_review`) | Fine-tune job spec; default status enforces human review. |
 

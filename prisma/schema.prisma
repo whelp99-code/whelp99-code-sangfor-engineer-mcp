@@ -245,6 +245,7 @@ model BlroTenant {
   ragEmbeddingCohorts       BlroRagEmbeddingCohort[]
   ragAuthoritativeChunks    BlroRagAuthoritativeChunk[]
   ragEmbeddings             BlroRagEmbedding[]
+  ragIndexPromotions        BlroRagIndexPromotion[]
 }
 
 model BlroProject {
@@ -290,6 +291,7 @@ model BlroProject {
   ragEmbeddingCohorts       BlroRagEmbeddingCohort[]
   ragAuthoritativeChunks    BlroRagAuthoritativeChunk[]
   ragEmbeddings             BlroRagEmbedding[]
+  ragIndexPromotions        BlroRagIndexPromotion[]
 
   @@unique([id, tenantId])
   @@unique([tenantId, id])
@@ -937,6 +939,7 @@ model BlroRagEmbeddingCohort {
   tenant     BlroTenant         @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   project    BlroProject        @relation(fields: [tenantId, projectId], references: [tenantId, id], onDelete: Restrict)
   embeddings BlroRagEmbedding[]
+  promotions BlroRagIndexPromotion[]
 
   @@id([tenantId, projectId, id])
   @@unique([tenantId, projectId, indexEpoch, backend, model, dimensions])
@@ -967,6 +970,28 @@ model BlroRagAuthoritativeChunk {
   @@id([tenantId, projectId, id])
   @@unique([tenantId, projectId, contentHash])
   @@index([tenantId, projectId, product, version, sourceType, trustLevel])
+}
+
+model BlroRagIndexPromotion {
+  tenantId       String
+  projectId      String
+  cohortId       String
+  indexEpoch     Int
+  report         Json
+  reportCanonical String
+  reportDigest   String
+  state          String
+  reason         String
+  promotedAt     DateTime?              @db.Timestamptz(3)
+  demotedAt      DateTime?              @db.Timestamptz(3)
+  createdAt      DateTime               @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime               @updatedAt @db.Timestamptz(3)
+  tenant         BlroTenant             @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  project        BlroProject            @relation(fields: [tenantId, projectId], references: [tenantId, id], onDelete: Restrict)
+  cohort         BlroRagEmbeddingCohort @relation(fields: [tenantId, projectId, cohortId], references: [tenantId, projectId, id], onDelete: Restrict)
+
+  @@id([tenantId, projectId, cohortId, indexEpoch])
+  @@index([tenantId, projectId, cohortId, indexEpoch])
 }
 
 model BlroRagEmbedding {

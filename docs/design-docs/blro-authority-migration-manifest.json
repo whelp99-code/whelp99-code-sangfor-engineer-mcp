@@ -10,6 +10,7 @@
     { "aggregate": "evidence_manifest", "authoritativeWriter": "BlroAuthorityStore", "supersededLocalStore": "data/evidence manifests and capture ledgers", "jmTreatment": "temporary bytes plus upload receipt" },
     { "aggregate": "rag_document_chunk", "authoritativeWriter": "PgvectorRagStore", "authoritativeTables": ["BlroRagAuthoritativeChunk"], "supersededLocalStore": "data/rag/index.json source chunks", "jmTreatment": "no authority and no fallback; disposable cache only when separately derived" },
     { "aggregate": "rag_embedding_cohort_index", "authoritativeWriter": "PgvectorRagStore", "authoritativeTables": ["BlroRagEmbeddingCohort", "BlroRagEmbedding"], "supersededLocalStore": "data/rag/index.json vectors", "jmTreatment": "PostgreSQL-native; local JSON remains separately classified derived state" },
+    { "aggregate": "rag_index_promotion", "authoritativeWriter": "IndexPromotionStore", "authoritativeTables": ["BlroRagIndexPromotion"], "supersededLocalStore": "none", "jmTreatment": "PostgreSQL-only promotion report and state; exact search remains the default and local JSON is never a fallback" },
     { "aggregate": "remote_job_dispatch", "authoritativeWriter": "PostgresRemoteJobStore", "supersededLocalStore": "MemoryJobIdempotencyStore", "jmTreatment": "no authority fallback; durable dispatch tombstones and retained result digests remain in BLRO" }
   ]
 }

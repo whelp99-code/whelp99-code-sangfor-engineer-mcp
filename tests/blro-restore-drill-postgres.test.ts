@@ -195,8 +195,8 @@ describeDatabase('BLRO restore drill against real PostgreSQL', () => {
       parseManifest(readFileSync(join(backupDir, 'drill.manifest.json'), 'utf8')),
       publicKeyPath,
     );
-    expect(manifest.tables.length).toBe(59);
-    expect(manifest.relationships.length).toBe(123);
+    expect(manifest.tables.length).toBe(60);
+    expect(manifest.relationships.length).toBe(125);
     expect(manifest.epochs.find((epoch) => epoch.projectId === fixture.projectId)?.epoch).toBe(fixture.epoch);
     expect(manifest.auditHeads.find((head) => head.projectId === fixture.projectId))
       .toMatchObject({ eventCount: 3, headSeq: 2, headHash: fixture.auditHeadHash, keyedCount: 3 });
@@ -224,8 +224,8 @@ describeDatabase('BLRO restore drill against real PostgreSQL', () => {
     const receipt = drillReceiptSchema.parse(JSON.parse(readFileSync(join(root, 'receipt.json'), 'utf8')));
     verifyManifestSignature(receipt, publicKeyPath);
     expect(receipt.verified.equalityProblems).toBe(0);
-    expect(receipt.verified.tables).toBe(59);
-    expect(receipt.verified.relationships).toBe(123);
+    expect(receipt.verified.tables).toBe(60);
+    expect(receipt.verified.relationships).toBe(125);
     expect(receipt.verified.evidenceObjects).toBeGreaterThanOrEqual(1);
     expect(receipt.drill.withinBudget).toBe(true);
     expect(receipt.drill.rtoMs).toBeLessThanOrEqual(receipt.drill.rtoBudgetMs);

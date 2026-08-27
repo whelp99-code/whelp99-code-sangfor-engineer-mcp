@@ -4,6 +4,10 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { growBenchmarkChunks } from '../packages/sangfor-rag/src/benchmark-growth.js';
 import { parseBenchmarkCorpus } from '../packages/sangfor-rag/src/benchmark-schema.js';
 import { cosineSimilarity, hashEmbedding } from '../packages/sangfor-rag/src/hash-embedding.js';
+import { sealIndexPromotionReport } from '../packages/sangfor-rag/src/index-promotion-evaluator.js';
+import { CandidateSearchUnavailableError, IndexPromotionRouter } from '../packages/sangfor-rag/src/index-promotion-router.js';
+import { IndexPromotionStore } from '../packages/sangfor-rag/src/index-promotion-store.js';
+import type { PromotionSearchPort } from '../packages/sangfor-rag/src/index-promotion-types.js';
 import {
   PgvectorRagStore,
   RagPgvectorRefusal,
@@ -33,6 +37,21 @@ const chunk = (id: string, text: string, aclActorIds: readonly string[] = []) =>
   trustLevel: 'official', title: id, text, sourceRef: `synthetic/${id}.md`,
   contentHash: `sha256-${id}`, aclActorIds, embedding: hashEmbedding(text),
 });
+
+async function currentPromotion(promotion: IndexPromotionStore) {
+  const state = await promotion.readCurrentState(scope);
+  const now = new Date();
+  return { now, report: sealIndexPromotionReport({
+    schemaVersion: 'rag.index-promotion/1', ...state, exactResultDigest: 'a'.repeat(64),
+    candidateResultDigest: 'b'.repeat(64), measuredAt: now.toISOString(), maxAgeSeconds: 3600,
+    recallAtK: 0.99, exactP95Ms: 200, candidateP95Ms: 150, recoveryRate: 1, updateRate: 1,
+    scopeIsolationProof: true, candidateRowCount: state.candidateRowCount,
+  }) };
+}
+
+async function createHnsw(owner: PrismaClient): Promise<void> {
+  await owner.$executeRawUnsafe(`CREATE INDEX "BlroRagEmbedding_embedding_hnsw_idx" ON "BlroRagEmbedding" USING hnsw ("embedding" vector_cosine_ops) WITH (m=16,ef_construction=64)`);
+}
 
 suite('PostgreSQL-native pgvector RAG', () => {
   let owner: PrismaClient;
@@ -145,6 +164,83 @@ suite('PostgreSQL-native pgvector RAG', () => {
     expect(exactParityRows / exactRows).toBe(1);
     expect(hnswRecovered / hnswExpected, misses.join('\n')).toBeGreaterThanOrEqual(0.99);
     expect(readFileSync(corpusPath)).toEqual(corpusBytes);
+  });
+
+  it('persists a scoped promotion across restart and serializes concurrent promote and demote', async () => {
+    const promotion = new IndexPromotionStore(database);
+    const { report, now } = await currentPromotion(promotion);
+    await Promise.all([
+      promotion.apply({ scope, report, now, reason: 'postgres promotion test' }),
+      promotion.demote(scope, 'concurrent postgres demotion test'),
+    ]);
+    await promotion.apply({ scope, report, now, reason: 'restart persistence test' });
+    const restarted = new IndexPromotionStore(database);
+    expect((await restarted.loadPromotion(scope))).toMatchObject({ reportDigest: report.reportDigest, projectId: scope.projectId });
+    const promoted = await database.$transaction(async (transaction) => {
+      await transaction.$executeRawUnsafe(`SELECT set_config('app.project_id',$1,true)`, scope.projectId);
+      return transaction.$queryRawUnsafe<Array<{ count: bigint }>>(`SELECT count(*) AS count FROM "BlroRagIndexPromotion" WHERE "tenantId"=$1 AND "projectId"=$2 AND "state"='promoted'`, scope.tenantId, scope.projectId);
+    });
+    expect(Number(promoted[0]?.count)).toBe(1);
+  });
+
+  it('binds one HNSW identity through normal search, missing preflight, drop race, and same-name replacement', async () => {
+    const promotion = new IndexPromotionStore(database);
+    const query = { scope, query: hashEmbedding('oracle'), filters: {}, limit: 1 };
+    const normal = await new IndexPromotionRouter(promotion).search(query, { backend: 'auto', now: new Date() });
+    expect(normal).toMatchObject({ backend: 'hnsw', diagnostics: { reason: 'PROMOTION_VALID' } });
+
+    await owner.$executeRawUnsafe(`DROP INDEX "BlroRagEmbedding_embedding_hnsw_idx"`);
+    const missing = await new IndexPromotionRouter(promotion).search(query, { backend: 'auto', now: new Date() });
+    expect(missing).toMatchObject({ backend: 'exact', diagnostics: { reason: 'CANDIDATE_PREFLIGHT_UNAVAILABLE' } });
+    await createHnsw(owner);
+    let { report, now } = await currentPromotion(promotion);
+    await promotion.apply({ scope, report, now, reason: 'drop race test' });
+
+    const calls = { exact: 0, candidate: 0 };
+    const observed: PromotionSearchPort = {
+      loadPromotion: (input) => promotion.loadPromotion(input),
+      readCurrentState: (input) => promotion.readCurrentState(input),
+      preflightCandidate: (input, name) => promotion.preflightCandidate(input, name),
+      searchExact: async (input) => { calls.exact += 1; return promotion.searchExact(input); },
+      searchCandidate: async (input, identity) => { calls.candidate += 1; return promotion.searchCandidate(input, identity); },
+    };
+    try {
+      await expect(new IndexPromotionRouter(observed).search(query, {
+        backend: 'auto', now: new Date(),
+        beforeCandidateDispatch: () => owner.$executeRawUnsafe(`DROP INDEX "BlroRagEmbedding_embedding_hnsw_idx"`).then(() => undefined),
+      })).rejects.toBeInstanceOf(CandidateSearchUnavailableError);
+      expect(calls).toEqual({ exact: 0, candidate: 1 });
+    } finally {
+      if (!await promotion.preflightCandidate(scope, report.indexName)) await createHnsw(owner);
+    }
+
+    ({ report, now } = await currentPromotion(promotion));
+    await promotion.apply({ scope, report, now, reason: 'same-name replacement test' });
+    const before = await promotion.preflightCandidate(scope, report.indexName);
+    calls.exact = 0;
+    calls.candidate = 0;
+    await expect(new IndexPromotionRouter(observed).search(query, {
+      backend: 'auto', now: new Date(),
+      beforeCandidateDispatch: async () => {
+        await owner.$executeRawUnsafe(`DROP INDEX "BlroRagEmbedding_embedding_hnsw_idx"`);
+        await createHnsw(owner);
+      },
+    })).rejects.toBeInstanceOf(CandidateSearchUnavailableError);
+    const after = await promotion.preflightCandidate(scope, report.indexName);
+    expect(calls).toEqual({ exact: 0, candidate: 1 });
+    expect(before?.oid).not.toBe(after?.oid);
+    expect(before?.relfilenode).not.toBe(after?.relfilenode);
+
+    if (!after) throw new TypeError('RAG_HNSW_POSTCHECK_FIXTURE_MISSING');
+    let identityProbes = 0;
+    let afterQueryCalls = 0;
+    const changed = { ...after, relfilenode: String(Number(after.relfilenode) + 1) };
+    const postcheck = new IndexPromotionStore(database, {
+      candidateIdentityProbe: async () => { identityProbes += 1; return identityProbes === 1 ? after : changed; },
+      afterCandidateQuery: async () => { afterQueryCalls += 1; },
+    });
+    await expect(postcheck.searchCandidate(query, after)).rejects.toMatchObject({ code: 'RAG_HNSW_POSTCHECK_IDENTITY_CHANGED' });
+    expect(afterQueryCalls).toBe(1);
   });
 
   it('returns typed unavailable for database outage and never an empty success', async () => {

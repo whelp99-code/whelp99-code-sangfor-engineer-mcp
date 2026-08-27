@@ -12,7 +12,7 @@ import {
   parsePgvectorUpsert,
 } from '../packages/sangfor-rag/src/pgvector-schema.js';
 
-const EnvironmentSchema = z.object({ DATABASE_URL: z.string().url() }).passthrough();
+const EnvironmentSchema = z.object({ DATABASE_URL: z.string().url(), BLRO_OWNER_DATABASE_URL: z.string().url() }).passthrough();
 const CORPUS_PATH = 'data/evals/rag/project-completeness-v1.json';
 const scope = parsePgvectorScope({ tenantId: 'tenant-rag-pg', projectId: 'project-rag-pg', actorId: 'actor-rag-pg' });
 const cohort = parsePgvectorCohort({ id: 'cohort-rag-pg', ...scope, indexEpoch: 33, backend: 'hash', model: 'hash-v1', dimensions: 384 });
@@ -50,10 +50,23 @@ async function measure(store: PgvectorRagStore, multiplier: number): Promise<{ r
   return { rows: chunks.length, parity: parity / exactCount, recall: recovered / exactCount };
 }
 
+async function seedOwner(owner: PrismaClient): Promise<void> {
+  await owner.$transaction(async (transaction) => {
+    await transaction.$executeRawUnsafe(`SELECT set_config('app.project_id',$1,true)`, scope.projectId);
+    await transaction.$executeRawUnsafe(`INSERT INTO "BlroTenant" ("id","name") VALUES ($1,'RAG pgvector QA') ON CONFLICT ("id") DO NOTHING`, scope.tenantId);
+    await transaction.$executeRawUnsafe(`INSERT INTO "BlroProject" ("id","tenantId","name") VALUES ($1,$2,'RAG pgvector QA') ON CONFLICT ("id") DO NOTHING`, scope.projectId, scope.tenantId);
+    await transaction.$executeRawUnsafe(`INSERT INTO "BlroActor" ("id","tenantId","displayName","actorType") VALUES ($1,$2,'RAG pgvector QA','service') ON CONFLICT ("id") DO NOTHING`, scope.actorId, scope.tenantId);
+    await transaction.$executeRawUnsafe(`INSERT INTO "BlroRole" ("id","tenantId","name","permissions") VALUES ('role-rag-pg',$1,'rag-pg-qa',ARRAY['rag:read','rag:write']) ON CONFLICT ("id") DO NOTHING`, scope.tenantId);
+    await transaction.$executeRawUnsafe(`INSERT INTO "BlroMembership" ("id","tenantId","projectId","actorId","roleId") VALUES ('membership-rag-pg',$1,$2,$3,'role-rag-pg') ON CONFLICT ("projectId","actorId") DO NOTHING`, scope.tenantId, scope.projectId, scope.actorId);
+  });
+}
+
 async function main(): Promise<void> {
   const environment = EnvironmentSchema.parse(process.env);
   const database = new PrismaClient({ datasources: { db: { url: environment.DATABASE_URL } } });
+  const owner = new PrismaClient({ datasources: { db: { url: environment.BLRO_OWNER_DATABASE_URL } } });
   try {
+    await seedOwner(owner);
     const store = new PgvectorRagStore(database);
     await store.promoteCohort(cohort);
     const one = await measure(store, 1);
@@ -63,6 +76,7 @@ async function main(): Promise<void> {
     process.stdout.write(`${JSON.stringify({ one, ten, plan, corpusHash, pgvector: { tag: 'v0.8.1', commit: '778dacf20c07caf904557a88705142631818d8cb' } })}\nRAG_PGVECTOR_PASS\n`);
   } finally {
     await database.$disconnect();
+    await owner.$disconnect();
   }
 }
 

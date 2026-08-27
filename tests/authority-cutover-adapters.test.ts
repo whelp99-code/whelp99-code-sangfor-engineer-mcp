@@ -22,7 +22,7 @@ describe('authority cutover adapter registry', () => {
       .filter((entry) => entry.classification === 'authoritative')
       .map((entry) => entry.aggregate).sort();
     expect(AUTHORITY_ADAPTER_POLICIES.map((entry) => entry.aggregate).sort()).toEqual(authoritative);
-    expect(AUTHORITY_ADAPTER_POLICIES).toHaveLength(18);
+    expect(AUTHORITY_ADAPTER_POLICIES).toHaveLength(19);
     expect(() => parseAuthorityAdapterRegistry(AUTHORITY_ADAPTER_POLICIES)).not.toThrow();
   });
 

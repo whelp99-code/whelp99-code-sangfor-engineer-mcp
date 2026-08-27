@@ -97,7 +97,15 @@ export const RAG_EMBEDDING_REFS = [
 export const RAG_PGVECTOR_REFS = [
   "persist:packages/sangfor-rag/src/pgvector-store.ts#PgvectorRagStore",
   "persist:packages/sangfor-rag/src/pgvector-store.ts#writeChunk",
+  "persist:scripts/rag-pgvector-qa.ts#seedOwner",
   "prisma:model:BlroRagEmbeddingCohort",
   "prisma:model:BlroRagEmbedding",
+] as const;
+
+export const RAG_INDEX_PROMOTION_REFS = [
+  "persist:packages/sangfor-rag/src/index-promotion-store.ts#IndexPromotionStore",
+  "persist:scripts/rag-index-promotion-qa.ts#main",
+  "persist:scripts/rag-index-promotion-qa.ts#seedOwner",
+  "prisma:model:BlroRagIndexPromotion",
 ] as const;
 

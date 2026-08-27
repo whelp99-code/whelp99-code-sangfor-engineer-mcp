@@ -28,6 +28,7 @@ const RATIONALES: Readonly<Record<string, string>> = {
   rag_source_chunks: 'Authoritative source chunks are project-scoped PostgreSQL rows.',
   rag_embeddings_local_index: 'The legacy JSON embedding index remains classified as derived and is never an authority fallback.',
   rag_embeddings_pgvector_index: 'Todo33 makes cohort metadata and pgvector embeddings PostgreSQL-native; local JSON is neither source nor fallback.',
+  rag_index_promotion: 'Todo34 persists measured HNSW promotion state in PostgreSQL; exact search remains authoritative and local JSON is never a fallback.',
   pm_tasks: 'Legacy agent-task files contain authoritative PM work state.',
   feedback_lessons: 'Legacy feedback and lesson JSONL records are authoritative.',
   evals: 'Feedback-derived eval JSONL records are authoritative.',
@@ -43,7 +44,10 @@ function localRefs(refs: readonly string[]): readonly string[] {
   return refs.filter((reference) => reference.startsWith('persist:')
     && !reference.startsWith('persist:packages/sangfor-authority/')
     && !reference.includes('postgres-nonce-store.ts')
-    && !reference.startsWith('persist:packages/sangfor-rag/src/pgvector-store.ts#'));
+    && !reference.startsWith('persist:packages/sangfor-rag/src/pgvector-store.ts#')
+    && !reference.startsWith('persist:scripts/rag-pgvector-qa.ts#')
+    && !reference.startsWith('persist:packages/sangfor-rag/src/index-promotion-store.ts#')
+    && !reference.startsWith('persist:scripts/rag-index-promotion-qa.ts#'));
 }
 
 const RAW_POLICIES = AUTHORITY_MANIFEST.entries

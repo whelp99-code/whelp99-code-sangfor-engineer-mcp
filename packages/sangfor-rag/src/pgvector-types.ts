@@ -66,5 +66,5 @@ export interface PgvectorSqlExecutor {
 }
 
 export interface PgvectorDatabase extends PgvectorSqlExecutor {
-  $transaction<T>(operation: (transaction: PgvectorSqlExecutor) => Promise<T>, options?: { readonly isolationLevel?: 'Serializable' }): Promise<T>;
+  $transaction<T>(operation: (transaction: PgvectorSqlExecutor) => Promise<T>, options?: { readonly isolationLevel?: 'ReadCommitted' | 'Serializable' }): Promise<T>;
 }

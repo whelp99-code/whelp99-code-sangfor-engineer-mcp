@@ -1,6 +1,6 @@
 import { sourcesFor } from './migration-manifest-builder.js';
 import { GENERATED_REFS } from './migration-inventory-generated.js';
-import { RAG_PGVECTOR_REFS } from './migration-inventory-core.js';
+import { RAG_INDEX_PROMOTION_REFS, RAG_PGVECTOR_REFS } from './migration-inventory-core.js';
 import {
   ACQUISITION_REFS,
   BROWSER_JOB_AUTHORITY_REFS,
@@ -67,5 +67,10 @@ export const LOCAL_AND_SEED_MIGRATIONS = [
     id: 'm028-rag-embeddings-pgvector-index', order: 28, aggregate: 'rag_embeddings_pgvector_index', ownerPackage: '@sangfor/rag', classification: 'authoritative',
     sources: sourcesFor(RAG_PGVECTOR_REFS), target: { kind: 'postgres', tables: ['BlroRagEmbeddingCohort', 'BlroRagEmbedding'] },
     projectScope: 'required', rlsRequired: true, secretPolicy: 'redact_before_authority', prerequisites: ['pgvector-0.8.1', 'embedding-profile-version'], dependsOn: ['m008-rag-source-chunks'], inventoryRefs: [...RAG_PGVECTOR_REFS],
+  },
+  {
+    id: 'm029-rag-index-promotion', order: 29, aggregate: 'rag_index_promotion', ownerPackage: '@sangfor/rag', classification: 'authoritative',
+    sources: sourcesFor(RAG_INDEX_PROMOTION_REFS), target: { kind: 'postgres', tables: ['BlroRagIndexPromotion'] },
+    projectScope: 'required', rlsRequired: true, secretPolicy: 'redact_before_authority', prerequisites: ['measured-pgvector-report-v1'], dependsOn: ['m028-rag-embeddings-pgvector-index'], inventoryRefs: [...RAG_INDEX_PROMOTION_REFS],
   },
 ] as const;

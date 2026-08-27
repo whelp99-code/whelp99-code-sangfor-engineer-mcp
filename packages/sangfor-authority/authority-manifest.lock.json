@@ -28,16 +28,17 @@
     "m025-generated-artifacts",
     "m026-spec-registry",
     "m027-jm-refusal-journal",
-    "m028-rag-embeddings-pgvector-index"
+    "m028-rag-embeddings-pgvector-index",
+    "m029-rag-index-promotion"
   ],
   "classCounts": {
-    "authoritative": 18,
+    "authoritative": 19,
     "derived": 8,
     "credential_local": 1,
     "curated_seed": 1
   },
-  "manifestSemanticSha256": "fbff15f8533141cec52fe9feaa0bebbe6682d23a0efbed6f298c4efc0f55f84f",
-  "repositoryCensusDigest": "98faa33e10b5be297c5355a863a61daf38a81c004ce0c1ebdab915c52f03ea9e",
+  "manifestSemanticSha256": "bbe54f0a769dd109c7dc94e13b37b2fbb00eb57281edcf30135d1116603eed29",
+  "repositoryCensusDigest": "e0c5a388363288d55fd68872c021f8883de54b05bbb97ad1276304371de35e7a",
   "sourceOnlyRefs": [
     "m026-spec-registry:data/specs#curated-seed:v1"
   ]
