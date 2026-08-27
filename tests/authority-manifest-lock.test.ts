@@ -23,7 +23,9 @@ describe('canonical authority manifest lock', () => {
     expect(raw).toMatchObject({
       schemaVersion: 1,
       aggregateIds: [...AUTHORITY_MANIFEST.entries.map((entry) => entry.id)].sort(),
-      classCounts: { authoritative: 17, derived: 7, credential_local: 1, curated_seed: 1 },
+      // derived became 8 when m027-jm-refusal-journal took explicit ownership of
+      // the JM-local hash-chained refusal journal (excluded target, no secret).
+      classCounts: { authoritative: 17, derived: 8, credential_local: 1, curated_seed: 1 },
       repositoryCensusDigest: census.digest,
       sourceOnlyRefs: ['m026-spec-registry:data/specs#curated-seed:v1'],
     });

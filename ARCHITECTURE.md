@@ -24,6 +24,7 @@ Remote MCP client ──HTTP POST /mcp──► apps/http-bridge (:3600) (statel
 apps/control-tower (:3700) ──HTTP──► http-bridge (:3600), mock-console (:3400)
 apps/operator-console (:3502) ──in-process──► packages/* (no MCP hop)
 apps/mock-sangfor-console (:3400)  = fake Sangfor/FortiOS/Cisco/OpenStack device
+apps/jm-browser-agent (:39443, HTTPS mTLS, loopback) ◄──BLRO dispatches signed browser jobs
 ```
 
 Apps import packages by **relative path** (`../../../packages/<pkg>/src/index.js`); packages import each other via the `@sangfor/*` / `@sangfor-engineer/*` tsconfig aliases.
@@ -34,6 +35,7 @@ Apps import packages by **relative path** (`../../../packages/<pkg>/src/index.js
 L3 orchestration : verifier, product-adapters, screenshot, pptx  ── apps
 L2 execution     : operator (→approval,browser-contracts), planner (→approval,knowledge,rag,wiki)
 JM runtime edge  : jm-execution (→observer,browser-contracts; only maintained Playwright/CDP behavior)
+                   jm-agent (→browser-contracts,shared; receipt-verifying JM agent runtime, never authority)
 L1 domain/data   : approval · safety · runs · evidence · config-state · hci-client · spec
                    version · sizing · rca · pm · store · integration · knowledge · rag
                    feedback · finetune · evals · wiki · competency · collector · observer
@@ -69,6 +71,7 @@ Enforced invariants of the graph: no L1 package imports an L2/L3 package; `opera
 | `@sangfor/collector` | L1 | scrape Sangfor KB/community → normalized docs → learn pipeline |
 | `@sangfor/observer` | L1 | fail-closed, read-only structural observation policy with injected transport |
 | `@sangfor/jm-execution` | JM runtime edge | local session resolution, Playwright/CDP execution, screenshots, and observer transport behind `BrowserExecutionPort` |
+| `@sangfor/jm-agent` | JM runtime edge | JM agent runtime: strict config/TLS-material boundary, signed BLRO authority-receipt verification, exact BLRO client pin, readiness/drain, and a receipt-backed `RemoteJobStore` that can only refuse — never mints or mutates authority, and holds no database credential |
 | `@sangfor/chrome` | legacy | retained compatibility helpers; not part of the maintained MCP/operator/verifier/evidence browser path |
 | `@sangfor/operator` | L2 | mock/live console execution + the signed-approval write gate |
 | `@sangfor/planner` | L2 | ProjectInput → cited, risk-classified ConfigPlan |

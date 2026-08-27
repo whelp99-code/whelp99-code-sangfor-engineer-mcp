@@ -13,6 +13,12 @@ import { parseManifest } from '../scripts/lib/blro-backup-manifest.mjs';
 const ownerUrl = process.env.BLRO_OWNER_DATABASE_URL;
 const adminUrl = process.env.BLRO_SCRATCH_ADMIN_DATABASE_URL;
 const backupUrl = process.env.BLRO_BACKUP_DATABASE_URL;
+// Under the mandatory PostgreSQL profile this suite must never self-skip: a silent skip
+// is indistinguishable from coverage. Outside that profile it still degrades to a skip so
+// a developer without a cluster is not blocked.
+if (process.env.SANGFOR_REQUIRE_POSTGRES_TESTS === '1' && !(ownerUrl && adminUrl && backupUrl)) {
+  throw new Error('MANDATORY_POSTGRES_BACKUP_AND_SCRATCH_REQUIRED');
+}
 const describeDatabase = ownerUrl && adminUrl && backupUrl ? describe : describe.skip;
 const suffix = randomUUID().slice(0, 8);
 const tenantId = `backup-race-tenant-${suffix}`;

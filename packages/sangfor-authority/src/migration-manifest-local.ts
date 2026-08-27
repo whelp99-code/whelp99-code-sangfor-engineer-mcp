@@ -6,6 +6,7 @@ import {
   CREDENTIAL_REFS,
   FINETUNE_REFS,
   IAG_REFS,
+  JM_REFUSAL_JOURNAL_REFS,
   LEGACY_REFS,
   LOOP_REFS,
 } from './migration-inventory-local.js';
@@ -55,5 +56,10 @@ export const LOCAL_AND_SEED_MIGRATIONS = [
     id: 'm026-spec-registry', order: 26, aggregate: 'spec_registry', ownerPackage: '@sangfor-engineer/sangfor-spec', classification: 'curated_seed',
     sources: [{ path: 'data/specs', symbol: 'curated-seed:v1' }], target: { kind: 'source_only' }, projectScope: 'not_applicable', rlsRequired: false,
     secretPolicy: 'none', prerequisites: ['spec-review'], dependsOn: [], inventoryRefs: [],
+  },
+  {
+    id: 'm027-jm-refusal-journal', order: 27, aggregate: 'jm_refusal_journal', ownerPackage: '@sangfor/jm-agent', classification: 'derived',
+    sources: sourcesFor(JM_REFUSAL_JOURNAL_REFS), target: { kind: 'excluded' }, projectScope: 'required', rlsRequired: false,
+    secretPolicy: 'forbid', prerequisites: ['signed-grant-genesis'], dependsOn: ['m002-project-installation-identity'], inventoryRefs: [...JM_REFUSAL_JOURNAL_REFS],
   },
 ] as const;

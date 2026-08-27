@@ -19,6 +19,7 @@ export default defineConfig({
       '@sangfor/shared': fromRoot('./packages/shared/src/index.ts'),
       '@sangfor/browser-contracts': fromRoot('./packages/sangfor-browser-contracts/src/index.ts'),
       '@sangfor/jm-execution': fromRoot('./packages/sangfor-jm-execution/src/index.ts'),
+      '@sangfor/jm-agent': fromRoot('./packages/sangfor-jm-agent/src/index.ts'),
       '@sangfor/wiki': fromRoot('./packages/sangfor-wiki/src/index.ts'),
       '@sangfor/pptx': fromRoot('./packages/sangfor-pptx/src/index.ts'),
       '@sangfor/screenshot': fromRoot('./packages/sangfor-screenshot/src/index.ts'),

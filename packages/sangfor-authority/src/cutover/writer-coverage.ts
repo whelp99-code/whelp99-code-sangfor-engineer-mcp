@@ -22,6 +22,9 @@ const INTERNAL_LOCAL_HELPERS = new Set([
   'persist:packages/sangfor-wiki/src/index.ts#saveCard', 'persist:packages/sangfor-wiki/src/index.ts#saveProposal',
   'persist:packages/sangfor-learning-strategy/src/store.ts#writeFileAtomic',
   'persist:packages/sangfor-competency/src/promotion-checkpoint.ts#writePromotionCheckpoint',
+  // Module-private descriptor writer used only by the already-fenced
+  // FileSingleUseNonceStore; it is not a separate writer entry point.
+  'persist:packages/sangfor-approval/src/index.ts#writeFileDescriptor',
 ]);
 
 function symbolNode(source: ts.SourceFile, name: string): ts.Node | undefined {

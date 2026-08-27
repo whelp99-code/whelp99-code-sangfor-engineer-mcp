@@ -80,6 +80,14 @@ jobs:
       PGPASSWORD: postgres
       DATABASE_URL: postgresql://blro_app:blro_app_ci@127.0.0.1:5432/blro
       BLRO_OWNER_DATABASE_URL: postgresql://blro_owner:blro_owner_ci@127.0.0.1:5432/blro
+      # The runner DERIVES the credential-bearing backup and scratch-admin URLs
+      # from the owner URL, so only the role password needs to be supplied here.
+      # Without them the backup/restore suites would self-skip and the profile
+      # would silently lose 17 tests.
+      BLRO_BACKUP_PASSWORD: blro_backup_ci
+      # The runner resolves its own PostgreSQL client bindir; CI names it
+      # explicitly so the profile never depends on an ambient PATH.
+      PG_BINDIR: /usr/lib/postgresql/16/bin
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -96,6 +104,9 @@ jobs:
           psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 <<'SQL'
           CREATE ROLE blro_owner LOGIN PASSWORD 'blro_owner_ci' NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE;
           CREATE ROLE blro_app LOGIN PASSWORD 'blro_app_ci' NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE;
+          -- RLS is FORCEd, so it filters the owner too and pg_dump as blro_owner aborts.
+          -- The backup reader is SELECT-only with BYPASSRLS and no write grant anywhere.
+          CREATE ROLE blro_backup LOGIN PASSWORD 'blro_backup_ci' BYPASSRLS NOSUPERUSER NOCREATEDB NOCREATEROLE;
           CREATE DATABASE blro OWNER blro_owner;
           SQL
           psql -h 127.0.0.1 -U postgres -d blro -v ON_ERROR_STOP=1 <<'SQL'
@@ -103,7 +114,22 @@ jobs:
           GRANT USAGE ON SCHEMA public TO blro_app;
           ALTER DEFAULT PRIVILEGES FOR ROLE blro_owner IN SCHEMA public
             GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO blro_app;
+          GRANT CONNECT ON DATABASE blro TO blro_backup;
+          GRANT USAGE ON SCHEMA public TO blro_backup;
+          GRANT SELECT ON ALL TABLES IN SCHEMA public TO blro_backup;
+          ALTER DEFAULT PRIVILEGES FOR ROLE blro_owner IN SCHEMA public
+            GRANT SELECT ON TABLES TO blro_backup;
           SQL
+      - name: Provision the PostgreSQL client binaries the runner requires
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-16
+          test -x "$PG_BINDIR/psql" && test -x "$PG_BINDIR/pg_dump" && test -x "$PG_BINDIR/pg_restore"
+      - name: Prove the backup reader cannot write and the runtime role has no BYPASSRLS
+        run: |
+          psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 -Atc \
+            "SELECT rolname||':'||rolsuper||':'||rolbypassrls FROM pg_roles
+             WHERE rolname IN ('blro_app','blro_owner','blro_backup') ORDER BY rolname"
       - name: Mandatory PostgreSQL authority profile
         run: pnpm run test:postgres:mandatory
 

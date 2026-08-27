@@ -42,6 +42,15 @@ importers:
 
   apps/control-tower: {}
 
+  apps/jm-browser-agent:
+    dependencies:
+      '@sangfor/browser-contracts':
+        specifier: workspace:*
+        version: link:../../packages/sangfor-browser-contracts
+      '@sangfor/jm-agent':
+        specifier: workspace:*
+        version: link:../../packages/sangfor-jm-agent
+
   apps/mcp-server: {}
 
   apps/mock-sangfor-console:
@@ -196,6 +205,18 @@ importers:
   packages/sangfor-integration: {}
 
   packages/sangfor-intent-graph: {}
+
+  packages/sangfor-jm-agent:
+    dependencies:
+      '@sangfor/browser-contracts':
+        specifier: workspace:*
+        version: link:../sangfor-browser-contracts
+      '@sangfor/shared':
+        specifier: workspace:*
+        version: link:../shared
+      zod:
+        specifier: ^3.25.76
+        version: 3.25.76
 
   packages/sangfor-jm-execution:
     dependencies:

@@ -5,6 +5,7 @@ export const FINETUNE_REFS = [
 ] as const;
 
 export const CREDENTIAL_REFS = [
+  "credential:scripts/run-mandatory-postgres-tests.ts#backupPassword",
   "credential:scripts/blro-migrate-authority.ts#runAuthorityCutoverCli",
   "credential:scripts/blro-restore-drill.mjs#requireAuditSecret",
   "credential:apps/control-tower/src/api.ts#createApi",
@@ -56,6 +57,16 @@ export const LOOP_REFS = [
   "persist:packages/sangfor-loop/src/executors/embedding-drift.ts#runEmbeddingDriftExecutor",
   "persist:packages/sangfor-loop/src/executors/gap-queries.ts#runGapQueriesExecutor",
   "persist:packages/sangfor-loop/src/index.ts#runLoopTick",
+] as const;
+
+/**
+ * The JM-side refusal journal. It is a disposable, hash-chained local record of
+ * what JM already reserved; it holds no secret and is never an authority source,
+ * so it is excluded from the authoritative target set.
+ */
+export const JM_REFUSAL_JOURNAL_REFS = [
+  "persist:packages/sangfor-jm-agent/src/journal-storage.ts#appendDurably",
+  "persist:packages/sangfor-jm-agent/src/journal-storage.ts#createJournalExclusively",
 ] as const;
 
 export const ACQUISITION_REFS = [

@@ -52,6 +52,7 @@ export const RUNS_REFS = [
 
 export const APPROVAL_REFS = [
   "persist:packages/sangfor-approval/src/index.ts#FileSingleUseNonceStore",
+  "persist:packages/sangfor-approval/src/index.ts#writeFileDescriptor",
   "persist:packages/sangfor-approval/src/postgres-nonce-store.ts#PostgresSingleUseNonceStore",
   // Backup captures outstanding approval/nonce authority; the scratch-only restore drill spends it.
   "persist:scripts/blro-backup.mjs#runBackup",

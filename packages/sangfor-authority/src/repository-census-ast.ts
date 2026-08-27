@@ -21,6 +21,10 @@ const WRITE_CALLS = new Set([
   'appendFile', 'appendFileSync', 'appendJsonl',
   'createWriteStream', 'rename', 'renameSync', 'writeFile', 'writeFileSync',
   'writeFileAtomic', 'writeFileAtomicSync', 'atomicWrite',
+  // Descriptor-level writes. Without these a module that opens with numeric
+  // flags and calls writeSync is invisible to the census, which is exactly how
+  // a durable local writer could escape aggregate ownership.
+  'writeSync', 'writevSync', 'ftruncateSync',
 ]);
 const OPEN_CALLS = new Set(['open', 'openSync']);
 const PERSISTENCE_HELPER = /^(?:append|atomic|persist|record|rename|save|write)/iu;
@@ -47,9 +51,41 @@ function isDirectPersistence(call: ts.CallExpression): boolean {
   const name = callName(call.expression);
   if (!name) return false;
   if (WRITE_CALLS.has(name)) return true;
-  if (OPEN_CALLS.has(name)) return /^[awx]/u.test(stringValue(call.arguments[1]) ?? '');
+  // A string mode is matched directly. A numeric flags expression counts only
+  // when it actually names a writing flag: O_RDONLY opens (directory fsync,
+  // reads) must not be mistaken for persistence.
+  if (OPEN_CALLS.has(name)) {
+    const mode = stringValue(call.arguments[1]);
+    return mode === null
+      ? writableFlagExpression(call.arguments[1])
+      : /^[awx]/u.test(mode);
+  }
   if (name !== 'query' && name !== '$queryRawUnsafe' && name !== '$executeRawUnsafe') return false;
   return /^\s*(?:INSERT|UPDATE|DELETE|MERGE|CREATE|ALTER|DROP|TRUNCATE)\b/iu.test(stringValue(call.arguments[0]) ?? '');
+}
+
+const WRITE_FLAG_NAMES = new Set([
+  'O_WRONLY', 'O_RDWR', 'O_APPEND', 'O_CREAT', 'O_TRUNC', 'O_EXCL',
+]);
+
+/**
+ * True when a numeric open-flags expression mentions a writing flag. The AST is
+ * walked rather than the source text, because a synthesized node has no source
+ * file and getText() throws on it.
+ */
+function writableFlagExpression(expression: ts.Expression | undefined): boolean {
+  if (!expression) return false;
+  let writable = false;
+  const walk = (node: ts.Node): void => {
+    if (writable) return;
+    if (ts.isIdentifier(node) && WRITE_FLAG_NAMES.has(node.text)) {
+      writable = true;
+      return;
+    }
+    ts.forEachChild(node, walk);
+  };
+  walk(expression);
+  return writable;
 }
 
 function isProcessEnvironment(node: ts.Expression): boolean {

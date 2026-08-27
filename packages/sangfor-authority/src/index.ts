@@ -63,3 +63,7 @@ export {
   type AuthorityDatabaseProbeInput,
   type AuthorityDatabaseProbeResult,
 } from './runtime-database-probe.js';
+export {
+  signJmAuthorityArtifact,
+} from './jm-authority-signing.js';
+export type { SignableAuthorityArtifact } from './jm-authority-signing.js';
