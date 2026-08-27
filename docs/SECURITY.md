@@ -29,6 +29,8 @@ In BLRO production, `PostgresRemoteJobStore` is the only remote-job authority. A
 
 This is deliberately **at-most-once dispatch, not exactly-once delivery**. A crash after the tombstone commit can prevent delivery, and a crash or acknowledgement loss after dispatch can hide the result. Either case remains `INDETERMINATE` and is never automatically redispatched. Tombstones have no expiry or deletion path; an exact authorized duplicate can return only a digest-verified retained result.
 
+A mutation response is never authoritative PASS. Final PASS requires a distinct, separately authorized and separately tombstoned/JTI-bound read-only `verify_console` job whose independent read-back is PASS. A refused, mismatched, unavailable, or indeterminate verification remains non-PASS, and no path automatically retries the mutation or rolls it back.
+
 ## The second, independent gate (`apps/http-bridge/tool-guard.ts`)
 Defense-in-depth for the REST surface:
 - Tools with **missing annotations** → 403 (fail closed).

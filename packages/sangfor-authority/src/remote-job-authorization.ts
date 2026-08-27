@@ -36,18 +36,19 @@ type GrantRow = {
   readonly originDigest: string;
   readonly scope: string;
 };
-export type RemoteJobAuthorizationInput = {
+export type RemoteTargetAuthorizationInput = {
   readonly transaction: EnrollmentSqlExecutor;
   readonly scope: EnrollmentProjectScope;
-  readonly claim: JobCapabilityClaim;
-  readonly request: BrowserExecutionRequest;
+  readonly installationId: string;
+  readonly clientIdentityId: string;
+  readonly origin: string;
   readonly certificate: LeafCertificate;
   readonly trustedIssuers: readonly TrustedIssuer[];
   readonly now: Date;
 };
 
-export async function authorizeRemoteJob(
-  input: RemoteJobAuthorizationInput,
+export async function authorizeRemoteTarget(
+  input: RemoteTargetAuthorizationInput,
 ): Promise<boolean> {
   const enrollments = await input.transaction.$queryRawUnsafe<readonly EnrollmentIdentityRow[]>(
     `SELECT "tenantId","projectId","installationId","deviceBindingDigest",
@@ -57,10 +58,10 @@ export async function authorizeRemoteJob(
      FOR SHARE`,
     input.scope.tenantId,
     input.scope.projectId,
-    input.claim.installationId,
+    input.installationId,
   );
   const enrollment = enrollments[0];
-  if (!enrollment || enrollment.clientIdentityId !== input.claim.clientIdentityId) return false;
+  if (!enrollment || enrollment.clientIdentityId !== input.clientIdentityId) return false;
   const presented = deriveClientCertificateIdentity({
     certificate: input.certificate,
     trustedIssuers: input.trustedIssuers,
@@ -81,7 +82,7 @@ export async function authorizeRemoteJob(
      ) AND "serial"=$4`,
     input.scope.tenantId,
     input.scope.projectId,
-    input.claim.installationId,
+    input.installationId,
     presented.certificate.serial,
   );
   const certificate = certificates[0];
@@ -94,11 +95,11 @@ export async function authorizeRemoteJob(
      ) ORDER BY "originDigest","scope"`,
     input.scope.tenantId,
     input.scope.projectId,
-    input.claim.installationId,
+    input.installationId,
   );
   let originDigest: string;
   try {
-    originDigest = digestCanonicalOrigin(input.request.origin, 'origin');
+    originDigest = digestCanonicalOrigin(input.origin, 'origin');
   } catch (error) {
     if (error instanceof CanonicalOriginError) return false;
     throw error;
@@ -112,7 +113,7 @@ export async function authorizeRemoteJob(
     request: {
       tenantId: input.scope.tenantId,
       projectId: input.scope.projectId,
-      installationId: input.claim.installationId,
+      installationId: input.installationId,
       deviceBindingDigest: enrollment.deviceBindingDigest,
       originDigest,
       scope: REMOTE_BROWSER_EXECUTION_SCOPE,
@@ -121,4 +122,27 @@ export async function authorizeRemoteJob(
     presentedCertificate: presented.certificate,
     now: input.now,
   }).ok;
+}
+
+export type RemoteJobAuthorizationInput = {
+  readonly transaction: EnrollmentSqlExecutor;
+  readonly scope: EnrollmentProjectScope;
+  readonly claim: JobCapabilityClaim;
+  readonly request: BrowserExecutionRequest;
+  readonly certificate: LeafCertificate;
+  readonly trustedIssuers: readonly TrustedIssuer[];
+  readonly now: Date;
+};
+
+export function authorizeRemoteJob(input: RemoteJobAuthorizationInput): Promise<boolean> {
+  return authorizeRemoteTarget({
+    transaction: input.transaction,
+    scope: input.scope,
+    installationId: input.claim.installationId,
+    clientIdentityId: input.claim.clientIdentityId,
+    origin: input.request.origin,
+    certificate: input.certificate,
+    trustedIssuers: input.trustedIssuers,
+    now: input.now,
+  });
 }

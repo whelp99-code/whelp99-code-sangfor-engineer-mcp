@@ -52,7 +52,10 @@ export type ReceiptRemoteJobStoreOptions = {
 export function createReceiptRemoteJobStore(
   options: ReceiptRemoteJobStoreOptions,
 ): RemoteJobStore {
-  const reserved = new Map<string, JournalReservationInput>();
+  const reserved = new Map<string, {
+    readonly row: JournalReservationInput;
+    readonly verification: boolean;
+  }>();
   return {
     async authorizeAndReserve(input: RemoteJobReserveInput): Promise<RemoteJobReservation> {
       const authorized = authorize(input, options);
@@ -94,7 +97,10 @@ export function createReceiptRemoteJobStore(
       options.onDecision?.('DISPATCH_AUTHORIZED');
       // Remember the exact reserved row so the post-dispatch observation records
       // the same digests rather than approximating them.
-      reserved.set(receipt.jobId, key);
+      reserved.set(receipt.jobId, {
+        row: key,
+        verification: input.envelope.request.operation.kind === 'verify_console',
+      });
       return {
         kind: 'dispatch',
         dispatch: {
@@ -117,12 +123,15 @@ export function createReceiptRemoteJobStore(
      * indeterminate so no JM-local state can be mistaken for a verdict.
      */
     async retainResult(input: RemoteJobRetainInput): Promise<RemoteJobRetention> {
-      recordObservation(options, reserved.get(input.dispatch.jobId));
-      return { kind: 'indeterminate' };
+      const reservation = reserved.get(input.dispatch.jobId);
+      recordObservation(options, reservation?.row);
+      return reservation?.verification === true && input.result.mutationAttempted === false
+        ? { kind: 'retained', result: input.result }
+        : { kind: 'indeterminate' };
     },
 
     async markIndeterminate(input: RemoteJobSealInput): Promise<RemoteJobIndeterminateSeal> {
-      recordObservation(options, reserved.get(input.dispatch.jobId));
+      recordObservation(options, reserved.get(input.dispatch.jobId)?.row);
       return { kind: 'sealed' };
     },
   };

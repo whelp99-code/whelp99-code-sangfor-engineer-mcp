@@ -16,6 +16,14 @@ import {
   type RemoteJobSealInput,
   type RemoteJobStore,
 } from '@sangfor/browser-contracts';
+import type {
+  BlroAuthorityJobInput,
+  BlroDispatchAuthority,
+  BlroDispatchCandidate,
+  BlroTargetAuthorizationInput,
+} from './blro-remote-dispatcher.js';
+import { authorizeRemoteTarget } from './remote-job-authorization.js';
+import { classifyRemoteJobTransaction } from './remote-job-classification.js';
 import {
   parseTrustedIssuerBundle,
   type TrustedIssuer,
@@ -50,7 +58,7 @@ export type PostgresRemoteJobStoreOptions = {
   readonly maxTransactionAttempts?: number;
 };
 
-export class PostgresRemoteJobStore implements RemoteJobStore {
+export class PostgresRemoteJobStore implements RemoteJobStore, BlroDispatchAuthority {
   private readonly database: RemoteJobDatabase;
   private readonly scope: EnrollmentProjectScope;
   private readonly capabilityPublicKey: CapabilityKey;
@@ -67,6 +75,48 @@ export class PostgresRemoteJobStore implements RemoteJobStore {
     this.clock = options.clock ?? { now: () => new Date() };
     this.ids = options.ids ?? { dispatchId: randomUUID };
     this.maxTransactionAttempts = options.maxTransactionAttempts ?? 3;
+  }
+
+  async authorizeTarget(input: BlroTargetAuthorizationInput): Promise<boolean> {
+    const { target } = input;
+    if (target.tenantId !== this.scope.tenantId || target.projectId !== this.scope.projectId) return false;
+    const certificate = leafCertificateSchema.safeParse(target.certificate);
+    if (!certificate.success) return false;
+    try {
+      return await runRemoteJobTransaction({
+        database: this.database, scope: this.scope, maxAttempts: this.maxTransactionAttempts,
+        work: (transaction) => authorizeRemoteTarget({
+          transaction, scope: this.scope, installationId: target.installationId,
+          clientIdentityId: target.clientIdentityId, origin: target.origin,
+          certificate: certificate.data, trustedIssuers: this.trustedIssuers, now: this.clock.now(),
+        }),
+      });
+    } catch (error) {
+      if (error instanceof Error) return false;
+      throw error;
+    }
+  }
+
+  async classify(input: BlroAuthorityJobInput): Promise<RemoteJobReservation | BlroDispatchCandidate> {
+    const verified = this.verifiedInput(input);
+    if (!verified) return authorizationRefused();
+    try {
+      return await runRemoteJobTransaction({
+        database: this.database, scope: this.scope, maxAttempts: this.maxTransactionAttempts,
+        work: (transaction) => classifyRemoteJobTransaction({
+          transaction, scope: this.scope, claim: verified.claim, envelope: input.envelope,
+          certificate: verified.certificate, trustedIssuers: this.trustedIssuers,
+          requestDigest: verified.requestDigest, now: verified.now,
+        }),
+      });
+    } catch (error) {
+      if (error instanceof Error) return { kind: 'unavailable' };
+      throw error;
+    }
+  }
+
+  reserve(input: BlroAuthorityJobInput): Promise<RemoteJobReservation> {
+    return this.authorizeAndReserve(input);
   }
 
   async authorizeAndReserve(input: RemoteJobReserveInput): Promise<RemoteJobReservation> {
@@ -164,6 +214,27 @@ export class PostgresRemoteJobStore implements RemoteJobStore {
       if (error instanceof Error) return { kind: 'unknown' };
       throw error;
     }
+  }
+
+  private verifiedInput(input: BlroAuthorityJobInput): {
+    readonly claim: JobCapabilityClaim;
+    readonly certificate: ReturnType<typeof leafCertificateSchema.parse>;
+    readonly requestDigest: string;
+    readonly now: Date;
+  } | undefined {
+    const now = this.clock.now();
+    let claim: JobCapabilityClaim;
+    try {
+      claim = verifyJobCapability({ envelope: input.envelope, publicKey: this.capabilityPublicKey, now });
+    } catch (error) {
+      if (error instanceof JobCapabilityError) return undefined;
+      throw error;
+    }
+    if (claim.tenantId !== this.scope.tenantId || claim.projectId !== this.scope.projectId) return undefined;
+    const certificate = leafCertificateSchema.safeParse(input.certificate);
+    if (!certificate.success) return undefined;
+    return { claim, certificate: certificate.data,
+      requestDigest: browserExecutionRequestDigest(input.envelope.request), now };
   }
 
   private dispatchMatchesScope(dispatch: RemoteJobRetainInput['dispatch']): boolean {

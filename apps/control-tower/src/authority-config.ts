@@ -45,7 +45,7 @@ export type AuthorityConfigResult =
   | { readonly success: true; readonly data: AuthorityConfig }
   | { readonly success: false; readonly issues: readonly AuthorityConfigIssue[] };
 
-export type AuthorityRuntimeEnvironment = Readonly<Partial<Record<AuthorityConfigField, string>>>;
+export type AuthorityRuntimeEnvironment = Readonly<Record<string, string | undefined>>;
 
 const CONFIG_FIELDS = {
   authorityStore: 'SANGFOR_BLRO_AUTHORITY_STORE',

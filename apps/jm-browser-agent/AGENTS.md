@@ -13,8 +13,9 @@ result. This app therefore:
   API at all — not even `createPrivateKey`. BLRO-side minting lives in
   `@sangfor/authority` (`signJmAuthorityArtifact`), which no JM source may import. A
   static export-boundary test enforces both halves.
-- treats its own response as observational only — a JM result is never a PASS authority,
-  and `retainResult` returns `indeterminate` so BLRO reads back the truth.
+- treats its own response as observational only — a mutation response is never PASS authority.
+  Only a distinct receipt/JTI-bound `verify_console` job may return an observational PASS for
+  the BLRO oracle to judge; mutation retention remains `indeterminate`.
 
 ## Two signed artifacts, deliberately split
 | Artifact | Cadence | Role |

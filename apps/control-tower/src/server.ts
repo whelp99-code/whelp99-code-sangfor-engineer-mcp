@@ -8,6 +8,7 @@ import { loadEnvFile } from '../../../packages/sangfor-collector/src/load-env.js
 import { buildLoopStatus } from '../../../packages/sangfor-loop/src/index.js';
 import type { AuthorityRuntimePort } from './authority-runtime.js';
 import { routeAuthorityEnrollment } from './authority-enrollment-routes.js';
+import { routeAuthorityRemoteJob } from './authority-remote-job-routes.js';
 import {
   readJsonBody,
   refuseUnreadyAuthorityApi,
@@ -45,6 +46,10 @@ export function createTowerServer(opts: TowerServerOptions = {}): http.Server {
       if (await routeAuthorityEnrollment({
         method, path, request: req, response: res,
         authorityRuntime: opts.authorityRuntime, apiToken,
+      })) return;
+      if (await routeAuthorityRemoteJob({
+        method, path, request: req, response: res,
+        authorityRuntime: opts.authorityRuntime,
       })) return;
       if (path.startsWith('/api/') && !api) return json(res, { error: 'BLRO authority API is not exposed' }, 404);
       if (!api) return json(res, { error: 'Not found' }, 404);

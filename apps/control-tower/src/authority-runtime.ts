@@ -25,6 +25,10 @@ import {
   type AuthorityDomainApis,
 } from './authority-domain-apis.js';
 import {
+  createOptionalAuthorityRemoteJobApi,
+  type AuthorityRemoteJobApi,
+} from './authority-remote-jobs.js';
+import {
   BLRO_RUNTIME_SCHEMA_VERSION,
   firstReadinessFailure,
   probeAuthorityDependencies,
@@ -52,6 +56,7 @@ export interface AuthorityRuntimePort {
   readiness(): Promise<AuthorityReadiness>;
   assertReady(): Promise<void>;
   enrollments(): EnrollmentAuthorityApi | undefined;
+  remoteJobs?(): AuthorityRemoteJobApi | undefined;
   localWriteAuthority(aggregate: string, sourceRoot: string, actorId: string): Promise<LocalWriteAuthority>;
   beginDrain(): void;
   close(): Promise<void>;
@@ -71,6 +76,7 @@ export type AuthorityResources = {
   readonly enrollmentStore: PostgresEnrollmentRegistry;
   readonly jobStore: PostgresRemoteJobStore;
   readonly domainApis: AuthorityDomainApis;
+  readonly remoteJobApi?: AuthorityRemoteJobApi;
   readonly close: () => Promise<void>;
 };
 
@@ -136,16 +142,23 @@ export function createAuthorityRuntime(options: RuntimeOptions = {}) {
     };
     const dependencies = { ...base, ...input.material };
     let candidate: unknown;
+    let remoteJobApi: AuthorityRemoteJobApi | undefined;
     try {
       candidate = options.createDomainApis
         ? options.createDomainApis(dependencies)
         : createDefaultAuthorityDomainApis(dependencies);
+      remoteJobApi = createOptionalAuthorityRemoteJobApi({
+        environment, tenantId: input.config.tenantId, projectId: input.config.projectId,
+        signingPrivateKey: input.material.signingPrivateKey, jobStore: base.jobStore,
+      });
     } catch {
       return undefined;
     }
     const domainApis = parseAuthorityDomainApis(candidate, dependencies);
     if (!domainApis) return undefined;
-    domainApisReady = true; return { ...base, domainApis, close: () => input.prisma.$disconnect() };
+    domainApisReady = true;
+    return { ...base, domainApis, ...(remoteJobApi ? { remoteJobApi } : {}),
+      close: () => input.prisma.$disconnect() };
   }
 
   async function start(): Promise<void> {
@@ -217,6 +230,7 @@ export function createAuthorityRuntime(options: RuntimeOptions = {}) {
       if (degraded) throw new AuthorityUnavailableError(firstReadinessFailure(report()));
     },
     enrollments: (): EnrollmentAuthorityApi | undefined => resources?.enrollmentStore,
+    remoteJobs: (): AuthorityRemoteJobApi | undefined => resources?.remoteJobApi,
     async localWriteAuthority(aggregate: string, sourceRoot: string, actorId: string): Promise<LocalWriteAuthority> {
       const current = await readiness();
       if (!current.ok || !resources || !parsed.success) throw new AuthorityUnavailableError(firstReadinessFailure(current));

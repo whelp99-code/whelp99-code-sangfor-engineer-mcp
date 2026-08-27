@@ -15,6 +15,18 @@ export {
 export { AuthorityStorePersistenceError, BlroAuthorityStore } from './authority-store.js';
 export { PostgresAuthorityEpochPort, AuthorityEpochError, type AuthorityEpochPort } from './authority-epoch.js';
 export {
+  createBlroRemoteDispatcher,
+  type BlroDispatchAuthority,
+  type BlroDispatchPurpose,
+  type BlroDispatchTarget,
+  type BlroJmTransport,
+  type BlroRemoteSubmission,
+} from './blro-remote-dispatcher.js';
+export {
+  createNodeBlroJmTransport,
+  type NodeBlroJmTransportOptions,
+} from './blro-jm-transport.js';
+export {
   PostgresRemoteJobStore,
   type PostgresRemoteJobStoreOptions,
 } from './remote-job-store.js';
