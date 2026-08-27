@@ -1,0 +1,637 @@
+{
+  "schemaVersion": "rag-project-completeness.v1",
+  "corpusId": "project-completeness-v1",
+  "corpusDigest": "0fe3015dad8197e909627cb47e742b9fe995540f028bd4f068603e37742c65c3",
+  "cohort": {
+    "backend": "hash",
+    "model": "hash-v1",
+    "dimensions": 384
+  },
+  "chunks": [
+    {
+      "id": "hci-acl-allowed",
+      "product": "HCI",
+      "version": "1.0",
+      "sourceType": "manual",
+      "trustLevel": "official",
+      "title": "Synthetic HCI oracle",
+      "text": "sanitized acl_oracle actor allowed guidance",
+      "filePath": "synthetic/hci-acl-allowed.md",
+      "tenantId": "tenant-alpha",
+      "projectId": "project-alpha",
+      "aclActorIds": [
+        "actor-alpha"
+      ],
+      "embeddingBackend": "hash",
+      "embeddingModel": "hash-v1",
+      "vectorDims": 384
+    },
+    {
+      "id": "hci-acl-denied",
+      "product": "HCI",
+      "version": "1.0",
+      "sourceType": "manual",
+      "trustLevel": "official",
+      "title": "Synthetic HCI oracle",
+      "text": "sanitized scope_oracle forbidden actor guidance",
+      "filePath": "synthetic/hci-acl-denied.md",
+      "tenantId": "tenant-alpha",
+      "projectId": "project-alpha",
+      "aclActorIds": [
+        "actor-other"
+      ],
+      "embeddingBackend": "hash",
+      "embeddingModel": "hash-v1",
+      "vectorDims": 384
+    },
+    {
+      "id": "hci-cross-project",
+      "product": "HCI",
+      "version": "1.0",
+      "sourceType": "manual",
+      "trustLevel": "official",
+      "title": "Synthetic HCI oracle",
+      "text": "sanitized scope_oracle forbidden project guidance",
+      "filePath": "synthetic/hci-cross-project.md",
+      "tenantId": "tenant-alpha",
+      "projectId": "project-other",
+      "aclActorIds": [],
+      "embeddingBackend": "hash",
+      "embeddingModel": "hash-v1",
+      "vectorDims": 384
+    },
+    {
+      "id": "hci-cross-tenant",
+      "product": "HCI",
+      "version": "1.0",
+      "sourceType": "manual",
+      "trustLevel": "official",
+      "title": "Synthetic HCI oracle",
+      "text": "sanitized scope_oracle forbidden tenant guidance",
+      "filePath": "synthetic/hci-cross-tenant.md",
+      "tenantId": "tenant-other",
+      "projectId": "project-alpha",
+      "aclActorIds": [],
+      "embeddingBackend": "hash",
+      "embeddingModel": "hash-v1",
+      "vectorDims": 384
+    },
+    {
+      "id": "hci-filter-draft",
+      "product": "HCI",
+      "version": "1.0",
+      "sourceType": "manual",
+      "trustLevel": "draft",
+      "title": "Synthetic HCI oracle",
+      "text": "sanitized filter_oracle draft guidance",
+      "filePath": "synthetic/hci-filter-draft.md",
+      "tenantId": "tenant-alpha",
+      "projectId": "project-alpha",
+      "aclActorIds": [],
+      "embeddingBackend": "hash",
+      "embeddingModel": "hash-v1",
+      "vectorDims": 384
+    },
+    {
+      "id": "hci-filter-official",
+      "product": "HCI",
+      "version": "1.0",
+      "sourceType": "manual",
+      "trustLevel": "official",
+      "title": "Synthetic HCI oracle",
+      "text": "sanitized filter_oracle official manual version guidance",
+      "filePath": "synthetic/hci-filter-official.md",
+      "tenantId": "tenant-alpha",
+      "projectId": "project-alpha",
+      "aclActorIds": [],
+      "embeddingBackend": "hash",
+      "embeddingModel": "hash-v1",
+      "vectorDims": 384
+    },
+    {
+      "id": "hci-filter-version",
+      "product": "HCI",
+      "version": "9.9",
+      "sourceType": "manual",
+      "trustLevel": "official",
+      "title": "Synthetic HCI oracle",
+      "text": "sanitized filter_oracle wrong version guidance",
+      "filePath": "synthetic/hci-filter-version.md",
+      "tenantId": "tenant-alpha",
+      "projectId": "project-alpha",
+      "aclActorIds": [],
+      "embeddingBackend": "hash",
+      "embeddingModel": "hash-v1",
+      "vectorDims": 384
+    },
+    {
+      "id": "hci-filter-wiki",
+      "product": "HCI",
+      "version": "1.0",
+      "sourceType": "wiki",
+      "trustLevel": "official",
+      "title": "Synthetic HCI oracle",
+      "text": "sanitized filter_oracle wiki guidance",
+      "filePath": "synthetic/hci-filter-wiki.md",
+      "tenantId": "tenant-alpha",
+      "projectId": "project-alpha",
+      "aclActorIds": [],
+      "embeddingBackend": "hash",
+      "embeddingModel": "hash-v1",
+      "vectorDims": 384
+    },
+    {
+      "id": "hci-scope-allowed",
+      "product": "HCI",
+      "version": "1.0",
+      "sourceType": "manual",
+      "trustLevel": "official",
+      "title": "Synthetic HCI oracle",
+      "text": "sanitized scope_oracle authorized scope guidance",
+      "filePath": "synthetic/hci-scope-allowed.md",
+      "tenantId": "tenant-alpha",
+      "projectId": "project-alpha",
+      "aclActorIds": [],
+      "embeddingBackend": "hash",
+      "embeddingModel": "hash-v1",
+      "vectorDims": 384
+    },
+    {
+      "id": "product-cisco-iosxe",
+      "product": "CISCO_IOSXE",
+      "version": "1.0",
+      "sourceType": "manual",
+      "trustLevel": "official",
+      "title": "Synthetic CISCO_IOSXE oracle",
+      "text": "sanitized synthetic oracle_cisco_iosxe configuration completeness guidance",
+      "filePath": "synthetic/product-cisco-iosxe.md",
+      "tenantId": "tenant-alpha",
+      "projectId": "project-alpha",
+      "aclActorIds": [],
+      "embeddingBackend": "hash",
+      "embeddingModel": "hash-v1",
+      "vectorDims": 384
+    },
+    {
+      "id": "product-cyber-command",
+      "product": "CYBER_COMMAND",
+      "version": "1.0",
+      "sourceType": "manual",
+      "trustLevel": "official",
+      "title": "Synthetic CYBER_COMMAND oracle",
+      "text": "sanitized synthetic oracle_cyber_command configuration completeness guidance",
+      "filePath": "synthetic/product-cyber-command.md",
+      "tenantId": "tenant-alpha",
+      "projectId": "project-alpha",
+      "aclActorIds": [],
+      "embeddingBackend": "hash",
+      "embeddingModel": "hash-v1",
+      "vectorDims": 384
+    },
+    {
+      "id": "product-endpoint-secure",
+      "product": "ENDPOINT_SECURE",
+      "version": "1.0",
+      "sourceType": "manual",
+      "trustLevel": "official",
+      "title": "Synthetic ENDPOINT_SECURE oracle",
+      "text": "sanitized synthetic oracle_endpoint_secure configuration completeness guidance",
+      "filePath": "synthetic/product-endpoint-secure.md",
+      "tenantId": "tenant-alpha",
+      "projectId": "project-alpha",
+      "aclActorIds": [],
+      "embeddingBackend": "hash",
+      "embeddingModel": "hash-v1",
+      "vectorDims": 384
+    },
+    {
+      "id": "product-fortios",
+      "product": "FORTIOS",
+      "version": "1.0",
+      "sourceType": "manual",
+      "trustLevel": "official",
+      "title": "Synthetic FORTIOS oracle",
+      "text": "sanitized synthetic oracle_fortios configuration completeness guidance",
+      "filePath": "synthetic/product-fortios.md",
+      "tenantId": "tenant-alpha",
+      "projectId": "project-alpha",
+      "aclActorIds": [],
+      "embeddingBackend": "hash",
+      "embeddingModel": "hash-v1",
+      "vectorDims": 384
+    },
+    {
+      "id": "product-hci",
+      "product": "HCI",
+      "version": "1.0",
+      "sourceType": "manual",
+      "trustLevel": "official",
+      "title": "Synthetic HCI oracle",
+      "text": "sanitized synthetic oracle_hci configuration completeness guidance",
+      "filePath": "synthetic/product-hci.md",
+      "tenantId": "tenant-alpha",
+      "projectId": "project-alpha",
+      "aclActorIds": [],
+      "embeddingBackend": "hash",
+      "embeddingModel": "hash-v1",
+      "vectorDims": 384
+    },
+    {
+      "id": "product-hci-scp",
+      "product": "HCI_SCP",
+      "version": "1.0",
+      "sourceType": "manual",
+      "trustLevel": "official",
+      "title": "Synthetic HCI_SCP oracle",
+      "text": "sanitized synthetic oracle_hci_scp configuration completeness guidance",
+      "filePath": "synthetic/product-hci-scp.md",
+      "tenantId": "tenant-alpha",
+      "projectId": "project-alpha",
+      "aclActorIds": [],
+      "embeddingBackend": "hash",
+      "embeddingModel": "hash-v1",
+      "vectorDims": 384
+    },
+    {
+      "id": "product-hiware",
+      "product": "HIWARE",
+      "version": "1.0",
+      "sourceType": "manual",
+      "trustLevel": "official",
+      "title": "Synthetic HIWARE oracle",
+      "text": "sanitized synthetic oracle_hiware configuration completeness guidance",
+      "filePath": "synthetic/product-hiware.md",
+      "tenantId": "tenant-alpha",
+      "projectId": "project-alpha",
+      "aclActorIds": [],
+      "embeddingBackend": "hash",
+      "embeddingModel": "hash-v1",
+      "vectorDims": 384
+    },
+    {
+      "id": "product-iag",
+      "product": "IAG",
+      "version": "1.0",
+      "sourceType": "manual",
+      "trustLevel": "official",
+      "title": "Synthetic IAG oracle",
+      "text": "sanitized synthetic oracle_iag configuration completeness guidance",
+      "filePath": "synthetic/product-iag.md",
+      "tenantId": "tenant-alpha",
+      "projectId": "project-alpha",
+      "aclActorIds": [],
+      "embeddingBackend": "hash",
+      "embeddingModel": "hash-v1",
+      "vectorDims": 384
+    },
+    {
+      "id": "product-ndr",
+      "product": "NDR",
+      "version": "1.0",
+      "sourceType": "manual",
+      "trustLevel": "official",
+      "title": "Synthetic NDR oracle",
+      "text": "sanitized synthetic oracle_ndr configuration completeness guidance",
+      "filePath": "synthetic/product-ndr.md",
+      "tenantId": "tenant-alpha",
+      "projectId": "project-alpha",
+      "aclActorIds": [],
+      "embeddingBackend": "hash",
+      "embeddingModel": "hash-v1",
+      "vectorDims": 384
+    },
+    {
+      "id": "product-ngfw",
+      "product": "NGFW",
+      "version": "1.0",
+      "sourceType": "manual",
+      "trustLevel": "official",
+      "title": "Synthetic NGFW oracle",
+      "text": "sanitized synthetic oracle_ngfw configuration completeness guidance",
+      "filePath": "synthetic/product-ngfw.md",
+      "tenantId": "tenant-alpha",
+      "projectId": "project-alpha",
+      "aclActorIds": [],
+      "embeddingBackend": "hash",
+      "embeddingModel": "hash-v1",
+      "vectorDims": 384
+    },
+    {
+      "id": "product-other",
+      "product": "OTHER",
+      "version": "1.0",
+      "sourceType": "manual",
+      "trustLevel": "official",
+      "title": "Synthetic OTHER oracle",
+      "text": "sanitized synthetic oracle_other configuration completeness guidance",
+      "filePath": "synthetic/product-other.md",
+      "tenantId": "tenant-alpha",
+      "projectId": "project-alpha",
+      "aclActorIds": [],
+      "embeddingBackend": "hash",
+      "embeddingModel": "hash-v1",
+      "vectorDims": 384
+    },
+    {
+      "id": "product-scc",
+      "product": "SCC",
+      "version": "1.0",
+      "sourceType": "manual",
+      "trustLevel": "official",
+      "title": "Synthetic SCC oracle",
+      "text": "sanitized synthetic oracle_scc configuration completeness guidance",
+      "filePath": "synthetic/product-scc.md",
+      "tenantId": "tenant-alpha",
+      "projectId": "project-alpha",
+      "aclActorIds": [],
+      "embeddingBackend": "hash",
+      "embeddingModel": "hash-v1",
+      "vectorDims": 384
+    }
+  ],
+  "queries": [
+    {
+      "id": "q-acl-allow",
+      "text": "acl_oracle",
+      "scope": {
+        "tenantId": "tenant-alpha",
+        "projectId": "project-alpha",
+        "actorId": "actor-alpha"
+      },
+      "filters": {
+        "product": "HCI"
+      },
+      "limit": 1,
+      "expectedIds": [
+        "hci-acl-allowed"
+      ],
+      "forbiddenIds": [
+        "hci-acl-denied"
+      ]
+    },
+    {
+      "id": "q-filter-oracle",
+      "text": "filter_oracle",
+      "scope": {
+        "tenantId": "tenant-alpha",
+        "projectId": "project-alpha",
+        "actorId": "actor-alpha"
+      },
+      "filters": {
+        "product": "HCI",
+        "version": "1.0",
+        "sourceType": "manual",
+        "trustLevel": "official"
+      },
+      "limit": 1,
+      "expectedIds": [
+        "hci-filter-official"
+      ],
+      "forbiddenIds": [
+        "hci-filter-draft",
+        "hci-filter-version",
+        "hci-filter-wiki"
+      ]
+    },
+    {
+      "id": "q-no-result",
+      "text": "no_result_sentinel",
+      "scope": {
+        "tenantId": "tenant-alpha",
+        "projectId": "project-empty",
+        "actorId": "actor-alpha"
+      },
+      "filters": {
+        "product": "OTHER"
+      },
+      "limit": 1,
+      "expectedIds": [],
+      "forbiddenIds": []
+    },
+    {
+      "id": "q-product-cisco-iosxe",
+      "text": "oracle_cisco_iosxe",
+      "scope": {
+        "tenantId": "tenant-alpha",
+        "projectId": "project-alpha",
+        "actorId": "actor-alpha"
+      },
+      "filters": {
+        "product": "CISCO_IOSXE"
+      },
+      "limit": 1,
+      "expectedIds": [
+        "product-cisco-iosxe"
+      ],
+      "forbiddenIds": []
+    },
+    {
+      "id": "q-product-cyber-command",
+      "text": "oracle_cyber_command",
+      "scope": {
+        "tenantId": "tenant-alpha",
+        "projectId": "project-alpha",
+        "actorId": "actor-alpha"
+      },
+      "filters": {
+        "product": "CYBER_COMMAND"
+      },
+      "limit": 1,
+      "expectedIds": [
+        "product-cyber-command"
+      ],
+      "forbiddenIds": []
+    },
+    {
+      "id": "q-product-endpoint-secure",
+      "text": "oracle_endpoint_secure",
+      "scope": {
+        "tenantId": "tenant-alpha",
+        "projectId": "project-alpha",
+        "actorId": "actor-alpha"
+      },
+      "filters": {
+        "product": "ENDPOINT_SECURE"
+      },
+      "limit": 1,
+      "expectedIds": [
+        "product-endpoint-secure"
+      ],
+      "forbiddenIds": []
+    },
+    {
+      "id": "q-product-fortios",
+      "text": "oracle_fortios",
+      "scope": {
+        "tenantId": "tenant-alpha",
+        "projectId": "project-alpha",
+        "actorId": "actor-alpha"
+      },
+      "filters": {
+        "product": "FORTIOS"
+      },
+      "limit": 1,
+      "expectedIds": [
+        "product-fortios"
+      ],
+      "forbiddenIds": []
+    },
+    {
+      "id": "q-product-hci",
+      "text": "oracle_hci",
+      "scope": {
+        "tenantId": "tenant-alpha",
+        "projectId": "project-alpha",
+        "actorId": "actor-alpha"
+      },
+      "filters": {
+        "product": "HCI"
+      },
+      "limit": 1,
+      "expectedIds": [
+        "product-hci"
+      ],
+      "forbiddenIds": []
+    },
+    {
+      "id": "q-product-hci-scp",
+      "text": "oracle_hci_scp",
+      "scope": {
+        "tenantId": "tenant-alpha",
+        "projectId": "project-alpha",
+        "actorId": "actor-alpha"
+      },
+      "filters": {
+        "product": "HCI_SCP"
+      },
+      "limit": 1,
+      "expectedIds": [
+        "product-hci-scp"
+      ],
+      "forbiddenIds": []
+    },
+    {
+      "id": "q-product-hiware",
+      "text": "oracle_hiware",
+      "scope": {
+        "tenantId": "tenant-alpha",
+        "projectId": "project-alpha",
+        "actorId": "actor-alpha"
+      },
+      "filters": {
+        "product": "HIWARE"
+      },
+      "limit": 1,
+      "expectedIds": [
+        "product-hiware"
+      ],
+      "forbiddenIds": []
+    },
+    {
+      "id": "q-product-iag",
+      "text": "oracle_iag",
+      "scope": {
+        "tenantId": "tenant-alpha",
+        "projectId": "project-alpha",
+        "actorId": "actor-alpha"
+      },
+      "filters": {
+        "product": "IAG"
+      },
+      "limit": 1,
+      "expectedIds": [
+        "product-iag"
+      ],
+      "forbiddenIds": []
+    },
+    {
+      "id": "q-product-ndr",
+      "text": "oracle_ndr",
+      "scope": {
+        "tenantId": "tenant-alpha",
+        "projectId": "project-alpha",
+        "actorId": "actor-alpha"
+      },
+      "filters": {
+        "product": "NDR"
+      },
+      "limit": 1,
+      "expectedIds": [
+        "product-ndr"
+      ],
+      "forbiddenIds": []
+    },
+    {
+      "id": "q-product-ngfw",
+      "text": "oracle_ngfw",
+      "scope": {
+        "tenantId": "tenant-alpha",
+        "projectId": "project-alpha",
+        "actorId": "actor-alpha"
+      },
+      "filters": {
+        "product": "NGFW"
+      },
+      "limit": 1,
+      "expectedIds": [
+        "product-ngfw"
+      ],
+      "forbiddenIds": []
+    },
+    {
+      "id": "q-product-other",
+      "text": "oracle_other",
+      "scope": {
+        "tenantId": "tenant-alpha",
+        "projectId": "project-alpha",
+        "actorId": "actor-alpha"
+      },
+      "filters": {
+        "product": "OTHER"
+      },
+      "limit": 1,
+      "expectedIds": [
+        "product-other"
+      ],
+      "forbiddenIds": []
+    },
+    {
+      "id": "q-product-scc",
+      "text": "oracle_scc",
+      "scope": {
+        "tenantId": "tenant-alpha",
+        "projectId": "project-alpha",
+        "actorId": "actor-alpha"
+      },
+      "filters": {
+        "product": "SCC"
+      },
+      "limit": 1,
+      "expectedIds": [
+        "product-scc"
+      ],
+      "forbiddenIds": []
+    },
+    {
+      "id": "q-scope-isolation",
+      "text": "scope_oracle",
+      "scope": {
+        "tenantId": "tenant-alpha",
+        "projectId": "project-alpha",
+        "actorId": "actor-alpha"
+      },
+      "filters": {
+        "product": "HCI"
+      },
+      "limit": 1,
+      "expectedIds": [
+        "hci-scope-allowed"
+      ],
+      "forbiddenIds": [
+        "hci-acl-denied",
+        "hci-cross-project",
+        "hci-cross-tenant"
+      ]
+    }
+  ]
+}
