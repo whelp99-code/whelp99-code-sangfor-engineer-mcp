@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import type { BrowserExecutionPort } from '../../../packages/sangfor-browser-contracts/src/index.js';
+import type { JsonSchemaObject } from './mcp-contracts.js';
 import type { ResolveIagMutationActionAuthorityInput } from '../../../packages/sangfor-competency/src/index.js';
 import {
   createIagExecutor,
@@ -142,7 +143,7 @@ export function configureIagOrchestratorToolService(service: IagOrchestratorTool
 
 export function iagOrchestratorToolCatalog(
   requiredPort: () => BrowserExecutionPort,
-): Record<string, { readonly description: string; readonly inputSchema: object; readonly handler: (input: unknown) => unknown }> {
+): Record<string, { readonly description: string; readonly inputSchema: JsonSchemaObject; readonly handler: (input: unknown) => unknown }> {
   const service = (): IagOrchestratorToolService => {
     if (configuredService !== undefined) return configuredService;
     const port = requiredPort();

@@ -1,8 +1,8 @@
 export const GENERATED_REFS = [
   "persist:apps/control-tower/src/api.ts#runReportBlock",
-  "persist:apps/mcp-server/src/index.ts#<module>",
-  "persist:apps/mcp-server/src/index.ts#checkOperatorExecutionGate",
-  "persist:apps/mcp-server/src/index.ts#recordSearchGap",
+  "persist:apps/mcp-server/src/observability-tool-catalog.ts#<module>",
+  "persist:apps/mcp-server/src/safety-selftest.ts#checkOperatorExecutionGate",
+  "persist:apps/mcp-server/src/search-gap-support.ts#recordSearchGap",
   "persist:apps/operator-console/src/api.ts#postImportExcel",
   "persist:packages/sangfor-office/src/index.ts#runOfficeBatch",
   "persist:packages/sangfor-pptx/src/index.ts#buildOperationsGuidePptx",

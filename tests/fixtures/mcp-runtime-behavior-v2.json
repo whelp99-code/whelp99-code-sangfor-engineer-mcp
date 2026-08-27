@@ -1,0 +1,388 @@
+{
+  "schemaVersion": "mcp-runtime-behavior.v2",
+  "deliberateDelta": "strict-pre-dispatch-json-schema-validation",
+  "malformed": {
+    "absent": {
+      "content": [
+        {
+          "text": "{\"error\":{\"code\":\"INVALID_TOOL_ARGUMENTS\",\"tool\":\"sangfor_products\",\"issues\":[{\"code\":\"arguments_required\",\"path\":\"\",\"schemaPath\":\"#\"}]}}",
+          "type": "text"
+        }
+      ],
+      "isError": true,
+      "structuredContent": {
+        "error": {
+          "code": "INVALID_TOOL_ARGUMENTS",
+          "issues": [
+            {
+              "code": "arguments_required",
+              "path": "",
+              "schemaPath": "#"
+            }
+          ],
+          "tool": "sangfor_products"
+        }
+      }
+    },
+    "missingRequired": {
+      "content": [
+        {
+          "text": "{\"error\":{\"code\":\"INVALID_TOOL_ARGUMENTS\",\"tool\":\"sangfor_get_manual_section\",\"issues\":[{\"code\":\"required\",\"path\":\"\",\"schemaPath\":\"#/required\"}]}}",
+          "type": "text"
+        }
+      ],
+      "isError": true,
+      "structuredContent": {
+        "error": {
+          "code": "INVALID_TOOL_ARGUMENTS",
+          "issues": [
+            {
+              "code": "required",
+              "path": "",
+              "schemaPath": "#/required"
+            }
+          ],
+          "tool": "sangfor_get_manual_section"
+        }
+      }
+    },
+    "nonObject": {
+      "content": [
+        {
+          "text": "{\"error\":{\"code\":\"INVALID_TOOL_ARGUMENTS\",\"tool\":\"sangfor_products\",\"issues\":[{\"code\":\"type\",\"path\":\"\",\"schemaPath\":\"#/type\"}]}}",
+          "type": "text"
+        }
+      ],
+      "isError": true,
+      "structuredContent": {
+        "error": {
+          "code": "INVALID_TOOL_ARGUMENTS",
+          "issues": [
+            {
+              "code": "type",
+              "path": "",
+              "schemaPath": "#/type"
+            }
+          ],
+          "tool": "sangfor_products"
+        }
+      }
+    },
+    "secretLikeUnknown": {
+      "content": [
+        {
+          "text": "{\"error\":{\"code\":\"INVALID_TOOL_ARGUMENTS\",\"tool\":\"sangfor_products\",\"issues\":[{\"code\":\"additionalProperties\",\"path\":\"\",\"schemaPath\":\"#/additionalProperties\"}]}}",
+          "type": "text"
+        }
+      ],
+      "isError": true,
+      "structuredContent": {
+        "error": {
+          "code": "INVALID_TOOL_ARGUMENTS",
+          "issues": [
+            {
+              "code": "additionalProperties",
+              "path": "",
+              "schemaPath": "#/additionalProperties"
+            }
+          ],
+          "tool": "sangfor_products"
+        }
+      }
+    },
+    "wrongType": {
+      "content": [
+        {
+          "text": "{\"error\":{\"code\":\"INVALID_TOOL_ARGUMENTS\",\"tool\":\"sangfor_get_manual_section\",\"issues\":[{\"code\":\"type\",\"path\":\"/id\",\"schemaPath\":\"#/properties/id/type\"}]}}",
+          "type": "text"
+        }
+      ],
+      "isError": true,
+      "structuredContent": {
+        "error": {
+          "code": "INVALID_TOOL_ARGUMENTS",
+          "issues": [
+            {
+              "code": "type",
+              "path": "/id",
+              "schemaPath": "#/properties/id/type"
+            }
+          ],
+          "tool": "sangfor_get_manual_section"
+        }
+      }
+    }
+  },
+  "representative": {
+    "dryRun": {
+      "content": [
+        {
+          "text": "{\"id\":\"<generated-id>\",\"product\":\"HCI_SCP\",\"ok\":true,\"mutationPerformed\":false,\"stoppedBefore\":[\"Save\",\"Apply\",\"Delete\",\"Commit\",\"Response Action\"],\"webuiRoutePreview\":[{\"taskId\":\"task_1\",\"menuPath\":[\"Reliability\",\"HA/DRS\"],\"checks\":[\"Navigate to menu\",\"Confirm current values\",\"Populate draft values if safe\",\"Stop before mutation button\"]}],\"apiRequestPreview\":[{\"taskId\":\"task_1\",\"endpoint\":\"GET /janus/20180725/tasks/{task_id}\",\"method\":\"GET\",\"execute\":false},{\"taskId\":\"task_1\",\"endpoint\":\"PUT /openstack/compute/v2/servers/{id}/metadata\",\"method\":\"PUT\",\"execute\":false}],\"approvalRequiredTasks\":[\"task_1\"],\"manualReviewRows\":[],\"sessionRequired\":false,\"sessionAttached\":false,\"dryRunFailures\":[]}",
+          "type": "text"
+        }
+      ],
+      "isError": false,
+      "structuredContent": {
+        "apiRequestPreview": [
+          {
+            "endpoint": "GET /janus/20180725/tasks/{task_id}",
+            "execute": false,
+            "method": "GET",
+            "taskId": "task_1"
+          },
+          {
+            "endpoint": "PUT /openstack/compute/v2/servers/{id}/metadata",
+            "execute": false,
+            "method": "PUT",
+            "taskId": "task_1"
+          }
+        ],
+        "approvalRequiredTasks": [
+          "task_1"
+        ],
+        "dryRunFailures": [],
+        "id": "<generated-id>",
+        "manualReviewRows": [],
+        "mutationPerformed": false,
+        "ok": true,
+        "product": "HCI_SCP",
+        "sessionAttached": false,
+        "sessionRequired": false,
+        "stoppedBefore": [
+          "Save",
+          "Apply",
+          "Delete",
+          "Commit",
+          "Response Action"
+        ],
+        "webuiRoutePreview": [
+          {
+            "checks": [
+              "Navigate to menu",
+              "Confirm current values",
+              "Populate draft values if safe",
+              "Stop before mutation button"
+            ],
+            "menuPath": [
+              "Reliability",
+              "HA/DRS"
+            ],
+            "taskId": "task_1"
+          }
+        ]
+      }
+    },
+    "products": {
+      "content": [
+        {
+          "text": "{\"products\":[{\"code\":\"HCI_SCP\",\"name\":\"Sangfor HCI/SCP\",\"priority\":1,\"aliases\":[\"HCI/SCP\",\"SCP\",\"Sangfor Cloud Platform\",\"Sangfor SCP\",\"aCloud\",\"HCI SCP\"],\"mvpScope\":[\"API-first config collection\",\"resource pool and VM planning\",\"HA/DRS planning\",\"license and alert validation\"]},{\"code\":\"HCI\",\"name\":\"Sangfor HCI\",\"priority\":5,\"aliases\":[\"HCI\",\"aSV\",\"Sangfor HCI\",\"Hyper-Converged Infrastructure\"],\"mvpScope\":[\"cluster deployment\",\"network precheck\",\"storage precheck\",\"VM migration planning\",\"DR PoC planning\"]},{\"code\":\"NGFW\",\"name\":\"Sangfor NGFW\",\"priority\":7,\"aliases\":[\"NGFW\",\"NGAF\",\"Athena NGFW\",\"Next-Generation Firewall\"],\"mvpScope\":[\"firewall policy planning\",\"bandwidth management\",\"VPN planning\",\"security validation\"]},{\"code\":\"SCC\",\"name\":\"Sangfor Data Center Cloud\",\"priority\":8,\"aliases\":[\"SCC\",\"Sangfor Data Center Cloud\",\"Data Center Cloud\"],\"mvpScope\":[\"tenant operations\",\"quota planning\",\"cloud resource validation\"]},{\"code\":\"IAG\",\"name\":\"Sangfor IAG\",\"priority\":2,\"aliases\":[\"IAG\",\"Internet Access Gateway\",\"IAM\",\"access gateway\"],\"mvpScope\":[\"user/group policy planning\",\"internet access control\",\"authentication integration\",\"audit log validation\"]},{\"code\":\"ENDPOINT_SECURE\",\"name\":\"Sangfor Endpoint Secure\",\"priority\":3,\"aliases\":[\"Endpoint Secure\",\"Endpoint Security\",\"EPP\",\"EDR\",\"aSEC\"],\"mvpScope\":[\"agent deployment plan\",\"EPP/EDR policy plan\",\"exception policy\",\"update and rollout validation\"]},{\"code\":\"NDR\",\"name\":\"Sangfor NDR / Cyber Command\",\"priority\":4,\"aliases\":[\"NDR\",\"Athena NDR\",\"Cyber Command\",\"Sangfor Cyber Command\",\"security operations\",\"SOC\"],\"mvpScope\":[\"event source onboarding\",\"incident and alert validation\",\"SOAR/playbook planning\",\"third-party API integration readiness\"]},{\"code\":\"CYBER_COMMAND\",\"name\":\"Sangfor Cyber Command\",\"priority\":6,\"aliases\":[\"Cyber Command legacy\",\"Sangfor Cyber Command legacy\"],\"mvpScope\":[\"event collection planning\",\"alert policy planning\",\"dashboard/report validation\",\"integration readiness\"]},{\"code\":\"HIWARE\",\"name\":\"HIWARE Privileged Access Management\",\"priority\":9,\"aliases\":[\"HIWARE\",\"HIWARE PSM\",\"HIWARE 6\",\"HIWARE PAM\",\"PSM for System\"],\"mvpScope\":[\"privileged access policy review\",\"OTP readiness\",\"session audit review\",\"approval workflow validation\"]},{\"code\":\"OTHER\",\"name\":\"Other Sangfor Product\",\"priority\":99,\"aliases\":[\"OTHER\"],\"mvpScope\":[\"source-preserving knowledge retrieval\"]}]}",
+          "type": "text"
+        }
+      ],
+      "isError": false,
+      "structuredContent": {
+        "products": [
+          {
+            "aliases": [
+              "HCI/SCP",
+              "SCP",
+              "Sangfor Cloud Platform",
+              "Sangfor SCP",
+              "aCloud",
+              "HCI SCP"
+            ],
+            "code": "HCI_SCP",
+            "mvpScope": [
+              "API-first config collection",
+              "resource pool and VM planning",
+              "HA/DRS planning",
+              "license and alert validation"
+            ],
+            "name": "Sangfor HCI/SCP",
+            "priority": 1
+          },
+          {
+            "aliases": [
+              "HCI",
+              "aSV",
+              "Sangfor HCI",
+              "Hyper-Converged Infrastructure"
+            ],
+            "code": "HCI",
+            "mvpScope": [
+              "cluster deployment",
+              "network precheck",
+              "storage precheck",
+              "VM migration planning",
+              "DR PoC planning"
+            ],
+            "name": "Sangfor HCI",
+            "priority": 5
+          },
+          {
+            "aliases": [
+              "NGFW",
+              "NGAF",
+              "Athena NGFW",
+              "Next-Generation Firewall"
+            ],
+            "code": "NGFW",
+            "mvpScope": [
+              "firewall policy planning",
+              "bandwidth management",
+              "VPN planning",
+              "security validation"
+            ],
+            "name": "Sangfor NGFW",
+            "priority": 7
+          },
+          {
+            "aliases": [
+              "SCC",
+              "Sangfor Data Center Cloud",
+              "Data Center Cloud"
+            ],
+            "code": "SCC",
+            "mvpScope": [
+              "tenant operations",
+              "quota planning",
+              "cloud resource validation"
+            ],
+            "name": "Sangfor Data Center Cloud",
+            "priority": 8
+          },
+          {
+            "aliases": [
+              "IAG",
+              "Internet Access Gateway",
+              "IAM",
+              "access gateway"
+            ],
+            "code": "IAG",
+            "mvpScope": [
+              "user/group policy planning",
+              "internet access control",
+              "authentication integration",
+              "audit log validation"
+            ],
+            "name": "Sangfor IAG",
+            "priority": 2
+          },
+          {
+            "aliases": [
+              "Endpoint Secure",
+              "Endpoint Security",
+              "EPP",
+              "EDR",
+              "aSEC"
+            ],
+            "code": "ENDPOINT_SECURE",
+            "mvpScope": [
+              "agent deployment plan",
+              "EPP/EDR policy plan",
+              "exception policy",
+              "update and rollout validation"
+            ],
+            "name": "Sangfor Endpoint Secure",
+            "priority": 3
+          },
+          {
+            "aliases": [
+              "NDR",
+              "Athena NDR",
+              "Cyber Command",
+              "Sangfor Cyber Command",
+              "security operations",
+              "SOC"
+            ],
+            "code": "NDR",
+            "mvpScope": [
+              "event source onboarding",
+              "incident and alert validation",
+              "SOAR/playbook planning",
+              "third-party API integration readiness"
+            ],
+            "name": "Sangfor NDR / Cyber Command",
+            "priority": 4
+          },
+          {
+            "aliases": [
+              "Cyber Command legacy",
+              "Sangfor Cyber Command legacy"
+            ],
+            "code": "CYBER_COMMAND",
+            "mvpScope": [
+              "event collection planning",
+              "alert policy planning",
+              "dashboard/report validation",
+              "integration readiness"
+            ],
+            "name": "Sangfor Cyber Command",
+            "priority": 6
+          },
+          {
+            "aliases": [
+              "HIWARE",
+              "HIWARE PSM",
+              "HIWARE 6",
+              "HIWARE PAM",
+              "PSM for System"
+            ],
+            "code": "HIWARE",
+            "mvpScope": [
+              "privileged access policy review",
+              "OTP readiness",
+              "session audit review",
+              "approval workflow validation"
+            ],
+            "name": "HIWARE Privileged Access Management",
+            "priority": 9
+          },
+          {
+            "aliases": [
+              "OTHER"
+            ],
+            "code": "OTHER",
+            "mvpScope": [
+              "source-preserving knowledge retrieval"
+            ],
+            "name": "Other Sangfor Product",
+            "priority": 99
+          }
+        ]
+      }
+    },
+    "resourceRead": {
+      "contents": [
+        {
+          "mimeType": "application/json",
+          "text": "{\n  \"default\": \"dry-run / read-only\",\n  \"liveWriteRequires\": [\n    \"SANGFOR_ALLOW_REAL_EXECUTION\",\n    \"signed action-bound single-use approval\"\n  ],\n  \"productionAlsoRequires\": [\n    \"SANGFOR_ALLOW_PRODUCTION_EXECUTION\"\n  ],\n  \"indeterminateIsNeverPass\": true,\n  \"irreversibleActsStayHuman\": true\n}",
+          "uri": "sangfor://safety/posture"
+        }
+      ]
+    },
+    "scopedRag": {
+      "content": [
+        {
+          "text": "{\"count\":0,\"hits\":[]}",
+          "type": "text"
+        }
+      ],
+      "isError": false,
+      "structuredContent": {
+        "count": 0,
+        "hits": []
+      }
+    },
+    "unknownTool": {
+      "content": [
+        {
+          "text": "Unknown tool: sangfor_does_not_exist",
+          "type": "text"
+        }
+      ],
+      "isError": true
+    }
+  },
+  "sha256": "e7cd31fc9f086d4fadf61fb7a0293a1defced24553e6801eba2c29000d1ca9fc"
+}

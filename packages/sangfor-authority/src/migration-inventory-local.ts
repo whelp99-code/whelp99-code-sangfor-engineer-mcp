@@ -13,7 +13,7 @@ export const CREDENTIAL_REFS = [
   "credential:apps/control-tower/src/server.ts#createTowerServer",
   "credential:apps/http-bridge/src/server.ts#<module>",
   "credential:apps/http-bridge/src/server.ts#createBridgeServer",
-  "credential:apps/mcp-server/src/index.ts#hciConnection",
+  "credential:apps/mcp-server/src/hci-tool-support.ts#hciConnection",
   "credential:apps/mcp-server/src/tower-client.ts#TowerClient",
   "credential:apps/operator-console/src/server.ts#<module>",
   "credential:apps/operator-console/src/server.ts#createOperatorServer",

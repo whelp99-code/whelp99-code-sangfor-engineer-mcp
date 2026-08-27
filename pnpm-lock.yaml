@@ -54,7 +54,11 @@ importers:
         specifier: workspace:*
         version: link:../../packages/sangfor-jm-agent
 
-  apps/mcp-server: {}
+  apps/mcp-server:
+    dependencies:
+      ajv:
+        specifier: ^8.20.0
+        version: 8.20.0
 
   apps/mock-sangfor-console:
     dependencies:

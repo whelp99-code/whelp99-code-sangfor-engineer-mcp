@@ -1,0 +1,716 @@
+{
+  "schemaVersion": "mcp-tool-handler-routes.v1",
+  "baselineSource": "git:HEAD:apps/mcp-server/src/index.ts",
+  "knownRouteCount": 118,
+  "routes": [
+    {
+      "toolName": "sangfor_advisor_cisco_iosxe",
+      "catalogSource": "apps/mcp-server/src/vendor-read-tool-catalog.ts",
+      "handlerIdentifier": "const handler = async (args) => {\n    const timestamp = new Date().toISOString();\n    try {\n        const auth = Buffer.from(`${args.username}:${args.password}`).toString('base64');\n        const { status, json, text } = await httpJson(`${apiBaseUrl(args.host)}/restconf/data/ietf-interfaces:interfaces`, {\n            headers: { Authorization: `Basic ${auth}`, Accept: 'application/yang-data+json' },\n            tlsSkipVerify: true,\n        });\n        if (status < 200 || status >= 300)\n            throw new Error(`Cisco RESTCONF API returned HTTP ${status}: ${text.slice(0, 200)}`);\n        const configState = mapCiscoConfigState(json, 'api');\n        const evaluation = evaluateSpec(cisco_interface_baseline, toObservedRecord(configState));\n        return { product: 'CISCO_IOSXE', device: args.host, evaluation, timestamp };\n    }\n    catch (err) {\n        return { product: 'CISCO_IOSXE', device: args.host, error: `device query failed: ${String(err instanceof Error ? err.message : err)}`, timestamp };\n    }\n};",
+      "handlerAstSha256": "ca11efb1a3242ed3dbf28cc7286d5160a38e29eba1f2ec88cc1e4ccc15e3e9e8"
+    },
+    {
+      "toolName": "sangfor_advisor_cisco_iosxe_advanced",
+      "catalogSource": "apps/mcp-server/src/vendor-read-tool-catalog.ts",
+      "handlerIdentifier": "const handler = async (args) => {\n    const timestamp = new Date().toISOString();\n    try {\n        const auth = Buffer.from(`${args.username}:${args.password}`).toString('base64');\n        const base = apiBaseUrl(args.host);\n        const get = (path) => httpJson(`${base}${path}`, { headers: { Authorization: `Basic ${auth}`, Accept: 'application/yang-data+json' }, tlsSkipVerify: true });\n        const [cpuRes, memRes, ifaceRes, vrfRes, zonePolicyRes, aclRes, snortRes] = await Promise.all([\n            get('/restconf/data/Cisco-IOS-XE-utilization:system'),\n            get('/restconf/data/Cisco-IOS-XE-memory:memory'),\n            get('/restconf/data/ietf-interfaces:interfaces-state'),\n            get('/restconf/data/ietf-routing:routing'),\n            get('/restconf/data/Cisco-IOS-XE-zone-based-firewall:zone-pair'),\n            get('/restconf/data/Cisco-IOS-XE-acl:ip'),\n            get('/restconf/data/Cisco-IOS-XE-snort:snort'),\n        ]);\n        for (const r of [cpuRes, memRes, ifaceRes, vrfRes, zonePolicyRes, aclRes, snortRes]) {\n            if (r.status < 200 || r.status >= 300)\n                throw new Error(`Cisco RESTCONF API returned HTTP ${r.status}: ${r.text.slice(0, 200)}`);\n        }\n        const healthState = mapCiscoSystemHealth(cpuRes.json, memRes.json, ifaceRes.json, vrfRes.json, 'api');\n        const auditState = mapCiscoPolicyAudit(zonePolicyRes.json, aclRes.json, snortRes.json, 'api');\n        const healthEvaluation = evaluateSpec(cisco_system_health_baseline, toObservedRecord(healthState));\n        const auditEvaluation = evaluateSpec(cisco_policy_audit_baseline, toObservedRecord(auditState));\n        return { product: 'CISCO_IOSXE_ADVANCED', device: args.host, evaluations: [healthEvaluation, auditEvaluation], timestamp };\n    }\n    catch (err) {\n        return { product: 'CISCO_IOSXE_ADVANCED', device: args.host, error: `device query failed: ${String(err instanceof Error ? err.message : err)}`, timestamp };\n    }\n};",
+      "handlerAstSha256": "6b999dfd96ac3c0a0cf90291155bf5d1ce6e4f6af20c6a9ca63c9a013bc4614b"
+    },
+    {
+      "toolName": "sangfor_advisor_fortios",
+      "catalogSource": "apps/mcp-server/src/vendor-read-tool-catalog.ts",
+      "handlerIdentifier": "const handler = async (args) => {\n    const timestamp = new Date().toISOString();\n    try {\n        const auth = Buffer.from(`${args.username}:${args.password}`).toString('base64');\n        const { status, json, text } = await httpJson(`${apiBaseUrl(args.host)}/api/v2/firewall/policy`, {\n            headers: { Authorization: `Basic ${auth}` },\n            tlsSkipVerify: true,\n        });\n        if (status < 200 || status >= 300)\n            throw new Error(`FortiOS API returned HTTP ${status}: ${text.slice(0, 200)}`);\n        const configState = mapFortiOSConfigState(json, 'api');\n        const evaluation = evaluateSpec(fortios_policy_baseline, toObservedRecord(configState));\n        return { product: 'FORTIOS', device: args.host, evaluation, timestamp };\n    }\n    catch (err) {\n        return { product: 'FORTIOS', device: args.host, error: `device query failed: ${String(err instanceof Error ? err.message : err)}`, timestamp };\n    }\n};",
+      "handlerAstSha256": "d16b0c8131bf042b48de968acc7cfed5921f696c02101b6012ef08a22af8e53b"
+    },
+    {
+      "toolName": "sangfor_advisor_fortios_advanced",
+      "catalogSource": "apps/mcp-server/src/vendor-read-tool-catalog.ts",
+      "handlerIdentifier": "const handler = async (args) => {\n    const timestamp = new Date().toISOString();\n    try {\n        const auth = Buffer.from(`${args.username}:${args.password}`).toString('base64');\n        const base = apiBaseUrl(args.host);\n        const get = (path) => httpJson(`${base}${path}`, { headers: { Authorization: `Basic ${auth}` }, tlsSkipVerify: true });\n        const [statusRes, npuRes, haRes, policyRes, ipsRes] = await Promise.all([\n            get('/api/v2/monitor/system/status'),\n            get('/api/v2/monitor/system/npu-stats'),\n            get('/api/v2/cmdb/system/ha-setting'),\n            get('/api/v2/cmdb/firewall/policy'),\n            get('/api/v2/cmdb/ips/sensor'),\n        ]);\n        for (const r of [statusRes, npuRes, haRes, policyRes, ipsRes]) {\n            if (r.status < 200 || r.status >= 300)\n                throw new Error(`FortiOS API returned HTTP ${r.status}: ${r.text.slice(0, 200)}`);\n        }\n        const healthState = mapFortiOSSystemHealth(statusRes.json, npuRes.json, haRes.json, 'api');\n        const auditState = mapFortiOSPolicyAudit(policyRes.json, ipsRes.json, 'api');\n        const healthEvaluation = evaluateSpec(fortios_system_health_baseline, toObservedRecord(healthState));\n        const auditEvaluation = evaluateSpec(fortios_policy_audit_baseline, toObservedRecord(auditState));\n        return { product: 'FORTIOS_ADVANCED', device: args.host, evaluations: [healthEvaluation, auditEvaluation], timestamp };\n    }\n    catch (err) {\n        return { product: 'FORTIOS_ADVANCED', device: args.host, error: `device query failed: ${String(err instanceof Error ? err.message : err)}`, timestamp };\n    }\n};",
+      "handlerAstSha256": "f8a5031202735bcae74de82cb07cc5a0e53d24d8f674fc7fab328a4407f2c3af"
+    },
+    {
+      "toolName": "sangfor_agent_manifest",
+      "catalogSource": "apps/mcp-server/src/manifest-tool-catalog.ts",
+      "handlerIdentifier": "const handler = () => ({\n    server: 'sangfor-engineer-mcp',\n    posture: 'read-only by default; device/external writes require explicit signed approval + SANGFOR_ALLOW_REAL_EXECUTION',\n    recommended_first_calls: [\n        'sangfor_products',\n        'sangfor_capabilities',\n        'sangfor_list_spec_coverage',\n        'sangfor_search_manuals',\n        'sangfor_analyze_project',\n    ],\n    standard_tools: [\n        'sangfor_evaluate_config', 'sangfor_suggest_rca', 'sangfor_recommend_sizing', 'sangfor_check_version',\n        'sangfor_analyze_project', 'sangfor_generate_config_plan', 'sangfor_generate_evidence_report',\n        'sangfor_search_manuals', 'sangfor_search_wiki', 'sangfor_rag_search',\n        'sangfor_advisor_fortios', 'sangfor_advisor_cisco_iosxe',\n        'sangfor_hci_inventory', 'sangfor_hci_health_report',\n        'sangfor_playbook_list', 'sangfor_pm_status',\n    ],\n    mutation_gating: 'Tools that change devices/external systems are gated: they require explicit user intent, a signed action-bound single-use approval, and SANGFOR_ALLOW_REAL_EXECUTION (production also SANGFOR_ALLOW_PRODUCTION_EXECUTION). Dry-run is the default.',\n    activeProfile: activeToolProfile(),\n    toolCountByProfile: Object.fromEntries(TOOL_PROFILES.map((p) => [p, listToolsForProfile(p).length])),\n    profileDescriptions: PROFILE_DESCRIPTIONS,\n    quickstart: {\n        // Not published to a public registry (package.json is private:true) —\n        // \"npx sangfor-engineer-mcp\" would not resolve. Real path: clone the\n        // repo, `pnpm install` once, then run the bin script directly.\n        stdio: 'node bin/sangfor-engineer-mcp.mjs (after: pnpm install, from a local clone)',\n        setProfileExample: 'SANGFOR_TOOL_PROFILE=advisor node bin/sangfor-engineer-mcp.mjs',\n    },\n});",
+      "handlerAstSha256": "51addc1a0a20ff07883638a8e9bdcfa1c8d28ece818de08e31a69cbb353f9a8a"
+    },
+    {
+      "toolName": "sangfor_analyze_customer_requirements",
+      "catalogSource": "apps/mcp-server/src/product-read-tool-catalog.ts",
+      "handlerIdentifier": "analyzeCustomerRequirements",
+      "handlerAstSha256": "8345cff230ff63fdb57bbc39d9fd1fff4869b3b3e3a344ae93b6f634a3a515fc"
+    },
+    {
+      "toolName": "sangfor_analyze_project",
+      "catalogSource": "apps/mcp-server/src/planner-tool-catalog.ts",
+      "handlerIdentifier": "analyzeProject",
+      "handlerAstSha256": "c1691fb31ea32d5c734fb14e198c58f31685e563dd8efc5ad029a10352fddacd"
+    },
+    {
+      "toolName": "sangfor_apply_approved_product_change",
+      "catalogSource": "apps/mcp-server/src/product-mutation-tool-catalog.ts",
+      "handlerIdentifier": "applyApprovedProductChange",
+      "handlerAstSha256": "0b8807dc248bcdea2ea0a7e79c1d6dfca6fbd2dd7375bd3144f0b4dea8c6dc47"
+    },
+    {
+      "toolName": "sangfor_apply_github_wiki_update",
+      "catalogSource": "apps/mcp-server/src/feedback-tool-catalog.ts",
+      "handlerIdentifier": "const handler = ({ proposalId, repoUrl, localPath }) => {\n    const targetRoot = localPath ?? 'data/wiki/github-wiki';\n    return applyGitHubWikiUpdate({\n        proposalId, repoUrl, localPath: targetRoot, proposalAuthority: mcpLocalAuthority('wiki_proposals', wikiRoot()),\n        adapterAuthority: mcpLocalAuthority('wiki_proposals', targetRoot),\n    });\n};",
+      "handlerAstSha256": "305e8eeeb04656db92e9a30a463ff5d227912b711f1e06974e8973e72627eecf"
+    },
+    {
+      "toolName": "sangfor_apply_obsidian_wiki_update",
+      "catalogSource": "apps/mcp-server/src/feedback-tool-catalog.ts",
+      "handlerIdentifier": "const handler = ({ proposalId, vaultPath }) => applyObsidianWikiUpdate({\n    proposalId, vaultPath, proposalAuthority: mcpLocalAuthority('wiki_proposals', wikiRoot()),\n    adapterAuthority: mcpLocalAuthority('wiki_proposals', vaultPath),\n});",
+      "handlerAstSha256": "4a6dcb743c63a3893c9b52b0e13bfc40080906b7dfe2312595ba3a99363ed630"
+    },
+    {
+      "toolName": "sangfor_apply_wiki_update",
+      "catalogSource": "apps/mcp-server/src/feedback-tool-catalog.ts",
+      "handlerIdentifier": "const handler = ({ proposalId }) => applyWikiUpdate(proposalId, mcpLocalAuthority('wiki_proposals', wikiRoot()));",
+      "handlerAstSha256": "2dd3f84c0f371fbc48870319e554051f507400f3db4827ac0e81ad2c5798e866"
+    },
+    {
+      "toolName": "sangfor_approve_wiki_update",
+      "catalogSource": "apps/mcp-server/src/feedback-tool-catalog.ts",
+      "handlerIdentifier": "const handler = ({ proposalId, decision, token, reviewer }) => approveWikiUpdate(proposalId, decision, { token, reviewer }, mcpLocalAuthority('wiki_proposals', wikiRoot()));",
+      "handlerAstSha256": "80051db345e111a8bb6a8554477b7a701316853d6229901a247de53b5130f507"
+    },
+    {
+      "toolName": "sangfor_attach_observation_session",
+      "catalogSource": "apps/mcp-server/src/learning-tool-catalog.ts",
+      "handlerIdentifier": "const handler = (args) => observerManager().attach(learningArgs(args, ['product', 'expectedOrigin', 'cdpPort', 'firmwareTruthId']));",
+      "handlerAstSha256": "e60210d2a93400d56bac42c76aaab92b1b4f5b6899808d2d04f35baf05f1d234"
+    },
+    {
+      "toolName": "sangfor_audit_checklist",
+      "catalogSource": "apps/mcp-server/src/audit-tool-catalog.ts",
+      "handlerIdentifier": "const handler = (args) => {\n    const framework = getAuditFramework(args.frameworkId);\n    if (!framework)\n        return { error: `UNKNOWN_FRAMEWORK: \"${args.frameworkId}\" is not registered. Call sangfor_audit_frameworks to see available ids.` };\n    const filtered = filterChecklistItems(framework.items, {\n        group: args.group,\n        product: args.product,\n        priority: args.priority,\n        owner: args.owner,\n    });\n    return paginateOptionalField(filtered, args, (i) => i.itemId, 'items');\n};",
+      "handlerAstSha256": "096252886bf92817ecc367ea1b1f1ee44a7ae6cf98bbffa60320dd30ceba90a1"
+    },
+    {
+      "toolName": "sangfor_audit_frameworks",
+      "catalogSource": "apps/mcp-server/src/audit-tool-catalog.ts",
+      "handlerIdentifier": "const handler = () => listAuditFrameworkSummaries();",
+      "handlerAstSha256": "f22abd879f05e7760eb5fbc4b00adfc7f3be6b3d6e646ca0775e6c5ff72f626c"
+    },
+    {
+      "toolName": "sangfor_audit_gap_report",
+      "catalogSource": "apps/mcp-server/src/audit-tool-catalog.ts",
+      "handlerIdentifier": "const handler = (args) => {\n    const framework = getAuditFramework(args.frameworkId);\n    if (!framework)\n        return { error: `UNKNOWN_FRAMEWORK: \"${args.frameworkId}\" is not registered. Call sangfor_audit_frameworks to see available ids.` };\n    return computeGapReport(framework, args.observations ?? []);\n};",
+      "handlerAstSha256": "d630a1e3901716ab0fcc9e16f16817dee62bffeb5f3f64b7dc345da3c69d8245"
+    },
+    {
+      "toolName": "sangfor_build_evidence_package",
+      "catalogSource": "apps/mcp-server/src/audit-tool-catalog.ts",
+      "handlerIdentifier": "const handler = (args) => buildEvidencePackage(args);",
+      "handlerAstSha256": "b0da21e4550304ba6ff1c14224863bc1c5990318c5d88f2694e16087a7e823b5"
+    },
+    {
+      "toolName": "sangfor_capabilities",
+      "catalogSource": "apps/mcp-server/src/manifest-tool-catalog.ts",
+      "handlerIdentifier": "const handler = () => {\n    const all = listTools();\n    const byCategory = {};\n    for (const t of all)\n        byCategory[t.category] = (byCategory[t.category] ?? 0) + 1;\n    return {\n        server: 'sangfor-engineer-mcp',\n        toolCount: all.length,\n        categories: byCategory,\n        vendors: ['SANGFOR', 'FORTIOS', 'CISCO_IOSXE'],\n        priorityProducts: PRODUCTS,\n        executionPosture: {\n            default: 'dry-run / read-only',\n            liveWriteRequires: ['SANGFOR_ALLOW_REAL_EXECUTION', 'signed action-bound single-use approval'],\n            productionAlsoRequires: ['SANGFOR_ALLOW_PRODUCTION_EXECUTION'],\n            indeterminateIsNeverPass: true,\n        },\n        discoveryTools: ['sangfor_agent_manifest', 'sangfor_capabilities'],\n    };\n};",
+      "handlerAstSha256": "c5996b15baa1d077228da9a068fc4feb7d72d491ac1781075c9c7957b5cc976b"
+    },
+    {
+      "toolName": "sangfor_capability_safety",
+      "catalogSource": "apps/mcp-server/src/inventory-analysis-tool-catalog.ts",
+      "handlerIdentifier": "const handler = (args) => args.product && args.capabilityId\n    ? getCapabilitySafety(args.product, args.capabilityId)\n    : { capabilities: listCapabilitySafety() };",
+      "handlerAstSha256": "730d9b9fbc4230f424dbf9a7ef8edf946bf13ee4035cb9fb028119a8cb8619c3"
+    },
+    {
+      "toolName": "sangfor_capture_screenshots",
+      "catalogSource": "apps/mcp-server/src/capture-tool-catalog.ts",
+      "handlerIdentifier": "captureProductScreenshotsWithJm",
+      "handlerAstSha256": "7c9bdcbeb5f8be0e1f38f8739d13a43309865f9d8a1c7dbf4098d73dc0d457fc"
+    },
+    {
+      "toolName": "sangfor_check_version",
+      "catalogSource": "apps/mcp-server/src/advisory-tool-catalog.ts",
+      "handlerIdentifier": "const handler = (args) => {\n    if (!args.device || !args.currentVersion)\n        return { requirements: loadVersionRequirements() };\n    const r = checkVersionRequirement(args.device, args.currentVersion);\n    return r ?? { error: `No version requirement on file for device \"${args.device}\". Known: ${loadVersionRequirements().map((x) => x.device).join(', ')}` };\n};",
+      "handlerAstSha256": "8e1abf647d5e513cf6248a88bfaa84b4c07e31faf72ca1b962603a62cb61f255"
+    },
+    {
+      "toolName": "sangfor_chronicle_diff",
+      "catalogSource": "apps/mcp-server/src/inventory-analysis-tool-catalog.ts",
+      "handlerIdentifier": "const handler = (args) => {\n    const dir = args.dir ?? resolveRepoData('data/chronicle', 'SANGFOR_CHRONICLE_DIR');\n    const head = getChronicleHead(args.deviceId, dir);\n    if (!head)\n        return { error: `no chronicle chain for device \"${args.deviceId}\" — nothing has been recorded` };\n    const diff = getChronicleDiff(args.deviceId, dir, { fromHash: args.fromHash, toHash: args.toHash });\n    return { deviceId: args.deviceId, headHash: head.hash, parentHash: head.parentHash, capturedAt: head.capturedAt, diff };\n};",
+      "handlerAstSha256": "d6548d201c4552491dd84c07465ef93f3a482e57c51af60094f8fc607103e6c6"
+    },
+    {
+      "toolName": "sangfor_collect_device_config",
+      "catalogSource": "apps/mcp-server/src/vendor-read-tool-catalog.ts",
+      "handlerIdentifier": "const handler = (args) => {\n    if (args.live)\n        return { error: 'live capture is not available from this tool: it needs VPN + an interactive browser session. Run scripts/device-collect.ts per docs/DEVICE_DIAGNOSIS_RUNBOOK.md, then pass the pool file here.' };\n    const norm = normalizeProduct(args.product);\n    if (norm !== 'ENDPOINT_SECURE' && norm !== 'CYBER_COMMAND') {\n        return { error: `no pool mapper for ${args.product} yet (EPP and CC only). IAG mappers land with the M3 campaign — fabricating one without captured data is forbidden.` };\n    }\n    // A5 (issue #23): record the load this collection run put on the device —\n    // the envelope rides the tool result into the run ledger on every mapped\n    // outcome, refusals included, so collection cost is never invisible.\n    const collectStartedAt = Date.now();\n    const pool = JSON.parse(readFileSync(args.poolPath, 'utf8'));\n    // Issue #23 step 2/3: the call site owns the collection context, so it stamps\n    // the firmware version into every fact's provenance envelope here.\n    const mapperOptions = { firmwareVersion: args.version };\n    const mapped = norm === 'ENDPOINT_SECURE' ? mapEppPoolToConfigState(pool, mapperOptions) : mapCcPoolToConfigState(pool, mapperOptions);\n    const collectionLoad = { apiCallCount: mapped.endpointsCaptured, collectDurationMs: Date.now() - collectStartedAt };\n    const spec = loadSpec(norm, args.version);\n    if (!spec)\n        return { error: `no IntendedSpec for ${norm} ${args.version}. Coverage: ${JSON.stringify(listSpecCoverage())}`, collectionLoad };\n    const result = evaluateSpec(spec, mapped.observed);\n    const report = renderAdvisoryReport(spec, result);\n    const docx = args.docxPath ? renderAdvisoryReportDocx(spec, result, args.docxPath) : undefined;\n    return { mapped: { endpointsCaptured: mapped.endpointsCaptured, mappedKeys: mapped.mappedKeys }, collectionLoad, result, report, ...(docx ? { docx } : {}) };\n};",
+      "handlerAstSha256": "6369136790f7ca925ba32ce0c124e21a8c160969ae817b940d10b494ec395408"
+    },
+    {
+      "toolName": "sangfor_collect_facts",
+      "catalogSource": "apps/mcp-server/src/learning-tool-catalog.ts",
+      "handlerIdentifier": "const handler = (args) => currentLearningService().collectFacts(learningArgs(args, ['scope', 'context', 'factIds', 'allowCanary', 'methodResults']));",
+      "handlerAstSha256": "d20173795e079e350bc5cf84648076b5490d0402481822773f80992033fdcb39"
+    },
+    {
+      "toolName": "sangfor_collect_product_config",
+      "catalogSource": "apps/mcp-server/src/product-read-tool-catalog.ts",
+      "handlerIdentifier": "collectProductConfig",
+      "handlerAstSha256": "ee8fe75da1c8f6121bbf9ca611ce1b5920b52a0014b9213fed3a3de25f0d2780"
+    },
+    {
+      "toolName": "sangfor_console_capture_evidence",
+      "catalogSource": "apps/mcp-server/src/capture-tool-catalog.ts",
+      "handlerIdentifier": "const handler = async (args) => {\n    const product = normalizeProduct(args.product);\n    const dateStamp = args.dateStamp ?? formatCaptureDateStamp(new Date());\n    // customer (engagement-scoped root) / date / device\n    const outputDir = args.outputDir ?? join(resolveEngagementScopedData('data/evidence', 'SANGFOR_EVIDENCE_ROOT'), buildCaptureRelativeDir(dateStamp, args.deviceId));\n    resolveConfinedOutputDir(outputDir);\n    const targetUrl = args.captures.find((capture) => capture.url)?.url\n        ?? process.env.SANGFOR_CONSOLE_URL\n        ?? 'http://127.0.0.1:3400';\n    const cdpPort = args.cdpPort ?? DEFAULT_CONSOLE_CDP_PORT;\n    const session = startOperatorSession({\n        product,\n        mode: 'customer_readonly',\n        targetUrl,\n        browser: { useLocalBrowser: true, cdpPort },\n    });\n    try {\n        return await captureConsoleEvidence({\n            product,\n            captures: args.captures,\n            outputDir,\n            deviceId: args.deviceId,\n            dateStamp,\n            engagementId: args.engagementId,\n        }, {\n            executionPort: requiredBrowserExecutionPort(),\n            sessionId: session.id,\n            origin: new URL(targetUrl).origin,\n            materializeArtifact: requiredBrowserArtifactMaterializer(),\n        });\n    }\n    finally {\n        await closeOperatorSession(session.id, requiredBrowserExecutionPort());\n    }\n};",
+      "handlerAstSha256": "e7795058e688bc419fc1dc2ff253cf947313f4481eea5fd8ee23a73be34d1323"
+    },
+    {
+      "toolName": "sangfor_create_eval_case_from_feedback",
+      "catalogSource": "apps/mcp-server/src/feedback-tool-catalog.ts",
+      "handlerIdentifier": "const handler = (input) => createEvalCaseFromFeedback(input, mcpLocalAuthority('evals', evalRoot()));",
+      "handlerAstSha256": "a95ceef00ed86f02100e786e5b1619d99a8a15d41e791ed14dea4f04653a95dd"
+    },
+    {
+      "toolName": "sangfor_create_finetune_dataset",
+      "catalogSource": "apps/mcp-server/src/feedback-tool-catalog.ts",
+      "handlerIdentifier": "createFineTuneDataset",
+      "handlerAstSha256": "6ce035f05d94264437beddb219612fba2487a3902f8734f3e8844cbff36c6647"
+    },
+    {
+      "toolName": "sangfor_create_finetune_job_spec",
+      "catalogSource": "apps/mcp-server/src/feedback-tool-catalog.ts",
+      "handlerIdentifier": "createFineTuneJobSpec",
+      "handlerAstSha256": "f9f5b9ec6bad147d4891d9bfcbe1939e35375d10eaa6daac30fa57cb30f51251"
+    },
+    {
+      "toolName": "sangfor_discover_product_console",
+      "catalogSource": "apps/mcp-server/src/product-read-tool-catalog.ts",
+      "handlerIdentifier": "discoverProductConsole",
+      "handlerAstSha256": "64b96cdfbfa55f1ad28560604d915cf1d04cf26d36849fda1274519818a8bbbf"
+    },
+    {
+      "toolName": "sangfor_drift_findings",
+      "catalogSource": "apps/mcp-server/src/inventory-analysis-tool-catalog.ts",
+      "handlerIdentifier": "const handler = (args) => {\n    const dir = args.dir ?? resolveRepoData('data/chronicle', 'SANGFOR_CHRONICLE_DIR');\n    const findings = findUnapprovedDrift({ deviceId: args.deviceId, dir, approvals: args.approvals ?? [] });\n    return { deviceId: args.deviceId, approvalsSupplied: (args.approvals ?? []).length, findings };\n};",
+      "handlerAstSha256": "a54415d8cf6ffef7f0b717a450227b2cb8ca8e0b58b4e60905fca87885270f60"
+    },
+    {
+      "toolName": "sangfor_dry_run_product_change",
+      "catalogSource": "apps/mcp-server/src/product-mutation-tool-catalog.ts",
+      "handlerIdentifier": "const handler = (args) => dryRunProductChange({\n    ...args,\n    ...(args.sessionId\n        ? { browserExecutionPort: requiredBrowserExecutionPort() }\n        : {}),\n});",
+      "handlerAstSha256": "9803d9c2e4c51e3198e4c79f3147f5088524b8ca72d953cf7bc284a0f48d2dde"
+    },
+    {
+      "toolName": "sangfor_engagement_scope",
+      "catalogSource": "apps/mcp-server/src/observability-tool-catalog.ts",
+      "handlerIdentifier": "const handler = () => {\n    const engagementId = activeEngagementId();\n    const repoRoot = resolveRepoData('.');\n    const toRel = (abs) => relative(repoRoot, abs) || '.';\n    const runsRoot = resolveEngagementScopedData('data/runs', 'SANGFOR_RUNS_ROOT');\n    const reportsRoot = join(resolveEngagementScopedData('data/evidence', 'SANGFOR_EVIDENCE_ROOT'), 'reports');\n    return {\n        active: engagementId !== undefined,\n        engagementId,\n        scopedRoots: [\n            { name: 'runs', path: toRel(runsRoot) },\n            { name: 'search-gaps-feedback', path: toRel(feedbackRoot()) },\n            { name: 'session-reports', path: toRel(reportsRoot) },\n        ],\n    };\n};",
+      "handlerAstSha256": "57372c12c1646e1b2f36b6c1bb89063e6277c4a920a198adc96922eabbae7d85"
+    },
+    {
+      "toolName": "sangfor_evaluate_config",
+      "catalogSource": "apps/mcp-server/src/spec-tool-catalog.ts",
+      "handlerIdentifier": "const handler = (args) => {\n    const spec = args.spec ?? (args.product && args.version ? loadSpec(args.product, args.version) : null);\n    if (!spec)\n        return { error: `No IntendedSpec found for ${args.product ?? '?'} ${args.version ?? '?'}. Provide an inline spec or seed data/specs/. Coverage: ${JSON.stringify(listSpecCoverage())}` };\n    const result = evaluateSpec(spec, args.observed ?? {});\n    const report = renderAdvisoryReport(spec, result);\n    const docx = args.docxPath ? renderAdvisoryReportDocx(spec, result, args.docxPath) : undefined;\n    return { result, report, ...(docx ? { docx } : {}) };\n};",
+      "handlerAstSha256": "b60ecc1a4e6b7f91dde7c4188639c79f4c0f451de5eb0a02d673fd6734d14dbd"
+    },
+    {
+      "toolName": "sangfor_execute_console_action",
+      "catalogSource": "apps/mcp-server/src/operator-session-tool-catalog.ts",
+      "handlerIdentifier": "const handler = ({ sessionId, action }) => executeConsoleAction(sessionId, action);",
+      "handlerAstSha256": "f25743a1b50f594b7f523de45de9039a49ba8cf222811f585077cd658896c164"
+    },
+    {
+      "toolName": "sangfor_execute_console_action_live",
+      "catalogSource": "apps/mcp-server/src/operator-session-tool-catalog.ts",
+      "handlerIdentifier": "const handler = (args) => executeLiveConsoleAction({ ...args, executionPort: requiredBrowserExecutionPort() });",
+      "handlerAstSha256": "805c37738c1cc5ba6d9b00c69ddde6ac21c757ffa0c3b7fb9e4a1a1e71363d01"
+    },
+    {
+      "toolName": "sangfor_extract_lesson",
+      "catalogSource": "apps/mcp-server/src/feedback-tool-catalog.ts",
+      "handlerIdentifier": "const handler = ({ feedbackId }) => extractLesson(feedbackId, mcpLocalAuthority('feedback_lessons', feedbackRoot()));",
+      "handlerAstSha256": "a3c7487194bc6c07c5529b42268c6d1aa41ca1b8d0444573c2d61f17fbbce934"
+    },
+    {
+      "toolName": "sangfor_field_engineer_coverage",
+      "catalogSource": "apps/mcp-server/src/inventory-analysis-tool-catalog.ts",
+      "handlerIdentifier": "const handler = (args) => {\n    // Ground on what this server ADVERTISES, not on the internal tool map: a\n    // tool hidden by the active profile cannot be called by any client here, so\n    // certifying a replacement against it would claim a capability nobody can\n    // reach. The rest of the context is the one repo-anchored factory both\n    // surfaces share, so the console can never disagree with this rate.\n    const advertised = listToolsForProfile().map((t) => t.name);\n    const groundedToolCount = advertised.length;\n    const built = buildRepoCoverageContext(advertised);\n    if (!built.ok)\n        return { ok: false, groundedToolCount, violations: built.violations };\n    const result = computeReplacementCoverage(built.context);\n    if (!result.ok)\n        return { ok: false, groundedToolCount, violations: result.violations };\n    const loaded = loadWorkAtomCatalog(built.context.catalogRoot);\n    if (!loaded.ok)\n        return { ok: false, groundedToolCount, violations: loaded.violations };\n    // coverage is computed over ALL atoms regardless of pagination — only the\n    // returned `atoms` listing is windowed. Sort by id so a cursor always\n    // resumes at the same row (loader order is directory order, not stable).\n    const sortedAtoms = [...loaded.atoms].sort((a, b) => a.id.localeCompare(b.id));\n    return { ok: true, groundedToolCount, coverage: result.report, ...paginateOptionalField(sortedAtoms, args, (a) => a.id, 'atoms') };\n};",
+      "handlerAstSha256": "e719477c5cf32ba2814f26597635807d8cff01ebe886c26491669bfe54841afe"
+    },
+    {
+      "toolName": "sangfor_generate_all_guides",
+      "catalogSource": "apps/mcp-server/src/capture-tool-catalog.ts",
+      "handlerIdentifier": "const handler = async (args) => {\n    const outDir = args.outputDir ?? join(process.cwd(), 'outputs');\n    const screenshotDir = args.screenshotDir ?? join(process.cwd(), 'outputs', 'final_images');\n    mkdirSync(outDir, { recursive: true });\n    const results = {};\n    try {\n        results.settingDocx = await buildSettingGuideDocx({ filePath: args.filePath, outputPath: join(outDir, 'Sangfor_설정가이드_MCP.docx') });\n    }\n    catch (err) {\n        results.settingDocxError = String(err);\n    }\n    try {\n        results.settingPptx = await buildSettingGuidePptx({ filePath: args.filePath, outputPath: join(outDir, 'Sangfor_설정가이드_MCP.pptx') });\n    }\n    catch (err) {\n        results.settingPptxError = String(err);\n    }\n    try {\n        results.operationsPptx = await buildOperationsGuidePptx({ outputPath: join(outDir, 'Sangfor_운영가이드_MCP.pptx') });\n    }\n    catch (err) {\n        results.operationsPptxError = String(err);\n    }\n    try {\n        results.operationsDocx = await buildOperationsGuideDocx({ outputPath: join(outDir, 'Sangfor_운영가이드_MCP.docx') });\n    }\n    catch (err) {\n        results.operationsDocxError = String(err);\n    }\n    try {\n        results.comprehensiveSettingDocx = await buildComprehensiveSettingGuideDocx({ filePath: args.filePath, outputPath: join(outDir, 'Sangfor_설정가이드_v6_종합메뉴얼.docx'), screenshotDir });\n    }\n    catch (err) {\n        results.comprehensiveSettingDocxError = String(err);\n    }\n    try {\n        results.comprehensiveOpsDocx = await buildComprehensiveOperationsGuideDocx({ outputPath: join(outDir, 'Sangfor_운영가이드_v6_종합메뉴얼.docx'), screenshotDir });\n    }\n    catch (err) {\n        results.comprehensiveOpsDocxError = String(err);\n    }\n    if (args.captureScreenshots) {\n        const products = args.screenshotProducts ?? ['EPP', 'IAG', 'CC'];\n        results.screenshots = {};\n        for (const product of products) {\n            try {\n                results.screenshots[product] = await captureProductScreenshotsWithJm({\n                    product: product,\n                    outputDir: join('guide-screenshots', product),\n                    username: process.env[`SANGFOR_${product}_USERNAME`],\n                    password: process.env[`SANGFOR_${product}_PASSWORD`],\n                });\n            }\n            catch (err) {\n                results.screenshots[product] = { error: String(err) };\n            }\n        }\n    }\n    return results;\n};",
+      "handlerAstSha256": "e8dd32b2b0a296f9c3c3aade9784d92d604b5d1e94c0ac5a6c2221f301c9f91d"
+    },
+    {
+      "toolName": "sangfor_generate_comprehensive_operations_guide_docx",
+      "catalogSource": "apps/mcp-server/src/office-tool-catalog.ts",
+      "handlerIdentifier": "const handler = (args) => buildComprehensiveOperationsGuideDocx({ outputPath: args.outputPath, screenshotDir: args.screenshotDir });",
+      "handlerAstSha256": "e8ba5a99314bb22c5ccc9fa79b13df48c10590aae95e5839c7de387bd38eb925"
+    },
+    {
+      "toolName": "sangfor_generate_comprehensive_setting_guide_docx",
+      "catalogSource": "apps/mcp-server/src/office-tool-catalog.ts",
+      "handlerIdentifier": "const handler = (args) => buildComprehensiveSettingGuideDocx({ filePath: args.filePath, outputPath: args.outputPath, screenshotDir: args.screenshotDir });",
+      "handlerAstSha256": "d1096d7dc4d2150d183684b65b167ac0fd05c5eeb3408bd8bf779b289a184c95"
+    },
+    {
+      "toolName": "sangfor_generate_config_plan",
+      "catalogSource": "apps/mcp-server/src/planner-tool-catalog.ts",
+      "handlerIdentifier": "const handler = async (args) => {\n    const plan = await generateConfigPlanAsync(args);\n    plans.set(plan.id, plan);\n    const dbId = await persistConfigPlan(plan).catch(() => null);\n    return dbId ? { ...plan, persistedId: dbId } : plan;\n};",
+      "handlerAstSha256": "f1f5b1ff5bc6234cd48e801334a0960f4cee5404eb2a3b5056ef5c23b940b8c2"
+    },
+    {
+      "toolName": "sangfor_generate_evidence_report",
+      "catalogSource": "apps/mcp-server/src/feedback-tool-catalog.ts",
+      "handlerIdentifier": "const handler = ({ planId, plan, verification, format }) => {\n    const rawPlan = plan ?? plans.get(planId);\n    // Excel plans have workPlan instead of ConfigPlan fields — normalize\n    const normalizedPlan = rawPlan?.workPlan ? {\n        id: rawPlan.id ?? planId ?? 'unknown',\n        product: rawPlan.product ?? 'MULTI_PRODUCT',\n        planTitle: rawPlan.summary ?? 'Excel-based plan',\n        planSummary: rawPlan.summary ?? '',\n        customerName: '',\n        riskLevel: 'medium',\n        approvalRequiredSteps: [],\n        manualReferences: [],\n        wikiReferences: [],\n        lessonReferences: [],\n        steps: (rawPlan.workPlan ?? []).filter((w) => w.product !== 'external_or_manual').map((w) => ({ id: w.requestId, title: w.setting, description: w.description, product: w.product, phase: 'config', approvalRequired: false, riskLevel: 'low', references: [] })),\n        precheck: [],\n        rollbackPlan: [],\n        validationPlan: (rawPlan.workPlan ?? []).map((w) => ({ id: w.requestId, title: w.setting, description: w.description, product: w.product, phase: 'validation', approvalRequired: false, riskLevel: 'low', references: [] })),\n    } : rawPlan;\n    return generateEvidenceReport({ plan: normalizedPlan, verification, format });\n};",
+      "handlerAstSha256": "556fa8aca66cf75039a33a02f9de643ee688551f742a0d7d2ad87c18f6204fc7"
+    },
+    {
+      "toolName": "sangfor_generate_excel_based_change_plan",
+      "catalogSource": "apps/mcp-server/src/product-read-tool-catalog.ts",
+      "handlerIdentifier": "generateExcelBasedChangePlan",
+      "handlerAstSha256": "e3644f3e3e83e8eb7517ec17193ed116118fe46953b52f1718ea5000e60a1ba7"
+    },
+    {
+      "toolName": "sangfor_generate_operations_guide_docx",
+      "catalogSource": "apps/mcp-server/src/office-tool-catalog.ts",
+      "handlerIdentifier": "const handler = (args) => buildOperationsGuideDocx({ outputPath: args.outputPath });",
+      "handlerAstSha256": "89baa558ccc2db17bb0c549fde8ac2388dce3432dc3eb719ab30ee37875d070a"
+    },
+    {
+      "toolName": "sangfor_generate_operations_guide_pptx",
+      "catalogSource": "apps/mcp-server/src/office-tool-catalog.ts",
+      "handlerIdentifier": "const handler = (args) => buildOperationsGuidePptx({ outputPath: args.outputPath });",
+      "handlerAstSha256": "87dbc978d3b46d78ea49420942f51b0bb4273b843f29f96beb8ac291240ae612"
+    },
+    {
+      "toolName": "sangfor_generate_product_change_plan",
+      "catalogSource": "apps/mcp-server/src/product-read-tool-catalog.ts",
+      "handlerIdentifier": "generateProductChangePlan",
+      "handlerAstSha256": "92f4ee4538f69a1f9932627601760478d319998c2d88230e1feb93b8d2fc6f03"
+    },
+    {
+      "toolName": "sangfor_generate_setting_guide_docx",
+      "catalogSource": "apps/mcp-server/src/office-tool-catalog.ts",
+      "handlerIdentifier": "const handler = (args) => buildSettingGuideDocx({ filePath: args.filePath, outputPath: args.outputPath });",
+      "handlerAstSha256": "c51d66a61dce315c05235f0896f61a33d21626218043ff51f574ddc284a25e7d"
+    },
+    {
+      "toolName": "sangfor_generate_setting_guide_pptx",
+      "catalogSource": "apps/mcp-server/src/office-tool-catalog.ts",
+      "handlerIdentifier": "const handler = (args) => buildSettingGuidePptx({ filePath: args.filePath, outputPath: args.outputPath, screenshotDir: args.screenshotDir });",
+      "handlerAstSha256": "5745f1746aead7bedaa0200e9c75fbaa81dab59d1bbea7f68c6222b6e2798a91"
+    },
+    {
+      "toolName": "sangfor_get_manual_section",
+      "catalogSource": "apps/mcp-server/src/knowledge-tool-catalog.ts",
+      "handlerIdentifier": "const handler = ({ id }) => getManualSection(id) ?? { error: `Manual section not found: ${id}` };",
+      "handlerAstSha256": "c1e07ab88267a349b52be34caac830f49970d8df3eae7a6511786ff82f5634ea"
+    },
+    {
+      "toolName": "sangfor_hci_apply_create_volume",
+      "catalogSource": "apps/mcp-server/src/hci-mutation-tool-catalog.ts",
+      "handlerIdentifier": "const handler = async (args) => {\n    const { client, cfg } = hciClientFor(args);\n    assertLocalAuditAuthorityAllowed();\n    const authorization = await authorizeHciMutation({\n        action: {\n            kind: 'hci.create-volume', target: `${cfg.host}:${args.name}`,\n            identityBaseUrl: cfg.identityBaseUrl, capabilityId: 'volume_create',\n        },\n        approval: args.approval,\n        authority: hciAuthorityReferences(),\n    });\n    if (authorization.kind === 'REFUSED')\n        return { ok: false, mutationPerformed: false, error: authorization.code };\n    const result = await applyCreateVolume(client, { name: args.name, sizeGb: args.sizeGb, description: args.description, clientToken: args.clientToken }, new AuditLedger({ authority: mcpLocalAuthority('audit', auditRoot()) }));\n    return {\n        ...result, mutationPerformed: result.finalState === 'SUCCEEDED' || Boolean(result.volumeId),\n        ledger: new AuditLedger({ authority: mcpLocalAuthority('audit', auditRoot()) }).pathFor(result.runId),\n    };\n};",
+      "handlerAstSha256": "120d7d9c92873bd8a2320cadf0197ed7151c36dbdabe9c547469fd5affabc5f3"
+    },
+    {
+      "toolName": "sangfor_hci_delete_volume",
+      "catalogSource": "apps/mcp-server/src/hci-mutation-tool-catalog.ts",
+      "handlerIdentifier": "const handler = async (args) => {\n    const { client, cfg } = hciClientFor(args);\n    assertLocalAuditAuthorityAllowed();\n    const authorization = await authorizeHciMutation({\n        action: {\n            kind: 'hci.delete-volume', target: `${cfg.host}:${args.volumeId}`,\n            identityBaseUrl: cfg.identityBaseUrl, capabilityId: 'volume_delete',\n        },\n        approval: args.approval,\n        authority: hciAuthorityReferences(),\n    });\n    if (authorization.kind === 'REFUSED')\n        return { ok: false, mutationPerformed: false, error: authorization.code };\n    const before = await getVolume(client, args.volumeId);\n    if (!before)\n        return { ok: false, mutationPerformed: false, error: `volume ${args.volumeId} not found` };\n    const res = await deleteVolume(client, args.volumeId);\n    const ledger = new AuditLedger({ authority: mcpLocalAuthority('audit', auditRoot()) });\n    const runId = nowId('hci_delete');\n    await ledger.append(runId, 'request', { op: 'delete-volume', volumeId: args.volumeId, before });\n    await ledger.append(runId, 'response', { status: res.status });\n    return { ok: res.status === 202, mutationPerformed: res.status === 202, status: res.status, runId };\n};",
+      "handlerAstSha256": "d4b816039f829a542b3394f4811970774a81cd305bb4b741b267f61df0b35a22"
+    },
+    {
+      "toolName": "sangfor_hci_health_report",
+      "catalogSource": "apps/mcp-server/src/hci-read-tool-catalog.ts",
+      "handlerIdentifier": "const handler = async (args) => {\n    const { client, cfg } = hciClientFor(args);\n    const inv = await collectInventory(client);\n    const summary = summarizeHciHealth(inv);\n    return { summary, report: renderHciHealthReport(summary, { host: cfg.host, collectedAt: new Date().toISOString() }), authContract: HCI_AUTH_CONTRACT_STATUS };\n};",
+      "handlerAstSha256": "baa97ee915e764b71d5b1fa16468099e7f84e2a720a4db3cf267fb24171e1596"
+    },
+    {
+      "toolName": "sangfor_hci_inventory",
+      "catalogSource": "apps/mcp-server/src/hci-read-tool-catalog.ts",
+      "handlerIdentifier": "const handler = async (args) => {\n    const { client } = hciClientFor(args);\n    return { ...(await collectInventory(client)), authContract: HCI_AUTH_CONTRACT_STATUS };\n};",
+      "handlerAstSha256": "54edf709d62f8b862f2e3768c5911f825fadf2d38f608bdb79d9be917af5e506"
+    },
+    {
+      "toolName": "sangfor_hci_plan_create_volume",
+      "catalogSource": "apps/mcp-server/src/hci-read-tool-catalog.ts",
+      "handlerIdentifier": "const handler = (args) => {\n    const clientToken = `cv-${randomBytes(8).toString('hex')}`;\n    const problems = validateCreateVolumeInput({ name: args.name, sizeGb: args.sizeGb, description: args.description, clientToken });\n    const { cfg } = hciClientFor(args);\n    return {\n        ok: problems.length === 0, problems, mutationPerformed: false,\n        plannedRequest: { method: 'POST', path: '/volumes', body: { volume: { name: args.name, size: args.sizeGb, description: args.description ?? null } }, idempotencyHeader: { 'X-Client-Token': clientToken } },\n        clientToken,\n        approvalRequired: { action: { type: 'hci.create-volume', target: `${cfg.host}:${args.name}` }, fields: ['approvedBy', 'approvalToken', 'changeTicketId', 'rollbackPlanId', 'nonce', 'expiresAt'], mint: 'scripts/mint-hci-approval.ts' },\n        rollback: { op: 'hci.delete-volume', note: 'the single documented reverse op; requires its own approval' },\n        authContract: HCI_AUTH_CONTRACT_STATUS,\n    };\n};",
+      "handlerAstSha256": "53bce90afcecb6eab36ccf5b4582d5e1e183aa758ca03bf0c4cb91b67f0f9441"
+    },
+    {
+      "toolName": "sangfor_hci_verify_volume",
+      "catalogSource": "apps/mcp-server/src/hci-read-tool-catalog.ts",
+      "handlerIdentifier": "const handler = async (args) => {\n    const { client } = hciClientFor(args);\n    return readBackVolume(client, { volumeId: args.volumeId, name: args.name, sizeGb: args.sizeGb });\n};",
+      "handlerAstSha256": "cef2c060f4392669339cdd921a3f72f6039ed619b2597e7990ca86bc9b9c56fc"
+    },
+    {
+      "toolName": "sangfor_iag_exception_apply",
+      "catalogSource": "apps/mcp-server/src/iag-orchestrator-tools.ts",
+      "handlerIdentifier": "const handler = (input) => service().apply(input);",
+      "handlerAstSha256": "1778a1a5ccee5dd9a7cee4e7ac96b30fd1e1a9c849edfc786e0859b4641db90f"
+    },
+    {
+      "toolName": "sangfor_iag_exception_dry_run",
+      "catalogSource": "apps/mcp-server/src/iag-orchestrator-tools.ts",
+      "handlerIdentifier": "const handler = (input) => service().dryRun(input);",
+      "handlerAstSha256": "6403495e14ea9f2f42657297a4deb7a453fc409bdabc98300454d67eaee11d77"
+    },
+    {
+      "toolName": "sangfor_iag_exception_status",
+      "catalogSource": "apps/mcp-server/src/iag-orchestrator-tools.ts",
+      "handlerIdentifier": "const handler = (input) => service().status(input);",
+      "handlerAstSha256": "f1846edb4dff16a41be0cc7eaedd67d7e10481553511e1986b55437fa0af8119"
+    },
+    {
+      "toolName": "sangfor_import_excel_requirement_list",
+      "catalogSource": "apps/mcp-server/src/product-read-tool-catalog.ts",
+      "handlerIdentifier": "importExcelRequirementList",
+      "handlerAstSha256": "0e5f7e15fc027f3ca1128693fe44be056e3f12cb25c425cb264aa6b82fa80a5c"
+    },
+    {
+      "toolName": "sangfor_ingest_document",
+      "catalogSource": "apps/mcp-server/src/knowledge-tool-catalog.ts",
+      "handlerIdentifier": "ingestDocument",
+      "handlerAstSha256": "234e917b6e2f7bd74f7f3544f98093de5aa9912e79d3a72a33493307099baa91"
+    },
+    {
+      "toolName": "sangfor_integration_guide",
+      "catalogSource": "apps/mcp-server/src/advisory-tool-catalog.ts",
+      "handlerIdentifier": "const handler = (args) => {\n    if (!args.type)\n        return { supported: listIntegrationTypes() };\n    const g = generateIntegrationGuide(args.type, args.product);\n    return g ?? { error: `Unknown integration type \"${args.type}\". Supported: ${listIntegrationTypes().join(', ')}` };\n};",
+      "handlerAstSha256": "9efcae2da103f33aebf716a82019305cd530a290725eb1b0f72edc0fcfb36e10"
+    },
+    {
+      "toolName": "sangfor_kill_session",
+      "catalogSource": "apps/mcp-server/src/operator-session-tool-catalog.ts",
+      "handlerIdentifier": "const handler = ({ sessionId }) => closeOperatorSession(sessionId, requiredBrowserExecutionPort());",
+      "handlerAstSha256": "d9cbed1f273651a71634ba6c1f3d0511c9ee26bf921e1ef963e169e797faba1d"
+    },
+    {
+      "toolName": "sangfor_learn_sources",
+      "catalogSource": "apps/mcp-server/src/knowledge-tool-catalog.ts",
+      "handlerIdentifier": "const handler = async (args) => {\n    loadEnvFile('.env');\n    return runLearnSourcesPipeline({\n        communityMaxThreadsPerForum: args.communityMaxThreadsPerForum,\n        knowledgeMaxArticles: args.knowledgeMaxArticles,\n        includeDemoDocs: args.includeDemoDocs,\n        ragIndexPath: args.ragIndexPath,\n        rawDir: args.rawDir,\n        ingestDocumentFn: ingestDocument,\n        exportRagSummaryFn: exportRagIndexSummary,\n        createFineTuneDatasetFn: createFineTuneDataset,\n        validateFineTuneDatasetFn: validateFineTuneDataset\n    });\n};",
+      "handlerAstSha256": "3354ee4fad514ce112de12f2b26b366005a2501ebdb0a13ddfd88301c5629975"
+    },
+    {
+      "toolName": "sangfor_list_knowledge_cards",
+      "catalogSource": "apps/mcp-server/src/knowledge-tool-catalog.ts",
+      "handlerIdentifier": "const handler = () => listKnowledgeCards();",
+      "handlerAstSha256": "78abb480b8fc3ff300083403a872e0e902a9b932bcf272403f345dbe8c7b56f4"
+    },
+    {
+      "toolName": "sangfor_list_learning_strategies",
+      "catalogSource": "apps/mcp-server/src/learning-tool-catalog.ts",
+      "handlerIdentifier": "const handler = (args) => currentLearningService().list(learningArgs(args, ['strategyId', 'vendor', 'product', 'firmwareVersion', 'status', 'cursor', 'limit']));",
+      "handlerAstSha256": "039187842c06a5e7c1004f58d8e41efe6e22177de1deecac58d20883064e6334"
+    },
+    {
+      "toolName": "sangfor_list_spec_coverage",
+      "catalogSource": "apps/mcp-server/src/spec-tool-catalog.ts",
+      "handlerIdentifier": "const handler = (args) => {\n    // listSpecCoverage() has no inherent order (directory listing) — sort by\n    // product+version first so the same cursor always resumes at the same row.\n    const sorted = [...listSpecCoverage()].sort((a, b) => a.product === b.product ? a.version.localeCompare(b.version) : a.product.localeCompare(b.product));\n    return paginateOptionalField(sorted, args, (c) => `${c.product}::${c.version}`, 'coverage');\n};",
+      "handlerAstSha256": "463fe437c28e697b7284a0ba300b95c6650e5e4580d8944cbc139be764149623"
+    },
+    {
+      "toolName": "sangfor_loop_status",
+      "catalogSource": "apps/mcp-server/src/observability-tool-catalog.ts",
+      "handlerIdentifier": "const handler = (args) => buildLoopStatus({ tail: args.tail });",
+      "handlerAstSha256": "ac61d73c7a12c6ebc48feb25cd8d1e7a80b8b7f43ef43af37f26e8cdbf254d33"
+    },
+    {
+      "toolName": "sangfor_manage_learning_capture",
+      "catalogSource": "apps/mcp-server/src/learning-tool-catalog.ts",
+      "handlerIdentifier": "const handler = async (args) => {\n    const input = learningArgs(args, ['action', 'sessionHandle', 'captureId', 'durationMs', 'firmwareVersion']);\n    if (input.action === 'start') {\n        if (typeof input.sessionHandle !== 'string' || !observerManager().get(input.sessionHandle))\n            throw new Error('OBSERVER_SESSION_UNAVAILABLE: exact sessionHandle is required.');\n        const captureId = randomBytes(16).toString('hex');\n        pendingLearningCaptures.set(captureId, { sessionHandle: input.sessionHandle, durationMs: input.durationMs, firmwareVersion: input.firmwareVersion });\n        return { captureId, status: 'started' };\n    }\n    if (input.action !== 'stop' || typeof input.captureId !== 'string')\n        throw new Error('INVALID_INPUT: action stop requires captureId.');\n    const pending = pendingLearningCaptures.get(input.captureId);\n    if (!pending)\n        throw new Error('CAPTURE_NOT_FOUND: captureId is missing or already consumed.');\n    const summary = await observerManager().capture({ ...pending, capturesDir: resolveRepoData('data/captures'), stagingRoot: resolveRepoData('data/runtime/learning-captures'), keyring: captureKeyringFromEnv() });\n    pendingLearningCaptures.delete(input.captureId);\n    return { captureId: input.captureId, status: 'stopped', bundle: summary };\n};",
+      "handlerAstSha256": "c7fd6c0da76ce2b7fcca42f508fd2956b76d1dbbc0bde10b2537d4d2f8b0f0e8"
+    },
+    {
+      "toolName": "sangfor_map_requirements_to_products",
+      "catalogSource": "apps/mcp-server/src/product-read-tool-catalog.ts",
+      "handlerIdentifier": "mapRequirementsToProducts",
+      "handlerAstSha256": "cfd94f8b7aaf90393e0dbce7bd5d71d0299aaf59996a4a685811b39c3c2feda5"
+    },
+    {
+      "toolName": "sangfor_playbook_add_revision",
+      "catalogSource": "apps/mcp-server/src/playbook-tool-catalog.ts",
+      "handlerIdentifier": "const handler = (args) => new TowerClient().request('POST', `/api/playbooks/${encodeURIComponent(String(args.playbookId))}/revisions`, { authoredBy: args.authoredBy, note: args.note, blocks: args.blocks });",
+      "handlerAstSha256": "b86839d156fd8d67d0c5875589def1b056a2ffcca4671e95d4a4abcc935782d2"
+    },
+    {
+      "toolName": "sangfor_playbook_agent_tasks",
+      "catalogSource": "apps/mcp-server/src/playbook-tool-catalog.ts",
+      "handlerIdentifier": "const handler = ({ status }) => new TowerClient().request('GET', `/api/agent-tasks?status=${encodeURIComponent(status ?? 'open')}`);",
+      "handlerAstSha256": "17fb679f68b0d18f2a86758b10df84fc1264a1c7e0cad0d0829407e255a7e2e4"
+    },
+    {
+      "toolName": "sangfor_playbook_close_agent_task",
+      "catalogSource": "apps/mcp-server/src/playbook-tool-catalog.ts",
+      "handlerIdentifier": "const handler = (args) => new TowerClient().request('PATCH', `/api/agent-tasks/${encodeURIComponent(String(args.taskId))}`, { result: args.result ?? {} });",
+      "handlerAstSha256": "6d2a3112b304861cb4d80e678c90eedbba5d38499e607cc52f8d21705290c2d2"
+    },
+    {
+      "toolName": "sangfor_playbook_create",
+      "catalogSource": "apps/mcp-server/src/playbook-tool-catalog.ts",
+      "handlerIdentifier": "const handler = (args) => new TowerClient().request('POST', '/api/playbooks', {\n    name: args.name, goal: args.goal, authoredBy: args.authoredBy, note: args.note, blocks: args.blocks,\n});",
+      "handlerAstSha256": "72df17b391ff93b4bde615fc6025e562a56230bb1d565002d1776f0044571b88"
+    },
+    {
+      "toolName": "sangfor_playbook_execute",
+      "catalogSource": "apps/mcp-server/src/playbook-tool-catalog.ts",
+      "handlerIdentifier": "const handler = ({ playbookId }) => new TowerClient().request('POST', `/api/playbooks/${encodeURIComponent(playbookId)}/execute`, {}, 180_000);",
+      "handlerAstSha256": "fd9f629ac07d07b75d6d5238eaee4b71f26326c6212c6d5bb2a556d300da0646"
+    },
+    {
+      "toolName": "sangfor_playbook_get",
+      "catalogSource": "apps/mcp-server/src/playbook-tool-catalog.ts",
+      "handlerIdentifier": "const handler = ({ playbookId }) => new TowerClient().request('GET', `/api/playbooks/${encodeURIComponent(playbookId)}`);",
+      "handlerAstSha256": "a8d5a70132088523db0bdba1d5a2922e29059e7139e65b230db608253c035b61"
+    },
+    {
+      "toolName": "sangfor_playbook_list",
+      "catalogSource": "apps/mcp-server/src/playbook-tool-catalog.ts",
+      "handlerIdentifier": "const handler = () => new TowerClient().request('GET', '/api/playbooks');",
+      "handlerAstSha256": "61d89ddea081a8ffb5e0b5419dd7de687f3fe1406130e8199cb9d79fee71e7b8"
+    },
+    {
+      "toolName": "sangfor_playbook_run_status",
+      "catalogSource": "apps/mcp-server/src/playbook-tool-catalog.ts",
+      "handlerIdentifier": "const handler = ({ playbookRunId }) => new TowerClient().request('GET', `/api/playbook-runs/${encodeURIComponent(playbookRunId)}`);",
+      "handlerAstSha256": "814db7252fa9cff0d0513f174081a1940c5e86ecfae6e567b758ab825a2a8950"
+    },
+    {
+      "toolName": "sangfor_playbook_submit_analysis",
+      "catalogSource": "apps/mcp-server/src/playbook-tool-catalog.ts",
+      "handlerIdentifier": "const handler = (args) => new TowerClient().request('POST', `/api/playbook-runs/${encodeURIComponent(String(args.playbookRunId))}/analysis`, {\n    playbookId: args.playbookId, summary: args.summary, authoredBy: args.authoredBy,\n    improvements: args.improvements ?? [], proposals: args.proposals ?? [],\n});",
+      "handlerAstSha256": "661f3f8eca406b4e4fdba57d3da619bd9a4c6a4501c5ed8c295f25c71234df56"
+    },
+    {
+      "toolName": "sangfor_pm_acquire_device",
+      "catalogSource": "apps/mcp-server/src/pm-tool-catalog.ts",
+      "handlerIdentifier": "const handler = (args) => pmStore.acquireDevice(args.deviceId, args.engagementId, args.holder);",
+      "handlerAstSha256": "9756b16db174e336c9a69bf0254e8a1fba9be20d95f0d9b8848da5787bebc2dd"
+    },
+    {
+      "toolName": "sangfor_pm_add_work_item",
+      "catalogSource": "apps/mcp-server/src/pm-tool-catalog.ts",
+      "handlerIdentifier": "const handler = (args) => pmStore.addWorkItem(args.engagementId, args);",
+      "handlerAstSha256": "ddf3457682e585756e7963c60133c2a742e588cccc7a7538168ab83288094e72"
+    },
+    {
+      "toolName": "sangfor_pm_create_engagement",
+      "catalogSource": "apps/mcp-server/src/pm-tool-catalog.ts",
+      "handlerIdentifier": "const handler = (args) => pmStore.createEngagement(args);",
+      "handlerAstSha256": "d769d8eee00f8dc2a6d3ee94c3b83b3bd877741746ffcd6c5515bb3c1b07ba75"
+    },
+    {
+      "toolName": "sangfor_pm_events",
+      "catalogSource": "apps/mcp-server/src/pm-tool-catalog.ts",
+      "handlerIdentifier": "const handler = (args) => {\n    if (!pmStore.getEngagement(args.engagementId))\n        throw new Error(`Engagement not found: ${args.engagementId}`);\n    // chainOk verifies the FULL chain regardless of pagination — only the\n    // returned `events` listing is windowed.\n    return {\n        ...paginateOptionalField(pmStore.getEvents(args.engagementId), args, (e) => e.id, 'events'),\n        chainOk: pmStore.verifyEventChain(args.engagementId),\n    };\n};",
+      "handlerAstSha256": "aa918f0f9cec2e30c017e2b2c43a1d74c859a13fb914b609c2c51c517eb66630"
+    },
+    {
+      "toolName": "sangfor_pm_release_device",
+      "catalogSource": "apps/mcp-server/src/pm-tool-catalog.ts",
+      "handlerIdentifier": "const handler = (args) => ({ released: pmStore.releaseDevice(args.deviceId, args.engagementId) });",
+      "handlerAstSha256": "303515b28c8d105ae285324de4b2c0d778ba8b1b2e84a2cc4dc64afef2183724"
+    },
+    {
+      "toolName": "sangfor_pm_report",
+      "catalogSource": "apps/mcp-server/src/pm-tool-catalog.ts",
+      "handlerIdentifier": "const handler = (args) => ({ report: pmStore.renderStatusReport(args.engagementId) });",
+      "handlerAstSha256": "97f213b7b35abe46d9a5033a5ac80d7b0ef03a719c65a67febf78067e6702de1"
+    },
+    {
+      "toolName": "sangfor_pm_status",
+      "catalogSource": "apps/mcp-server/src/pm-tool-catalog.ts",
+      "handlerIdentifier": "const handler = (args) => ({ rollup: pmStore.statusRollup(args.engagementId), deviceOccupancy: pmStore.deviceOccupancy(), chainOk: pmStore.verifyEventChain(args.engagementId) });",
+      "handlerAstSha256": "645cbd82d39609a4695dfc3412cc5731887c19defeee56146de2ea45069e0324"
+    },
+    {
+      "toolName": "sangfor_products",
+      "catalogSource": "apps/mcp-server/src/hci-read-tool-catalog.ts",
+      "handlerIdentifier": "const handler = () => ({ products: PRODUCTS });",
+      "handlerAstSha256": "83e32775bc36c247952df28ecb37d1313c0c673804835de80f9aaeb5dea279f5"
+    },
+    {
+      "toolName": "sangfor_promote_learning_strategy",
+      "catalogSource": "apps/mcp-server/src/learning-tool-catalog.ts",
+      "handlerIdentifier": "const handler = (args) => currentLearningService().promote(learningArgs(args, ['strategyId', 'revisionId', 'toState', 'evidenceFile', 'evidenceDigest', 'approvalPayload', 'approvalToken', 'evidenceRoot']));",
+      "handlerAstSha256": "58c183f8305eed17935b2719f232edff57b3c02c3eeba234e7bd42784d1ee2bf"
+    },
+    {
+      "toolName": "sangfor_propose_wiki_update",
+      "catalogSource": "apps/mcp-server/src/feedback-tool-catalog.ts",
+      "handlerIdentifier": "const handler = (input) => proposeWikiUpdate(input, mcpLocalAuthority('wiki_proposals', wikiRoot()));",
+      "handlerAstSha256": "3a7adaba9ddc751609e3819de4010a3193e613e8ab6dfa75963bc797d5d0d8d8"
+    },
+    {
+      "toolName": "sangfor_rag_index_summary",
+      "catalogSource": "apps/mcp-server/src/knowledge-tool-catalog.ts",
+      "handlerIdentifier": "const handler = ({ indexPath }) => exportRagIndexSummary(indexPath);",
+      "handlerAstSha256": "286546c20dd43e557c9ef43c9ef5566e56b9a63558455c17902d3017263beb0a"
+    },
+    {
+      "toolName": "sangfor_rag_search",
+      "catalogSource": "apps/mcp-server/src/knowledge-tool-catalog.ts",
+      "handlerIdentifier": "const handler = async (args) => {\n    if (args.sourceType !== undefined && !['manual', 'wiki', 'lesson', 'pattern'].includes(args.sourceType)) {\n        throw new Error(`INVALID_SOURCE_TYPE: ${args.sourceType}`);\n    }\n    if (args.trustLevel !== undefined && !['official', 'internal', 'draft', 'needs_review', 'customer'].includes(args.trustLevel)) {\n        throw new Error(`INVALID_TRUST_LEVEL: ${args.trustLevel}`);\n    }\n    const hits = await ragSearch(args);\n    const diagnostics = getRagSearchDiagnostics();\n    // C2 search-gap flywheel: a weak result (nothing found, or the best hit\n    // barely matches) is a signal for what to ingest/author next — capture it\n    // instead of silently discarding it. Never blocks or fails the search.\n    const topScore = hits.length ? Math.max(...hits.map((h) => h.score ?? 0)) : undefined;\n    const weakReason = hits.length === 0\n        ? 'no_hits'\n        : (topScore !== undefined && topScore < searchGapWeakThreshold() ? 'low_score' : undefined);\n    if (weakReason) {\n        recordSearchGap({ query: args.query, product: args.product, version: args.version, hitCount: hits.length, topScore, reason: weakReason });\n    }\n    // privacy_mode=summary already returns an object ({count, hits}) — merge\n    // diagnostics into it there. The default/structured/raw response is a\n    // plain hits array (existing contract callers rely on); merging\n    // diagnostics into it would require wrapping the array in an object and\n    // is out of scope here, so degraded status stays reachable only via this\n    // object-shaped response and sangfor_rag_index_summary.\n    if (args.privacy_mode === 'summary') {\n        const summarized = summarizeSearchHits(hits);\n        return diagnostics.degraded ? { ...summarized, ...diagnostics } : summarized;\n    }\n    return args.include_vectors ? hits : hits.map(omitVectorFromHit);\n};",
+      "handlerAstSha256": "54813d5eb96981ad5c63915687fe1c16b9666e8a73cbea59798739a3925d2e69"
+    },
+    {
+      "toolName": "sangfor_read_console_state",
+      "catalogSource": "apps/mcp-server/src/operator-session-tool-catalog.ts",
+      "handlerIdentifier": "const handler = ({ sessionId }) => readConsoleState(sessionId);",
+      "handlerAstSha256": "f57480685d75d3e88de4819bea36a85ab22e2edc24f541c78ad7ae92219f8f26"
+    },
+    {
+      "toolName": "sangfor_read_live_console_state",
+      "catalogSource": "apps/mcp-server/src/operator-session-tool-catalog.ts",
+      "handlerIdentifier": "const handler = (args) => readLiveConsoleState({ ...args, executionPort: requiredBrowserExecutionPort() });",
+      "handlerAstSha256": "52a9f17336d123c875af2815f86312293f1204ef475a5175a2ad4e85d7758c49"
+    },
+    {
+      "toolName": "sangfor_recommend_sizing",
+      "catalogSource": "apps/mcp-server/src/advisory-tool-catalog.ts",
+      "handlerIdentifier": "const handler = (args) => recommendSizing(args.product, args);",
+      "handlerAstSha256": "53f2da32c46ac6e07c0a4ffd99d0e866911c1f7134def3072585fc14503b049c"
+    },
+    {
+      "toolName": "sangfor_report_chain_verify",
+      "catalogSource": "apps/mcp-server/src/inventory-analysis-tool-catalog.ts",
+      "handlerIdentifier": "const handler = (args) => verifyReportChain(args.dir ?? resolveRepoData('data/engineer-reports', 'SANGFOR_ENGINEER_REPORT_DIR'));",
+      "handlerAstSha256": "433eba7450110eefabc208755d991d0abf6309301f04dff6017cb1982132aedc"
+    },
+    {
+      "toolName": "sangfor_request_approval",
+      "catalogSource": "apps/mcp-server/src/planner-tool-catalog.ts",
+      "handlerIdentifier": "const handler = ({ text }) => requiresApprovalForText(text);",
+      "handlerAstSha256": "1d68679dc2e0eef8bf720748699004f2d659628f6dde6ad4e23e232ba29da858"
+    },
+    {
+      "toolName": "sangfor_research_learning_strategy",
+      "catalogSource": "apps/mcp-server/src/learning-tool-catalog.ts",
+      "handlerIdentifier": "const handler = (args) => currentLearningService().research(learningArgs(args, ['strategyId', 'vendor', 'scope', 'registryDigest', 'versionTruthRecord', 'productVariant', 'officialCitation', 'pageVerified', 'captureEvidenceFile', 'methods']));",
+      "handlerAstSha256": "e5bc4c90c97916b6b96bdb5acfd22fbc2d9a1d94d00ca9581b199f3adab03417"
+    },
+    {
+      "toolName": "sangfor_resolve_learning_strategy",
+      "catalogSource": "apps/mcp-server/src/learning-tool-catalog.ts",
+      "handlerIdentifier": "const handler = (args) => { const input = learningArgs(args, ['scope', 'context']); return currentLearningService().resolve(input.scope, input.context); };",
+      "handlerAstSha256": "a6c8e382dbdc4999274614f8c5637c4aa53e03b89715a520e2773214ed7b7b4d"
+    },
+    {
+      "toolName": "sangfor_run_planner_eval",
+      "catalogSource": "apps/mcp-server/src/feedback-tool-catalog.ts",
+      "handlerIdentifier": "const handler = ({ planId, plan }) => runPlannerEval(plan ?? plans.get(planId));",
+      "handlerAstSha256": "f1159b21fde1552cb21243a1702621a2f62bae3b8384179f24ba8edd929a2c8d"
+    },
+    {
+      "toolName": "sangfor_safety_selftest",
+      "catalogSource": "apps/mcp-server/src/observability-tool-catalog.ts",
+      "handlerIdentifier": "const handler = () => runSafetySelftest();",
+      "handlerAstSha256": "922bd076cb21dc42738ea10cb20ba663374ebe60010060d3aaef795ee195eff2"
+    },
+    {
+      "toolName": "sangfor_scorecard_tier",
+      "catalogSource": "apps/mcp-server/src/inventory-analysis-tool-catalog.ts",
+      "handlerIdentifier": "const handler = (args) => {\n    const result = computeTier(args.metrics, args.thresholds, args.previous);\n    return {\n        ...result,\n        autonomy: {\n            'auto-close': autonomyAllowed(result.tier, 'auto-close'),\n            'cross-device-spec': autonomyAllowed(result.tier, 'cross-device-spec'),\n        },\n    };\n};",
+      "handlerAstSha256": "fa344c4d270f91f84200bd6aa77385bc4211c46f90a2e990608026ee72607b6c"
+    },
+    {
+      "toolName": "sangfor_search_gaps",
+      "catalogSource": "apps/mcp-server/src/observability-tool-catalog.ts",
+      "handlerIdentifier": "const handler = (args) => paginateOptionalField(readSearchGaps(), args, (g) => g.id, 'gaps');",
+      "handlerAstSha256": "110eae282c24260dd7f227f799d6c90c3c37e8a088bfaca2c920f5782fcfe705"
+    },
+    {
+      "toolName": "sangfor_search_manuals",
+      "catalogSource": "apps/mcp-server/src/knowledge-tool-catalog.ts",
+      "handlerIdentifier": "const handler = (args) => {\n    const hits = searchManuals(args);\n    return args.privacy_mode === 'summary' ? summarizeSearchHits(hits) : hits;\n};",
+      "handlerAstSha256": "2779c2ec696e3cfbaaa79a7e5314d8fff17e8e9a033a2a92635acf011070ec5b"
+    },
+    {
+      "toolName": "sangfor_search_wiki",
+      "catalogSource": "apps/mcp-server/src/knowledge-tool-catalog.ts",
+      "handlerIdentifier": "const handler = (args) => {\n    const hits = searchWiki(args);\n    return args.privacy_mode === 'summary' ? summarizeSearchHits(hits) : hits;\n};",
+      "handlerAstSha256": "10b2af38e2d38c4514608bb925fab4d043825f6c3fa5a354768d237a54c224c9"
+    },
+    {
+      "toolName": "sangfor_session_report",
+      "catalogSource": "apps/mcp-server/src/observability-tool-catalog.ts",
+      "handlerIdentifier": "const handler = (args) => {\n    if (!args.runId)\n        return { availableRunIds: listChangeRunIds() };\n    if (!isSafeRunId(args.runId))\n        return { error: `INVALID_RUN_ID: \"${args.runId}\" is not a safe path segment.` };\n    const { markdown, json } = buildChangeRunReport({ runId: args.runId });\n    const format = args.format ?? 'markdown';\n    const report = format === 'json' ? json : markdown;\n    if (!args.save)\n        return { format, report };\n    const savedPath = join(resolveEngagementScopedData('data/evidence', 'SANGFOR_EVIDENCE_ROOT'), 'reports', `${args.runId}.md`);\n    writeFileAtomicSync(savedPath, markdown);\n    return { format, report, savedPath };\n};",
+      "handlerAstSha256": "34ceb1609ad448d30cc465fbabb275f300800016ad105d3878e1be6a9e3e72a6"
+    },
+    {
+      "toolName": "sangfor_snapshot_query",
+      "catalogSource": "apps/mcp-server/src/inventory-analysis-tool-catalog.ts",
+      "handlerIdentifier": "const handler = (args) => {\n    const dir = args.dir ?? resolveRepoData('data/chronicle', 'SANGFOR_CHRONICLE_DIR');\n    let deviceIds = [];\n    try {\n        deviceIds = readdirSync(dir).filter((name) => name.endsWith('.json')).map((name) => name.slice(0, -'.json'.length));\n    }\n    catch {\n        return { error: `chronicle dir unreadable: ${dir}` };\n    }\n    if (deviceIds.length === 0)\n        return { error: `no chronicle chains under ${dir} — nothing has been recorded` };\n    const chains = Object.fromEntries(deviceIds.map((deviceId) => [\n        deviceId,\n        listChronicleSnapshots(deviceId, dir).map((snapshot) => ({ capturedAt: snapshot.capturedAt, observed: snapshot.observed })),\n    ]));\n    return queryDevices({ chains, where: { key: args.where.key, op: args.where.op, value: args.where.value ?? null }, ...(args.asOf ? { asOf: args.asOf } : {}) });\n};",
+      "handlerAstSha256": "65038cc4c48e24e5f35b909c7c9875ff98e2ba1d39d2ff85e390e73bb1cf5b08"
+    },
+    {
+      "toolName": "sangfor_start_operator_session",
+      "catalogSource": "apps/mcp-server/src/operator-session-tool-catalog.ts",
+      "handlerIdentifier": "startOperatorSession",
+      "handlerAstSha256": "bf58aa2e0fd725d55724f19cc43ea73a24ffc34f3746456a4fee82ff9896a0ec"
+    },
+    {
+      "toolName": "sangfor_store_health",
+      "catalogSource": "apps/mcp-server/src/knowledge-tool-catalog.ts",
+      "handlerIdentifier": "const handler = () => storeHealthCheck();",
+      "handlerAstSha256": "5bda8fb17782c9b762f73286edd5c5e0185468078d060c8f616de351da3d5555"
+    },
+    {
+      "toolName": "sangfor_submit_feedback",
+      "catalogSource": "apps/mcp-server/src/feedback-tool-catalog.ts",
+      "handlerIdentifier": "const handler = async (args) => {\n    const event = await submitFeedback(args, mcpLocalAuthority('feedback_lessons', feedbackRoot()));\n    const dbId = await persistFeedbackEvent(event).catch(() => null);\n    return dbId ? { ...event, persistedId: dbId } : event;\n};",
+      "handlerAstSha256": "98eead2d6235ec3b94980e8d0eb13c344268f959ed08a65e08ecf126e7f25bc7"
+    },
+    {
+      "toolName": "sangfor_suggest_rca",
+      "catalogSource": "apps/mcp-server/src/advisory-tool-catalog.ts",
+      "handlerIdentifier": "const handler = (args) => suggestRca(args.symptom, args.product);",
+      "handlerAstSha256": "328f562acbbd5592dede3548288b5cb497bc37bcafe1abfb3279ce96d76b4eab"
+    },
+    {
+      "toolName": "sangfor_upsert_knowledge_card",
+      "catalogSource": "apps/mcp-server/src/knowledge-tool-catalog.ts",
+      "handlerIdentifier": "const handler = ({ card }) => upsertKnowledgeCard(card, mcpLocalAuthority('wiki_proposals', wikiRoot()));",
+      "handlerAstSha256": "45f64c6c55a8bd329387e349677a64208d8a41406743a64e882a300039de7513"
+    },
+    {
+      "toolName": "sangfor_validate_config_plan",
+      "catalogSource": "apps/mcp-server/src/planner-tool-catalog.ts",
+      "handlerIdentifier": "const handler = ({ planId, plan }) => validateConfigPlan(plan ?? plans.get(planId));",
+      "handlerAstSha256": "6957d6a05143774a7c7b90d6441cdc46321c905837cd43dfaffbda9bc3471d28"
+    },
+    {
+      "toolName": "sangfor_validate_finetune_dataset",
+      "catalogSource": "apps/mcp-server/src/feedback-tool-catalog.ts",
+      "handlerIdentifier": "const handler = ({ path }) => validateFineTuneDataset(path);",
+      "handlerAstSha256": "4af09984f066f49c78ccc86e8975cda79ab25eb9fb3125702cb709f7c8abdd38"
+    },
+    {
+      "toolName": "sangfor_validate_learning_strategy",
+      "catalogSource": "apps/mcp-server/src/learning-tool-catalog.ts",
+      "handlerIdentifier": "const handler = (args) => currentLearningService().validate(learningArgs(args, ['strategyId', 'revisionId', 'evidenceFile', 'evidenceDigest']));",
+      "handlerAstSha256": "32ae22d6ab4fb4dac43c5698fe9d45bee0c85df2e77cc3ef8bcaa64a7de90fd8"
+    },
+    {
+      "toolName": "sangfor_validate_office_document",
+      "catalogSource": "apps/mcp-server/src/office-tool-catalog.ts",
+      "handlerIdentifier": "const handler = async (args) => {\n    const availability = isOfficeCliAvailable();\n    const validation = await validateOfficeDocument(args.filePath);\n    return { ...validation, officeCli: availability };\n};",
+      "handlerAstSha256": "20a3dcd2da31f82ec082d1b8bb27899a7eb397f4c38fc3a8726b3778210ed92c"
+    },
+    {
+      "toolName": "sangfor_verify_capture_ledger",
+      "catalogSource": "apps/mcp-server/src/capture-tool-catalog.ts",
+      "handlerIdentifier": "const handler = (args) => {\n    if (!isSafeRunId(args.runId))\n        return { error: `INVALID_RUN_ID: \"${args.runId}\" is not a safe path segment.` };\n    return verifyCaptureLedger(args.runId);\n};",
+      "handlerAstSha256": "d3903d2a2acc7e197bb6d7d20db13d0180be4d24ec0c85bd9edc04102667759b"
+    },
+    {
+      "toolName": "sangfor_verify_product_change",
+      "catalogSource": "apps/mcp-server/src/product-mutation-tool-catalog.ts",
+      "handlerIdentifier": "verifyProductChange",
+      "handlerAstSha256": "72878062bcc5e9b16f87512386ef6b757d85b69037a71d006ab5b140a110c12a"
+    },
+    {
+      "toolName": "sangfor_verify_result",
+      "catalogSource": "apps/mcp-server/src/operator-session-tool-catalog.ts",
+      "handlerIdentifier": "const handler = ({ planId, plan, observed }) => verifyResult({ plan: plan ?? plans.get(planId), observed });",
+      "handlerAstSha256": "e88af40187da749b0987b8ff1f07ba091dac4c7ffaafac2c94ed411691c45c4a"
+    }
+  ],
+  "sha256": "86f2d8caeaa607e96e1ede4dc7dca3f193859aa6889fed5b8d8a643ef5c43f06"
+}
