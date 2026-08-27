@@ -116,7 +116,7 @@ async function readExistingRemoteJob(
 ): Promise<RemoteJobRow | undefined> {
   const rows = await input.transaction.$queryRawUnsafe<readonly RemoteJobRow[]>(
     `SELECT "id","tenantId","projectId","installationId","jobId","requestId",
-      "requestDigest","capabilityJti","state","result","resultDigest"
+      "requestDigest","capabilityJti","authorityEpoch","state","result","resultDigest"
      FROM "BlroRemoteJob"
      WHERE "tenantId"=$1 AND "projectId"=$2 AND "installationId"=$3 AND "jobId"=$4 AND "authorityEpoch"=$5`,
     input.scope.tenantId,

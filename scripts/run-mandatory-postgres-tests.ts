@@ -139,7 +139,8 @@ function main(): void {
   assertMandatoryPostgresCoverage(tests.filter((file) => file.includes('postgres')), tests);
   const report = ReportSchema.parse(JSON.parse(run({
     executable: 'pnpm',
-    arguments: ['exec', 'vitest', 'run', '--config', 'vitest.postgres.config.ts', '--reporter=json', ...tests],
+    arguments: ['exec', 'vitest', 'run', '--config', 'vitest.postgres.config.ts',
+      '--maxWorkers=1', '--reporter=json', ...tests],
     environment,
   })));
   const executed = report.testResults.map((result) => tests.find((file) => result.name.endsWith(file))).filter((file) => file !== undefined);

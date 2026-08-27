@@ -8,6 +8,7 @@
     "@sangfor/browser-contracts": "workspace:*",
     "@sangfor/identity": "workspace:*",
     "@sangfor/shared": "workspace:*",
+    "pg": "^8.23.0",
     "typescript": "^5.9.3",
     "zod": "^3.25.76"
   }

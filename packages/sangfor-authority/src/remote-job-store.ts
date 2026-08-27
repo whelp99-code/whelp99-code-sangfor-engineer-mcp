@@ -1,13 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import {
-  JobCapabilityError,
   REMOTE_JOB_REFUSAL_REASONS,
-  browserExecutionRequestDigest,
   browserExecutionResultSchema,
   leafCertificateSchema,
-  verifyJobCapability,
   type CapabilityKey,
-  type JobCapabilityClaim,
   type RemoteJobIndeterminateSeal,
   type RemoteJobReserveInput,
   type RemoteJobReservation,
@@ -24,6 +20,7 @@ import type {
 } from './blro-remote-dispatcher.js';
 import { authorizeRemoteTarget } from './remote-job-authorization.js';
 import { classifyRemoteJobTransaction } from './remote-job-classification.js';
+import type { RemoteJobCompletionObserver } from './remote-job-completion.js';
 import {
   parseTrustedIssuerBundle,
   type TrustedIssuer,
@@ -47,6 +44,7 @@ import {
   retainedRemoteJobResult,
   retainRemoteJobResultTransaction,
 } from './remote-job-result.js';
+import { verifyRemoteJobStoreInput } from './remote-job-store-input.js';
 
 export type PostgresRemoteJobStoreOptions = {
   readonly database: RemoteJobDatabase;
@@ -56,6 +54,12 @@ export type PostgresRemoteJobStoreOptions = {
   readonly clock?: EnrollmentClock;
   readonly ids?: { readonly dispatchId: () => string };
   readonly maxTransactionAttempts?: number;
+  readonly completionObserver?: RemoteJobCompletionObserver;
+  readonly completionTimeoutMs?: number;
+  readonly reservationObserver?: {
+    readonly prepared: (dispatch: RemoteJobReservation) => Promise<void>;
+    readonly waiting?: (requestId: string) => Promise<void>;
+  };
 };
 
 export class PostgresRemoteJobStore implements RemoteJobStore, BlroDispatchAuthority {
@@ -66,6 +70,9 @@ export class PostgresRemoteJobStore implements RemoteJobStore, BlroDispatchAutho
   private readonly clock: EnrollmentClock;
   private readonly ids: { readonly dispatchId: () => string };
   private readonly maxTransactionAttempts: number;
+  private readonly completionObserver: RemoteJobCompletionObserver | undefined;
+  private readonly completionTimeoutMs: number;
+  private readonly reservationObserver: PostgresRemoteJobStoreOptions['reservationObserver'];
 
   constructor(options: PostgresRemoteJobStoreOptions) {
     this.database = options.database;
@@ -75,6 +82,9 @@ export class PostgresRemoteJobStore implements RemoteJobStore, BlroDispatchAutho
     this.clock = options.clock ?? { now: () => new Date() };
     this.ids = options.ids ?? { dispatchId: randomUUID };
     this.maxTransactionAttempts = options.maxTransactionAttempts ?? 3;
+    this.completionObserver = options.completionObserver;
+    this.completionTimeoutMs = options.completionTimeoutMs ?? 30_000;
+    this.reservationObserver = options.reservationObserver;
   }
 
   async authorizeTarget(input: BlroTargetAuthorizationInput): Promise<boolean> {
@@ -98,10 +108,13 @@ export class PostgresRemoteJobStore implements RemoteJobStore, BlroDispatchAutho
   }
 
   async classify(input: BlroAuthorityJobInput): Promise<RemoteJobReservation | BlroDispatchCandidate> {
-    const verified = this.verifiedInput(input);
+    const verified = verifyRemoteJobStoreInput({ reserve: input,
+      capabilityPublicKey: this.capabilityPublicKey, scope: this.scope, now: this.clock.now() });
     if (!verified) return authorizationRefused();
+    let pendingRequestId: string | undefined;
     try {
-      return await runRemoteJobTransaction({
+      await this.completionObserver?.ready();
+      const classify = () => runRemoteJobTransaction({
         database: this.database, scope: this.scope, maxAttempts: this.maxTransactionAttempts,
         work: (transaction) => classifyRemoteJobTransaction({
           transaction, scope: this.scope, claim: verified.claim, envelope: input.envelope,
@@ -109,8 +122,20 @@ export class PostgresRemoteJobStore implements RemoteJobStore, BlroDispatchAutho
           requestDigest: verified.requestDigest, now: verified.now,
         }),
       });
+      const first = await classify();
+      if (first.kind !== 'pending') return first;
+      pendingRequestId = first.requestId;
+      await this.reservationObserver?.waiting?.(first.requestId);
+      if (!this.completionObserver) return { kind: 'indeterminate', requestId: first.requestId };
+      await this.completionObserver.wait(first.completionKey, AbortSignal.timeout(this.completionTimeoutMs));
+      const completed = await classify();
+      return completed.kind === 'pending'
+        ? { kind: 'indeterminate', requestId: completed.requestId }
+        : completed;
     } catch (error) {
-      if (error instanceof Error) return { kind: 'unavailable' };
+      if (error instanceof Error) return pendingRequestId
+        ? { kind: 'indeterminate', requestId: pendingRequestId }
+        : { kind: 'unavailable' };
       throw error;
     }
   }
@@ -121,38 +146,31 @@ export class PostgresRemoteJobStore implements RemoteJobStore, BlroDispatchAutho
 
   async authorizeAndReserve(input: RemoteJobReserveInput): Promise<RemoteJobReservation> {
     const now = this.clock.now();
-    let claim: JobCapabilityClaim;
-    try {
-      claim = verifyJobCapability({
-        envelope: input.envelope,
-        publicKey: this.capabilityPublicKey,
-        now,
-      });
-    } catch (error) {
-      if (error instanceof JobCapabilityError) return authorizationRefused();
-      throw error;
-    }
-    if (claim.tenantId !== this.scope.tenantId || claim.projectId !== this.scope.projectId) {
-      return authorizationRefused();
-    }
-    const certificate = leafCertificateSchema.safeParse(input.certificate);
-    if (!certificate.success) return authorizationRefused();
+    const verified = verifyRemoteJobStoreInput({ reserve: input,
+      capabilityPublicKey: this.capabilityPublicKey, scope: this.scope, now });
+    if (!verified) return authorizationRefused();
     try {
       return await runRemoteJobTransaction({
         database: this.database,
         scope: this.scope,
         maxAttempts: this.maxTransactionAttempts,
-        work: (transaction) => reserveRemoteJobTransaction({
-          transaction,
-          scope: this.scope,
-          claim,
-          envelope: input.envelope,
-          certificate: certificate.data,
-          trustedIssuers: this.trustedIssuers,
-          requestDigest: browserExecutionRequestDigest(input.envelope.request),
-          dispatchId: this.ids.dispatchId(),
-          now,
-        }),
+        work: async (transaction) => {
+          const reservation = await reserveRemoteJobTransaction({
+            transaction,
+            scope: this.scope,
+            claim: verified.claim,
+            envelope: input.envelope,
+            certificate: verified.certificate,
+            trustedIssuers: this.trustedIssuers,
+            requestDigest: verified.requestDigest,
+            dispatchId: this.ids.dispatchId(),
+            now,
+          });
+          if (reservation.kind === 'dispatch') {
+            await this.reservationObserver?.prepared(reservation);
+          }
+          return reservation;
+        },
       });
     } catch (error) {
       if (error instanceof RemoteJobReservationRollback) return error.reservation;
@@ -214,27 +232,6 @@ export class PostgresRemoteJobStore implements RemoteJobStore, BlroDispatchAutho
       if (error instanceof Error) return { kind: 'unknown' };
       throw error;
     }
-  }
-
-  private verifiedInput(input: BlroAuthorityJobInput): {
-    readonly claim: JobCapabilityClaim;
-    readonly certificate: ReturnType<typeof leafCertificateSchema.parse>;
-    readonly requestDigest: string;
-    readonly now: Date;
-  } | undefined {
-    const now = this.clock.now();
-    let claim: JobCapabilityClaim;
-    try {
-      claim = verifyJobCapability({ envelope: input.envelope, publicKey: this.capabilityPublicKey, now });
-    } catch (error) {
-      if (error instanceof JobCapabilityError) return undefined;
-      throw error;
-    }
-    if (claim.tenantId !== this.scope.tenantId || claim.projectId !== this.scope.projectId) return undefined;
-    const certificate = leafCertificateSchema.safeParse(input.certificate);
-    if (!certificate.success) return undefined;
-    return { claim, certificate: certificate.data,
-      requestDigest: browserExecutionRequestDigest(input.envelope.request), now };
   }
 
   private dispatchMatchesScope(dispatch: RemoteJobRetainInput['dispatch']): boolean {

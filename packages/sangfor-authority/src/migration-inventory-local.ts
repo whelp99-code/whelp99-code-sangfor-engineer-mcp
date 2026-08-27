@@ -49,6 +49,9 @@ export const BROWSER_JOB_AUTHORITY_REFS = [
   "persist:packages/sangfor-authority/src/remote-job-reservation.ts#reserveRemoteJobTransaction",
   "persist:packages/sangfor-authority/src/remote-job-result.ts#markRemoteJobIndeterminateTransaction",
   "persist:packages/sangfor-authority/src/remote-job-result.ts#retainRemoteJobResultTransaction",
+  "persist:scripts/lib/blro-two-replica-database.ts#cleanup",
+  "persist:scripts/lib/blro-two-replica-database.ts#createHarnessAuthorityDatabase",
+  "persist:scripts/lib/blro-two-replica-fixture.ts#createTwoReplicaFixture",
   "prisma:model:BlroRemoteJob",
   "prisma:model:BlroRemoteJobCapabilityJti",
 ] as const;

@@ -32,6 +32,11 @@ export {
 } from './remote-job-store.js';
 export type { RemoteJobDatabase } from './remote-job-database.js';
 export {
+  createPostgresRemoteJobCompletionObserver,
+  remoteJobCompletionKey,
+  type RemoteJobCompletionObserver,
+} from './remote-job-completion.js';
+export {
   MAX_BOOTSTRAP_TTL_MS,
   preflightBootstrapToken,
   type BootstrapTokenPreflightDecision,

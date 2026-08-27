@@ -50,7 +50,12 @@ export function createBlroRemoteDispatcher(options: BlroRemoteDispatcherOptions)
       }
       const reservation = await options.authority.reserve(authorityInput);
       if (reservation.kind !== 'dispatch') {
-        return resultFromReservation(reservation, input.purpose, envelope.request.requestId);
+        const settled = reservation.kind === 'indeterminate'
+          ? await options.authority.classify(authorityInput)
+          : reservation;
+        return resultFromReservation(settled.kind === 'candidate'
+          ? reservation
+          : settled, input.purpose, envelope.request.requestId);
       }
       return dispatchReserved(options, input, envelope, classification, reservation.dispatch);
     },
@@ -90,6 +95,7 @@ async function dispatchReserved(
     issuedAt: now.toISOString(),
     expiresAt: new Date(now.getTime() + 60_000).toISOString(),
   } as const;
+  await options.lifecycleObserver?.dispatchBoundary(dispatch);
   const outcome = await options.transport.dispatch({
     target: submission.target, envelope,
     receipt: options.receiptSigner.sign(artifact), receiptId,
@@ -109,6 +115,7 @@ async function dispatchReserved(
       if (retained.kind !== 'retained') {
         return indeterminateAfterDispatch(dispatch.requestId, 'JM result retention is unavailable.');
       }
+      await options.lifecycleObserver?.resultRetained(dispatch);
       return finalVerdict(submission.purpose, retained.result);
     }
     default:

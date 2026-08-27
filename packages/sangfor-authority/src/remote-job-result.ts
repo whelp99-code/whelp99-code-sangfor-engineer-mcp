@@ -6,6 +6,10 @@ import {
   type RemoteJobReservation,
 } from '@sangfor/browser-contracts';
 import type { EnrollmentSqlExecutor } from './enrollment-database.js';
+import {
+  REMOTE_JOB_COMPLETION_CHANNEL,
+  remoteJobCompletionKey,
+} from './remote-job-completion.js';
 
 export type RemoteJobRow = {
   readonly id: string;
@@ -16,6 +20,7 @@ export type RemoteJobRow = {
   readonly requestId: string;
   readonly requestDigest: string;
   readonly capabilityJti: string;
+  readonly authorityEpoch: number;
   readonly state: 'dispatch_committed' | 'result_retained' | 'indeterminate';
   readonly result: unknown | null;
   readonly resultDigest: string | null;
@@ -84,7 +89,7 @@ export async function readRemoteJobByDispatch(
 ): Promise<RemoteJobRow | undefined> {
   const rows = await transaction.$queryRawUnsafe<readonly RemoteJobRow[]>(
     `SELECT "id","tenantId","projectId","installationId","jobId","requestId",
-      "requestDigest","capabilityJti","state","result","resultDigest"
+      "requestDigest","capabilityJti","authorityEpoch","state","result","resultDigest"
      FROM "BlroRemoteJob"
      WHERE "id"=$1 AND "tenantId"=$2 AND "projectId"=$3 AND "installationId"=$4
        AND "jobId"=$5 AND "requestDigest"=$6 AND "capabilityJti"=$7 AND "authorityEpoch"=$8
@@ -104,7 +109,7 @@ export async function readRemoteJobByDispatch(
 export async function retainRemoteJobResultTransaction(
   input: RetainResultTransactionInput,
 ): Promise<void> {
-  await input.transaction.$executeRawUnsafe(
+  const changed = await input.transaction.$executeRawUnsafe(
     `UPDATE "BlroRemoteJob" SET "state"='result_retained',"result"=$8::jsonb,
       "resultDigest"=$9,"resultCommittedAt"=$10,"updatedAt"=$10
      WHERE "id"=$1 AND "tenantId"=$2 AND "projectId"=$3 AND "installationId"=$4
@@ -127,6 +132,7 @@ export async function retainRemoteJobResultTransaction(
     input.now,
     input.dispatch.authorityEpoch,
   );
+  if (changed > 0) await notifyCompletion(input.transaction, input.dispatch);
 }
 
 class RemoteJobStateInvariantError extends Error {
@@ -139,7 +145,7 @@ class RemoteJobStateInvariantError extends Error {
 export async function markRemoteJobIndeterminateTransaction(
   input: MarkIndeterminateTransactionInput,
 ): Promise<void> {
-  await input.transaction.$executeRawUnsafe(
+  const changed = await input.transaction.$executeRawUnsafe(
     `UPDATE "BlroRemoteJob" SET "state"='indeterminate',"indeterminateAt"=$8,"updatedAt"=$8
      WHERE "id"=$1 AND "tenantId"=$2 AND "projectId"=$3 AND "installationId"=$4
        AND "jobId"=$5 AND "requestDigest"=$6 AND "capabilityJti"=$7 AND "authorityEpoch"=$9
@@ -154,5 +160,16 @@ export async function markRemoteJobIndeterminateTransaction(
     input.dispatch.capabilityJti,
     input.now,
     input.dispatch.authorityEpoch,
+  );
+  if (changed > 0) await notifyCompletion(input.transaction, input.dispatch);
+}
+
+async function notifyCompletion(
+  transaction: EnrollmentSqlExecutor,
+  dispatch: RemoteJobDispatch,
+): Promise<void> {
+  await transaction.$executeRawUnsafe(
+    `SELECT pg_notify('${REMOTE_JOB_COMPLETION_CHANNEL}',$1)`,
+    remoteJobCompletionKey(dispatch),
   );
 }

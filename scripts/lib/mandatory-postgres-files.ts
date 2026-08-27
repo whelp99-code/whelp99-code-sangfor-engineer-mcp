@@ -5,6 +5,7 @@ export const MANDATORY_POSTGRES_AUXILIARY_FILES = [
   'tests/blro-authority-domain-apis.test.ts',
   'tests/blro-authority-runtime.test.ts',
   'tests/blro-remote-dispatcher.test.ts',
+  'tests/blro-two-replica.test.ts',
   'tests/mandatory-postgres/authority-concurrency.test.ts',
   'tests/mandatory-postgres/local-writer-refusal.test.ts',
   'tests/nonce-gate-wiring.test.ts',

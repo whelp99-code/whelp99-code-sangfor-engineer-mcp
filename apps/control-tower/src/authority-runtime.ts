@@ -1,4 +1,3 @@
-import { createPublicKey } from 'node:crypto';
 import { PrismaClient } from '@prisma/client';
 import { PostgresSingleUseNonceStore } from '../../../packages/sangfor-approval/src/index.js';
 import {
@@ -28,6 +27,7 @@ import {
   createOptionalAuthorityRemoteJobApi,
   type AuthorityRemoteJobApi,
 } from './authority-remote-jobs.js';
+import { createAuthorityRemoteJobResources } from './authority-remote-completion.js';
 import {
   BLRO_RUNTIME_SCHEMA_VERSION,
   firstReadinessFailure,
@@ -124,6 +124,7 @@ export function createAuthorityRuntime(options: RuntimeOptions = {}) {
   }
 
   function assemble(input: ResourceFactoryInput): AuthorityResources | undefined {
+    const remoteJob = createAuthorityRemoteJobResources(input);
     const base = {
       prisma: input.prisma,
       authorityStore: new BlroAuthorityStore(input.prisma, input.config.auditSecret),
@@ -133,12 +134,7 @@ export function createAuthorityRuntime(options: RuntimeOptions = {}) {
         scope: { tenantId: input.config.tenantId, projectId: input.config.projectId },
         trustedIssuerBundle: input.material.trustBundle,
       }),
-      jobStore: new PostgresRemoteJobStore({
-        database: input.prisma,
-        scope: { tenantId: input.config.tenantId, projectId: input.config.projectId },
-        capabilityPublicKey: createPublicKey(input.material.signingPrivateKey),
-        trustedIssuerBundle: input.material.trustBundle,
-      }),
+      jobStore: remoteJob.jobStore,
     };
     const dependencies = { ...base, ...input.material };
     let candidate: unknown;
@@ -158,7 +154,9 @@ export function createAuthorityRuntime(options: RuntimeOptions = {}) {
     if (!domainApis) return undefined;
     domainApisReady = true;
     return { ...base, domainApis, ...(remoteJobApi ? { remoteJobApi } : {}),
-      close: () => input.prisma.$disconnect() };
+      close: async () => {
+        await Promise.all([remoteJob.closeCompletion(), input.prisma.$disconnect()]);
+      } };
   }
 
   async function start(): Promise<void> {

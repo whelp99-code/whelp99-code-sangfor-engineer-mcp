@@ -9,6 +9,7 @@ import type { BlroDispatchCandidate } from './blro-remote-dispatcher.js';
 import { authorizeRemoteJob } from './remote-job-authorization.js';
 import type { EnrollmentProjectScope, EnrollmentSqlExecutor } from './enrollment-database.js';
 import type { TrustedIssuer } from './enrollment-x509.js';
+import { remoteJobCompletionKey } from './remote-job-completion.js';
 import { reservationFromRemoteJobRow, type RemoteJobRow } from './remote-job-result.js';
 
 export type ClassifyRemoteJobInput = {
@@ -30,9 +31,15 @@ type JtiRow = {
   readonly requestDigest: string;
 };
 
+export type PendingRemoteJob = {
+  readonly kind: 'pending';
+  readonly requestId: string;
+  readonly completionKey: string;
+};
+
 export async function classifyRemoteJobTransaction(
   input: ClassifyRemoteJobInput,
-): Promise<RemoteJobReservation | BlroDispatchCandidate> {
+): Promise<RemoteJobReservation | BlroDispatchCandidate | PendingRemoteJob> {
   const epochs = await input.transaction.$queryRawUnsafe<readonly { readonly epoch: number }[]>(
     `SELECT "epoch" FROM "BlroProjectAuthorityEpoch" WHERE "projectId"=$1 FOR SHARE`,
     input.scope.projectId,
@@ -67,7 +74,7 @@ export async function classifyRemoteJobTransaction(
 async function readExisting(input: ClassifyRemoteJobInput): Promise<RemoteJobRow | undefined> {
   const rows = await input.transaction.$queryRawUnsafe<readonly RemoteJobRow[]>(
     `SELECT "id","tenantId","projectId","installationId","jobId","requestId",
-      "requestDigest","capabilityJti","state","result","resultDigest"
+      "requestDigest","capabilityJti","authorityEpoch","state","result","resultDigest"
      FROM "BlroRemoteJob"
      WHERE "tenantId"=$1 AND "projectId"=$2 AND "installationId"=$3
        AND "jobId"=$4 AND "authorityEpoch"=$5`,
@@ -77,10 +84,25 @@ async function readExisting(input: ClassifyRemoteJobInput): Promise<RemoteJobRow
   return rows[0];
 }
 
-function decision(row: RemoteJobRow, requestDigest: string): RemoteJobReservation {
-  return row.requestDigest === requestDigest
-    ? reservationFromRemoteJobRow(row)
-    : { kind: 'refused', reason: REMOTE_JOB_REFUSAL_REASONS.REQUEST_CONFLICT };
+function decision(
+  row: RemoteJobRow,
+  requestDigest: string,
+): RemoteJobReservation | PendingRemoteJob {
+  if (row.requestDigest !== requestDigest) {
+    return { kind: 'refused', reason: REMOTE_JOB_REFUSAL_REASONS.REQUEST_CONFLICT };
+  }
+  if (row.state !== 'dispatch_committed') return reservationFromRemoteJobRow(row);
+  return {
+    kind: 'pending',
+    requestId: row.requestId,
+    completionKey: remoteJobCompletionKey({
+      tenantId: row.tenantId,
+      projectId: row.projectId,
+      installationId: row.installationId,
+      jobId: row.jobId,
+      authorityEpoch: row.authorityEpoch,
+    }),
+  };
 }
 
 function refused(): RemoteJobReservation {

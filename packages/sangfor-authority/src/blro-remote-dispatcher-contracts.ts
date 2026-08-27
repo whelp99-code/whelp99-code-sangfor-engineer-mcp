@@ -72,11 +72,16 @@ export type BlroReceiptSigner = {
   readonly now: () => Date;
   readonly receiptId?: () => string;
 };
+export interface BlroDispatchLifecycleObserver {
+  dispatchBoundary(dispatch: RemoteJobDispatch): Promise<void>;
+  resultRetained(dispatch: RemoteJobDispatch): Promise<void>;
+}
 export type BlroRemoteDispatcherOptions = {
   readonly authority: BlroDispatchAuthority;
   readonly transport: BlroJmTransport;
   readonly executionPolicy: BlroExecutionPolicy;
   readonly receiptSigner: BlroReceiptSigner;
+  readonly lifecycleObserver?: BlroDispatchLifecycleObserver;
 };
 export type BlroRemoteSubmission = {
   readonly purpose: BlroDispatchPurpose;

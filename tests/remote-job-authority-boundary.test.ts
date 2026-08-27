@@ -35,15 +35,18 @@ describe('remote-job authority architecture boundary', () => {
   it('composes one Prisma client into enrollment and remote-job authority without app SQL', () => {
     // Given the Control Tower composition root.
     const runtime = readFileSync(join(ROOT, 'apps/control-tower/src/authority-runtime.ts'), 'utf8');
+    const remoteComposition = readFileSync(
+      join(ROOT, 'apps/control-tower/src/authority-remote-completion.ts'), 'utf8',
+    );
 
     // When its database construction and adapters are counted.
     const prismaClients = runtime.match(/new PrismaClient/g) ?? [];
 
     // Then one client is injected and no SQL crosses into the app.
     expect(prismaClients).toHaveLength(1);
-    expect(runtime).toContain('new PostgresRemoteJobStore');
-    expect(runtime).toContain('database: input.prisma');
-    expect(runtime).not.toMatch(/\$queryRaw|\$executeRaw/u);
+    expect(remoteComposition).toContain('new PostgresRemoteJobStore');
+    expect(remoteComposition).toContain('database: input.prisma');
+    expect(`${runtime}\n${remoteComposition}`).not.toMatch(/\$queryRaw|\$executeRaw/u);
   });
 
   it('ships permanent FORCE-RLS tombstones with scoped uniqueness and no delete path', () => {
