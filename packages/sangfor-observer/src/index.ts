@@ -14,6 +14,8 @@ import type {
 } from './types.js';
 
 export * from './types.js';
+export * from './remote-shadow.js';
+export { runRemoteShadowCli, type RemoteShadowCliIo } from './remote-shadow-cli.js';
 
 export const OBSERVER_RESERVED_CDP_PORT = 9222;
 export const OBSERVER_SESSION_TTL_MS = 10 * 60 * 1_000;

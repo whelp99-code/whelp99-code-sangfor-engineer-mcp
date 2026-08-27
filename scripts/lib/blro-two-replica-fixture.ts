@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import {
   buildRemoteJobEnvelope,
   type BrowserExecutionRequest,
+  type BrowserExecutionResult,
 } from '../../packages/sangfor-browser-contracts/src/index.js';
 import { startJmAgentProcess, type JmAgentProcess } from '../../apps/jm-browser-agent/src/process.js';
 import {
@@ -31,8 +32,10 @@ import type { ReplicaConfig } from './blro-two-replica-types.js';
 export type TwoReplicaFixture = {
   readonly configs: readonly [ReplicaConfig, ReplicaConfig];
   readonly body: (input: { readonly requestId: string; readonly jobId: string;
-    readonly jti: string; readonly digestVariant?: string }) => string;
+    readonly jti: string; readonly digestVariant?: string;
+    readonly purpose?: 'mutation' | 'verification' }) => string;
   readonly jmCalls: () => number;
+  readonly verificationCollectionCalls: () => number;
   readonly armJm: () => { readonly started: Promise<void>; readonly release: () => void };
   readonly queryCounts: () => Promise<{ readonly jobs: number; readonly jtis: number }>;
   readonly winnerJti: (jobId: string) => Promise<string>;
@@ -46,6 +49,7 @@ export async function createTwoReplicaFixture(input: {
   readonly databaseUrl: string;
   readonly ownerUrl: string;
   readonly jmUrl: string;
+  readonly collectVerification?: (request: BrowserExecutionRequest) => Promise<BrowserExecutionResult>;
 }): Promise<TwoReplicaFixture> {
   const root = mkdtempSync(join(tmpdir(), 'blro-two-replica-'));
   const tls = createJmTlsMaterial(root);
@@ -63,13 +67,38 @@ export async function createTwoReplicaFixture(input: {
   const chromium = join(root, 'chromium');
   writeFileSync(chromium, '#!/bin/sh\nexit 0\n', { mode: 0o700 });
   let executionBarrier: { readonly started: () => void; readonly released: Promise<void> } | undefined;
-  const execution = createFakeExecutionPort({ hold: async () => {
+  const fakeExecution = createFakeExecutionPort({ hold: async () => {
     const barrier = executionBarrier;
     if (!barrier) return;
     barrier.started();
     await barrier.released;
     executionBarrier = undefined;
   } });
+  let verificationCollectionCalls = 0;
+  const collectVerification = input.collectVerification;
+  const execution = collectVerification === undefined
+    ? fakeExecution
+    : {
+        ...fakeExecution,
+        async execute(request: BrowserExecutionRequest, context: Parameters<typeof fakeExecution.execute>[1]) {
+          const observed = await fakeExecution.execute(request, context);
+          if (observed.error?.code === 'JM_EXECUTION_ABORTED') return observed;
+          switch (request.operation.kind) {
+            case 'verify_console':
+              verificationCollectionCalls += 1;
+              return collectVerification(request);
+            case 'observe_console':
+            case 'perform_console_action':
+            case 'capture_console_evidence':
+            case 'capture_structure':
+            case 'extract_authenticated_knowledge':
+            case 'close_session':
+              return observed;
+            default:
+              return assertNever(request.operation);
+          }
+        },
+      };
   const environment = jmEnvironment({ tls, signing, snapshotPath,
     journalRoot, profileRoot, chromium });
   let jm: JmAgentProcess | undefined = await startJmAgentProcess(environment,
@@ -111,8 +140,9 @@ export async function createTwoReplicaFixture(input: {
   ] satisfies readonly [ReplicaConfig, ReplicaConfig];
   return {
     configs,
-    body: ({ requestId, jobId, jti, digestVariant }) => jobBody(signing, { requestId, jobId, jti, digestVariant }),
+    body: ({ requestId, jobId, jti, digestVariant, purpose }) => jobBody(signing, { requestId, jobId, jti, digestVariant, purpose }),
     jmCalls: execution.calls,
+    verificationCollectionCalls: () => verificationCollectionCalls,
     armJm: () => {
       let started: () => void = () => undefined;
       let release: () => void = () => undefined;
@@ -136,13 +166,16 @@ export async function createTwoReplicaFixture(input: {
 
 function jobBody(signing: ReturnType<typeof createJmSigningMaterial>, input: {
   readonly requestId: string; readonly jobId: string; readonly jti: string; readonly digestVariant?: string;
+  readonly purpose?: 'mutation' | 'verification';
 }): string {
   const request: BrowserExecutionRequest = {
     schemaVersion: 'browser-execution-request.v1', requestId: input.requestId,
     sessionId: JM_SESSION_ID, origin: JM_ORIGIN,
-    operation: { kind: 'perform_console_action', action: {
-      type: 'click', target: input.digestVariant ?? 'Apply', dryRun: false,
-    } },
+    operation: input.purpose === 'verification'
+      ? { kind: 'verify_console', checks: [{ id: 'system', kind: 'field_equals', expected: 'enabled' }] }
+      : { kind: 'perform_console_action', action: {
+          type: 'click', target: input.digestVariant ?? 'Apply', dryRun: false,
+        } },
   };
   const capability = mintTaskCapability(signing, request, { jti: input.jti, jobId: input.jobId,
     authorityEpoch: 7 });
@@ -151,6 +184,10 @@ function jobBody(signing: ReturnType<typeof createJmSigningMaterial>, input: {
     runId: request.sessionId, stepId: request.requestId,
     jobId: () => input.jobId, capability,
   }));
+}
+
+function assertNever(value: never): never {
+  throw new TypeError(`Unhandled browser operation: ${JSON.stringify(value)}`);
 }
 
 function jmEnvironment(input: { readonly tls: ReturnType<typeof createJmTlsMaterial>;

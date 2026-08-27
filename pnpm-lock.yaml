@@ -256,9 +256,15 @@ importers:
 
   packages/sangfor-observer:
     dependencies:
+      '@sangfor/browser-contracts':
+        specifier: workspace:*
+        version: link:../sangfor-browser-contracts
       '@sangfor/collector':
         specifier: workspace:*
         version: link:../sangfor-collector
+      zod:
+        specifier: ^3.25.76
+        version: 3.25.76
 
   packages/sangfor-office:
     dependencies:
