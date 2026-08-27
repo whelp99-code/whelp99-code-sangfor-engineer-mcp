@@ -11,7 +11,7 @@ import {
 } from '../packages/sangfor-operator/src/nonce-store.js';
 import { signApprovalToken } from '../packages/sangfor-operator/src/approval.js';
 import { assertRealExecutionAllowed, startOperatorSession } from '@sangfor/operator';
-import { authorizeToolCall, BRIDGE_APPROVAL_ACTION_TYPE } from '../apps/http-bridge/src/tool-guard.js';
+import { authorizeToolCall, BRIDGE_APPROVAL_ACTION_TYPE } from '../packages/sangfor-operator/src/tool-authorization.js';
 
 // Importing the MCP server module must NOT start the stdio loop.
 process.env.MCP_NO_SERVE = '1';

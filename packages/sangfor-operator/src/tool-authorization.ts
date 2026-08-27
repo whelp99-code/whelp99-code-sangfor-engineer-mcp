@@ -1,5 +1,5 @@
-import { verifyExecutionApproval, type SignedApproval } from '../../../packages/sangfor-operator/src/approval.js';
-import { consumeApprovalNonceAsync } from '../../../packages/sangfor-operator/src/nonce-store.js';
+import { verifyExecutionApproval, type SignedApproval } from './approval.js';
+import { consumeApprovalNonceAsync } from './nonce-store.js';
 
 type ToolListResult = {
   tools?: Array<{

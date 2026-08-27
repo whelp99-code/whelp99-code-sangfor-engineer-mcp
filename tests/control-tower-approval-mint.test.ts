@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { mintApproval, mintBridgeApproval, BRIDGE_APPROVAL_ACTION_TYPE } from '../apps/control-tower/src/approval-mint.js';
+import { mintApproval, mintBridgeApproval } from '../apps/control-tower/src/approval-mint.js';
+import { BRIDGE_APPROVAL_ACTION_TYPE } from '@sangfor/operator';
 import { verifyExecutionApproval } from '../packages/sangfor-operator/src/approval.js';
 
 const SECRET = 'mint-test-secret';

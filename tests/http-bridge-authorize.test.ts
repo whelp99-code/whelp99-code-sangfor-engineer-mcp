@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { authorizeToolCall } from '../apps/http-bridge/src/tool-guard.js';
+import { authorizeToolCall } from '../packages/sangfor-operator/src/tool-authorization.js';
 
 const toolList = {
   tools: [

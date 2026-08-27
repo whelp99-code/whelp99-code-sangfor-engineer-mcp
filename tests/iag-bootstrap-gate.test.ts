@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { listTools } from '../apps/mcp-server/src/index.js';
-import { authorizeToolCall } from '../apps/http-bridge/src/tool-guard.js';
+import { authorizeToolCall } from '../packages/sangfor-operator/src/tool-authorization.js';
 import {
   authorizeIagEvidenceBootstrap,
   type IagBootstrapAuthorizationInput,

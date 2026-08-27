@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { authorizeToolCall } from '../apps/http-bridge/src/tool-guard.js';
+import { authorizeToolCall } from '../packages/sangfor-operator/src/tool-authorization.js';
 import { mintApproval } from '../apps/control-tower/src/approval-mint.js';
 
 // docs/SECURITY.md가 "destructive는 HTTP에서 항상 거부된다"고 단정해 코드·테스트와

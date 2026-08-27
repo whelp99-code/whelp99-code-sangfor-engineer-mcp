@@ -9,7 +9,7 @@ import { tmpdir } from 'node:os';
 // Importing the MCP server module must NOT start the stdio readline loop.
 process.env.MCP_NO_SERVE = '1';
 
-import { authorizeToolCall } from '../apps/http-bridge/src/tool-guard.js';
+import { authorizeToolCall } from '../packages/sangfor-operator/src/tool-authorization.js';
 import { createApi } from '../apps/control-tower/src/api.js';
 import { PlaybookStore } from '../apps/control-tower/src/playbook-store.js';
 import { SEED_VENDORS } from '../apps/control-tower/src/registry.js';

@@ -67,7 +67,7 @@ import {
   httpJson,
 } from '../../../packages/sangfor-hci-client/src/index.js';
 import { TowerClient } from './tower-client.js';
-import { authorizeToolCall } from '../../http-bridge/src/tool-guard.js';
+import { authorizeSafetySelftestToolCall } from './tool-authorization-consumer.js';
 import {
   LearningStrategyService,
   assertSafeLearningInput,
@@ -482,7 +482,7 @@ export async function runSafetySelftest(opts: { operatorGateTimeoutMs?: number }
   // (2) http-bridge's tool-guard must refuse a destructive tool call with no approval.
   try {
     const toolListResult = { tools: [{ name: 'sangfor_selftest_destructive_probe', annotations: { readOnlyHint: false, destructiveHint: true } }] };
-    const decision = await authorizeToolCall({ name: 'sangfor_selftest_destructive_probe', toolListResult, enforceWhitelist: true });
+    const decision = await authorizeSafetySelftestToolCall({ name: 'sangfor_selftest_destructive_probe', toolListResult, enforceWhitelist: true });
     const refused = decision.allow === false && decision.status === 403;
     checks.push({
       name: 'http-bridge.authorizeToolCall',

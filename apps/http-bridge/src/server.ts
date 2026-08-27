@@ -16,7 +16,7 @@ import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { resolveBindHost, checkAuth, assertBindSafety, isLoopback } from "../../../packages/shared/src/index.js";
-import { authorizeToolCall } from "./tool-guard.js";
+import { authorizeToolCall } from "../../../packages/sangfor-operator/src/tool-authorization.js";
 import type { SignedApproval } from "../../../packages/sangfor-operator/src/approval.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -142,7 +142,7 @@ function json(res: http.ServerResponse, data: unknown, status = 200) {
 // Mcp-Session-Id). Only these methods are proxied through; anything else
 // gets a JSON-RPC -32601, mirroring how mcp-server's own handle() already
 // rejects methods outside this exact set. tools/call additionally has to
-// clear authorizeToolCall — the SAME gate /tools/call uses — before it is
+// clear @sangfor/operator's authorizeToolCall — the SAME gate /tools/call uses — before it is
 // forwarded; see docs/adapters/remote-http.md for the documented limits.
 // SECURITY ASSUMPTION: resources/* and prompts/* pass with token auth only
 // because mcp-server serves exclusively static curated metadata there (agent
@@ -271,7 +271,7 @@ export function createBridgeServer(deps: BridgeServerDeps = {}): http.Server {
             ? (params.approval as SignedApproval)
             : undefined;
 
-          // SAME gate as /tools/call — see authorizeToolCall in tool-guard.ts.
+          // SAME gate as /tools/call — see authorizeToolCall in @sangfor/operator.
           // Do not duplicate or weaken this logic; call the shared function.
           const enforceWhitelist = process.env.WHELP99_ENFORCE_SAFE_TOOLS !== "false";
           const list = await mcpRequest("tools/list");

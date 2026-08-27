@@ -31,7 +31,7 @@ This is deliberately **at-most-once dispatch, not exactly-once delivery**. A cra
 
 A mutation response is never authoritative PASS. Final PASS requires a distinct, separately authorized and separately tombstoned/JTI-bound read-only `verify_console` job whose independent read-back is PASS. A refused, mismatched, unavailable, or indeterminate verification remains non-PASS, and no path automatically retries the mutation or rolls it back.
 
-## The second, independent gate (`apps/http-bridge/tool-guard.ts`)
+## The second, independent gate (`packages/sangfor-operator/src/tool-authorization.ts`)
 Defense-in-depth for the REST surface:
 - Tools with **missing annotations** → 403 (fail closed).
 - `destructiveHint` tools **without an approval** → refused unconditionally: the whitelist toggle, a loopback bind and every other flag cannot lift this.

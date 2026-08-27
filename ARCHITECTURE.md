@@ -88,7 +88,7 @@ Not an OO device interface — a **data contract + shared engine**. Each vendor 
 ## Execution & approval flow (the safety spine)
 
 1. Every action defaults to **dry-run**. A non-dry-run live write requires the execution flags, a valid complete-action-bound HMAC approval, origin/request validation, an authoritative read-only preflight, and a durable single-use nonce consumed immediately before mutation dispatch. `SANGFOR_OPERATOR_APPROVAL_SECRET` signs `approvedBy·changeTicketId·rollbackPlanId·nonce·expiresAt·canonicalActionJson`; the canonical JSON includes all supplied action fields, including browser `value`, `menuPath`, and `formFields`. Any missing piece **fails closed**. Central gate: `assertRealExecutionAllowed()` in `@sangfor/operator`.
-2. Control Tower playbooks pause at a write block, mint a bridge approval on human approve, and resume (`continueFromApprove`). The HTTP bridge (`tool-guard.ts`) refuses destructive tools without a valid single-use approval and refuses write tools on non-loopback binds without `SANGFOR_ALLOW_REMOTE_WRITE`.
+2. Control Tower playbooks pause at a write block, mint a bridge approval on human approve, and resume (`continueFromApprove`). The HTTP bridge uses `@sangfor/operator`'s `tool-authorization.ts`, which refuses destructive tools without a valid single-use approval and refuses write tools on non-loopback binds without `SANGFOR_ALLOW_REMOTE_WRITE`.
 3. Apply never trusts a 2xx — only a **PASS read-back** is success; INDETERMINATE ≠ PASS; failure **halts for a human** (no auto-rollback). Every step lands in a hash-chained audit ledger.
 
 ## Data flow (learning pipeline)

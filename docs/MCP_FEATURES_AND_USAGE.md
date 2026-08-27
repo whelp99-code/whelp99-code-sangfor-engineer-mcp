@@ -3,7 +3,7 @@
 기준: `feat/customer-ready-mcp-scorecard` (2026-07-31, 도구명 `sangfor_*` snake_case 전환 + 디스커버리 2종 추가)
 MCP 표면: **108 tools** · mcp-scorecard **96/100 (grade A)**
 
-이 문서는 현재 실행 코드의 `listTools()` 결과를 기준으로 작성한 사용자용 가이드다. 도구 이름·입력 스키마·안전 분류의 정본은 [MCP server registry](../apps/mcp-server/src/index.ts)이며, HTTP 동작의 정본은 [HTTP bridge](../apps/http-bridge/src/server.ts)와 [tool guard](../apps/http-bridge/src/tool-guard.ts)다.
+이 문서는 현재 실행 코드의 `listTools()` 결과를 기준으로 작성한 사용자용 가이드다. 도구 이름·입력 스키마·안전 분류의 정본은 [MCP server registry](../apps/mcp-server/src/index.ts)이며, HTTP 동작의 정본은 [HTTP bridge](../apps/http-bridge/src/server.ts)와 [tool guard](../packages/sangfor-operator/src/tool-authorization.ts)다.
 
 ## 1. 무엇을 할 수 있나
 
@@ -166,7 +166,7 @@ pnpm exec tsx scripts/mint-hci-approval.ts \
 
 이전 판에서 "SECURITY.md는 항상 거부라고 하는데 코드는 허용한다"고 적었던 불일치는
 문서 쪽 오류였다. 코드와 테스트가 일치하는 계약은 다음과 같다
-([tool guard](../apps/http-bridge/src/tool-guard.ts), `tests/http-bridge-approval-guard.test.ts`).
+([tool guard](../packages/sangfor-operator/src/tool-authorization.ts), `tests/http-bridge-approval-guard.test.ts`).
 
 | 상황 | 결과 |
 |---|---|

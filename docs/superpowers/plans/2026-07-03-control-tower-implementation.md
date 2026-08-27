@@ -30,7 +30,7 @@
 packages/sangfor-runs/                    [신규] 실행이력 저장소 (@sangfor/runs)
 ├── package.json
 └── src/{index.ts, mask.ts, run-store.ts}
-apps/http-bridge/src/tool-guard.ts        [수정] 승인 분기 추가 (Task 3)
+packages/sangfor-operator/src/tool-authorization.ts        [수정] 승인 분기 추가 (Task 3)
 apps/http-bridge/src/server.ts            [수정] body.approval 전달 (Task 3)
 apps/control-tower/                       [신규] 컨트롤타워 (:3700)
 ├── package.json
@@ -605,7 +605,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ### Task 3: http-bridge 승인 통과 경로 (T-BR-1 · T-BR-2)
 
 **Files:**
-- Modify: `apps/http-bridge/src/tool-guard.ts` (전체 교체본 아래 제공)
+- Modify: `packages/sangfor-operator/src/tool-authorization.ts` (전체 교체본 아래 제공)
 - Modify: `apps/http-bridge/src/server.ts:160-181` (POST /tools/call 블록)
 - Test: `tests/http-bridge-approval-guard.test.ts` (신규)
 
@@ -625,7 +625,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { randomBytes } from 'node:crypto';
-import { authorizeToolCall } from '../apps/http-bridge/src/tool-guard.js';
+import { authorizeToolCall } from '../packages/sangfor-operator/src/tool-authorization.js';
 import { signApprovalToken, type SignedApproval } from '../packages/sangfor-operator/src/approval.js';
 
 const toolList = {
@@ -776,9 +776,9 @@ describe('authorizeToolCall — 서명 승인 통과 경로 (T-BR-2)', () => {
 Run: `pnpm exec vitest run tests/http-bridge-approval-guard.test.ts`
 Expected: FAIL — T-BR-2 다수 (approval 파라미터가 아직 없어 무승인 판정으로 흘러감). T-BR-1 5개는 계속 PASS여야 한다.
 
-- [ ] **Step 5: tool-guard.ts 전체 교체**
+- [ ] **Step 5: tool-authorization.ts 전체 교체**
 
-`apps/http-bridge/src/tool-guard.ts`를 아래 전문으로 교체:
+`packages/sangfor-operator/src/tool-authorization.ts`를 아래 전문으로 교체:
 
 ```ts
 import { verifyExecutionApproval, type SignedApproval } from '../../../packages/sangfor-operator/src/approval.js';
@@ -888,7 +888,7 @@ export function authorizeToolCall(params: {
 
 - [ ] **Step 6: server.ts에 approval 전달 배선**
 
-`apps/http-bridge/src/server.ts` — import 블록(17행 부근)의 `import { authorizeToolCall } from "./tool-guard.js";` 아래에 추가:
+`apps/http-bridge/src/server.ts` — import 블록(17행 부근)의 `import { authorizeToolCall } from "../../../packages/sangfor-operator/src/tool-authorization.js";` 아래에 추가:
 
 ```ts
 import type { SignedApproval } from "../../../packages/sangfor-operator/src/approval.js";
@@ -929,7 +929,7 @@ Expected: 에러 0
 - [ ] **Step 8: Commit**
 
 ```bash
-git add apps/http-bridge/src/tool-guard.ts apps/http-bridge/src/server.ts tests/http-bridge-approval-guard.test.ts
+git add packages/sangfor-operator/src/tool-authorization.ts apps/http-bridge/src/server.ts tests/http-bridge-approval-guard.test.ts
 git commit -m "feat(bridge): signed-approval pass-through for write/destructive tools (T-BR-2)
 
 Approval is action-bound (bridge.tool-call + tool name), single-use (shared
@@ -1645,7 +1645,7 @@ Expected: FAIL — 모듈 미존재
 import { randomBytes } from 'node:crypto';
 import { signApprovalToken, type SignedApproval } from '../../../packages/sangfor-operator/src/approval.js';
 
-// apps/http-bridge/src/tool-guard.ts의 BRIDGE_APPROVAL_ACTION_TYPE과 같은 값.
+// packages/sangfor-operator/src/tool-authorization.ts의 BRIDGE_APPROVAL_ACTION_TYPE과 같은 값.
 // 앱 간 직접 import를 피하려고 문자열을 복제한다 — 호환성은 T-INT-1이 실제 guard로 고정.
 export const BRIDGE_APPROVAL_ACTION_TYPE = 'bridge.tool-call';
 
@@ -3495,7 +3495,7 @@ import { tmpdir } from 'node:os';
 // Importing the MCP server module must NOT start the stdio readline loop.
 process.env.MCP_NO_SERVE = '1';
 
-import { authorizeToolCall } from '../apps/http-bridge/src/tool-guard.js';
+import { authorizeToolCall } from '../packages/sangfor-operator/src/tool-authorization.js';
 import { createApi } from '../apps/control-tower/src/api.js';
 import { SEED_VENDORS } from '../apps/control-tower/src/registry.js';
 

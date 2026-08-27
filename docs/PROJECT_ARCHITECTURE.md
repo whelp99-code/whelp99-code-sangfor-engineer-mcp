@@ -182,7 +182,7 @@ stdio 기반 JSON-RPC 2.0 서버. `readline`으로 한 줄씩 요청을 받아 �
 - AIOSv2 Portal이 기대하는 REST 형태로 stdio MCP를 감싼다.
 - `mcp-server`를 `pnpm exec tsx`로 **child process spawn**, stdin/stdout JSON-RPC로 통신. 응답은 `pending` Map + 30초 타임아웃으로 매칭.
 - 엔드포인트: `GET /health`, `GET /tools`, `POST /tools/call`.
-- **보안 핵심: MCP annotations 기반 인가(`tool-guard.ts`의 `authorizeToolCall`, 단일 소스).** 규칙: 주석 없음→403(fail-closed), write/destructive 호출은 환경·bind 정책과 complete-action HMAC 승인·만료·single-use nonce를 모두 검증한다. 승인되지 않은 destructive 호출은 403이며, 유효 승인과 로컬 실행 게이트를 모두 통과한 호출만 허용한다. 정적 6도구 화이트리스트가 아니라 `tools/list` annotations를 신뢰한다.
+- **보안 핵심: MCP annotations 기반 인가(`@sangfor/operator`의 `tool-authorization.ts`에 있는 `authorizeToolCall`, 단일 소스).** 규칙: 주석 없음→403(fail-closed), write/destructive 호출은 환경·bind 정책과 complete-action HMAC 승인·만료·single-use nonce를 모두 검증한다. 승인되지 않은 destructive 호출은 403이며, 유효 승인과 로컬 실행 게이트를 모두 통과한 호출만 허용한다. 정적 6도구 화이트리스트가 아니라 `tools/list` annotations를 신뢰한다.
 
 ### 5.2 Operator Console (`apps/operator-console`, port 3502/3500)
 - `server.ts`: 순수 Node `http` 서버. `/api/summary`, `/api/products`, `/api/knowledge`, `/api/health/store`, `/api/health/embeddings`, `/api/analyze-project`, `/api/generate-config-plan`, `/api/rag-search`, `/api/discover-console`, `/api/analyze-requirements`, `/api/import-excel`(base64 업로드 지원), `/api/feedback`.
