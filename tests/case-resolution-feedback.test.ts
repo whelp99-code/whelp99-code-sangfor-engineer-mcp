@@ -30,6 +30,7 @@ vi.mock('../packages/sangfor-wiki/src/index.js', async (importOriginal) => {
   return {
     ...actual,
     proposeWikiUpdate: proposeWikiUpdateMock,
+    proposeWikiUpdateWithAuthority: proposeWikiUpdateMock,
     applyWikiUpdateWithAdapter: applyWikiUpdateWithAdapterMock,
     approveWikiUpdate: approveWikiUpdateMock
   };

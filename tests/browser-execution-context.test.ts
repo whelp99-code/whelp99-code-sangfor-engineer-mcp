@@ -86,10 +86,8 @@ describe('BrowserExecutionPort cancellation context', () => {
     const response = await handler.handle({
       client: { fingerprint256: 'client-context', tlsAuthorized: true, raw: {} },
       method: 'POST', urlPath: REMOTE_BROWSER_JOB_PATH,
+      headers: { [CONTRACT_VERSION_HEADER]: `${BLRO_CONTRACT_VERSION.major}.${BLRO_CONTRACT_VERSION.minor}` },
       bodyText: JSON.stringify(envelope),
-      headers: {
-        [CONTRACT_VERSION_HEADER]: `${BLRO_CONTRACT_VERSION.major}.${BLRO_CONTRACT_VERSION.minor}`,
-      },
       executionContext,
     });
 

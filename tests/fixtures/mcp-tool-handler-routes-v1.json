@@ -54,26 +54,26 @@
     {
       "toolName": "sangfor_apply_github_wiki_update",
       "catalogSource": "apps/mcp-server/src/feedback-tool-catalog.ts",
-      "handlerIdentifier": "const handler = ({ proposalId, repoUrl, localPath }) => {\n    const targetRoot = localPath ?? 'data/wiki/github-wiki';\n    return applyGitHubWikiUpdate({\n        proposalId, repoUrl, localPath: targetRoot, proposalAuthority: mcpLocalAuthority('wiki_proposals', wikiRoot()),\n        adapterAuthority: mcpLocalAuthority('wiki_proposals', targetRoot),\n    });\n};",
-      "handlerAstSha256": "305e8eeeb04656db92e9a30a463ff5d227912b711f1e06974e8973e72627eecf"
+      "handlerIdentifier": "const handler = ({ proposalId, repoUrl, localPath }) => {\n    const targetRoot = localPath ?? 'data/wiki/github-wiki';\n    return applyGitHubWikiUpdateWithAuthority({\n        proposalId, repoUrl, localPath: targetRoot, proposalAuthority: mcpLocalAuthority('wiki_proposals', wikiRoot()),\n        adapterAuthority: mcpLocalAuthority('wiki_proposals', targetRoot),\n    });\n};",
+      "handlerAstSha256": "469bc88f6dd8645fbaf20b57d2f339dbfb4169e2d35435a40cde8b5158131066"
     },
     {
       "toolName": "sangfor_apply_obsidian_wiki_update",
       "catalogSource": "apps/mcp-server/src/feedback-tool-catalog.ts",
-      "handlerIdentifier": "const handler = ({ proposalId, vaultPath }) => applyObsidianWikiUpdate({\n    proposalId, vaultPath, proposalAuthority: mcpLocalAuthority('wiki_proposals', wikiRoot()),\n    adapterAuthority: mcpLocalAuthority('wiki_proposals', vaultPath),\n});",
-      "handlerAstSha256": "4a6dcb743c63a3893c9b52b0e13bfc40080906b7dfe2312595ba3a99363ed630"
+      "handlerIdentifier": "const handler = ({ proposalId, vaultPath }) => applyObsidianWikiUpdateWithAuthority({\n    proposalId, vaultPath, proposalAuthority: mcpLocalAuthority('wiki_proposals', wikiRoot()),\n    adapterAuthority: mcpLocalAuthority('wiki_proposals', vaultPath),\n});",
+      "handlerAstSha256": "2bdeab388dd90a2859cfe79738ca17bdd0b55be06292acc1ca89a7b44e01b132"
     },
     {
       "toolName": "sangfor_apply_wiki_update",
       "catalogSource": "apps/mcp-server/src/feedback-tool-catalog.ts",
-      "handlerIdentifier": "const handler = ({ proposalId }) => applyWikiUpdate(proposalId, mcpLocalAuthority('wiki_proposals', wikiRoot()));",
-      "handlerAstSha256": "2dd3f84c0f371fbc48870319e554051f507400f3db4827ac0e81ad2c5798e866"
+      "handlerIdentifier": "const handler = ({ proposalId }) => applyWikiUpdateWithAuthority(proposalId, mcpLocalAuthority('wiki_proposals', wikiRoot()));",
+      "handlerAstSha256": "51052af5a1db2f28d296c090710c5990e8fe78a7d69bd076d32f649aa9d1e0b4"
     },
     {
       "toolName": "sangfor_approve_wiki_update",
       "catalogSource": "apps/mcp-server/src/feedback-tool-catalog.ts",
-      "handlerIdentifier": "const handler = ({ proposalId, decision, token, reviewer }) => approveWikiUpdate(proposalId, decision, { token, reviewer }, mcpLocalAuthority('wiki_proposals', wikiRoot()));",
-      "handlerAstSha256": "80051db345e111a8bb6a8554477b7a701316853d6229901a247de53b5130f507"
+      "handlerIdentifier": "const handler = ({ proposalId, decision, token, reviewer }) => approveWikiUpdateWithAuthority(proposalId, decision, { token, reviewer }, mcpLocalAuthority('wiki_proposals', wikiRoot()));",
+      "handlerAstSha256": "458364df39fc445113f1813ff1b159724ed99ec82707cd36ca23a7c3e0b1a649"
     },
     {
       "toolName": "sangfor_attach_observation_session",
@@ -222,8 +222,8 @@
     {
       "toolName": "sangfor_extract_lesson",
       "catalogSource": "apps/mcp-server/src/feedback-tool-catalog.ts",
-      "handlerIdentifier": "const handler = ({ feedbackId }) => extractLesson(feedbackId, mcpLocalAuthority('feedback_lessons', feedbackRoot()));",
-      "handlerAstSha256": "a3c7487194bc6c07c5529b42268c6d1aa41ca1b8d0444573c2d61f17fbbce934"
+      "handlerIdentifier": "const handler = ({ feedbackId }) => extractLessonWithAuthority(feedbackId, mcpLocalAuthority('feedback_lessons', feedbackRoot()));",
+      "handlerAstSha256": "3ea6d2ff4c217898d3839210a7477736051b32e5c636280b21ef98bc22291a62"
     },
     {
       "toolName": "sangfor_field_engineer_coverage",
@@ -534,8 +534,8 @@
     {
       "toolName": "sangfor_propose_wiki_update",
       "catalogSource": "apps/mcp-server/src/feedback-tool-catalog.ts",
-      "handlerIdentifier": "const handler = (input) => proposeWikiUpdate(input, mcpLocalAuthority('wiki_proposals', wikiRoot()));",
-      "handlerAstSha256": "3a7adaba9ddc751609e3819de4010a3193e613e8ab6dfa75963bc797d5d0d8d8"
+      "handlerIdentifier": "const handler = (input) => proposeWikiUpdateWithAuthority(input, mcpLocalAuthority('wiki_proposals', wikiRoot()));",
+      "handlerAstSha256": "00f229186e8aeaace586bb7cbd9a0378a0c00d7491f78bbc77a95e6b7073e28d"
     },
     {
       "toolName": "sangfor_rag_index_summary",
@@ -654,8 +654,8 @@
     {
       "toolName": "sangfor_submit_feedback",
       "catalogSource": "apps/mcp-server/src/feedback-tool-catalog.ts",
-      "handlerIdentifier": "const handler = async (args) => {\n    const event = await submitFeedback(args, mcpLocalAuthority('feedback_lessons', feedbackRoot()));\n    const dbId = await persistFeedbackEvent(event).catch(() => null);\n    return dbId ? { ...event, persistedId: dbId } : event;\n};",
-      "handlerAstSha256": "98eead2d6235ec3b94980e8d0eb13c344268f959ed08a65e08ecf126e7f25bc7"
+      "handlerIdentifier": "const handler = async (args) => {\n    const event = await submitFeedbackWithAuthority(args, mcpLocalAuthority('feedback_lessons', feedbackRoot()));\n    const dbId = await persistFeedbackEvent(event).catch(() => null);\n    return dbId ? { ...event, persistedId: dbId } : event;\n};",
+      "handlerAstSha256": "3a37e0b7fa4108084c09c6e0014632a781e84804458bf3fb7b162cc1eb001156"
     },
     {
       "toolName": "sangfor_suggest_rca",
@@ -666,8 +666,8 @@
     {
       "toolName": "sangfor_upsert_knowledge_card",
       "catalogSource": "apps/mcp-server/src/knowledge-tool-catalog.ts",
-      "handlerIdentifier": "const handler = ({ card }) => upsertKnowledgeCard(card, mcpLocalAuthority('wiki_proposals', wikiRoot()));",
-      "handlerAstSha256": "45f64c6c55a8bd329387e349677a64208d8a41406743a64e882a300039de7513"
+      "handlerIdentifier": "const handler = ({ card }) => upsertKnowledgeCardWithAuthority(card, mcpLocalAuthority('wiki_proposals', wikiRoot()));",
+      "handlerAstSha256": "8c4d4e2eddc37ff1e3ef2fc81b59463db09705a309a359b8a7ef5f861138182c"
     },
     {
       "toolName": "sangfor_validate_config_plan",
@@ -712,5 +712,5 @@
       "handlerAstSha256": "e88af40187da749b0987b8ff1f07ba091dac4c7ffaafac2c94ed411691c45c4a"
     }
   ],
-  "sha256": "86f2d8caeaa607e96e1ede4dc7dca3f193859aa6889fed5b8d8a643ef5c43f06"
+  "sha256": "c547208d66485be46fad05d4d8ca7e92fe0adb66f318257e6204f6c04f4538f1"
 }

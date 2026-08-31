@@ -46,10 +46,10 @@ function runtime(submit?: (input: unknown) => Promise<BrowserExecutionResult>): 
   };
 }
 
-async function post(baseUrl: string, token: string): Promise<Response> {
+async function post(baseUrl: string, token: string, body: unknown = VALID_REMOTE_JOB_REQUEST): Promise<Response> {
   return fetch(`${baseUrl}/api/remote-browser-jobs`, {
     method: 'POST', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
-    body: JSON.stringify(VALID_REMOTE_JOB_REQUEST),
+    body: JSON.stringify(body),
   });
 }
 
@@ -65,6 +65,43 @@ describe('Control Tower remote job API', () => {
     const response = await post(baseUrl, 'tower-token');
     expect(response.status).toBe(200);
     expect(submit).toHaveBeenCalledWith(VALID_REMOTE_JOB_REQUEST);
+  });
+
+  it('returns 400 without dispatch when an authenticated request violates the strict boundary', async () => {
+    // Given
+    const submit = vi.fn(async (): Promise<BrowserExecutionResult> => {
+      throw new TypeError('must not dispatch');
+    });
+    const baseUrl = await listen(createTowerServer({
+      authorityMode: 'local', authorityRuntime: runtime(submit), apiToken: 'tower-token',
+    }));
+
+    // When
+    const response = await post(baseUrl, 'tower-token', {
+      ...VALID_REMOTE_JOB_REQUEST,
+      credential: 'must-not-cross',
+    });
+
+    // Then
+    expect(response.status).toBe(400);
+    expect(submit).not.toHaveBeenCalled();
+  });
+
+  it('returns 503 when the authenticated dispatcher dependency genuinely fails', async () => {
+    // Given
+    const submit = vi.fn(async (): Promise<BrowserExecutionResult> => {
+      throw new Error('database unavailable');
+    });
+    const baseUrl = await listen(createTowerServer({
+      authorityMode: 'local', authorityRuntime: runtime(submit), apiToken: 'tower-token',
+    }));
+
+    // When
+    const response = await post(baseUrl, 'tower-token');
+
+    // Then
+    expect(response.status).toBe(503);
+    expect(submit).toHaveBeenCalledOnce();
   });
 
   it('fails closed when production dispatcher composition is unavailable', async () => {

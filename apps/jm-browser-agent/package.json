@@ -6,6 +6,7 @@
   "main": "src/index.ts",
   "dependencies": {
     "@sangfor/browser-contracts": "workspace:*",
-    "@sangfor/jm-agent": "workspace:*"
+    "@sangfor/jm-agent": "workspace:*",
+    "@sangfor/jm-execution": "workspace:*"
   }
 }

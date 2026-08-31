@@ -101,13 +101,19 @@ export async function createTwoReplicaFixture(input: {
       };
   const environment = jmEnvironment({ tls, signing, snapshotPath,
     journalRoot, profileRoot, chromium });
-  let jm: JmAgentProcess | undefined = await startJmAgentProcess(environment,
-    { executionPort: execution });
   const trustedIssuerBundle = `${readFileSync(tls.caPath, 'utf8')}\n${authorityCertificate.trustedCaPem}`;
   const authority = await createHarnessAuthorityDatabase({
     databaseUrl: input.databaseUrl, ownerUrl: input.ownerUrl,
     certificateDerBase64: authorityCertificate.validDerBase64, trustedIssuerBundle,
   });
+  let jm: JmAgentProcess | undefined;
+  try {
+    jm = await startJmAgentProcess(environment, { executionPort: execution });
+  } catch (error) {
+    await authority.close();
+    rmSync(root, { recursive: true, force: true });
+    throw error;
+  }
   const clientCertificatePem = readFileSync(tls.clientCertPath, 'utf8');
   const client = new X509Certificate(clientCertificatePem);
   const server = new X509Certificate(readFileSync(tls.serverCertPath, 'utf8'));

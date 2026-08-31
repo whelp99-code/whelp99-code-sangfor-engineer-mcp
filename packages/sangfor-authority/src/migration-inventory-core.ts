@@ -108,4 +108,3 @@ export const RAG_INDEX_PROMOTION_REFS = [
   "persist:scripts/rag-index-promotion-qa.ts#seedOwner",
   "prisma:model:BlroRagIndexPromotion",
 ] as const;
-

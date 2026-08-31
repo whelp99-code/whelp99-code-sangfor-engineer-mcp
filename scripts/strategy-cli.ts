@@ -3,7 +3,6 @@ import { dirname, join } from 'node:path';
 import {
   LearningStrategyService,
   signLearningApproval,
-  type LearningApprovalPayload,
 } from '@sangfor/learning-strategy';
 import { syncLearningMirrorToPrisma } from '@sangfor/store';
 import { StrategyStoreManager } from '@sangfor/learning-strategy';
@@ -118,7 +117,7 @@ export async function runStrategyCli(argv = process.argv.slice(2)): Promise<numb
         jsonValue(args, 'context', resolverContextRuntimeSchema),
       )); return STRATEGY_EXIT.success;
     }
-    if (command === 'research') { only(args, ['request', 'root']); print(service.research(jsonValue(args, 'request', researchStrategyRequestRuntimeSchema))); return STRATEGY_EXIT.success; }
+    if (command === 'research') { only(args, ['request', 'root']); print(await service.research(jsonValue(args, 'request', researchStrategyRequestRuntimeSchema))); return STRATEGY_EXIT.success; }
     if (command === 'validate') { only(args, ['request', 'root']); print(service.validate(jsonValue(args, 'request', validateStrategyRequestRuntimeSchema))); return STRATEGY_EXIT.success; }
     if (command === 'approval-payload') {
       only(args, ['input']);
@@ -137,7 +136,7 @@ export async function runStrategyCli(argv = process.argv.slice(2)): Promise<numb
       chmodSync(output, 0o600);
       return STRATEGY_EXIT.success;
     }
-    if (command === 'promote') { only(args, ['request', 'root']); print(service.promote(jsonValue(args, 'request', promoteStrategyRequestRuntimeSchema))); return STRATEGY_EXIT.success; }
+    if (command === 'promote') { only(args, ['request', 'root']); print(await service.promote(jsonValue(args, 'request', promoteStrategyRequestRuntimeSchema))); return STRATEGY_EXIT.success; }
     if (command === 'audit') {
       only(args, ['strategy-id', 'root']);
       print(service.list(optional(args, 'strategy-id') ? { strategyId: optional(args, 'strategy-id') } : {})); return STRATEGY_EXIT.success;

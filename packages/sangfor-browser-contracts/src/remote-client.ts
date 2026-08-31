@@ -19,6 +19,7 @@ import {
   indeterminateAfterDispatch,
   normalizeFingerprint256,
   refusedResult,
+  remoteErrorBodySchema,
   type RemoteEnvelopeOptions,
 } from './remote-protocol.js';
 
@@ -183,8 +184,12 @@ function mapResponse(
   }
   const result = browserExecutionResultSchema.safeParse(parsed);
   if (!result.success) {
-    return response.statusCode >= 200 && response.statusCode < 300
-      ? indeterminateAfterDispatch(requestId, 'Remote success body was not a valid result.')
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return indeterminateAfterDispatch(requestId, 'Remote success body was not a valid result.');
+    }
+    const refusal = remoteErrorBodySchema.safeParse(parsed);
+    return refusal.success
+      ? refusedResult(requestId, refusal.data.error.code, refusal.data.error.message)
       : refusedResult(
         requestId,
         REMOTE_TRANSPORT_ERROR_CODES.BAD_RESPONSE,

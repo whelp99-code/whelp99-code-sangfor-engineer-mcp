@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import type { BrowserExecutionContext } from './browser-execution.js';
+import type { LeafCertificate } from './enrollment.js';
 import { parseJobEnvelope, type JobEnvelope } from './job-envelope.js';
 import {
   BLRO_CONTRACT_VERSION,
@@ -14,25 +16,34 @@ import {
   type RemoteHandlerResponse,
   type RemotePeerIdentity,
 } from './remote-protocol.js';
-import type { BrowserExecutionContext } from './browser-execution.js';
 
-export type RemoteHandlerInput = {
+export type RemoteTransportPreflightInput = {
   readonly client: RemotePeerIdentity | null;
   readonly method: string;
   readonly urlPath: string;
-  readonly bodyText: string;
   readonly headers?: Readonly<Record<string, string | readonly string[] | undefined>>;
+};
+
+export type RemoteHandlerInput = RemoteTransportPreflightInput & {
+  readonly bodyText: string;
   readonly executionContext?: BrowserExecutionContext;
 };
 
-export function refuseTransportInput(
-  input: RemoteHandlerInput,
+const approvedPreflight = Symbol('approvedRemoteTransportPreflight');
+
+export type RemoteTransportPreflight = {
+  readonly [approvedPreflight]: true;
+  readonly certificate: LeafCertificate | undefined;
+};
+
+export function preflightTransportInput(
+  input: RemoteTransportPreflightInput,
   policy: {
     readonly path: string;
     readonly authority: ContractVersion;
     readonly authorizeClient: (identity: RemotePeerIdentity) => boolean;
   },
-): RemoteHandlerResponse | undefined {
+): RemoteTransportPreflight | RemoteHandlerResponse {
   if (input.urlPath.split('?')[0] !== policy.path) {
     return response(404, REMOTE_TRANSPORT_ERROR_CODES.PATH_NOT_FOUND, `No handler for ${input.urlPath}.`);
   }
@@ -49,14 +60,19 @@ export function refuseTransportInput(
     return response(403, REMOTE_TRANSPORT_ERROR_CODES.CLIENT_UNAUTHORIZED, 'Client certificate is not authorized.');
   }
   const decision = negotiateContractVersion(input.headers?.[CONTRACT_VERSION_HEADER], policy.authority);
-  if (decision.kind === 'supported') return undefined;
+  if (decision.kind === 'unsupported') {
+    return {
+      statusCode: 426,
+      bodyText: errorBody(
+        REMOTE_TRANSPORT_ERROR_CODES.CONTRACT_VERSION_UNSUPPORTED,
+        `${decision.reason}: ${decision.message}`,
+      ),
+      headers: jsonHeaders({ [CONTRACT_VERSION_HEADER]: formatContractVersion(policy.authority) }),
+    };
+  }
   return {
-    statusCode: 426,
-    bodyText: errorBody(
-      REMOTE_TRANSPORT_ERROR_CODES.CONTRACT_VERSION_UNSUPPORTED,
-      `${decision.reason}: ${decision.message}`,
-    ),
-    headers: jsonHeaders({ [CONTRACT_VERSION_HEADER]: formatContractVersion(policy.authority) }),
+    [approvedPreflight]: true,
+    certificate: input.client.certificate,
   };
 }
 

@@ -88,7 +88,7 @@ export class PostgresLocalWriteIntentRepository {
         operationDigest: intent.operationDigest, targetPaths: intent.targetPaths,
         beforeDigests: before, afterDigests: null, status: 'PENDING',
       });
-    }, { isolationLevel: 'Serializable' });
+    }, { isolationLevel: 'ReadCommitted' });
   }
 
   async finish(scope: LocalWriteScope, writeId: string, status: 'COMPLETED' | 'ABORTED'): Promise<LocalWriteIntentRow> {
@@ -108,7 +108,7 @@ export class PostgresLocalWriteIntentRepository {
         writeId, status, JSON.stringify(after),
       );
       return { ...current, status, afterDigests: after };
-    }, { isolationLevel: 'Serializable' });
+    }, { isolationLevel: 'ReadCommitted' });
   }
 
   async reconcile(input: {

@@ -2,6 +2,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import type http from 'node:http';
 import { isLoopback, checkAuth } from '../../../packages/shared/src/index.js';
 import { RequestBodyTooLargeError } from '../../../packages/shared/src/runtime-body-cap.js';
+import { RuntimeSchemaError } from '../../../packages/shared/src/runtime-schema.js';
 import {
   acknowledgeRotationInputSchema,
   claimBootstrapTokenInputSchema,
@@ -161,6 +162,7 @@ export async function routeAuthorityEnrollment(input: AuthorityEnrollmentRouteIn
     if (error instanceof EnrollmentRouteInputError
       || error instanceof SyntaxError
       || error instanceof URIError
+      || (error instanceof RuntimeSchemaError && error.policy === 'deny')
       || (error instanceof Error && error.name === 'ZodError')) {
       sendJson(input.response, { error: 'INVALID_ENROLLMENT_REQUEST' }, 400);
       return true;

@@ -1,5 +1,6 @@
-import type {
-  BrowserExecutionPort,
+import {
+  assertIndependentBrowserExecutionAuthorities,
+  type BrowserExecutionPort,
   BrowserExecutionRequest,
   BrowserExecutionResult,
 } from '@sangfor/browser-contracts';
@@ -138,9 +139,7 @@ export function createIagExecutor(options: {
   readonly dispatchTimeoutMs?: number;
   readonly scheduler?: IagDispatchScheduler;
 }): IagExecutor {
-  if (options.executionPort === options.readBackPort) {
-    throw new TypeError('IAG_INDEPENDENT_READ_BACK_PORT_REQUIRED');
-  }
+  assertIndependentBrowserExecutionAuthorities(options.executionPort, options.readBackPort);
   const dispatchTimeoutMs = options.dispatchTimeoutMs ?? DEFAULT_DISPATCH_TIMEOUT_MS;
   if (!Number.isSafeInteger(dispatchTimeoutMs) || dispatchTimeoutMs <= 0) {
     throw new TypeError('IAG_DISPATCH_TIMEOUT_INVALID');

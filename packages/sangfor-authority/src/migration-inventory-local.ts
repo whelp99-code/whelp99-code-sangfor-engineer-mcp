@@ -5,6 +5,7 @@ export const FINETUNE_REFS = [
 ] as const;
 
 export const CREDENTIAL_REFS = [
+  "credential:scripts/learning-strategy-driver.ts#main",
   "credential:scripts/run-mandatory-postgres-tests.ts#backupPassword",
   "credential:scripts/blro-migrate-authority.ts#runAuthorityCutoverCli",
   "credential:scripts/blro-restore-drill.mjs#requireAuditSecret",
@@ -91,4 +92,3 @@ export const IAG_REFS = [
 export const LEGACY_REFS = [
   "prisma:model:SangforManual",
 ] as const;
-

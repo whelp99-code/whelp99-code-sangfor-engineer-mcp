@@ -98,7 +98,10 @@ export class PgvectorRagStore {
     const input = parsePgvectorCohort(raw);
     await this.execute(() => this.database.$transaction(async (transaction) => {
       await setScope(transaction, input);
-      await transaction.$executeRawUnsafe(`SELECT pg_advisory_xact_lock(hashtext($1),$2::int)`, input.projectId, input.indexEpoch);
+      await transaction.$executeRawUnsafe(
+        `SELECT pg_advisory_xact_lock(hashtext($1),hashtext($2))`,
+        input.tenantId, input.projectId,
+      );
       await transaction.$executeRawUnsafe(`UPDATE "BlroRagEmbeddingCohort" SET "active"=false WHERE "tenantId"=$1 AND "projectId"=$2 AND "active"=true`, input.tenantId, input.projectId);
       await transaction.$executeRawUnsafe(`
         INSERT INTO "BlroRagEmbeddingCohort"
@@ -109,7 +112,7 @@ export class PgvectorRagStore {
           "dimensions"=EXCLUDED."dimensions","active"=true`,
         input.id, input.tenantId, input.projectId, input.indexEpoch, input.backend, input.model, input.dimensions,
       );
-    }, { isolationLevel: 'Serializable' }));
+    }, { isolationLevel: 'ReadCommitted' }));
   }
 
   async upsert(raw: PgvectorUpsert): Promise<void> {

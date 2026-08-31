@@ -1,6 +1,6 @@
 import { persistFeedbackEvent } from '../../../packages/sangfor-store/src/index.js';
 import { resolveProductionLocalWriteAuthority, resolveRepoData } from '../../../packages/shared/src/index.js';
-import { proposeWikiUpdate } from '../../../packages/sangfor-wiki/src/index.js';
+import { proposeWikiUpdateWithAuthority } from '../../../packages/sangfor-wiki/src/index.js';
 
 export interface CaseResolutionInput {
   product: string;
@@ -19,7 +19,7 @@ export async function postCaseResolution(body: CaseResolutionInput) {
     sourceRole: body.sourceRole ?? 'engineer'
   }).catch(() => null);
 
-  const proposal = await proposeWikiUpdate({
+  const proposal = await proposeWikiUpdateWithAuthority({
     lessonTitle: body.caseSummary,
     lessonBody: body.resolution,
     targetPage: body.targetWikiPage

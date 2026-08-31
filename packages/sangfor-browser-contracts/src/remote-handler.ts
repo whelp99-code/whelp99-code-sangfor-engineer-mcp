@@ -7,8 +7,10 @@ import type { JobEnvelope } from './job-envelope.js';
 import {
   defaultContractVersion,
   parseRemoteEnvelope,
-  refuseTransportInput,
+  preflightTransportInput,
   type RemoteHandlerInput,
+  type RemoteTransportPreflight,
+  type RemoteTransportPreflightInput,
 } from './remote-handler-input.js';
 import {
   REMOTE_JOB_REFUSAL_REASONS,
@@ -24,7 +26,6 @@ import {
   jsonHeaders,
   resultResponse,
   type RemoteHandlerResponse,
-  type RemotePeerIdentity,
 } from './remote-protocol.js';
 import type { ContractVersion } from './protocol-version.js';
 
@@ -32,7 +33,7 @@ export type { RemoteHandlerInput } from './remote-handler-input.js';
 
 export type RemoteBrowserJobHandlerOptions = {
   readonly executor: BrowserExecutionPort;
-  readonly authorizeClient: (identity: RemotePeerIdentity) => boolean;
+  readonly authorizeClient: Parameters<typeof preflightTransportInput>[1]['authorizeClient'];
   readonly jobStore: RemoteJobStore;
   readonly now?: () => Date;
   readonly path?: string;
@@ -42,34 +43,41 @@ export type RemoteBrowserJobHandlerOptions = {
 export function createRemoteBrowserJobHandler(options: RemoteBrowserJobHandlerOptions) {
   const path = options.path ?? REMOTE_BROWSER_JOB_PATH;
   const authority = options.contractVersion ?? defaultContractVersion();
+  const preflight = (input: RemoteTransportPreflightInput) => preflightTransportInput(input, {
+    path,
+    authority,
+    authorizeClient: options.authorizeClient,
+  });
+  const handleAuthorized = async (
+    authorization: RemoteTransportPreflight,
+    input: Pick<RemoteHandlerInput, 'bodyText' | 'executionContext'>,
+  ): Promise<RemoteHandlerResponse> => {
+    const envelope = parseRemoteEnvelope(input.bodyText, options.now);
+    if ('statusCode' in envelope) return envelope;
+    const [reserved] = await Promise.allSettled([
+      options.jobStore.authorizeAndReserve({ envelope, certificate: authorization.certificate }),
+    ]);
+    if (!reserved || reserved.status === 'rejected') {
+      return errorResponse(
+        503,
+        REMOTE_TRANSPORT_ERROR_CODES.JOB_AUTHORITY_UNAVAILABLE,
+        'Remote job authority is unavailable; no dispatch was authorized.',
+      );
+    }
+    return reservationResponse({
+      options,
+      envelope,
+      reservation: reserved.value,
+      executionContext: input.executionContext,
+    });
+  };
   return {
     jobStore: options.jobStore,
+    preflight,
+    handleAuthorized,
     async handle(input: RemoteHandlerInput): Promise<RemoteHandlerResponse> {
-      const early = refuseTransportInput(input, {
-        path,
-        authority,
-        authorizeClient: options.authorizeClient,
-      });
-      if (early) return early;
-      const envelope = parseRemoteEnvelope(input.bodyText, options.now);
-      if ('statusCode' in envelope) return envelope;
-      const certificate = input.client?.certificate;
-      const [reserved] = await Promise.allSettled([
-        options.jobStore.authorizeAndReserve({ envelope, certificate }),
-      ]);
-      if (!reserved || reserved.status === 'rejected') {
-        return errorResponse(
-          503,
-          REMOTE_TRANSPORT_ERROR_CODES.JOB_AUTHORITY_UNAVAILABLE,
-          'Remote job authority is unavailable; no dispatch was authorized.',
-        );
-      }
-      return reservationResponse({
-        options,
-        envelope,
-        reservation: reserved.value,
-        executionContext: input.executionContext,
-      });
+      const authorization = preflight(input);
+      return 'statusCode' in authorization ? authorization : handleAuthorized(authorization, input);
     },
   };
 }

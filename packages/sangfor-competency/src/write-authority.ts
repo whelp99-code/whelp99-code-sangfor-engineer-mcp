@@ -3,6 +3,7 @@ import { lstatSync, readFileSync } from 'node:fs';
 import { buildCoverageContext } from './context.js';
 import { parseGroundedCapabilityEvidence } from './evidence-grounding.js';
 import { validateAndPersistEvidenceStaleness } from './evidence-invalidation.js';
+import { validateCapabilityEvidence } from './evidence-validation.js';
 import { parseEvidenceValidationContext } from './evidence-validation-context.js';
 import { nodeEvidenceFilesystem } from './evidence-filesystem.js';
 import { MAX_CAPABILITY_EVIDENCE_BYTES } from './evidence-schema.js';
@@ -21,6 +22,7 @@ export type WriteAuthorityReferences = {
 
 export type ResolveWriteAuthorityInput = {
   readonly references: WriteAuthorityReferences;
+  readonly persistence?: 'persist_staleness' | 'read_only';
   readonly expected: {
     readonly product: string;
     readonly capabilityId: string;
@@ -136,11 +138,19 @@ export async function resolveConfiguredWriteAuthority(input: ResolveWriteAuthori
       process.env.SANGFOR_CAPABILITY_PROMOTION_CHECKPOINT_SECRET,
     );
     ledger.read();
-    const validation = await validateAndPersistEvidenceStaleness({
-      manifestSource, manifest, evidenceRoot: input.references.evidenceRoot,
-      filesystem: nodeEvidenceFilesystem(), context: validationContext, baseline, ledger,
-    });
-    if (validation.status !== 'no_change') return { status: 'refused', code: 'AUTHORITY_EVIDENCE_INACTIVE' };
+    if (input.persistence === 'read_only') {
+      const validation = validateCapabilityEvidence({
+        manifest, evidenceRoot: input.references.evidenceRoot,
+        filesystem: nodeEvidenceFilesystem(), context: validationContext,
+      });
+      if (validation.status !== 'active') return { status: 'refused', code: 'AUTHORITY_EVIDENCE_INACTIVE' };
+    } else {
+      const validation = await validateAndPersistEvidenceStaleness({
+        manifestSource, manifest, evidenceRoot: input.references.evidenceRoot,
+        filesystem: nodeEvidenceFilesystem(), context: validationContext, baseline, ledger,
+      });
+      if (validation.status !== 'no_change') return { status: 'refused', code: 'AUTHORITY_EVIDENCE_INACTIVE' };
+    }
     const events = ledger.read();
     const maturity: Maturity = deriveEffectiveMaturity(baseline, manifest.target, events);
     const firstRun = manifest.runs[0];

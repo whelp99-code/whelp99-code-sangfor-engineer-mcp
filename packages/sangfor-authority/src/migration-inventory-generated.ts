@@ -58,4 +58,3 @@ export const GENERATED_REFS = [
   "persist:scripts/support-content-crawl.ts#crawlProduct",
   "persist:scripts/verify-rls-isolation.ts#isolationProblems",
 ] as const;
-

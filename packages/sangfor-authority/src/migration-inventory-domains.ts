@@ -40,6 +40,7 @@ export const FIRMWARE_REFS = [
 ] as const;
 
 export const LEARNING_REFS = [
+  "persist:scripts/learning-strategy-driver.ts#main",
   "persist:packages/sangfor-learning-strategy/src/store.ts#StrategyStoreManager",
   "persist:packages/sangfor-learning-strategy/src/store.ts#writeFileAtomic",
   "persist:packages/sangfor-authority/src/cutover/domain-targets.ts#LearningCutoverTarget",
@@ -66,4 +67,3 @@ export const CAPABILITY_REFS = [
   "persist:packages/sangfor-authority/src/cutover/domain-targets.ts#CapabilityCutoverTarget",
   "prisma:model:BlroCapabilityEvidence",
 ] as const;
-

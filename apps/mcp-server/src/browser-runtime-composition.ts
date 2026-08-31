@@ -1,15 +1,22 @@
-import type { BrowserExecutionPort } from '../../../packages/sangfor-browser-contracts/src/index.js';
+import {
+  assertIndependentBrowserExecutionAuthorities,
+  createBrowserExecutionAuthorityPort,
+  type BrowserExecutionAuthorityPort,
+  type BrowserExecutionPort,
+} from '../../../packages/sangfor-browser-contracts/src/index.js';
 import { startOperatorSession, closeOperatorSession } from '../../../packages/sangfor-operator/src/index.js';
 import { captureProductScreenshots, resolveProductScreenshotTargetUrl } from '../../../packages/sangfor-screenshot/src/index.js';
 import { LearningStrategyService, assertSafeLearningInput } from '../../../packages/sangfor-learning-strategy/src/index.js';
-import { ObserverSessionManager, type ObserverProfile, type ObserverTransport } from '../../../packages/sangfor-observer/src/index.js';
+import { ObserverSessionManager, type ObserverTransport } from '../../../packages/sangfor-observer/src/index.js';
 import { configureIagOrchestratorToolService } from './iag-orchestrator-tools.js';
+import { parseObserverProfilesEnvironment } from './runtime-boundaries.js';
 
 let learningService: LearningStrategyService | undefined;
 export const currentLearningService = (): LearningStrategyService => learningService ??= new LearningStrategyService();
 export const pendingLearningCaptures = new Map<string, { sessionHandle: string; durationMs?: number; firmwareVersion?: string }>();
 let observerManagerCache: { source: string; manager: ObserverSessionManager } | undefined;
-let browserExecutionPort: BrowserExecutionPort | undefined;
+let browserExecutionPort: BrowserExecutionAuthorityPort | undefined;
+let browserVerificationPort: BrowserExecutionAuthorityPort | undefined;
 let observerTransport: ObserverTransport | undefined;
 let browserArtifactMaterializer:
   | ((artifactRef: string, destinationPath: string) => Promise<void>)
@@ -18,11 +25,14 @@ let browserRuntimeDispose: (() => Promise<void>) | undefined;
 
 export function configureJmBrowserRuntime(deps: {
   executionPort: BrowserExecutionPort;
+  verificationPort: BrowserExecutionPort;
   observerTransport: ObserverTransport;
   materializeArtifact?: (artifactRef: string, destinationPath: string) => Promise<void>;
   dispose?: () => Promise<void>;
 }): void {
-  browserExecutionPort = deps.executionPort;
+  browserExecutionPort = createBrowserExecutionAuthorityPort(deps.executionPort);
+  browserVerificationPort = createBrowserExecutionAuthorityPort(deps.verificationPort);
+  assertIndependentBrowserExecutionAuthorities(browserExecutionPort, browserVerificationPort);
   observerTransport = deps.observerTransport;
   browserArtifactMaterializer = deps.materializeArtifact;
   browserRuntimeDispose = deps.dispose;
@@ -31,7 +41,9 @@ export function configureJmBrowserRuntime(deps: {
 }
 
 export function isJmBrowserRuntimeConfigured(): boolean {
-  return browserExecutionPort !== undefined && observerTransport !== undefined;
+  return browserExecutionPort !== undefined
+    && browserVerificationPort !== undefined
+    && observerTransport !== undefined;
 }
 
 export function disposeJmBrowserRuntime(): Promise<void> {
@@ -41,6 +53,17 @@ export function disposeJmBrowserRuntime(): Promise<void> {
 export function requiredBrowserExecutionPort(): BrowserExecutionPort {
   if (!browserExecutionPort) throw new Error('JM_BROWSER_RUNTIME_REQUIRED: browser execution port is not configured.');
   return browserExecutionPort;
+}
+
+export function requiredIagBrowserExecutionPorts(): {
+  readonly executionPort: BrowserExecutionPort;
+  readonly readBackPort: BrowserExecutionPort;
+} {
+  if (!browserExecutionPort || !browserVerificationPort) {
+    throw new Error('JM_BROWSER_RUNTIME_REQUIRED: independent IAG execution authorities are not configured.');
+  }
+  assertIndependentBrowserExecutionAuthorities(browserExecutionPort, browserVerificationPort);
+  return { executionPort: browserExecutionPort, readBackPort: browserVerificationPort };
 }
 
 export function requiredObserverTransport(): ObserverTransport {
@@ -119,11 +142,8 @@ export function observerManager(): ObserverSessionManager {
   const source = process.env.SANGFOR_OBSERVER_PROFILES_JSON;
   if (!source) throw new Error('OBSERVER_PROFILES_UNAVAILABLE: SANGFOR_OBSERVER_PROFILES_JSON is required.');
   if (observerManagerCache?.source === source) return observerManagerCache.manager;
-  let parsed: unknown;
-  try { parsed = JSON.parse(source); } catch { throw new Error('OBSERVER_PROFILES_INVALID: profiles must be JSON.'); }
-  if (!Array.isArray(parsed) || parsed.length === 0) throw new Error('OBSERVER_PROFILES_INVALID: a non-empty profile array is required.');
-  for (const profile of parsed) assertSafeLearningInput(profile, ['product', 'expectedOrigin', 'cdpPort', 'firmwareTruthId', 'deviceScope']);
-  const manager = new ObserverSessionManager(parsed as ObserverProfile[], requiredObserverTransport());
+  const profiles = parseObserverProfilesEnvironment(source);
+  const manager = new ObserverSessionManager(profiles, requiredObserverTransport());
   observerManagerCache = { source, manager };
   return manager;
 }

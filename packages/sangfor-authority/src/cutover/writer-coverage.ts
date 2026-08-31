@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import ts from 'typescript';
 import { AUTHORITY_MANIFEST } from '../migration-manifest.js';
+import { collectRepositoryFiles } from '../repository-census-files.js';
 import { AuthorityCutoverError } from './errors.js';
 
 export const LOCAL_WRITER_REFS = [
@@ -28,8 +29,9 @@ const INTERNAL_LOCAL_HELPERS = new Set([
 ]);
 
 function symbolNode(source: ts.SourceFile, name: string): ts.Node | undefined {
-  return source.statements.find((node) => ((ts.isClassDeclaration(node) || ts.isFunctionDeclaration(node)) && node.name?.text === name)
+  const matches = source.statements.filter((node) => ((ts.isClassDeclaration(node) || ts.isFunctionDeclaration(node)) && node.name?.text === name)
     || (ts.isVariableStatement(node) && node.declarationList.declarations.some((item) => ts.isIdentifier(item.name) && item.name.text === name)));
+  return matches.find((node) => !ts.isFunctionDeclaration(node) || node.body !== undefined) ?? matches[0];
 }
 function isFenceCall(node: ts.Node): boolean {
   return ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression)
@@ -61,12 +63,19 @@ function validateFenceCalls(node: ts.Node, reference: string): void {
 
 function verifyWriterCallers(root:string):void{
   const configPath=ts.findConfigFile(root,ts.sys.fileExists,'tsconfig.json');if(!configPath)throw new AuthorityCutoverError('LOCAL_WRITER_TSCONFIG_MISSING');
-  const config=ts.parseJsonConfigFileContent(ts.readConfigFile(configPath,ts.sys.readFile).config,ts.sys,root);const program=ts.createProgram(config.fileNames,config.options);const checker=program.getTypeChecker();
   const writerNames=new Set(LOCAL_WRITER_REFS.map(ref=>ref.slice(ref.lastIndexOf('#')+1)));
+  const config=ts.parseJsonConfigFileContent(ts.readConfigFile(configPath,ts.sys.readFile).config,ts.sys,root);
+  const files=collectRepositoryFiles(root).sourcePaths;const fileSet=new Set(files);
+  const candidateSet=new Set(LOCAL_WRITER_REFS.flatMap(ref=>{const match=/^persist:(.+)#/u.exec(ref);return match?.[1]?[resolve(root,match[1])]:[];}));
+  candidateSet.add(resolve(root,'packages/shared/src/local-write-fence.ts'));
+  const importers=new Map<string,Set<string>>();
+  for(const path of files){for(const imported of ts.preProcessFile(readFileSync(path,'utf8')).importedFiles){const target=ts.resolveModuleName(imported.fileName,path,config.options,ts.sys).resolvedModule?.resolvedFileName;if(!target||!fileSet.has(target))continue;const paths=importers.get(target)??new Set<string>();paths.add(path);importers.set(target,paths);}}
+  const queue=[...candidateSet];for(const path of queue){for(const importer of importers.get(path)??[]){if(candidateSet.has(importer))continue;candidateSet.add(importer);queue.push(importer);}}
+  const program=ts.createProgram([...candidateSet],config.options);const checker=program.getTypeChecker();
   const declarationOwner=(node:ts.Node|undefined):string|undefined=>{let cursor=node;while(cursor){if((ts.isClassDeclaration(cursor)||ts.isFunctionDeclaration(cursor))&&cursor.name)return cursor.name.text;cursor=cursor.parent;}return undefined;};
   const observed=(call:ts.CallExpression):boolean=>{let node:ts.Node=call;while(node.parent&&(ts.isParenthesizedExpression(node.parent)||ts.isAsExpression(node.parent)))node=node.parent;if(ts.isPropertyAccessExpression(node.parent)&&node.parent.name.text==='catch')return false;if(ts.isAwaitExpression(node.parent)||ts.isReturnStatement(node.parent))return true;return ts.isArrowFunction(node.parent)&&node.parent.body===node;};
   for(const source of program.getSourceFiles()){
-    if(source.isDeclarationFile||source.fileName.includes('/node_modules/')||source.fileName.includes('/tests/'))continue;
+    if(!candidateSet.has(source.fileName))continue;
     const visit=(node:ts.Node):void=>{if(ts.isIdentifier(node)&&node.text==='explicitLocalPrimaryAuthority'&&ts.isCallExpression(node.parent)&&node.parent.expression===node&&!source.fileName.endsWith('/packages/shared/src/local-write-fence.ts'))throw new AuthorityCutoverError('EXPLICIT_LOCAL_COMPOSITION_FORBIDDEN',[source.fileName]);if(ts.isCallExpression(node)){
       const symbol=checker.getSymbolAtLocation(ts.isPropertyAccessExpression(node.expression)?node.expression.name:node.expression);const target=symbol?.valueDeclaration??symbol?.declarations?.[0];const owner=declarationOwner(target);
       if(owner&&writerNames.has(owner)&&checker.getTypeAtLocation(node).getProperty('then')&&!isFenceCall(node)&&!observed(node))throw new AuthorityCutoverError('LOCAL_WRITER_CALLER_PROMISE_IGNORED',[`${source.fileName}:${source.getLineAndCharacterOfPosition(node.getStart()).line+1}:${owner}`]);

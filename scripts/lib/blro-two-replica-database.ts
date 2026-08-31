@@ -28,6 +28,18 @@ export async function createHarnessAuthorityDatabase(input: {
 }): Promise<HarnessAuthorityDatabase> {
   const owner = new PrismaClient({ datasources: { db: { url: input.ownerUrl } } });
   const database = new PrismaClient({ datasources: { db: { url: input.databaseUrl } } });
+  const leaseUrl = new URL(input.ownerUrl);
+  leaseUrl.searchParams.set('connection_limit', '1');
+  const lease = new PrismaClient({ datasources: { db: { url: leaseUrl.href } } });
+  await lease.$executeRawUnsafe(
+    `SELECT set_config('application_name',$1,false)`,
+    `blro-two-replica-lease-${String(process.pid)}`,
+  );
+  await lease.$executeRawUnsafe(
+    `SELECT pg_advisory_lock(hashtext($1),hashtext($2))`,
+    JM_TENANT_ID,
+    JM_PROJECT_ID,
+  );
   await cleanup(owner, database);
   await owner.$executeRawUnsafe(`INSERT INTO "BlroTenant" ("id","name") VALUES ($1,'Todo 28')`, JM_TENANT_ID);
   await database.$transaction(async (transaction) => {
@@ -56,8 +68,12 @@ export async function createHarnessAuthorityDatabase(input: {
       installationId: JM_INSTALLATION_ID, deviceBindingDigest: JM_DEVICE_DIGEST,
       expectedRevision: 1, reason: 'Todo 28 live revocation' }).then(() => undefined),
     close: async () => {
-      await cleanup(owner, database);
-      await Promise.all([owner.$disconnect(), database.$disconnect()]);
+      try {
+        await cleanup(owner, database);
+        await Promise.all([owner.$disconnect(), database.$disconnect()]);
+      } finally {
+        await lease.$disconnect();
+      }
     },
   };
 }

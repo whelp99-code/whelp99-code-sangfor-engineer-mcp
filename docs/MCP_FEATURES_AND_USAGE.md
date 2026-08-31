@@ -277,15 +277,18 @@ Mock 기본 endpoint는 `http://127.0.0.1:3400/openstack/identity/v2.0`이다. �
 기존 Chrome의 loopback CDP page에만 attach한다. 먼저 observer profile을 제공한다.
 
 ```bash
-export SANGFOR_OBSERVER_PROFILES_JSON='[
-  {
-    "product":"IAG",
-    "expectedOrigin":"https://iag.example.invalid",
-    "cdpPort":9342,
-    "firmwareTruthId":"<verified-truth-id>",
-    "deviceScope":"<opaque-device-scope>"
-  }
-]'
+export SANGFOR_OBSERVER_PROFILES_JSON='{
+  "version":1,
+  "profiles":[
+    {
+      "product":"IAG",
+      "expectedOrigin":"https://iag.example.invalid",
+      "cdpPort":9342,
+      "firmwareTruthId":"<verified-truth-id>",
+      "deviceScope":"<opaque-device-scope>"
+    }
+  ]
+}'
 ```
 
 호출 순서:

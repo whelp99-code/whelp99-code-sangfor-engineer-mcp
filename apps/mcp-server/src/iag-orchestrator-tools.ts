@@ -1,10 +1,12 @@
-import { readFileSync } from 'node:fs';
+import { lstatSync, readFileSync, realpathSync } from 'node:fs';
+import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
 import type { BrowserExecutionPort } from '../../../packages/sangfor-browser-contracts/src/index.js';
 import type { JsonSchemaObject } from './mcp-contracts.js';
 import type { ResolveIagMutationActionAuthorityInput } from '../../../packages/sangfor-competency/src/index.js';
 import {
   createIagExecutor,
   createIagOrchestrator,
+  dryRunIagMutation,
   FileIagOrchestratorStore,
   lookupIagRunStatus,
   type IagOrchestrator,
@@ -48,6 +50,19 @@ type IagToolDependencies = {
 };
 
 type LoadedConfig = z.infer<typeof configSchema>;
+type LoadedToolConfig = { readonly config: LoadedConfig; readonly root: string };
+
+function confinedPath(root: string, path: string, kind: 'file' | 'directory'): string {
+  const absolute = resolve(path);
+  const fromRoot = relative(root, absolute);
+  if (fromRoot === '..' || fromRoot.startsWith(`..${sep}`) || isAbsolute(fromRoot)) {
+    throw new TypeError('IAG_TOOL_PATH_REFUSED');
+  }
+  const lexical = lstatSync(absolute);
+  if (lexical.isSymbolicLink() || (kind === 'file' ? !lexical.isFile() : !lexical.isDirectory())
+    || realpathSync(absolute) !== absolute) throw new TypeError('IAG_TOOL_PATH_REFUSED');
+  return absolute;
+}
 
 function readSource(path: string): string {
   const source = readFileSync(path, 'utf8');
@@ -71,23 +86,41 @@ function authorityRequest(config: LoadedConfig, now: Date): ResolveIagMutationAc
 
 export class IagOrchestratorToolService {
   private readonly orchestrators = new Map<string, IagOrchestrator>();
-  constructor(private readonly dependencies: IagToolDependencies) {}
+  private readonly executor;
 
-  private loadConfig(path: string): LoadedConfig {
-    return configSchema.parse(readReference(path));
+  constructor(private readonly dependencies: IagToolDependencies) {
+    this.executor = createIagExecutor(dependencies);
   }
 
-  private store(config: LoadedConfig, create: boolean): FileIagOrchestratorStore {
-    const input = {
-      ledgerPath: config.orchestrator.ledgerPath,
+  private loadConfig(path: string): LoadedToolConfig {
+    const requestedConfigPath = resolve(path);
+    const requestedConfigStat = lstatSync(requestedConfigPath);
+    if (!requestedConfigStat.isFile() || requestedConfigStat.isSymbolicLink()) {
+      throw new TypeError('IAG_TOOL_PATH_REFUSED');
+    }
+    const configPath = realpathSync(requestedConfigPath);
+    const root = dirname(configPath);
+    const config = configSchema.parse(readReference(configPath));
+    const references = config.authority.references;
+    confinedPath(root, references.manifestPath, 'file');
+    confinedPath(root, references.validationContextPath, 'file');
+    confinedPath(root, references.evidenceRoot, 'directory');
+    confinedPath(root, references.ledgerPath, 'file');
+    return { config, root };
+  }
+
+  private store(loaded: LoadedToolConfig): FileIagOrchestratorStore {
+    const ledgerPath = confinedPath(loaded.root, loaded.config.orchestrator.ledgerPath, 'file');
+    return FileIagOrchestratorStore.open({
+      ledgerPath,
       ledgerSecret: secret('SANGFOR_IAG_ORCHESTRATOR_LEDGER_SECRET'),
       checkpointSecret: secret('SANGFOR_IAG_ORCHESTRATOR_CHECKPOINT_SECRET'),
       now: this.dependencies.now,
-    };
-    return create ? FileIagOrchestratorStore.initialize(input) : FileIagOrchestratorStore.open(input);
+    });
   }
 
-  private orchestrator(configPath: string, config: LoadedConfig): IagOrchestrator {
+  private orchestrator(configPath: string, loaded: LoadedToolConfig): IagOrchestrator {
+    const config = loaded.config;
     const key = [
       configPath, JSON.stringify(config),
       secret('SANGFOR_IAG_ORCHESTRATOR_LEDGER_SECRET'),
@@ -96,8 +129,8 @@ export class IagOrchestratorToolService {
     const cached = this.orchestrators.get(key);
     if (cached !== undefined) return cached;
     const orchestrator = createIagOrchestrator({
-      executor: createIagExecutor({ ...this.dependencies }),
-      store: this.store(config, true),
+      executor: this.executor,
+      store: this.store(loaded),
       now: this.dependencies.now,
     });
     this.orchestrators.set(key, orchestrator);
@@ -107,31 +140,34 @@ export class IagOrchestratorToolService {
   async dryRun(input: unknown) {
     const parsed = executionInputSchema.parse(input);
     if (parsed.approvalEnvelopePath !== undefined) throw new TypeError('IAG_DRY_RUN_APPROVAL_REFUSED');
-    const actionSource = readSource(parsed.actionPath);
+    const loaded = this.loadConfig(parsed.configPath);
+    const actionSource = readSource(confinedPath(loaded.root, parsed.actionPath, 'file'));
     if (!actionModeSchema.parse(JSON.parse(actionSource)).dryRun) throw new TypeError('IAG_DRY_RUN_ACTION_REQUIRED');
-    const config = this.loadConfig(parsed.configPath);
-    return this.orchestrator(parsed.configPath, config).execute({
-      actionSource,
-      authorityRequest: authorityRequest(config, this.dependencies.now()),
+    return dryRunIagMutation({
+      executor: this.executor,
+      request: {
+        actionSource,
+        authorityRequest: authorityRequest(loaded.config, this.dependencies.now()),
+      },
     });
   }
 
   async apply(input: unknown) {
     const parsed = executionInputSchema.required({ approvalEnvelopePath: true }).parse(input);
-    const actionSource = readSource(parsed.actionPath);
+    const loaded = this.loadConfig(parsed.configPath);
+    const actionSource = readSource(confinedPath(loaded.root, parsed.actionPath, 'file'));
     if (actionModeSchema.parse(JSON.parse(actionSource)).dryRun) throw new TypeError('IAG_APPLY_NON_DRY_RUN_ACTION_REQUIRED');
-    const config = this.loadConfig(parsed.configPath);
-    return this.orchestrator(parsed.configPath, config).execute({
+    return this.orchestrator(parsed.configPath, loaded).execute({
       actionSource,
-      authorityRequest: authorityRequest(config, this.dependencies.now()),
-      approval: readReference(parsed.approvalEnvelopePath),
+      authorityRequest: authorityRequest(loaded.config, this.dependencies.now()),
+      approval: readReference(confinedPath(loaded.root, parsed.approvalEnvelopePath, 'file')),
       ordinaryAuthorityRequired: true,
     });
   }
 
   status(input: unknown) {
     const parsed = statusInputSchema.parse(input);
-    return lookupIagRunStatus(this.store(this.loadConfig(parsed.configPath), false), parsed.runId);
+    return lookupIagRunStatus(this.store(this.loadConfig(parsed.configPath)), parsed.runId);
   }
 }
 
@@ -142,14 +178,16 @@ export function configureIagOrchestratorToolService(service: IagOrchestratorTool
 }
 
 export function iagOrchestratorToolCatalog(
-  requiredPort: () => BrowserExecutionPort,
+  requiredPorts: () => {
+    readonly executionPort: BrowserExecutionPort;
+    readonly readBackPort: BrowserExecutionPort;
+  },
 ): Record<string, { readonly description: string; readonly inputSchema: JsonSchemaObject; readonly handler: (input: unknown) => unknown }> {
   const service = (): IagOrchestratorToolService => {
     if (configuredService !== undefined) return configuredService;
-    const port = requiredPort();
+    const ports = requiredPorts();
     configuredService = new IagOrchestratorToolService({
-      executionPort: { execute: (request, options) => port.execute(request, options) },
-      readBackPort: { execute: (request, options) => port.execute(request, options) },
+      ...ports,
       now: () => new Date(),
     });
     return configuredService;

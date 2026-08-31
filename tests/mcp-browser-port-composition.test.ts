@@ -11,6 +11,7 @@ process.env.MCP_NO_SERVE = '1';
 
 let configureJmBrowserRuntime: (deps: {
   executionPort: BrowserExecutionPort;
+  verificationPort: BrowserExecutionPort;
   observerTransport: ObserverTransport;
   materializeArtifact?: (artifactRef: string, destinationPath: string) => Promise<void>;
 }) => void;
@@ -64,6 +65,7 @@ describe('MCP JM browser runtime composition', () => {
     const port = fakePort();
     configureJmBrowserRuntime({
       executionPort: port,
+      verificationPort: fakePort(),
       observerTransport,
       async materializeArtifact() {},
     });
@@ -103,6 +105,7 @@ describe('MCP JM browser runtime composition', () => {
     });
     configureJmBrowserRuntime({
       executionPort: port,
+      verificationPort: fakePort(),
       observerTransport,
       async materializeArtifact(artifactRef, destinationPath) {
         materialized.push({ artifactRef, destinationPath });
@@ -144,6 +147,7 @@ describe('MCP JM browser runtime composition', () => {
     });
     configureJmBrowserRuntime({
       executionPort: port,
+      verificationPort: fakePort(),
       observerTransport,
       async materializeArtifact() {},
     });

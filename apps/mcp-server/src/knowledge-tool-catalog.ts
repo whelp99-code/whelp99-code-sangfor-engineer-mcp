@@ -1,5 +1,5 @@
 import { searchManuals, getManualSection } from '../../../packages/sangfor-knowledge/src/index.js';
-import { searchWiki, listKnowledgeCards, upsertKnowledgeCard } from '../../../packages/sangfor-wiki/src/index.js';
+import { searchWiki, listKnowledgeCards, upsertKnowledgeCardWithAuthority } from '../../../packages/sangfor-wiki/src/index.js';
 import { ingestDocument, ragSearch, getRagSearchDiagnostics, omitVectorFromHit, exportRagIndexSummary } from '../../../packages/sangfor-rag/src/index.js';
 import { storeHealthCheck } from '../../../packages/sangfor-store/src/index.js';
 import { loadEnvFile } from '../../../packages/sangfor-collector/src/load-env.js';
@@ -40,7 +40,7 @@ export const knowledgeToolCatalog: readonly ToolCatalogEntry[] = [
   ["sangfor_upsert_knowledge_card", {
     description: 'Create or update a source-cited structured knowledge card. Requires at least one citation; does not write to devices.',
     inputSchema: { type: 'object', properties: { card: { type: 'object' } }, required: ['card'] },
-    handler: ({ card }: { card: Parameters<typeof upsertKnowledgeCard>[0] }) => upsertKnowledgeCard(card, mcpLocalAuthority('wiki_proposals', wikiRoot()))
+    handler: ({ card }: { card: Parameters<typeof upsertKnowledgeCardWithAuthority>[0] }) => upsertKnowledgeCardWithAuthority(card, mcpLocalAuthority('wiki_proposals', wikiRoot()))
   }],
   ["sangfor_ingest_document", {
     description: 'Parse PDF/HTML/Markdown/TXT document, chunk it, create local vector index, and store searchable RAG chunks.',

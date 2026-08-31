@@ -70,29 +70,44 @@ export async function startIagMcpStdioProcess(input: {
   const counterPath = join(input.root, 'mock-counters.json');
   const counters = { preflight: 0, dispatch: 0, readBack: 0 };
   writeFileSync(counterPath, JSON.stringify(counters));
-  const server = await createRemoteBrowserJobServer({
-    host: '127.0.0.1', port: 0,
+  const executor = { async execute(request: BrowserExecutionRequest) {
+    const present = request.requestId.endsWith('-independent-readback');
+    if (request.requestId.endsWith('-preflight')) counters.preflight += 1;
+    else if (present) counters.readBack += 1;
+    else counters.dispatch += 1;
+    writeFileSync(counterPath, JSON.stringify(counters));
+    return request.operation.kind === 'observe_console'
+      ? executorResult(request, executorObservation(input.fixture.action, present))
+      : executorResult(request);
+  } };
+  const serverOptions = {
+    host: '127.0.0.1' as const, port: 0,
     tls: { cert: tls.serverCert, key: tls.serverKey, ca: readFileSync(tls.caPath, 'utf8') },
+    authorizeClient: (identity: { readonly fingerprint256: string }) => fingerprintsMatch(
+      identity.fingerprint256,
+      tls.clientFingerprint,
+    ),
+    executor,
+  };
+  const server = await createRemoteBrowserJobServer({
+    ...serverOptions,
     jobStore: new TestRemoteJobStore(),
-    authorizeClient: (identity) => fingerprintsMatch(identity.fingerprint256, tls.clientFingerprint),
-    executor: { async execute(request: BrowserExecutionRequest) {
-      const present = request.requestId.endsWith('-independent-readback');
-      if (request.requestId.endsWith('-preflight')) counters.preflight += 1;
-      else if (present) counters.readBack += 1;
-      else counters.dispatch += 1;
-      writeFileSync(counterPath, JSON.stringify(counters));
-      return request.operation.kind === 'observe_console'
-        ? executorResult(request, executorObservation(input.fixture.action, present))
-        : executorResult(request);
-    } },
+  });
+  const verificationServer = await createRemoteBrowserJobServer({
+    ...serverOptions,
+    jobStore: new TestRemoteJobStore(),
   });
   const capability = generateKeyPairSync('ed25519').privateKey.export({ format: 'pem', type: 'pkcs8' }).toString();
   const capabilityPath = join(input.root, 'capability-private.pem');
   writeFileSync(capabilityPath, capability);
   const env = { ...process.env, ...input.environment,
-    SANGFOR_REMOTE_BROWSER_URL: server.baseUrl, SANGFOR_TENANT_ID: 'todo17-tenant',
+    SANGFOR_REMOTE_BROWSER_URL: server.baseUrl,
+    SANGFOR_REMOTE_BROWSER_VERIFICATION_URL: verificationServer.baseUrl,
+    SANGFOR_TENANT_ID: 'todo17-tenant',
     SANGFOR_PROJECT_ID: 'todo17-project', SANGFOR_AUTHORITY_EPOCH: '0', SANGFOR_REMOTE_BROWSER_INSTALLATION_ID: 'todo17-installation',
     SANGFOR_REMOTE_BROWSER_CLIENT_IDENTITY_ID: 'todo17-client',
+    SANGFOR_REMOTE_BROWSER_VERIFICATION_INSTALLATION_ID: 'todo17-verification-installation',
+    SANGFOR_REMOTE_BROWSER_VERIFICATION_CLIENT_IDENTITY_ID: 'todo17-verification-client',
     SANGFOR_REMOTE_BROWSER_CAPABILITY_PRIVATE_KEY_PATH: capabilityPath,
     SANGFOR_REMOTE_BROWSER_CLIENT_CERT_PATH: tls.clientCertPath,
     SANGFOR_REMOTE_BROWSER_CLIENT_KEY_PATH: tls.clientKeyPath,
@@ -111,10 +126,10 @@ export async function startIagMcpStdioProcess(input: {
     try {
       await client.close();
     } catch (closeError) {
-      await server.close();
+      await Promise.all([server.close(), verificationServer.close()]);
       throw new AggregateError([error, closeError], 'MCP_STDIO_START_AND_CLOSE_FAILED');
     }
-    await server.close();
+    await Promise.all([server.close(), verificationServer.close()]);
     throw error;
   }
   return {
@@ -123,7 +138,7 @@ export async function startIagMcpStdioProcess(input: {
       try {
         await client.close();
       } finally {
-        await server.close();
+        await Promise.all([server.close(), verificationServer.close()]);
       }
     },
   };

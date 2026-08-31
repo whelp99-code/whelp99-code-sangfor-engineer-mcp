@@ -182,7 +182,7 @@ export class FilesystemCutoverSourceAdapter implements CutoverSourceAdapter {
     switch (this.aggregate) {
       case 'registry_services': return /^(?:data\/registry\/)?(devices|playbooks|vendors)\.json$/u.test(path);
       case 'runs_steps': return path.endsWith('.jsonl') && (!path.startsWith('data/') || path.startsWith('data/runs/'));
-      case 'audit': return path.endsWith('.jsonl') && (!path.startsWith('data/') || path.startsWith('data/evidence/change-runs/')); 
+      case 'audit': return path.endsWith('.jsonl') && (!path.startsWith('data/') || path.startsWith('data/evidence/change-runs/'));
       case 'evidence': return basename(path) === 'engineer-reports.jsonl';
       case 'pm_tasks': return /^(?:data\/registry\/)?agent-tasks\.json$/u.test(path);
       case 'feedback_lessons': return path.endsWith('.jsonl') && (!path.startsWith('data/') || path.startsWith('data/feedback/'));
@@ -191,7 +191,7 @@ export class FilesystemCutoverSourceAdapter implements CutoverSourceAdapter {
       case 'learning_strategy_lifecycle': return path.endsWith('.json') && (!path.includes('/') || path.startsWith('data/runtime/learning-strategies/'));
       case 'config_chronicle_state': return path.endsWith('.json') && (!path.includes('/') || path.startsWith('data/runtime/chronicle/'));
       case 'capability_evidence_promotion': return (path.endsWith('.jsonl') || path.endsWith('.head.json'))
-        && (!path.includes('/') || path.startsWith('data/runtime/capability-promotion/')); 
+        && (!path.includes('/') || path.startsWith('data/runtime/capability-promotion/'));
       default: throw new AuthorityCutoverError('CUTOVER_SOURCE_POLICY_INVALID');
     }
   }

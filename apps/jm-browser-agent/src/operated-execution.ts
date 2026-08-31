@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import {
   createLocalJmExecutionPort,
   createPlaywrightJmBrowserDriver,
-} from '../../../packages/sangfor-jm-execution/src/index.js';
+} from '@sangfor/jm-execution';
 import {
   EXECUTION_PREFLIGHT_REFUSALS,
   type ExecutionPreflight,

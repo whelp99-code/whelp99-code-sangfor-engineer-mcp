@@ -149,10 +149,18 @@ suite('PostgreSQL-native pgvector RAG', () => {
         && (!query.filters.version || row.version === query.filters.version)
         && (!query.filters.sourceType || row.sourceType === query.filters.sourceType)
         && (!query.filters.trustLevel || row.trustLevel === query.filters.trustLevel));
+      const expectedExact = candidates
+        .map((candidate) => ({
+          id: candidate.id,
+          distance: 1 - cosineSimilarity([...search.query], [...candidate.embedding]),
+        }))
+        .sort((left, right) => left.distance - right.distance || left.id.localeCompare(right.id))
+        .slice(0, query.limit);
+      expect(exact.map((hit) => hit.id), query.id).toEqual(expectedExact.map((hit) => hit.id));
       for (const hit of exact) {
         const candidate = candidates.find((row) => row.id === hit.id);
         exactRows += 1;
-        if (candidate && Math.abs(hit.distance - (1 - cosineSimilarity([...denseHashVector(query.text)], [...candidate.embedding]))) < 0.000_01) exactParityRows += 1;
+        if (candidate && Math.abs(hit.distance - (1 - cosineSimilarity([...search.query], [...candidate.embedding]))) < 0.000_01) exactParityRows += 1;
       }
       const exactIds = new Set(exact.map((hit) => hit.id));
       hnswExpected += exactIds.size;

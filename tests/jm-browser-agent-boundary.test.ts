@@ -118,7 +118,7 @@ describe('JM has no mock execution path in production', () => {
   it('builds the operated jm-execution port as the only production factory', () => {
     const operated = readFileSync(join(APP_ROOT, 'operated-execution.ts'), 'utf8');
 
-    expect(operated).toContain('sangfor-jm-execution');
+    expect(operated).toContain("from '@sangfor/jm-execution'");
     expect(operated).toContain('createPlaywrightJmBrowserDriver');
     expect(readFileSync(join(APP_ROOT, 'composition.ts'), 'utf8'))
       .toContain('createOperatedExecutionPort');

@@ -68,6 +68,35 @@ describe('Phase 4 remote client uncertainty semantics', () => {
     });
   });
 
+  it('preserves a typed contract-version refusal returned by the remote endpoint', async () => {
+    // Given the endpoint definitively refuses this dispatch at protocol preflight.
+    const transport = vi.fn(async (_request, hooks: { markDispatched(): void }) => {
+      hooks.markDispatched();
+      return {
+        statusCode: 426,
+        body: JSON.stringify({
+          schemaVersion: 'browser-remote-error.v1',
+          error: {
+            code: 'REMOTE_CONTRACT_VERSION_UNSUPPORTED',
+            message: 'PEER_CONTRACT_AHEAD: upgrade BLRO first.',
+          },
+        }),
+      };
+    });
+
+    // When the public BrowserExecutionPort receives the refusal.
+    const result = await portWith(transport).execute(
+      remoteTransportRequest({ kind: 'observe_console' }),
+    );
+
+    // Then the public result preserves the machine-consumed refusal code.
+    expect(result).toMatchObject({
+      status: 'REFUSED',
+      mutationAttempted: false,
+      error: { code: 'REMOTE_CONTRACT_VERSION_UNSUPPORTED' },
+    });
+  });
+
   it('treats truncated 2xx and requestId mismatch as INDETERMINATE', async () => {
     // Given machine-invalid success responses after dispatch.
     const request = remoteTransportRequest({ kind: 'observe_console' });

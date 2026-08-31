@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import {
   browserExecutionRequestSchema,
   browserExecutionResultSchema,
@@ -9,6 +10,7 @@ import type { LeafCertificate } from './enrollment.js';
 
 export const REMOTE_BROWSER_JOB_PATH = '/v1/browser-jobs' as const;
 export const REMOTE_EXECUTION_DEADLINE_HEADER = 'x-sangfor-browser-deadline' as const;
+export const REMOTE_JOB_BODY_MAX_BYTES = 64 * 1024;
 export const REMOTE_TRANSPORT_ERROR_CODES = {
   SERVER_IDENTITY_MISMATCH: 'REMOTE_SERVER_IDENTITY_MISMATCH',
   CLIENT_UNAUTHORIZED: 'REMOTE_CLIENT_UNAUTHORIZED',
@@ -17,6 +19,7 @@ export const REMOTE_TRANSPORT_ERROR_CODES = {
   DISCONNECT_AFTER_DISPATCH: 'REMOTE_TRANSPORT_DISCONNECT',
   BAD_RESPONSE: 'REMOTE_TRANSPORT_BAD_RESPONSE',
   BAD_ENVELOPE: 'REMOTE_JOB_ENVELOPE_INVALID',
+  BODY_TOO_LARGE: 'REMOTE_JOB_BODY_TOO_LARGE',
   PATH_NOT_FOUND: 'REMOTE_PATH_NOT_FOUND',
   METHOD_NOT_ALLOWED: 'REMOTE_METHOD_NOT_ALLOWED',
   CONTRACT_VERSION_UNSUPPORTED: 'REMOTE_CONTRACT_VERSION_UNSUPPORTED',
@@ -59,6 +62,14 @@ export interface RemoteHandlerResponse {
   readonly bodyText: string;
   readonly headers: Readonly<Record<string, string>>;
 }
+
+export const remoteErrorBodySchema = z.object({
+  schemaVersion: z.literal('browser-remote-error.v1'),
+  error: z.object({
+    code: z.string().min(1),
+    message: z.string(),
+  }).strict(),
+}).strict();
 
 export function normalizeFingerprint256(fingerprint: string): string {
   return fingerprint.replaceAll(':', '').trim().toLowerCase();

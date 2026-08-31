@@ -50,5 +50,9 @@
     { "id": "KB_SESSION_ITEM_TABLE", "file": "scripts/lib/kb-browser-session.ts", "legacyLine": 56, "owner": "jm-operations", "legacySchema": "Array<{ key: string; value_hex: string }>", "parser": "parseBoundaryKbSessionItemTableV1", "schemaFile": "scripts/lib/kb-runtime-boundaries.ts", "schemaName": "jm-operations.kb-session-item-table.v1", "policy": "loud_failure" },
     { "id": "RAG_EVAL_INPUT", "file": "scripts/rag-eval-run.ts", "legacyLine": 16, "owner": "rag-operations", "legacySchema": "unknown", "parser": "parseBoundaryRagEvalInputV1", "schemaFile": "scripts/lib/rag-eval-runtime-boundary.ts", "schemaName": "rag-operations.eval-input.v1", "policy": "loud_failure" },
     { "id": "STRATEGY_CLI_INPUT", "file": "scripts/strategy-cli.ts", "legacyLine": 52, "owner": "learning-operations", "legacySchema": "T", "parser": "parseBoundaryStrategyCliInputV1", "schemaFile": "scripts/lib/strategy-runtime-boundary.ts", "schemaName": "learning-operations.strategy-cli-input.v1", "policy": "loud_failure" }
+  ],
+  "environmentBoundaries": [
+    { "id": "MCP_OBSERVER_PROFILES_ENV", "file": "apps/mcp-server/src/browser-runtime-composition.ts", "legacyLine": 141, "owner": "mcp-server", "legacySchema": "ObserverProfile[]", "parser": "parseObserverProfilesEnvironment", "environmentVariable": "SANGFOR_OBSERVER_PROFILES_JSON", "schemaFile": "apps/mcp-server/src/runtime-boundaries.ts", "schemaName": "mcp-server.observer-profile-registry.v1", "policy": "deny" },
+    { "id": "JM_OWNED_CDP_PROFILES_ENV", "file": "packages/sangfor-jm-execution/src/playwright-options.ts", "legacyLine": 46, "owner": "jm-execution", "legacySchema": "OwnedCdpProfile[]", "parser": "parseOwnedCdpProfilesEnvironment", "environmentVariable": "SANGFOR_JM_CDP_PROFILES_JSON", "schemaFile": "packages/sangfor-jm-execution/src/runtime-boundaries.ts", "schemaName": "jm-execution.owned-cdp-profile-registry.v1", "policy": "deny" }
   ]
 }

@@ -43,11 +43,11 @@ export function createTowerServer(opts: TowerServerOptions = {}): http.Server {
     try {
       const authorityRoute = { method, path, response: res, authorityRuntime: opts.authorityRuntime };
       if (await routeProcessShell(authorityRoute)) return;
-      if (await refuseUnreadyAuthorityApi(authorityRoute)) return;
       if (path.startsWith('/api/')) {
         const auth = checkAuth(req.headers['authorization'], apiToken);
         if (!auth.ok) return json(res, { error: 'unauthorized' }, auth.status ?? 401);
       }
+      if (await refuseUnreadyAuthorityApi(authorityRoute)) return;
       if (await routeAuthorityEnrollment({
         method, path, request: req, response: res,
         authorityRuntime: opts.authorityRuntime, apiToken,

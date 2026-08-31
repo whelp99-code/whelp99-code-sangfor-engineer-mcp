@@ -14,6 +14,10 @@ export type JmAgentProcess = {
   drain(): Promise<DrainOutcome>;
 };
 
+export type JmProcessOptions = ComposeOptions & {
+  readonly createServer?: (composition: JmAgentComposition) => JmAgentServer;
+};
+
 /**
  * Starts only after configuration, TLS server + CA identity, key ring, grant
  * snapshot structure and an operator-established journal have been proven.
@@ -27,23 +31,28 @@ export class JmStartupPreflightError extends Error {
 
 export async function startJmAgentProcess(
   environment: JmAgentEnvironment,
-  options: ComposeOptions = {},
+  options: JmProcessOptions = {},
 ): Promise<JmAgentProcess> {
   const composition = composeJmAgent(environment, options);
-  // The startup preflight runs EXACTLY ONCE and BEFORE any listener exists, so
-  // a failed bind probe means the service never starts listening at all.
-  const preflight = await composition.executionPort.startupPreflight({
-    host: composition.config.bindHost,
-    port: composition.config.port,
-  });
-  if (!preflight.ok) {
-    await composition.executionPort.close();
-    throw new JmStartupPreflightError(preflight.reason);
+  let server: JmAgentServer | undefined;
+  try {
+    // The startup preflight runs EXACTLY ONCE and BEFORE any listener exists, so
+    // a failed bind probe means the service never starts listening at all.
+    const preflight = await composition.executionPort.startupPreflight({
+      host: composition.config.bindHost,
+      port: composition.config.port,
+    });
+    if (!preflight.ok) throw new JmStartupPreflightError(preflight.reason);
+    server = (options.createServer ?? createJmAgentServer)(composition);
+    const port = await server.listen();
+    const coordinator = buildCoordinator(composition, server);
+    return { composition, server, port, drain: () => coordinator.drain() };
+  } catch (primaryError) {
+    const cleanup = [composition.executionPort.close()];
+    if (server !== undefined) cleanup.push(server.close());
+    await Promise.allSettled(cleanup);
+    throw primaryError;
   }
-  const server = createJmAgentServer(composition);
-  const coordinator = buildCoordinator(composition, server);
-  const port = await server.listen();
-  return { composition, server, port, drain: () => coordinator.drain() };
 }
 
 export function buildCoordinator(

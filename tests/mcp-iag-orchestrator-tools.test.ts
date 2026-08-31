@@ -1,10 +1,14 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createBridgeServer, type McpRequestFn } from '../apps/http-bridge/src/server.js';
+import { createBrowserExecutionAuthorityPort } from '../packages/sangfor-browser-contracts/src/index.js';
 import { authorizeToolCall } from '../packages/sangfor-operator/src/tool-authorization.js';
-import { configureIagOrchestratorToolService } from '../apps/mcp-server/src/iag-orchestrator-tools.js';
+import {
+  configureIagOrchestratorToolService,
+  iagOrchestratorToolCatalog,
+} from '../apps/mcp-server/src/iag-orchestrator-tools.js';
 import { signApprovalToken } from '../packages/sangfor-operator/src/approval.js';
 import { generateProductChangePlan } from '../packages/sangfor-product-adapters/src/index.js';
 import { cleanupTestIagMutationAuthorityEnvironment } from './helpers/iag-mutation-contract-fixture.js';
@@ -20,6 +24,7 @@ process.env.MCP_NO_SERVE = '1';
 type McpModule = typeof import('../apps/mcp-server/src/index.js');
 let mcp: McpModule;
 let root = '';
+let escapedLedgerPath = '';
 
 beforeEach(async () => {
   root = mkdtempSync(join(tmpdir(), 'mcp-iag-tools-'));
@@ -39,6 +44,11 @@ afterEach(() => {
     'SANGFOR_IAG_ORCHESTRATOR_LEDGER_SECRET', 'SANGFOR_IAG_ORCHESTRATOR_CHECKPOINT_SECRET',
   ]) delete process.env[key];
   rmSync(root, { recursive: true, force: true });
+  if (escapedLedgerPath !== '') {
+    rmSync(escapedLedgerPath, { force: true });
+    rmSync(`${escapedLedgerPath}.checkpoint.json`, { force: true });
+    escapedLedgerPath = '';
+  }
 });
 
 function tool(name: string) {
@@ -87,6 +97,71 @@ describe('verified IAG MCP and HTTP catalog surface', () => {
 
     expect(result).toMatchObject({ outcome: 'DRY_RUN_COMPLETE', mutationAttempted: false, verifiedSuccess: false });
     expect(refs.fixture.adapterFixture.dispatches).toHaveLength(0);
+  });
+
+  it('Given an absent caller-selected ledger path, When dry-run executes, Then no ledger, checkpoint, lock, or directory is created', async () => {
+    const refs = await configureIagMcpFixture({ root, dryRun: true });
+    const config = JSON.parse(readFileSync(refs.configPath, 'utf8')) as {
+      orchestrator: { ledgerPath: string };
+    };
+    const absentRoot = join(root, 'caller-selected', 'nested');
+    config.orchestrator.ledgerPath = join(absentRoot, 'orchestrator.jsonl');
+    writeFileSync(refs.configPath, JSON.stringify(config));
+
+    const result = await tool('sangfor_iag_exception_dry_run')({
+      actionPath: refs.actionPath, configPath: refs.configPath,
+    });
+
+    expect(result).toMatchObject({ outcome: 'DRY_RUN_COMPLETE', mutationAttempted: false });
+    expect(existsSync(absentRoot)).toBe(false);
+  });
+
+  it('Given an orchestrator ledger escaping the config root, When apply is requested, Then traversal is refused before filesystem writes', async () => {
+    const refs = await configureIagMcpFixture({ root, dryRun: false, authorityKind: 'ordinary_active' });
+    const config = JSON.parse(readFileSync(refs.configPath, 'utf8')) as {
+      orchestrator: { ledgerPath: string };
+    };
+    escapedLedgerPath = join(tmpdir(), `${basename(root)}-escaped.jsonl`);
+    config.orchestrator.ledgerPath = escapedLedgerPath;
+    writeFileSync(refs.configPath, JSON.stringify(config));
+
+    await expect(tool('sangfor_iag_exception_apply')({
+      actionPath: refs.actionPath, configPath: refs.configPath,
+      approvalEnvelopePath: refs.approvalEnvelopePath,
+    })).rejects.toThrow(/IAG_TOOL_PATH_REFUSED/u);
+    expect(existsSync(escapedLedgerPath)).toBe(false);
+    expect(refs.fixture.adapterFixture.dispatches).toHaveLength(0);
+  });
+
+  it('Given two forwarding wrappers over one execution port, When the production catalog composes IAG dry-run, Then shared authority is refused', async () => {
+    const refs = await configureIagMcpFixture({ root, dryRun: true });
+    configureIagOrchestratorToolService(undefined);
+    const underlying = refs.fixture.adapterFixture.executionPort;
+    const catalog = iagOrchestratorToolCatalog(() => ({
+      executionPort: createBrowserExecutionAuthorityPort(underlying),
+      readBackPort: createBrowserExecutionAuthorityPort(underlying),
+    }));
+
+    expect(() => catalog.sangfor_iag_exception_dry_run?.handler({
+      actionPath: refs.actionPath, configPath: refs.configPath,
+    })).toThrow('IAG_INDEPENDENT_READ_BACK_PORT_REQUIRED');
+    expect(refs.fixture.adapterFixture.dispatches).toHaveLength(0);
+  });
+
+  it('Given the advisor and operator profiles, When IAG tools are inventoried, Then dry-run remains read-only while apply remains approval-gated and full-only', async () => {
+    const listed = new Map(mcp.listTools().map((entry) => [entry.name, entry]));
+    const advisor = mcp.listToolsForProfile('advisor');
+    const operator = mcp.listToolsForProfile('operator');
+
+    expect(listed.get('sangfor_iag_exception_dry_run')?.annotations).toMatchObject({
+      readOnlyHint: true, destructiveHint: false,
+    });
+    expect(listed.get('sangfor_iag_exception_apply')?.annotations).toMatchObject({
+      readOnlyHint: false, destructiveHint: true,
+    });
+    expect(advisor.map((entry) => entry.name)).toContain('sangfor_iag_exception_dry_run');
+    expect(advisor.map((entry) => entry.name)).not.toContain('sangfor_iag_exception_apply');
+    expect(operator.map((entry) => entry.name)).not.toContain('sangfor_iag_exception_apply');
   });
 
   it('Given ordinary active authority and a signed envelope reference, When apply and status run, Then verified terminal truth is stable', async () => {

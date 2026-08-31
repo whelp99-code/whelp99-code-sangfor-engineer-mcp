@@ -1,3 +1,6 @@
+import './blro-restore-drill-postgres-refusals.suite.js';
+import './blro-restore-drill-postgres-integrity.suite.js';
+
 // Real-PostgreSQL restore drill: back up a live authority database, restore it into a disposable
 // scratch database, and prove the whole contract end to end.
 //
@@ -251,112 +254,5 @@ describeDatabase('BLRO restore drill against real PostgreSQL', () => {
     expect(await snapshotSource()).toEqual(before);
   });
 
-  it('refuses a second drill onto a target that already exists', () => {
-    // Given a scratch database that already exists; When drilled; Then it refuses as dirty.
-    const occupied = `blro_scratch_${suffix}_occupied`;
-    runAdminSql(`CREATE DATABASE "${occupied}"`);
-    try {
-      expect(() => runCli('scripts/blro-restore-drill.mjs', drillArgs('drill', occupied)))
-        .toThrowError(/BLRO_DRILL_TARGET_EXISTS_DIRTY/u);
-    } finally {
-      runAdminSql(`DROP DATABASE IF EXISTS "${occupied}" WITH (FORCE)`);
-    }
-  }, 120_000);
 
-  it('refuses to restore onto the source database', () => {
-    // Given the source as the target; When drilled; Then the scratch contract refuses.
-    expect(() => runCli('scripts/blro-restore-drill.mjs', [
-      '--backup-dir', backupDir, '--backup-id', 'drill', '--public-key', publicKeyPath,
-      '--signing-key', privateKeyPath, '--evidence-root', evidenceRoot,
-      '--scratch-target', backupUrl ?? '',
-    ])).toThrowError(/BLRO_DRILL_TARGET_NOT_SCRATCH/u);
-  });
-
-  it('halts before creating anything when the dump is corrupt', () => {
-    // Given a dump whose bytes were flipped; When drilled; Then it refuses and creates no database.
-    const target = `blro_scratch_${suffix}_corrupt`;
-    const dumpPath = join(backupDir, 'corrupt.dump');
-    const manifestPath = join(backupDir, 'corrupt.manifest.json');
-    const original = readFileSync(join(backupDir, 'drill.dump'));
-    const flipped = Buffer.from(original);
-    flipped[Math.floor(flipped.byteLength / 2)] ^= 0xff;
-    writeFileSync(dumpPath, flipped);
-    const manifest = JSON.parse(readFileSync(join(backupDir, 'drill.manifest.json'), 'utf8')) as Record<string, unknown>;
-    writeFileSync(manifestPath, JSON.stringify({
-      ...manifest, dump: { ...(manifest['dump'] as Record<string, unknown>), fileName: 'corrupt.dump' },
-    }, null, 2));
-    expect(() => runCli('scripts/blro-restore-drill.mjs', drillArgs('corrupt', target)))
-      .toThrowError(/BLRO_BACKUP_MANIFEST_PAYLOAD_DIGEST_MISMATCH|BLRO_DRILL_DUMP_HASH_MISMATCH/u);
-    expect(scratchDatabaseCount(target)).toBe(0);
-  }, 120_000);
-
-  it('halts before creating anything when the evidence object is gone', () => {
-    // Given a referenced evidence object deleted after backup; When drilled; Then it halts.
-    const target = `blro_scratch_${suffix}_noevidence`;
-    const objectPath = join(evidenceRoot, fixture.evidenceObjectPath);
-    const preserved = readFileSync(objectPath);
-    rmSync(objectPath);
-    try {
-      expect(() => runCli('scripts/blro-restore-drill.mjs', drillArgs('drill', target)))
-        .toThrowError(/BLRO_EVIDENCE_OBJECT_UNRESOLVABLE|BLRO_DRILL_EVIDENCE_OBJECT/u);
-      expect(scratchDatabaseCount(target)).toBe(0);
-    } finally {
-      writeFileSync(objectPath, preserved);
-    }
-  }, 120_000);
-
-  it('halts when the evidence object bytes changed after backup', () => {
-    // Given a rewritten evidence object; When drilled; Then the exact-hash gate halts the drill.
-    const target = `blro_scratch_${suffix}_hashloss`;
-    const objectPath = join(evidenceRoot, fixture.evidenceObjectPath);
-    const preserved = readFileSync(objectPath);
-    writeFileSync(objectPath, Buffer.concat([preserved, Buffer.from('!')]));
-    try {
-      expect(() => runCli('scripts/blro-restore-drill.mjs', drillArgs('drill', target)))
-        .toThrowError(/BLRO_DRILL_EVIDENCE_OBJECT_(HASH|SIZE)_MISMATCH/u);
-      expect(scratchDatabaseCount(target)).toBe(0);
-    } finally {
-      writeFileSync(objectPath, preserved);
-    }
-  }, 120_000);
-
-  it('halts when the manifest signature does not match the drill public key', () => {
-    // Given a foreign public key; When drilled; Then the signature gate halts before restore.
-    const target = `blro_scratch_${suffix}_wrongkey`;
-    const foreign = join(root, 'foreign.pub.pem');
-    writeFileSync(foreign, generateKeyPairSync('ed25519').publicKey.export({ type: 'spki', format: 'pem' }).toString());
-    expect(() => runCli('scripts/blro-restore-drill.mjs', drillArgs('drill', target, foreign)))
-      .toThrowError(/BLRO_BACKUP_MANIFEST_KEY_MISMATCH/u);
-    expect(scratchDatabaseCount(target)).toBe(0);
-  }, 120_000);
-
-  it('quarantines an interrupted dump rather than publishing it', () => {
-    // Given a backup that cannot reach its output; When applied; Then nothing is named valid.
-    const blocked = join(root, 'blocked-output');
-    writeFileSync(blocked, 'not a directory');
-    expect(() => runCli('scripts/blro-backup.mjs', [
-      '--out', blocked, '--signing-key', privateKeyPath, '--evidence-root', evidenceRoot,
-      '--backup-id', 'interrupted', '--verification-scratch-target',
-      `${adminUrl?.replace(/\/[^/]*$/u, '')}/${verificationDatabase}`, '--apply',
-    ])).toThrowError();
-    expect(existsSync(join(blocked, 'interrupted.dump'))).toBe(false);
-    expect(existsSync(join(backupDir, 'interrupted.manifest.json'))).toBe(false);
-  }, 180_000);
-
-  it('reports the dry run without producing a dump', () => {
-    // Given no --apply; When run; Then it reports intent and writes nothing.
-    const output = runCli('scripts/blro-backup.mjs', backupArgs('dryrun'));
-    expect(output).toContain('BLRO_BACKUP_DRY_RUN');
-    expect(existsSync(join(backupDir, 'dryrun.dump'))).toBe(false);
-    expect(existsSync(join(backupDir, 'dryrun.manifest.json'))).toBe(false);
-  }, 120_000);
-
-  it('records honest RPO findings rather than claiming RPO0 from the dump', () => {
-    // Given a single-node task cluster; Then the manifest states the dump-only RPO plainly.
-    const manifest = parseManifest(readFileSync(join(backupDir, 'drill.manifest.json'), 'utf8'));
-    expect(manifest.rpo.syncDurabilityProven).toBe(false);
-    expect(manifest.rpo.claim).toMatch(/It is NOT zero/u);
-    expect(manifest.rpo.findings.length).toBeGreaterThan(0);
-    expect(canonicalJson(manifest.rpo)).not.toMatch(/RPO=0 for committed/u);
-  });
 });

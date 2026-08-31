@@ -81,6 +81,7 @@ function deepFreeze<T>(value: T): T {
 
 export async function resolveIagMutationActionAuthority(
   input: ResolveIagMutationActionAuthorityInput,
+  options: { readonly persistStaleness?: boolean } = {},
 ): Promise<IagMutationActionAuthorityResult> {
   const parsed = requestSchema.safeParse(input);
   if (!parsed.success) return { ok: false, code: 'IAG_MUTATION_AUTHORITY_REFUSED' };
@@ -99,12 +100,15 @@ export async function resolveIagMutationActionAuthority(
   }
   if (origin !== parsed.data.origin) return { ok: false, code: 'IAG_MUTATION_AUTHORITY_REFUSED' };
 
+  const persistence: 'read_only' | 'persist_staleness' = options.persistStaleness === false
+    ? 'read_only'
+    : 'persist_staleness';
   const ordinary = await resolveConfiguredWriteAuthority({
-    references: parsed.data.references,
+    references: parsed.data.references, persistence,
     expected: { ...expectedTarget, mode: 'ordinary_field' },
   });
   const resolved = ordinary.status === 'ordinary_active' ? ordinary : await resolveConfiguredWriteAuthority({
-    references: parsed.data.references,
+    references: parsed.data.references, persistence,
     expected: { ...expectedTarget, mode: 'bootstrap_mock' },
   });
   if ((resolved.status !== 'ordinary_active' && resolved.status !== 'bootstrap_candidate')

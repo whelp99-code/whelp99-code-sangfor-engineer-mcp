@@ -1,7 +1,16 @@
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { PrismaClient } from '@prisma/client';
 import { describe, expect, it } from 'vitest';
+import { createHarnessAuthorityDatabase } from '../scripts/lib/blro-two-replica-database.js';
+import { createTaskCertificateFixture } from './helpers/blro-certificate-fixture.js';
+import {
+  JM_DEVICE_DIGEST,
+  JM_INSTALLATION_ID,
+} from './helpers/jm-agent-fixture.js';
 
 const databaseUrl = process.env.DATABASE_URL;
 const required = process.env.SANGFOR_REQUIRE_POSTGRES_TESTS === '1';
@@ -21,18 +30,48 @@ async function run(arguments_: readonly string[]): Promise<{
   child.stdout.setEncoding('utf8').on('data', (chunk: string) => { stdout += chunk; });
   child.stderr.setEncoding('utf8').on('data', (chunk: string) => { stderr += chunk; });
   const timeout = AbortSignal.timeout(120_000);
-  const [code] = await once(child, 'exit', { signal: timeout });
+  const [code] = await once(child, 'close', { signal: timeout });
   return { code: typeof code === 'number' ? code : null, stdout, stderr };
 }
 
 describe.skipIf(!databaseUrl)('BLRO two-live-replica production harness', () => {
+  it('holds the database lease before binding process-global harness resources', async () => {
+    // Given: the exact production PostgreSQL owner and a valid enrollment certificate.
+    const root = mkdtempSync(join(tmpdir(), 'blro-two-replica-lease-test-'));
+    const certificate = createTaskCertificateFixture(root, JM_INSTALLATION_ID, JM_DEVICE_DIGEST);
+    const database = await createHarnessAuthorityDatabase({
+      databaseUrl: databaseUrl ?? '',
+      ownerUrl: process.env.BLRO_OWNER_DATABASE_URL ?? '',
+      certificateDerBase64: certificate.validDerBase64,
+      trustedIssuerBundle: certificate.trustedCaPem,
+    });
+    const probe = new PrismaClient({ datasources: {
+      db: { url: process.env.BLRO_OWNER_DATABASE_URL ?? '' },
+    } });
+    try {
+      // When: another process inspects the live sessions while the fixture owns its scope.
+      const rows = await probe.$queryRawUnsafe<readonly { readonly count: number }[]>(`
+        SELECT count(*)::int AS count
+        FROM pg_stat_activity AS activity
+        JOIN pg_locks AS lock ON lock.pid=activity.pid
+        WHERE activity.application_name LIKE 'blro-two-replica-lease-%'
+          AND lock.locktype='advisory' AND lock.granted=true`);
+      // Then: one session-level lease excludes every competing fixed-port fixture.
+      expect(rows[0]?.count).toBe(1);
+    } finally {
+      await probe.$disconnect();
+      await database.close();
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it('converges concurrent callers and proves every deterministic failpoint', async () => {
     // Given: the mandatory task PostgreSQL authority and the owned loopback ports.
     // When: two child replicas run the complete production harness.
-    const output = await run(['--replicas', '2', '--attempts', '2', '--jm-url',
+    const output = await run(['--replicas', '2', '--attempts', '1000', '--jm-url',
       'https://127.0.0.1:39443/v1/browser-jobs']);
     // Then: only the machine-consumed completion sentinel is emitted on success.
-    expect(output).toMatchObject({ code: 0 });
+    expect(output.code, output.stderr).toBe(0);
     expect(output.stdout.trim().split('\n').at(-1)).toBe('BLRO_TWO_REPLICA_PASS');
   }, 125_000);
 });

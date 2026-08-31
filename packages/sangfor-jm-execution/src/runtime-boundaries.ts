@@ -4,6 +4,12 @@ import { parseRuntimeJson } from '../../shared/src/runtime-schema.js';
 import type { CdpFrame } from './cdp-frame.js';
 
 const frameIdSchema = z.number().int().positive();
+const ownedCdpProfileSchema = z.object({
+  profileRef: z.string().min(1).max(512),
+  cdpPort: z.number().int().min(1).max(65_535),
+  expectedOrigin: z.string().min(1).max(2_048),
+}).strict();
+const ownedCdpProfileRegistrySchema = z.array(ownedCdpProfileSchema).max(100);
 
 // A CDP frame is exactly one of three things: a reply carrying a result, a
 // reply carrying an error, or an event. Overlaps (a reply with both outcomes,
@@ -42,5 +48,20 @@ export function parseBoundaryJmCdpMessageV1(source: string): CdpFrame {
     schema: cdpFrameSchema,
     schemaName: 'jm-execution.cdp-message.v1',
     policy: 'INDETERMINATE',
+  });
+}
+
+export function parseOwnedCdpProfilesEnvironment(
+  source: string,
+): z.output<typeof ownedCdpProfileRegistrySchema> {
+  return parseRuntimeJson(source, {
+    schema: ownedCdpProfileRegistrySchema,
+    schemaName: 'jm-execution.owned-cdp-profile-registry.v1',
+    policy: 'deny',
+    maxBytes: 256 * 1_024,
+    maxDepth: 2,
+    maxNodes: 500,
+    maxArrayLength: 100,
+    maxObjectKeys: 3,
   });
 }

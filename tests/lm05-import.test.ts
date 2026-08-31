@@ -1,3 +1,6 @@
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, it, expect } from 'vitest';
 import {
   LM05ImportFacade,
@@ -91,6 +94,29 @@ describe('PR-007: LM-05 Import and LM-06 Stream', () => {
       if ('factId' in result) {
         expect(result.factId).toBe('import');
         expect(result.rowCount).toBeGreaterThan(0);
+      }
+    });
+  });
+
+  describe('LM05ImportFacade — real JSON input', () => {
+    it('refuses a malformed JSON line instead of silently dropping it', async () => {
+      const root = mkdtempSync(join(tmpdir(), 'lm05-malformed-'));
+      try {
+        writeFileSync(join(root, 'config.json'), '{"valid":true}\n{not-json}\n');
+        const facade = new LM05ImportFacade({ syntheticMode: false });
+
+        const result = await facade.execute({
+          importRoot: root,
+          filePattern: 'config.json',
+          format: 'json',
+        });
+
+        expect(result).toEqual({
+          code: 'MALFORMED_JSON',
+          message: 'Malformed JSON in config.json.',
+        });
+      } finally {
+        rmSync(root, { recursive: true, force: true });
       }
     });
   });

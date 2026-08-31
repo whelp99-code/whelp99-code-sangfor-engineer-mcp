@@ -1,15 +1,15 @@
 import { createReadStream, existsSync, statSync } from 'node:fs';
-import { join, resolve, isAbsolute } from 'node:path';
+import { join, resolve } from 'node:path';
 import { createInterface } from 'node:readline';
 
 /**
- * PR-007: LM-05 JSON/CSV streaming import and LM-06 inbound stream listener.
- * 
- * LM-05: 사람이 미리 저장한 JSON/CSV만 allowlisted import root에서 streaming parse하며 symlink/path traversal을 금지한다.
- * LM-06: 이미 존재하는 WS/SSE의 inbound frame listener만 사용하고 send/new WebSocket/new EventSource를 금지한다.
- * 
- * REQ-15~16: bounded streaming import와 inbound-only stream fixture
- * 
+ * PR-007: LM-05 JSON/CSV streaming import.
+ *
+ * 사람이 미리 저장한 JSON/CSV만 allowlisted import root에서 streaming parse하며
+ * symlink/path traversal을 금지한다.
+ *
+ * REQ-15: bounded streaming import
+ *
  * LM-05 limits:
  * - File: 50MiB
  * - Rows: 100,000
@@ -46,6 +46,7 @@ export type LM05Error =
   | { code: 'PATH_TRAVERSAL'; message: string }
   | { code: 'SYMLINK_FORBIDDEN'; message: string }
   | { code: 'PARSE_TIMEOUT'; message: string }
+  | { code: 'MALFORMED_JSON'; message: string }
   | { code: 'TOO_MANY_ROWS'; message: string }
   | { code: 'TOO_MANY_FIELDS'; message: string };
 
@@ -149,6 +150,12 @@ export class LM05ImportFacade {
           message: `Parse timeout: exceeded ${LM05_LIMITS.parseTimeoutMs}ms`,
         };
       }
+      if (error instanceof Error && error.message === 'MALFORMED_JSON') {
+        return {
+          code: 'MALFORMED_JSON',
+          message: `Malformed JSON in ${recipe.filePattern}.`,
+        };
+      }
       throw error;
     }
   }
@@ -188,7 +195,10 @@ export class LM05ImportFacade {
             const parsed = JSON.parse(line);
             rows.push(parsed);
           } catch {
-            // Skip invalid JSON lines
+            clearTimeout(timeout);
+            reject(new Error('MALFORMED_JSON'));
+            rl.close();
+            stream.destroy();
           }
         }
       });
@@ -228,83 +238,4 @@ export class LM05ImportFacade {
   }
 }
 
-export interface LM06Recipe {
-  frameListener: string;
-  streamType: 'websocket' | 'sse';
-}
-
-export interface LM06FactResult {
-  factId: string;
-  value: unknown;
-  frameCount: number;
-  collectedAt: string;
-}
-
-export type LM06Error =
-  | { code: 'FORBIDDEN_OPERATION'; message: string }
-  | { code: 'STREAM_NOT_FOUND'; message: string };
-
-const FORBIDDEN_OPERATIONS = ['send', 'newWebSocket', 'newEventSource', 'emit', 'write'];
-
-export function validateLM06Recipe(recipe: LM06Recipe): { valid: boolean; errors: string[] } {
-  const errors: string[] = [];
-
-  if (!recipe.frameListener || recipe.frameListener.trim() === '') {
-    errors.push('STREAM_NOT_FOUND: frameListener is required');
-  }
-
-  if (recipe.streamType !== 'websocket' && recipe.streamType !== 'sse') {
-    errors.push('STREAM_NOT_FOUND: streamType must be websocket or sse');
-  }
-
-  return { valid: errors.length === 0, errors };
-}
-
-export class LM06StreamFacade {
-  private readonly syntheticMode: boolean;
-  private frameCount: number = 0;
-
-  constructor(options: { syntheticMode?: boolean } = {}) {
-    this.syntheticMode = options.syntheticMode ?? true;
-  }
-
-  async execute(recipe: LM06Recipe): Promise<LM06FactResult | LM06Error> {
-    const validation = validateLM06Recipe(recipe);
-    if (!validation.valid) {
-      return {
-        code: 'STREAM_NOT_FOUND',
-        message: validation.errors.join('; '),
-      };
-    }
-
-    if (this.syntheticMode) {
-      return this.executeSynthetic(recipe);
-    }
-
-    return {
-      code: 'STREAM_NOT_FOUND',
-      message: 'Real stream access requires browser session (PR-004)',
-    };
-  }
-
-  private executeSynthetic(recipe: LM06Recipe): LM06FactResult {
-    this.frameCount++;
-
-    // Synthetic inbound frame
-    const syntheticFrame = {
-      type: 'status',
-      data: { version: '13.0.120', status: 'active' },
-    };
-
-    return {
-      factId: recipe.frameListener,
-      value: syntheticFrame,
-      frameCount: this.frameCount,
-      collectedAt: new Date().toISOString(),
-    };
-  }
-
-  getFrameCount(): number {
-    return this.frameCount;
-  }
-}
+export * from './lm06-stream.js';

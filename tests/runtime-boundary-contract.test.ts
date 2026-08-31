@@ -1,10 +1,10 @@
-import { spawnSync } from 'node:child_process';
 import { z } from 'zod';
 import { describe, expect, it } from 'vitest';
 import {
   RuntimeSchemaError,
   parseRuntimeJson,
 } from '../packages/shared/src/runtime-schema.js';
+import { checkRuntimeBoundaries } from '../scripts/check-runtime-boundaries.mjs';
 
 const reportSchema = z.object({
   version: z.literal(1),
@@ -32,19 +32,19 @@ function captureRuntimeSchemaError(action: () => unknown): RuntimeSchemaError {
 describe('runtime JSON boundary contract', () => {
   it('owns every unchecked production JSON assertion in the runtime inventory', () => {
     // Given
-    const command = ['scripts/check-runtime-boundaries.mjs', '--json'];
+    const root = process.cwd();
 
     // When
-    const result = spawnSync(process.execPath, command, { cwd: process.cwd(), encoding: 'utf8' });
+    const result = checkRuntimeBoundaries({ root });
 
     // Then
-    expect(result.status).toBe(0);
-    expect(JSON.parse(result.stdout)).toEqual({
+    expect(result).toEqual({
       status: 'pass',
       message: 'RUNTIME_BOUNDARY_INVENTORY_V2_PASS',
       inventoryVersion: 2,
       strictCalls: 49,
       unsafeAssertions: 0,
+      environmentJson: 2,
       stale: 0,
       duplicate: 0,
       unowned: 0,
@@ -54,6 +54,13 @@ describe('runtime JSON boundary contract', () => {
         loud_failure: 9,
         invalid_report: 6,
         INDETERMINATE: 5,
+      },
+      environmentPolicyCounts: {
+        freeze: 0,
+        deny: 2,
+        loud_failure: 0,
+        invalid_report: 0,
+        INDETERMINATE: 0,
       },
     });
   });

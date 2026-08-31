@@ -20,9 +20,13 @@ const inventoryBoundarySchema = z.object({
   schemaName: z.string(),
   policy: z.enum(['freeze', 'deny', 'loud_failure', 'invalid_report', 'INDETERMINATE']),
 }).strip();
+const environmentBoundarySchema = inventoryBoundarySchema.extend({
+  environmentVariable: z.string(),
+});
 const inventorySchema = z.object({
   version: z.literal(2),
   boundaries: z.array(inventoryBoundarySchema),
+  environmentBoundaries: z.array(environmentBoundarySchema),
 }).strip();
 const cases: readonly RuntimeBoundaryCase[] = [
   ...runtimeBoundaryAppCases,
@@ -33,6 +37,22 @@ const cases: readonly RuntimeBoundaryCase[] = [
 const inventory = inventorySchema.parse(JSON.parse(
   readFileSync('scripts/runtime-boundaries.inventory.json', 'utf8'),
 ));
+const expectedEnvironmentBoundaries = [
+  {
+    id: 'MCP_OBSERVER_PROFILES_ENV',
+    parser: 'parseObserverProfilesEnvironment',
+    environmentVariable: 'SANGFOR_OBSERVER_PROFILES_JSON',
+    schemaName: 'mcp-server.observer-profile-registry.v1',
+    policy: 'deny',
+  },
+  {
+    id: 'JM_OWNED_CDP_PROFILES_ENV',
+    parser: 'parseOwnedCdpProfilesEnvironment',
+    environmentVariable: 'SANGFOR_JM_CDP_PROFILES_JSON',
+    schemaName: 'jm-execution.owned-cdp-profile-registry.v1',
+    policy: 'deny',
+  },
+] as const;
 
 function captureRuntimeSchemaError(action: () => unknown): RuntimeSchemaError {
   try {
@@ -51,7 +71,7 @@ function policyCounts(values: readonly RuntimeBoundaryCase[]): Record<string, nu
 }
 
 describe('runtime boundary inventory v2 behavior', () => {
-  it('Given inventory v2, When cases are compared, Then all 49 IDs and policies are represented exactly once', () => {
+  it('Given inventory v2, When cases are compared, Then 49 parser calls and two environment boundaries are separate', () => {
     // Given
     const actualIds = cases.map(({ id }) => id).sort();
     const inventoryIds = inventory.boundaries.map(({ id }) => id).sort();
@@ -70,6 +90,8 @@ describe('runtime boundary inventory v2 behavior', () => {
       INDETERMINATE: 5,
       loud_failure: 9,
     });
+    expect(inventory.environmentBoundaries)
+      .toEqual(expectedEnvironmentBoundaries);
     for (const boundary of inventory.boundaries) {
       expect(cases.find(({ id }) => id === boundary.id)).toMatchObject({
         schemaName: boundary.schemaName,

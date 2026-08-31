@@ -2,78 +2,117 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import {
-  readMutatedCatalogRoutes,
-  readToolRoutes,
-  type ToolRoute,
-} from './helpers/mcp-tool-route-reader.js';
+import { z } from 'zod';
+import { readMutatedCatalogRoutes, readToolRoutes, type ToolRoute } from './helpers/mcp-tool-route-reader.js';
 
 const ROOT = resolve(import.meta.dirname, '..');
-const ROUTE_FIXTURE = join(ROOT, 'tests/fixtures/mcp-tool-handler-routes-v1.json');
+const BASELINE_PATH = join(ROOT, 'tests/fixtures/mcp-tool-handler-routes-baseline-v1.json');
+const REVIEW_PATH = join(ROOT, 'tests/fixtures/mcp-tool-handler-route-review-v1.json');
+const routeSchema = z.object({ toolName: z.string(), handlerAstSha256: z.string().regex(/^[a-f0-9]{64}$/u) });
+const currentRouteSchema = routeSchema.extend({ catalogSource: z.string() });
+const baselineSchema = z.object({
+  schemaVersion: z.literal('mcp-tool-handler-routes-baseline.v1'),
+  source: z.object({
+    ref: z.literal('origin/main'),
+    commit: z.string().regex(/^[a-f0-9]{40}$/u),
+    path: z.literal('apps/mcp-server/src/index.ts'),
+  }),
+  knownRouteCount: z.literal(115),
+  routes: z.array(routeSchema).length(115),
+  sha256: z.string().regex(/^[a-f0-9]{64}$/u),
+});
+const reviewSchema = z.object({
+  schemaVersion: z.literal('mcp-tool-handler-route-review.v1'),
+  baselineCommit: z.string().regex(/^[a-f0-9]{40}$/u),
+  baselineRouteCount: z.literal(115),
+  finalRouteCount: z.literal(118),
+  reviewedHandlerChanges: z.array(currentRouteSchema),
+  approvedAdditions: z.array(currentRouteSchema).length(3),
+  sha256: z.string().regex(/^[a-f0-9]{64}$/u),
+});
+type Baseline = z.infer<typeof baselineSchema>;
+type Review = z.infer<typeof reviewSchema>;
 
-type RouteArtifact = {
-  readonly schemaVersion: 'mcp-tool-handler-routes.v1';
-  readonly baselineSource: string;
-  readonly knownRouteCount: number;
-  readonly routes: readonly ToolRoute[];
-  readonly sha256: string;
+type ComparableRoute = {
+  readonly toolName: string;
+  readonly catalogSource: string;
+  readonly handlerAstSha256: string;
 };
 
-function artifactDigest(artifact: Omit<RouteArtifact, 'sha256'>): string {
-  return createHash('sha256').update(JSON.stringify(artifact)).digest('hex');
+function fixtureDigest(value: Record<string, unknown>): string {
+  return createHash('sha256').update(JSON.stringify(value)).digest('hex');
 }
 
-describe('MCP non-circular handler route lock', () => {
-  it('matches all 118 AST-derived handler routes captured from the giant baseline', () => {
-    // Given a reviewed artifact that normal tests never regenerate.
-    const expected = JSON.parse(readFileSync(ROUTE_FIXTURE, 'utf8')) as RouteArtifact;
+function comparable(route: ToolRoute): ComparableRoute {
+  return {
+    toolName: route.toolName,
+    catalogSource: route.catalogSource,
+    handlerAstSha256: route.handlerAstSha256,
+  };
+}
 
-    // When current registrations are parsed directly from catalog ASTs.
-    const actual = readToolRoutes(ROOT);
-    const names = actual.map(({ toolName }) => toolName);
+function assertReviewedRoutes(actual: readonly ComparableRoute[], baseline: Baseline, review: Review): void {
+  const actualByName = new Map(actual.map((route) => [route.toolName, route]));
+  const changes = new Map(review.reviewedHandlerChanges.map((route) => [route.toolName, route]));
+  const expectedNames = [...baseline.routes.map(({ toolName }) => toolName), ...review.approvedAdditions.map(({ toolName }) => toolName)].sort();
+  expect(actual.map(({ toolName }) => toolName).sort()).toEqual(expectedNames);
+  expect(new Set(expectedNames).size).toBe(review.finalRouteCount);
+  for (const oldRoute of baseline.routes) {
+    const actualRoute = actualByName.get(oldRoute.toolName);
+    const changedRoute = changes.get(oldRoute.toolName);
+    expect(actualRoute?.handlerAstSha256, oldRoute.toolName)
+      .toBe(changedRoute?.handlerAstSha256 ?? oldRoute.handlerAstSha256);
+    if (changedRoute !== undefined) expect(actualRoute?.catalogSource, oldRoute.toolName).toBe(changedRoute.catalogSource);
+  }
+  for (const addition of review.approvedAdditions) expect(actualByName.get(addition.toolName), addition.toolName).toEqual(addition);
+}
 
-    // Then every unique handler expression and catalog owner remains locked.
-    expect(expected.baselineSource).toBe('git:HEAD:apps/mcp-server/src/index.ts');
-    expect(expected.knownRouteCount).toBe(118);
-    expect(expected.sha256).toBe(artifactDigest({
-      schemaVersion: expected.schemaVersion,
-      baselineSource: expected.baselineSource,
-      knownRouteCount: expected.knownRouteCount,
-      routes: expected.routes,
-    }));
-    expect(actual).toEqual(expected.routes);
-    expect(names).toHaveLength(118);
-    expect(new Set(names).size).toBe(118);
+const baseline = baselineSchema.parse(JSON.parse(readFileSync(BASELINE_PATH, 'utf8')));
+const review = reviewSchema.parse(JSON.parse(readFileSync(REVIEW_PATH, 'utf8')));
+
+describe('MCP origin/main route baseline and reviewed route delta', () => {
+  it('preserves every baseline route and adds only the three reviewed IAG routes', () => {
+    const actual = readToolRoutes(ROOT).map(comparable);
+    assertReviewedRoutes(actual, baseline, review);
   });
 
-  it('catches the exact discoverProductConsole to collectProductConfig handler mutant', () => {
-    // Given a source mutation that changes the real handler expression without metadata.
+  it('rejects a removed or changed old route and an unexpected fourth route', () => {
+    const actual = readToolRoutes(ROOT).map(comparable);
+    const oldName = baseline.routes[0]?.toolName;
+    const removed = actual.filter(({ toolName }) => toolName !== oldName);
+    const changed = actual.map((route) => route.toolName === oldName
+      ? { ...route, handlerAstSha256: '0'.repeat(64) }
+      : route);
+    const added = [...actual, {
+      toolName: 'sangfor_iag_unreviewed_fourth_tool',
+      catalogSource: 'apps/mcp-server/src/iag-orchestrator-tools.ts',
+      handlerAstSha256: '1'.repeat(64),
+    }];
+
+    expect(() => assertReviewedRoutes(removed, baseline, review)).toThrow();
+    expect(() => assertReviewedRoutes(changed, baseline, review)).toThrow();
+    expect(() => assertReviewedRoutes(added, baseline, review)).toThrow();
+  });
+
+  it('catches the discoverProductConsole handler mutant', () => {
     const catalogFile = 'apps/mcp-server/src/product-read-tool-catalog.ts';
     const source = readFileSync(join(ROOT, catalogFile), 'utf8');
     const mutated = source.replace('handler: discoverProductConsole', 'handler: collectProductConfig');
+    const routes = readMutatedCatalogRoutes(ROOT, catalogFile, mutated).map(comparable);
+    const original = readToolRoutes(ROOT).map(comparable)
+      .filter(({ catalogSource }) => catalogSource !== catalogFile);
+
     expect(mutated).not.toBe(source);
-
-    // When routes are read from the mutated AST.
-    const routes = readMutatedCatalogRoutes(ROOT, catalogFile, mutated);
-    const route = routes.find(({ toolName }) => toolName === 'sangfor_discover_product_console');
-    const expected = (JSON.parse(readFileSync(ROUTE_FIXTURE, 'utf8')) as RouteArtifact).routes
-      .find(({ toolName }) => toolName === 'sangfor_discover_product_console');
-
-    // Then the actual handler fingerprint changes and the route lock rejects it.
-    expect(route).toBeDefined();
-    expect(expected).toBeDefined();
-    expect(route).not.toEqual(expected);
+    expect(() => assertReviewedRoutes([...original, ...routes], baseline, review)).toThrow();
   });
 
-  it('has no candidate-code fixture regeneration path', () => {
-    // Given production and test source outside the immutable fixture.
-    const sources = [
-      readFileSync(join(ROOT, 'apps/mcp-server/src/tool-registry.ts'), 'utf8'),
-      readFileSync(join(ROOT, 'tests/helpers/mcp-tool-route-reader.ts'), 'utf8'),
-    ].join('\n');
-
-    // When normal runtime/test code is inspected, then it contains no fixture writer.
-    expect(sources).not.toContain('writeFileSync(ROUTE_FIXTURE');
-    expect(sources).not.toContain('mcp-tool-handler-routes-v1.json`,');
+  it('authenticates the origin baseline and reviewed delta independently', () => {
+    const { sha256: baselineDigest, ...baselinePayload } = baseline;
+    const { sha256: reviewDigest, ...reviewPayload } = review;
+    expect(fixtureDigest(baselinePayload)).toBe(baselineDigest);
+    expect(fixtureDigest(reviewPayload)).toBe(reviewDigest);
+    expect(review.baselineCommit).toBe(baseline.source.commit);
+    expect(review.reviewedHandlerChanges.map(({ toolName }) => toolName).sort())
+      .toEqual([...new Set(review.reviewedHandlerChanges.map(({ toolName }) => toolName))].sort());
   });
 });

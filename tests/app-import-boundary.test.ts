@@ -15,7 +15,7 @@ const EXPECTED_APPS = [
   'mock-sangfor-console',
   'operator-console',
 ] as const;
-const EXPECTED_SOURCE_COUNT = 90;
+const EXPECTED_SOURCE_COUNT = 107;
 const SKIPPED_DIRECTORIES = new Set([
   '.git', '.next', '.turbo', 'build', 'coverage', 'dist', 'generated', 'node_modules', 'out',
 ]);

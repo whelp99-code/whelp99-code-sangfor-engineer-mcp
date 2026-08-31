@@ -3,6 +3,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { z } from 'zod';
 import { createRemoteBrowserExecutionPortFromEnv } from '../apps/mcp-server/src/remote-browser-runtime.js';
 import { NODE_RUNTIME_PINS } from '../packages/sangfor-browser-contracts/src/protocol-version.js';
 
@@ -10,6 +11,14 @@ const repoFile = (relative: string): string => readFileSync(
   new URL(`../${relative}`, import.meta.url),
   'utf8',
 );
+
+const runtimePackageSchema = z.object({
+  packageManager: z.literal(`pnpm@${NODE_RUNTIME_PINS.pnpm}`),
+  engines: z.object({
+    node: z.literal(`>=${NODE_RUNTIME_PINS.blroMajor} <${NODE_RUNTIME_PINS.jmMajor + 1}`),
+    pnpm: z.literal(NODE_RUNTIME_PINS.pnpm),
+  }).strict(),
+}).strip();
 
 const dirs: string[] = [];
 afterEach(() => {
@@ -60,13 +69,12 @@ describe('Phase 4 MCP remote runtime entry', () => {
 describe('pinned runtime lanes', () => {
   it('declares the supported Node engine range in the package manifest', () => {
     const manifest: unknown = JSON.parse(repoFile('package.json'));
-    expect(manifest).toMatchObject({
-      packageManager: `pnpm@${NODE_RUNTIME_PINS.pnpm}`,
-      engines: {
-        node: `>=${NODE_RUNTIME_PINS.blroMajor} <${NODE_RUNTIME_PINS.jmMajor + 1}`,
-        pnpm: NODE_RUNTIME_PINS.pnpm,
-      },
-    });
+    expect(() => runtimePackageSchema.parse(manifest)).not.toThrow();
+  });
+
+  it('rejects a workspace package manifest whose engine pins are omitted', () => {
+    const omittedEnginePins = { packageManager: `pnpm@${NODE_RUNTIME_PINS.pnpm}` };
+    expect(runtimePackageSchema.safeParse(omittedEnginePins).success).toBe(false);
   });
 
   it('makes the declared engine range binding for local installs', () => {

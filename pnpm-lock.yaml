@@ -53,6 +53,9 @@ importers:
       '@sangfor/jm-agent':
         specifier: workspace:*
         version: link:../../packages/sangfor-jm-agent
+      '@sangfor/jm-execution':
+        specifier: workspace:*
+        version: link:../../packages/sangfor-jm-execution
 
   apps/mcp-server:
     dependencies:

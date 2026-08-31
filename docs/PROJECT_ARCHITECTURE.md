@@ -234,8 +234,8 @@ stdio 기반 JSON-RPC 2.0 서버. `readline`으로 한 줄씩 요청을 받아 �
 - `createEvalCaseFromFeedback(input)`: 피드백→신규 평가 규칙 동적 추가; durable feedback/lesson stores와 함께 사용한다.
 
 ### 6.7 sangfor-feedback — 피드백/레슨
-- `submitFeedback()` → `nowId('feedback')`, status `new`; configured file-backed feedback/lesson persistence를 사용한다.
-- `extractLesson(id)`: 레슨 생성. rootCause/recommendedAction/antiPattern 포함, `approvalStatus='pending_review'`(사람 검토 필수). `listLessons()`.
+- 권한 기반 쓰기 API는 `submitFeedbackWithAuthority(input, authority)`와 `extractLessonWithAuthority(id, authority)`이며 Promise를 반환한다. 전자는 status `new` 피드백을 기록하고, 후자는 `approvalStatus='pending_review'` 레슨을 기록한다.
+- `submitFeedback(input)`와 `extractLesson(id)`의 origin/main 동기 시그니처는 기존 소비자 컴파일을 위해 유지하지만, 권한 없는 쓰기를 수행하지 않고 동기적으로 마이그레이션 오류를 낸다. `listLessons()`는 동기 읽기 API로 유지한다.
 
 ### 6.8 sangfor-operator — 콘솔 조작
 - 타입: `OperatorMode`(mock|lab|poc|customer_readonly|customer_write|production), `OperatorSession`, `LiveExecutionApproval`, `LiveConsoleActionInput`.
@@ -276,9 +276,9 @@ stdio 기반 JSON-RPC 2.0 서버. `readline`으로 한 줄씩 요청을 받아 �
 - `product-guides.ts`: EPP(v6.0.4)/IAG(v13.0.120)/CC(v3.0.98C) 설정 가이드 각 6섹션(실장비 검증 기반). `getProductSettingGuide()`, `getAllProductSettingGuides()`.
 
 ### 6.14 sangfor-wiki — 위키
-- `WIKI_CHUNKS`: 8개 내부 레슨(`trustLevel='internal'`). `searchWiki()`, `listSeedWiki()`.
-- 제안 워크플로: `proposeWikiUpdate()`(status pending) → `approveWikiUpdate()` → `applyWikiUpdate()`; 적용/감사 상태는 configured stores에 기록한다.
-- 어댑터: `ObsidianVaultAdapter`(안전 경로/.md), `GitHubWikiGitAdapter`(clone/pull→write→commit→push). `applyObsidianWikiUpdate()`, `applyGitHubWikiUpdate()`.
+- `WIKI_CHUNKS`: 8개 내부 레슨(`trustLevel='internal'`). `searchWiki()`, `listSeedWiki()`, `listKnowledgeCards()`는 동기 읽기 API다.
+- 권한 기반 쓰기는 명시적 `*WithAuthority` API를 사용한다: `proposeWikiUpdateWithAuthority()`(status pending) → `approveWikiUpdateWithAuthority()` → `applyWikiUpdateWithAuthority()`; knowledge-card 및 adapter apply도 같은 명명 규칙을 따른다.
+- origin/main 쓰기 이름과 시그니처는 기존 소비자 컴파일을 위해 유지하지만 authority 없이 호출하면 fail-closed 마이그레이션 오류를 내며 파일·git 쓰기를 하지 않는다. `ObsidianVaultAdapter`와 `GitHubWikiGitAdapter`의 쓰기/동기화도 주입된 authority가 필수다.
 
 ### 6.15 sangfor-store — Prisma 영속화
 - `isStoreEnabled()`: `SANGFOR_DB_ENABLED=0`이면 false, `DATABASE_URL` 있으면 true. `getPrisma()`(lazy 싱글톤, 비활성 시 null).

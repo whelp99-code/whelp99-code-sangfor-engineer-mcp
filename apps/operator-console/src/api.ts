@@ -17,7 +17,7 @@ import { ragSearch, exportRagIndexSummary, getEmbeddingProvider, resetEmbeddingP
 import { createMimoRerankFromEnv, resolveMimoBaseUrl, resolveMimoBillingMode } from '../../../packages/sangfor-rag/src/mimo-rerank-provider.js';
 import { isMimoViaLitellm, resolveLitellmBaseUrl, resolveLitellmEmbeddingModel } from '../../../packages/sangfor-rag/src/litellm-config.js';
 import { probeEmbeddingsEndpoint } from '../../../packages/sangfor-rag/src/openai-embeddings-client.js';
-import { submitFeedback } from '../../../packages/sangfor-feedback/src/index.js';
+import { submitFeedbackWithAuthority } from '../../../packages/sangfor-feedback/src/index.js';
 import { persistConfigPlan, persistFeedbackEvent, storeHealthCheck, isStoreEnabled } from '../../../packages/sangfor-store/src/index.js';
 import { PRODUCTS } from '../../../packages/shared/src/index.js';
 import {
@@ -129,7 +129,7 @@ export async function postImportExcel(body: {
 
 export async function postFeedback(body: Record<string, unknown>) {
   const sourceRoot = resolveEngagementScopedData('data/feedback', 'SANGFOR_FEEDBACK_ROOT');
-  const event = await submitFeedback(body as Parameters<typeof submitFeedback>[0], resolveProductionLocalWriteAuthority({
+  const event = await submitFeedbackWithAuthority(body as Parameters<typeof submitFeedbackWithAuthority>[0], resolveProductionLocalWriteAuthority({
     tenantId: 'local-primary', projectId: process.env.SANGFOR_ENGAGEMENT_ID ?? 'local-primary', actorId: 'operator-console',
     aggregate: 'feedback_lessons', sourceRoot,
   }));

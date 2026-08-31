@@ -1,5 +1,8 @@
-import { spawnSync } from 'node:child_process';
-import { globSync, readFileSync } from 'node:fs';
+import { spawn, spawnSync } from 'node:child_process';
+import { once } from 'node:events';
+import { globSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { AUTHORITY_MANIFEST } from '../packages/sangfor-authority/src/migration-manifest.js';
 import {
@@ -97,7 +100,7 @@ describe('Todo 24 database lane partition gate', () => {
     // Given
     const onDisk = globSync('tests/**/*.test.ts').sort();
     const external = externalDatabaseOnlyTestFiles();
-    expect(external.length).toBe(6);
+    expect(external.length).toBe(7);
 
     // When
     const defaultSelection = defaultSuiteSelection();
@@ -142,7 +145,61 @@ describe('Todo 24 mandatory PostgreSQL profile refusal', () => {
 
     // Then
     expect(result.status).not.toBe(0);
+    expect(result.stdout).toContain('MANDATORY_POSTGRES_SELECTION: 28 exact files');
     expect(`${result.stdout}${result.stderr}`).toContain('MANDATORY_POSTGRES_DATABASE_REQUIRED');
+  });
+
+  it('Given a failing child emits output, When the mandatory profile runs it, Then output and the exact exit are observable', async () => {
+    // Given
+    const bindir = mkdtempSync(join(tmpdir(), 'mandatory-postgres-runner-'));
+    const psql = `#!/bin/sh
+if [ "$1" = "--version" ]; then exit 0; fi
+case "$*" in *extversion*) printf '0.8.1\\n' ;; *) printf '1\\n' ;; esac
+`;
+    const versionOnly = '#!/bin/sh\nexit 0\n';
+    const pnpm = `#!/bin/sh
+if [ "$1 $2 $3" = "exec prisma migrate" ]; then
+  printf 'FAKE_MIGRATION_STARTED\\n' >&2
+  if IFS= read -r reply && [ "$reply" = "continue" ]; then exit 9; fi
+  exit 7
+fi
+exit 88
+`;
+    for (const [name, contents] of [['psql', psql], ['pg_dump', versionOnly], ['pg_restore', versionOnly], ['pnpm', pnpm]]) {
+      writeFileSync(join(bindir, name), contents, { mode: 0o755 });
+    }
+    const child = spawn(process.execPath, ['--import', 'tsx', 'scripts/run-mandatory-postgres-tests.ts', '--require'], {
+      cwd: process.cwd(),
+      env: {
+        ...process.env,
+        PG_BINDIR: bindir,
+        DATABASE_URL: 'postgresql://runtime@fake/blro',
+        BLRO_OWNER_DATABASE_URL: 'postgresql://owner@fake/blro',
+        BLRO_BACKUP_DATABASE_URL: 'postgresql://backup@fake/blro',
+        BLRO_SCRATCH_ADMIN_DATABASE_URL: 'postgresql://admin@fake/postgres',
+      },
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+    let output = '';
+    child.stdout.on('data', (chunk: Buffer) => { output += chunk.toString(); });
+    child.stderr.on('data', (chunk: Buffer) => {
+      const text = chunk.toString();
+      output += text;
+      if (text.includes('FAKE_MIGRATION_STARTED')) child.stdin.write('continue\n');
+    });
+
+    try {
+      // When
+      const [status] = await once(child, 'exit', { signal: AbortSignal.timeout(5_000) });
+
+      // Then
+      expect(status).not.toBe(0);
+      expect(output).toContain('FAKE_MIGRATION_STARTED');
+      expect(output).toContain('exit=9');
+    } finally {
+      child.kill();
+      rmSync(bindir, { recursive: true, force: true });
+    }
   });
 
   it('Given the require flag is omitted, When the mandatory profile starts, Then it exits nonzero', () => {

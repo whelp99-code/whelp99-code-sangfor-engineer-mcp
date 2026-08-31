@@ -1,5 +1,5 @@
 import { readdirSync, readFileSync } from 'node:fs';
-import { basename, join } from 'node:path';
+import { basename, extname, join } from 'node:path';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 
@@ -61,15 +61,24 @@ function pureLoc(path: string): number {
   }).length;
 }
 
-function compilerExports(relativePath: string): string[] {
-  const config = ts.readConfigFile(join(ROOT, 'tsconfig.json'), ts.sys.readFile);
-  const parsed = ts.parseJsonConfigFileContent(config.config, ts.sys, ROOT);
-  const program = ts.createProgram(parsed.fileNames, parsed.options);
+const config = ts.readConfigFile(join(ROOT, 'tsconfig.json'), ts.sys.readFile);
+const parsed = ts.parseJsonConfigFileContent(config.config, ts.sys, ROOT);
+const sourcePaths = readdirSync(SOURCE_DIR, { withFileTypes: true })
+  .filter((entry) => entry.isFile() && ['.ts', '.tsx', '.mts', '.cts'].includes(extname(entry.name)))
+  .map((entry) => join(SOURCE_DIR, entry.name));
+const program = ts.createProgram(sourcePaths, parsed.options);
+const checker = program.getTypeChecker();
+
+class CompilerModuleError extends Error {
+  readonly name = 'CompilerModuleError';
+}
+
+function compilerExports(relativePath: string): readonly string[] {
   const source = program.getSourceFile(join(ROOT, relativePath));
-  if (!source) throw new Error(`Missing API ledger source: ${relativePath}`);
-  const symbol = program.getTypeChecker().getSymbolAtLocation(source);
-  if (!symbol) throw new Error(`Missing API ledger module symbol: ${relativePath}`);
-  return program.getTypeChecker().getExportsOfModule(symbol).map(({ name }) => name).sort();
+  if (!source) throw new CompilerModuleError(`Missing API ledger source: ${relativePath}`);
+  const symbol = checker.getSymbolAtLocation(source);
+  if (!symbol) throw new CompilerModuleError(`Missing API ledger module symbol: ${relativePath}`);
+  return checker.getExportsOfModule(symbol).map(({ name }) => name).sort();
 }
 
 describe('sangfor collector decomposition', () => {

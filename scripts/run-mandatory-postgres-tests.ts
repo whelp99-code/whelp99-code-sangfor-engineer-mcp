@@ -1,5 +1,6 @@
-import { spawnSync } from 'node:child_process';
-import { existsSync, globSync } from 'node:fs';
+import { spawn, spawnSync } from 'node:child_process';
+import { existsSync, globSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import process from 'node:process';
 import { z } from 'zod';
@@ -18,6 +19,7 @@ const ReportSchema = z.object({
 });
 
 type Command = {
+  readonly stage: string;
   readonly executable: string;
   readonly arguments: readonly string[];
   readonly environment: NodeJS.ProcessEnv;
@@ -98,17 +100,37 @@ function assertPgvectorAvailable(psql: string, ownerUrl: string): void {
   }
 }
 
-function run(command: Command): string {
-  const result = spawnSync(command.executable, command.arguments, {
-    cwd: process.cwd(), env: command.environment, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024,
+function run(command: Command): Promise<void> {
+  process.stdout.write(`MANDATORY_POSTGRES_STAGE_START: ${command.stage}\n`);
+  return new Promise((resolvePromise, rejectPromise) => {
+    const child = spawn(command.executable, command.arguments, {
+      cwd: process.cwd(), env: command.environment, stdio: ['inherit', 'pipe', 'pipe'],
+    });
+    child.stdout.on('data', (chunk: Buffer) => { process.stdout.write(chunk); });
+    child.stderr.on('data', (chunk: Buffer) => { process.stderr.write(chunk); });
+    child.once('error', (error) => {
+      rejectPromise(new MandatoryPostgresError(
+        `MANDATORY_POSTGRES_COMMAND_SPAWN_FAILED: stage=${command.stage} command=${command.executable} error=${error.message}`,
+      ));
+    });
+    child.once('close', (status, signal) => {
+      if (status !== 0) {
+        rejectPromise(new MandatoryPostgresError(
+          `MANDATORY_POSTGRES_COMMAND_FAILED: stage=${command.stage} exit=${String(status)} signal=${String(signal)} command=${command.executable}`,
+        ));
+        return;
+      }
+      process.stdout.write(`MANDATORY_POSTGRES_STAGE_PASS: ${command.stage}\n`);
+      resolvePromise();
+    });
   });
-  const output = `${result.stdout}${result.stderr}`;
-  if (result.status !== 0) throw new MandatoryPostgresError(output.trim() || `command failed: ${command.executable}`);
-  return output;
 }
 
-function main(): void {
+async function main(): Promise<void> {
   if (!process.argv.includes('--require')) throw new MandatoryPostgresError('MANDATORY_POSTGRES_REQUIRE_FLAG_REQUIRED');
+  const tests = mandatoryPostgresFiles();
+  assertMandatoryPostgresCoverage(tests.filter((file) => file.includes('postgres')), tests);
+  process.stdout.write(`MANDATORY_POSTGRES_SELECTION: ${tests.length} exact files: ${tests.join(', ')}\n`);
   const databaseUrl = process.env['DATABASE_URL']?.trim();
   const ownerUrl = process.env['BLRO_OWNER_DATABASE_URL']?.trim();
   if (!databaseUrl || !ownerUrl) throw new MandatoryPostgresError('MANDATORY_POSTGRES_DATABASE_REQUIRED');
@@ -121,12 +143,14 @@ function main(): void {
     ?? deriveRoleUrl(ownerUrl, 'postgres', process.env['PGPASSWORD']?.trim() ?? '', 'postgres');
   // Own the toolchain before selecting anything: the suites must never depend on
   // whatever happens to be on the caller's PATH.
+  process.stdout.write('MANDATORY_POSTGRES_STAGE_START: prerequisites\n');
   const bindir = resolvePostgresBindir();
   assertBinariesUsable(bindir);
   const psqlBinary = join(bindir, 'psql');
   assertReachable(psqlBinary, backupUrl, 'MANDATORY_POSTGRES_BACKUP_ROLE_UNUSABLE');
   assertReachable(psqlBinary, scratchAdminUrl, 'MANDATORY_POSTGRES_SCRATCH_ADMIN_UNUSABLE');
   assertPgvectorAvailable(psqlBinary, ownerUrl);
+  process.stdout.write('MANDATORY_POSTGRES_STAGE_PASS: prerequisites\n');
   const environment = {
     ...process.env,
     // Every child inherits the resolved bindir first on PATH.
@@ -140,32 +164,38 @@ function main(): void {
     SANGFOR_RUN_STORE_IT: '1',
     SANGFOR_REQUIRE_POSTGRES_TESTS: '1',
   };
-  run({ executable: 'pnpm', arguments: ['exec', 'prisma', 'migrate', 'deploy'], environment: { ...environment, DATABASE_URL: ownerUrl } });
-  run({ executable: 'pnpm', arguments: ['run', 'db:generate'], environment });
+  await run({ stage: 'prisma-migrate', executable: 'pnpm', arguments: ['exec', 'prisma', 'migrate', 'deploy'], environment: { ...environment, DATABASE_URL: ownerUrl } });
+  await run({ stage: 'prisma-generate', executable: 'pnpm', arguments: ['run', 'db:generate'], environment });
 
-  const tests = mandatoryPostgresFiles();
-  assertMandatoryPostgresCoverage(tests.filter((file) => file.includes('postgres')), tests);
-  const report = ReportSchema.parse(JSON.parse(run({
-    executable: 'pnpm',
-    arguments: ['exec', 'vitest', 'run', '--config', 'vitest.postgres.config.ts',
-      '--maxWorkers=1', '--reporter=json', ...tests],
-    environment,
-  })));
+  const reportDirectory = mkdtempSync(join(tmpdir(), 'mandatory-postgres-report-'));
+  const reportPath = join(reportDirectory, 'vitest.json');
+  let report: z.infer<typeof ReportSchema>;
+  try {
+    await run({
+      stage: `vitest-${tests.length}-file-profile`,
+      executable: 'pnpm',
+      arguments: ['exec', 'vitest', 'run', '--config', 'vitest.postgres.config.ts',
+        '--maxWorkers=1', '--reporter=verbose', '--reporter=json', `--outputFile.json=${reportPath}`, ...tests],
+      environment,
+    });
+    report = ReportSchema.parse(JSON.parse(readFileSync(reportPath, 'utf8')));
+  } finally {
+    rmSync(reportDirectory, { recursive: true, force: true });
+  }
   const executed = report.testResults.map((result) => tests.find((file) => result.name.endsWith(file))).filter((file) => file !== undefined);
   if (!report.success || report.numPendingTests !== 0 || new Set(executed).size !== tests.length) {
     throw new MandatoryPostgresError(`MANDATORY_POSTGRES_CENSUS_REFUSED: selected=${tests.length} executed=${new Set(executed).size} pending=${report.numPendingTests}`);
   }
-  const verifier = run({
+  await run({
+    stage: 'rls-isolation-verifier',
     executable: process.execPath,
     arguments: ['--import', 'tsx', 'scripts/verify-rls-isolation.ts', '--require'],
     environment,
   });
-  process.stdout.write(`MANDATORY_POSTGRES_PASS (${tests.length} exact files, ${report.numTotalTests} tests, 0 skipped: ${tests.join(', ')})\n${verifier}`);
+  process.stdout.write(`MANDATORY_POSTGRES_PASS (${tests.length} exact files, ${report.numTotalTests} tests, 0 skipped: ${tests.join(', ')})\n`);
 }
 
-try {
-  main();
-} catch (error) {
+main().catch((error: unknown) => { // no-excuse-ok: catch
   process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
   process.exitCode = 1;
-}
+});

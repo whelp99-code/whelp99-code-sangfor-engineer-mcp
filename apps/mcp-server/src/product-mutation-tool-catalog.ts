@@ -1,7 +1,10 @@
 import { dryRunProductChange, applyApprovedProductChange, verifyProductChange } from '../../../packages/sangfor-product-adapters/src/index.js';
 import { iagOrchestratorToolCatalog } from './iag-orchestrator-tools.js';
 import type { ToolCatalogEntry } from './mcp-contracts.js';
-import { requiredBrowserExecutionPort } from './browser-runtime-composition.js';
+import {
+  requiredBrowserExecutionPort,
+  requiredIagBrowserExecutionPorts,
+} from './browser-runtime-composition.js';
 
 export const productMutationToolCatalog: readonly ToolCatalogEntry[] = [
   ["sangfor_dry_run_product_change", {
@@ -24,5 +27,5 @@ export const productMutationToolCatalog: readonly ToolCatalogEntry[] = [
     inputSchema: { type: 'object', properties: { plan: { type: 'object' }, observed: { type: 'object' } }, required: ['plan'] },
     handler: verifyProductChange
   }],
-  ...Object.entries(iagOrchestratorToolCatalog(requiredBrowserExecutionPort)),
+  ...Object.entries(iagOrchestratorToolCatalog(requiredIagBrowserExecutionPorts)),
 ];

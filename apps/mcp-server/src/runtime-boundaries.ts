@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { runtimeJsonObjectSchema } from '../../../packages/shared/src/runtime-json-codecs.js';
 import { parseRuntimeJson, type RuntimeCodec } from '../../../packages/shared/src/runtime-schema.js';
+import type { ObserverProfile } from '../../../packages/sangfor-observer/src/index.js';
 
 export type JsonRpcRequest = {
   readonly jsonrpc: '2.0';
@@ -39,6 +40,19 @@ const searchGapSchema: RuntimeCodec<SearchGapEvent> = z.object({
   reason: z.enum(['no_hits', 'low_score']),
 }).strict();
 
+const observerProfileSchema: RuntimeCodec<ObserverProfile> = z.object({
+  product: z.string().min(1).max(256),
+  expectedOrigin: z.string().min(1).max(2_048),
+  cdpPort: z.number().int().min(1).max(65_535),
+  firmwareTruthId: z.string().min(1).max(512),
+  deviceScope: z.string().min(1).max(512),
+}).strict();
+
+const observerProfileRegistrySchema = z.object({
+  version: z.literal(1),
+  profiles: z.array(observerProfileSchema).min(1).max(100),
+}).strict().transform(({ profiles }) => profiles);
+
 export function parseBoundaryMcpStdioRequestV1(source: string): JsonRpcRequest {
   return parseRuntimeJson(source, {
     schema: requestSchema,
@@ -52,5 +66,19 @@ export function parseBoundaryMcpSearchGapLineV1(source: string): SearchGapEvent 
     schema: searchGapSchema,
     schemaName: 'mcp-server.search-gap-event.v1',
     policy: 'freeze',
+  });
+}
+
+export function parseObserverProfilesEnvironment(source: string): readonly ObserverProfile[] {
+  return parseRuntimeJson(source, {
+    schema: observerProfileRegistrySchema,
+    schemaName: 'mcp-server.observer-profile-registry.v1',
+    policy: 'deny',
+    expectedVersion: 1,
+    maxBytes: 256 * 1_024,
+    maxDepth: 3,
+    maxNodes: 1_000,
+    maxArrayLength: 100,
+    maxObjectKeys: 6,
   });
 }

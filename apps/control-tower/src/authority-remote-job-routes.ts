@@ -1,5 +1,6 @@
 import type http from 'node:http';
 import { RequestBodyTooLargeError } from '../../../packages/shared/src/runtime-body-cap.js';
+import { RuntimeSchemaError } from '../../../packages/shared/src/runtime-schema.js';
 import type { AuthorityRuntimePort } from './authority-runtime.js';
 import { readJsonBody, sendJson } from './health-routes.js';
 
@@ -28,7 +29,9 @@ export async function routeAuthorityRemoteJob(input: AuthorityRemoteJobRouteInpu
     ));
   } catch (error) {
     if (error instanceof RequestBodyTooLargeError) throw error;
-    if (error instanceof SyntaxError || (error instanceof Error && error.name === 'ZodError')) {
+    if (error instanceof SyntaxError
+      || (error instanceof RuntimeSchemaError && error.policy === 'deny')
+      || (error instanceof Error && error.name === 'ZodError')) {
       sendJson(input.response, { error: 'INVALID_REMOTE_JOB_REQUEST' }, 400);
       return true;
     }

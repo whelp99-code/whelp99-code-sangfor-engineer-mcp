@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { PrismaClient } from '@prisma/client';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -11,6 +12,7 @@ const migrations = [
   'prisma/migrations/20260827010000_todo24_scoped_index/migration.sql',
   'prisma/migrations/20260827010200_todo24_local_intent_ownership/migration.sql',
   'prisma/migrations/20260827010500_todo24_composite_ownership/migration.sql',
+  'prisma/migrations/20260827190000_fix_rag_cohort_promotion_scope/migration.sql',
 ] as const;
 
 const database = new PrismaClient({ datasources: { db: { url: ownerUrl } } });
@@ -27,7 +29,10 @@ async function catalogSnapshot(): Promise<readonly string[]> {
     UNION ALL
     SELECT 'index:' || c.relname || ':' || pg_get_indexdef(c.oid) AS definition
     FROM pg_class c
-    WHERE c.relname='BlroSourceRootOwner_projectId_idx'
+    WHERE c.relname IN (
+      'BlroSourceRootOwner_projectId_idx',
+      'BlroRagEmbeddingCohort_one_active_scope_key'
+    )
     ORDER BY definition
   `);
   return rows.map((row) => row.definition);
@@ -51,6 +56,63 @@ describe('Todo 24 migration replay', () => {
     // Then
     expect(result.status, `${result.stdout}${result.stderr}`).toBe(0);
     expect(await catalogSnapshot()).toEqual(snapshot);
+  });
+
+  it('Given active cohorts from multiple epochs, When the corrective migration runs, Then it keeps the newest and restores FORCE RLS', async () => {
+    // Given
+    const suffix = randomUUID();
+    const tenantId = `migration-cohort-tenant-${suffix}`;
+    const projectId = `migration-cohort-project-${suffix}`;
+    await database.$executeRawUnsafe(`INSERT INTO "BlroTenant" ("id","name") VALUES ($1,'migration cohort')`, tenantId);
+    await database.$transaction(async (transaction) => {
+      await transaction.$executeRawUnsafe(`SELECT set_config('app.project_id',$1,true)`, projectId);
+      await transaction.$executeRawUnsafe(
+        `INSERT INTO "BlroProject" ("id","tenantId","name") VALUES ($1,$2,'migration cohort')`,
+        projectId, tenantId,
+      );
+    });
+    await database.$executeRawUnsafe(`DROP INDEX "BlroRagEmbeddingCohort_one_active_scope_key"`);
+    await database.$executeRawUnsafe(`CREATE UNIQUE INDEX "BlroRagEmbeddingCohort_one_active_epoch_key"
+      ON "BlroRagEmbeddingCohort" ("tenantId","projectId","indexEpoch") WHERE "active"`);
+    await database.$transaction(async (transaction) => {
+      await transaction.$executeRawUnsafe(`SELECT set_config('app.project_id',$1,true)`, projectId);
+      await transaction.$executeRawUnsafe(`INSERT INTO "BlroRagEmbeddingCohort"
+        ("id","tenantId","projectId","indexEpoch","backend","model","dimensions","active") VALUES
+        ('older',$1,$2,10,'hash','hash-v1',384,true),
+        ('newer',$1,$2,11,'hash','hash-v1',384,true)`, tenantId, projectId);
+    });
+
+    // When
+    const migration = migrations.at(-1);
+    if (!migration) throw new TypeError('CORRECTIVE_MIGRATION_MISSING');
+    const result = spawnSync(process.env['PSQL_BIN'] ?? 'psql', [ownerUrl, '-v', 'ON_ERROR_STOP=1', '-f', migration], {
+      cwd: process.cwd(), encoding: 'utf8',
+    });
+
+    try {
+      // Then
+      expect(result.status, `${result.stdout}${result.stderr}`).toBe(0);
+      const active = await database.$transaction(async (transaction) => {
+        await transaction.$executeRawUnsafe(`SELECT set_config('app.project_id',$1,true)`, projectId);
+        return transaction.$queryRawUnsafe<Array<{ id: string }>>(
+          `SELECT "id" FROM "BlroRagEmbeddingCohort" WHERE "projectId"=$1 AND "active" ORDER BY "id"`, projectId,
+        );
+      });
+      expect(active).toEqual([{ id: 'newer' }]);
+      expect(await database.$queryRawUnsafe<Array<{ enabled: boolean; forced: boolean; policy: string }>>(
+        `SELECT c.relrowsecurity AS enabled,c.relforcerowsecurity AS forced,p.polname AS policy
+         FROM pg_class c JOIN pg_policy p ON p.polrelid=c.oid
+         WHERE c.relname='BlroRagEmbeddingCohort'`,
+      )).toEqual([{ enabled: true, forced: true, policy: 'BlroRagEmbeddingCohort_scope' }]);
+    } finally {
+      if (result.status !== 0) spawnSync(process.env['PSQL_BIN'] ?? 'psql', [ownerUrl, '-v', 'ON_ERROR_STOP=1', '-f', migration]);
+      await database.$transaction(async (transaction) => {
+        await transaction.$executeRawUnsafe(`SELECT set_config('app.project_id',$1,true)`, projectId);
+        await transaction.$executeRawUnsafe(`DELETE FROM "BlroRagEmbeddingCohort" WHERE "projectId"=$1`, projectId);
+        await transaction.$executeRawUnsafe(`DELETE FROM "BlroProject" WHERE "id"=$1`, projectId);
+      });
+      await database.$executeRawUnsafe(`DELETE FROM "BlroTenant" WHERE "id"=$1`, tenantId);
+    }
   });
 
   it('keeps the complete replay sequence catalog-stable', async () => {

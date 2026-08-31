@@ -10,9 +10,13 @@ export function startStdioServer() {
   if (!isJmBrowserRuntimeConfigured()) {
     const localRuntime = createDefaultJmBrowserRuntime();
     const remoteExecutionPort = createRemoteBrowserExecutionPortFromEnv();
+    const remoteVerificationPort = remoteExecutionPort === undefined
+      ? undefined
+      : createRemoteBrowserExecutionPortFromEnv(process.env, 'verification');
     configureJmBrowserRuntime({
       ...localRuntime,
       executionPort: remoteExecutionPort ?? localRuntime.executionPort,
+      verificationPort: remoteVerificationPort ?? localRuntime.verificationPort,
     });
   }
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout, terminal: false });

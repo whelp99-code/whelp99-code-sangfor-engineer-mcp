@@ -15,6 +15,7 @@ const WIKI_MODULES = [
   'packages/sangfor-wiki/src/wiki-seed.ts',
   'packages/sangfor-wiki/src/wiki-store.ts',
   'packages/sangfor-wiki/src/wiki-search.ts',
+  'packages/sangfor-wiki/src/wiki-write-compat.ts',
   'packages/sangfor-wiki/src/runtime-codecs.ts',
 ] as const;
 
@@ -22,16 +23,23 @@ const PUBLIC_SURFACE = [
   'ObsidianVaultAdapter',
   'GitHubWikiGitAdapter',
   'applyGitHubWikiUpdate',
+  'applyGitHubWikiUpdateWithAuthority',
   'applyObsidianWikiUpdate',
+  'applyObsidianWikiUpdateWithAuthority',
   'applyWikiUpdate',
   'applyWikiUpdateWithAdapter',
+  'applyWikiUpdateWithAdapterAndAuthority',
+  'applyWikiUpdateWithAuthority',
   'approveWikiUpdate',
+  'approveWikiUpdateWithAuthority',
   'listKnowledgeCards',
   'listSeedWiki',
   'mintWikiApproval',
   'proposeWikiUpdate',
+  'proposeWikiUpdateWithAuthority',
   'searchWiki',
   'upsertKnowledgeCard',
+  'upsertKnowledgeCardWithAuthority',
 ] as const;
 
 function pureLineCount(source: string): number {

@@ -125,4 +125,3 @@ export function verifyIagMutationResult(input: {
   if (!resultHasExactAuthority(input.result, input.action, proof)) return refused('result_authority_refused');
   return { ok: true, value: input.result };
 }
-

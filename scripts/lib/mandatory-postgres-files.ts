@@ -8,6 +8,7 @@ export const MANDATORY_POSTGRES_AUXILIARY_FILES = [
   'tests/blro-two-replica.test.ts',
   'tests/mandatory-postgres/authority-concurrency.test.ts',
   'tests/mandatory-postgres/local-writer-refusal.test.ts',
+  'tests/mandatory-postgres/rag-cohort-promotion-concurrency.test.ts',
   'tests/nonce-gate-wiring.test.ts',
   'tests/store.test.ts',
 ] as const;

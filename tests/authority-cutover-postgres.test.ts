@@ -4,6 +4,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { PrismaClient } from '@prisma/client';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { beforeCoordinationDeadline, coordinationSignal } from './support/async-coordination.js';
+import { releaseTestSourceRootOwner } from './support/postgres-source-root-owner.js';
 import {
   CutoverState,
   PostgresAuthorityWriteFence,
@@ -153,7 +155,11 @@ describeDatabase('authority cutover PostgreSQL coordination', () => {
       await expect(intents.reconcile({...reconcile,expectedAfterDigest:'0'.repeat(64)})).rejects.toThrow('LOCAL_WRITE_RECONCILE_EXPECTATION_MISMATCH');
       await expect(intents.reconcile(reconcile)).resolves.toMatchObject({status:'COMPLETED'});
       await expect(second.freezeVerified(scope,{at:'2026-08-26T00:02:00.000Z',expectedRevision:shadow.revision,verifyFinalParity:async()=>undefined})).resolves.toMatchObject({state:CutoverState.FROZEN});
-    } finally { await victim.$disconnect(); rmSync(root, { recursive: true, force: true }); }
+    } finally {
+      await victim.$disconnect();
+      await releaseTestSourceRootOwner(prisma, { tenantId, projectId, sourceRoot: root });
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 
   it('Given 32 local writers racing freeze, When the shared advisory lock orders them, Then each write is included or refused before bytes change', async () => {
@@ -167,52 +173,79 @@ describeDatabase('authority cutover PostgreSQL coordination', () => {
     const fence = new PostgresAuthorityWriteFence(prisma);
     const epoch = (await first.read(scope)).epoch;
     const authority = { ...scope, tenantId, actorId, sourceRoot: root, epoch, fence } as const;
+    const firstEntered = coordinationSignal();
+    const firstMayFinish = coordinationSignal();
+    const freezeHasLock = coordinationSignal();
+    const freezeMayCommit = coordinationSignal();
+    const outstanding: Promise<unknown>[] = [];
     try {
-      let releaseFirst: (() => void) | undefined;
-      let firstEntered: (() => void) | undefined;
-      const entered = new Promise<void>((resolve) => { firstEntered = resolve; });
-      const release = new Promise<void>((resolve) => { releaseFirst = resolve; });
       const firstWriter = fence.write(authority, { operation: 'test.first', targetPaths: [path] }, async () => {
-        firstEntered?.();
-        await release;
+        firstEntered.release();
+        await firstMayFinish.promise;
         appendFileSync(path, '0\n', { encoding: 'utf8', flush: true });
         return 0;
       });
-      await entered;
+      outstanding.push(firstWriter);
+      await beforeCoordinationDeadline('first writer entered', firstEntered.promise);
+
       const pendingWriters = Array.from({ length: 15 }, (_, offset) => fence.write(authority, {
         operation: `test.pending-${offset}`, targetPaths: [path],
       }, () => appendFileSync(path, `pending-${offset}\n`, { flush: true })));
       const pendingOutcomesPromise = Promise.allSettled(pendingWriters);
+      outstanding.push(pendingOutcomesPromise);
+      const pendingOutcomes = await beforeCoordinationDeadline('pending writers refused', pendingOutcomesPromise);
+      for (const outcome of pendingOutcomes) {
+        expect(outcome).toMatchObject({
+          status: 'rejected',
+          reason: { code: 'LOCAL_WRITE_PENDING_RECONCILIATION' },
+        });
+      }
       await expect(second.freezeVerified(scope, {
         at: '2026-08-26T00:01:00.000Z', expectedRevision: shadow.revision,
         verifyFinalParity: async () => undefined,
       })).rejects.toThrow('CUTOVER_PENDING_LOCAL_WRITE');
-      const pendingOutcomes = await pendingOutcomesPromise;
-      releaseFirst?.(); await firstWriter;
-      let freezeEntered: (() => void) | undefined; let releaseFreeze: (() => void) | undefined;
-      const freezeHasLock = new Promise<void>((resolve) => { freezeEntered = resolve; });
-      const freezeMayCommit = new Promise<void>((resolve) => { releaseFreeze = resolve; });
+
+      firstMayFinish.release();
+      await beforeCoordinationDeadline('first writer finished', firstWriter);
       let includedBytes = '';
       const freezing = second.freezeVerified(scope, {
         at: '2026-08-26T00:01:00.000Z', expectedRevision: shadow.revision,
-        verifyFinalParity: async () => { includedBytes = readFileSync(path, 'utf8'); freezeEntered?.(); await freezeMayCommit; },
+        verifyFinalParity: async () => {
+          includedBytes = readFileSync(path, 'utf8');
+          freezeHasLock.release();
+          await freezeMayCommit.promise;
+        },
       });
-      await freezeHasLock;
+      outstanding.push(freezing);
+      await beforeCoordinationDeadline('freeze acquired lock', freezeHasLock.promise);
+
       const lateWriters = Array.from({ length: 16 }, (_, offset) => fence.write(authority, {
         operation: `test.late-${offset}`, targetPaths: [path],
       }, () => appendFileSync(path, `late-${offset}\n`, { flush: true })));
-      releaseFreeze?.();
-      const outcomes = await Promise.allSettled([...lateWriters, freezing]);
-      expect(pendingOutcomes.every((outcome) => outcome.status === 'rejected')).toBe(true);
-      const frozen = await second.read(scope);
+      const lateOutcomesPromise = Promise.allSettled(lateWriters);
+      outstanding.push(lateOutcomesPromise);
+      freezeMayCommit.release();
+      const [lateOutcomes, frozen] = await Promise.all([
+        beforeCoordinationDeadline('late writers refused', lateOutcomesPromise),
+        beforeCoordinationDeadline('freeze committed', freezing),
+      ]);
+      for (const outcome of lateOutcomes) {
+        expect(outcome).toMatchObject({
+          status: 'rejected',
+          reason: { code: 'LOCAL_AUTHORITY_WRITE_FENCED' },
+        });
+      }
       expect(frozen.state).toBe(CutoverState.FROZEN);
       expect(readFileSync(path, 'utf8')).toBe(includedBytes);
-      expect(outcomes.filter((outcome) => outcome.status === 'fulfilled').length).toBeGreaterThan(0);
       const before = createHash('sha256').update(readFileSync(path)).digest('hex');
       await expect(fence.write(authority, { operation: 'test.refused', targetPaths: [path] }, () => appendFileSync(path, 'late\n', { flush: true })))
         .rejects.toThrow('LOCAL_AUTHORITY_WRITE_FENCED');
       expect(createHash('sha256').update(readFileSync(path)).digest('hex')).toBe(before);
     } finally {
+      firstMayFinish.release();
+      freezeMayCommit.release();
+      await Promise.allSettled(outstanding);
+      await releaseTestSourceRootOwner(prisma, { tenantId, projectId, sourceRoot: root });
       rmSync(root, { recursive: true, force: true });
     }
   });

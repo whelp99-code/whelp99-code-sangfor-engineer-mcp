@@ -1,12 +1,9 @@
-import { randomUUID } from 'node:crypto';
 import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
-import type { BrowserExecutionRequest } from '../packages/sangfor-browser-contracts/src/index.js';
 import {
   createLocalJmExecutionPort,
   createPlaywrightJmBrowserDriver,
-  type JmBrowserDriver,
   type LocalJmSession,
 } from '../packages/sangfor-jm-execution/src/index.js';
 import {
@@ -15,82 +12,13 @@ import {
   getOperatorSession,
   startOperatorSession,
 } from '../packages/sangfor-operator/src/index.js';
+import type { ApprovalActionRef } from '../packages/sangfor-operator/src/approval.js';
 import {
-  signApprovalToken,
-  type ApprovalActionRef,
-  type SignedApproval,
-} from '../packages/sangfor-operator/src/approval.js';
-
-function argument(name: string): string | undefined {
-  const index = process.argv.indexOf(name);
-  return index >= 0 ? process.argv[index + 1] : undefined;
-}
-
-function baseRequest(
-  session: LocalJmSession,
-  operation: BrowserExecutionRequest['operation'],
-): BrowserExecutionRequest {
-  return {
-    schemaVersion: 'browser-execution-request.v1',
-    requestId: `qa-${operation.kind}-${randomUUID()}`,
-    sessionId: session.sessionId,
-    origin: session.origin,
-    operation,
-  };
-}
-
-function noOpDriver(): JmBrowserDriver {
-  return {
-    async execute() {
-      throw new Error('Driver must not execute for this refusal scenario.');
-    },
-    async closeSession() {},
-  };
-}
-
-function approval(
-  secret: string,
-  action: ApprovalActionRef,
-): SignedApproval {
-  const unsigned: Omit<SignedApproval, 'approvalToken'> = {
-    approvedBy: 'ulw-browser-qa',
-    changeTicketId: 'CHG-JM-BROWSER-QA',
-    rollbackPlanId: 'RBK-JM-BROWSER-QA',
-    nonce: randomUUID(),
-    expiresAt: new Date(Date.now() + 60_000).toISOString(),
-
-  authorityEpoch: 0,};
-  return {
-    ...unsigned,
-    approvalToken: signApprovalToken(secret, action, unsigned),
-  };
-}
-
-async function refusalScenario(scenario: string, baseUrl: string) {
-  const parsedUrl = new URL(baseUrl);
-  const session: LocalJmSession = {
-    sessionId: 'qa-local-session',
-    origin: parsedUrl.origin,
-    targetUrl: parsedUrl.toString(),
-    mode: 'lab',
-  };
-  const port = createLocalJmExecutionPort({
-    resolveSession: () => session,
-    driver: noOpDriver(),
-  });
-  const input = scenario === 'bad-origin'
-    ? {
-        ...baseRequest(session, { kind: 'observe_console' as const }),
-        origin: 'https://other.example',
-      }
-    : {
-        ...baseRequest(session, { kind: 'observe_console' as const }),
-        operation: { kind: 'observe_console', selector: '#secret' },
-      };
-  const output = await port.execute(input as BrowserExecutionRequest);
-  console.log(JSON.stringify(output));
-  if (output.status !== 'REFUSED') process.exitCode = 1;
-}
+  parseBrowserPortQaCommand,
+  printBrowserPortQaHelp,
+} from './lib/browser-port-qa-cli.js';
+import { runRefusalScenario } from './lib/browser-port-qa-refusal.js';
+import { approval, baseRequest } from './lib/browser-port-qa-requests.js';
 
 async function localReadBack(baseUrl: string) {
   const parsedUrl = new URL(baseUrl);
@@ -271,15 +199,25 @@ async function localReadBack(baseUrl: string) {
 }
 
 async function main() {
-  const scenario = argument('--scenario');
-  if (!scenario) throw new Error('Missing --scenario.');
-  const baseUrl = argument('--base-url') ?? 'http://127.0.0.1:3400/hci';
-  if (scenario === 'forbidden-operation' || scenario === 'bad-origin') {
-    await refusalScenario(scenario, baseUrl);
-    return;
+  const command = parseBrowserPortQaCommand(process.argv.slice(2));
+  switch (command.kind) {
+    case 'help':
+      printBrowserPortQaHelp();
+      return;
+    case 'refusal': {
+      const output = await runRefusalScenario(command.scenario, command.baseUrl);
+      console.log(JSON.stringify(output));
+      if (output.status !== 'REFUSED') process.exitCode = 1;
+      return;
+    }
+    case 'local-readback':
+      await localReadBack(command.baseUrl);
+      return;
+    default: {
+      const exhaustive: never = command;
+      return exhaustive;
+    }
   }
-  if (scenario !== 'local-readback') throw new Error(`Unknown scenario: ${scenario}`);
-  await localReadBack(baseUrl);
 }
 
 main().catch((error) => {
