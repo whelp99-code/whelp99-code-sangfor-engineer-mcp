@@ -33,6 +33,24 @@ function loadedDigest(raw: unknown): string | undefined {
   return parsed.success ? parsed.data.reportDigest : undefined;
 }
 
+async function mutationRefused(
+  database: PgvectorDatabase,
+  scope: PgvectorScope,
+  query: string,
+  ...values: readonly unknown[]
+): Promise<boolean> {
+  try {
+    await database.$transaction(async (transaction) => {
+      await transaction.$executeRawUnsafe(`SELECT set_config('app.project_id',$1,true)`, scope.projectId);
+      await transaction.$executeRawUnsafe(query, ...values);
+    });
+    return false;
+  } catch (error) {
+    return error instanceof Error
+      && error.message.includes('BLRO_RAG_INDEX_PROMOTION_EVIDENCE_APPEND_ONLY');
+  }
+}
+
 async function routeReason(store: IndexPromotionStore, scope: PgvectorScope): Promise<string> {
   const routed = await new IndexPromotionRouter(store).search(
     { scope, query: hashEmbedding('oracle'), filters: {}, limit: 1 },
@@ -106,17 +124,25 @@ export async function exercisePromotionHistory(input: ScenarioInput) {
 
   await input.owner.$transaction(async (transaction) => {
     await transaction.$executeRawUnsafe(`SELECT set_config('app.project_id',$1,true)`, alternateScope.projectId);
+    await transaction.$executeRawUnsafe(`ALTER TABLE "BlroRagIndexPromotionEvidence"
+      DISABLE TRIGGER "BlroRagIndexPromotionEvidence_append_only"`);
     await transaction.$executeRawUnsafe(`UPDATE "BlroRagIndexPromotionEvidence" SET "evidenceCanonical"='corrupt'
       WHERE "tenantId"=$1 AND "projectId"=$2 AND "nonce"=$3`, alternateScope.tenantId, alternateScope.projectId, alternate.evidence.nonce);
+    await transaction.$executeRawUnsafe(`ALTER TABLE "BlroRagIndexPromotionEvidence"
+      ENABLE TRIGGER "BlroRagIndexPromotionEvidence_append_only"`);
   });
   const corruptReason = await routeReason(restarted, alternateScope);
   await input.owner.$transaction(async (transaction) => {
     await transaction.$executeRawUnsafe(`SELECT set_config('app.project_id',$1,true)`, alternateScope.projectId);
+    await transaction.$executeRawUnsafe(`ALTER TABLE "BlroRagIndexPromotionEvidence"
+      DISABLE TRIGGER "BlroRagIndexPromotionEvidence_append_only"`);
     await transaction.$executeRawUnsafe(`UPDATE "BlroRagIndexPromotionEvidence" SET "evidenceCanonical"=$4
       WHERE "tenantId"=$1 AND "projectId"=$2 AND "nonce"=$3`, alternateScope.tenantId, alternateScope.projectId,
     alternate.evidence.nonce, canonicalPromotionJson(alternate.evidence));
     await transaction.$executeRawUnsafe(`DELETE FROM "BlroRagIndexPromotionEvidence"
       WHERE "tenantId"=$1 AND "projectId"=$2 AND "nonce"=$3`, alternateScope.tenantId, alternateScope.projectId, alternate.evidence.nonce);
+    await transaction.$executeRawUnsafe(`ALTER TABLE "BlroRagIndexPromotionEvidence"
+      ENABLE TRIGGER "BlroRagIndexPromotionEvidence_append_only"`);
   });
   const missingReason = await routeReason(restarted, alternateScope);
   await input.owner.$transaction(async (transaction) => {
@@ -127,8 +153,36 @@ export async function exercisePromotionHistory(input: ScenarioInput) {
     alternate.evidence.nonce, alternate.report.cohortId, alternate.report.indexEpoch, alternate.evidence.authorityActorId,
     canonicalPromotionJson(alternate.evidence), canonicalPromotionJson(alternate.evidence), alternate.report.reportDigest);
   });
+
+  const historyUpdateRefused = await mutationRefused(input.database, input.scope,
+    `UPDATE "BlroRagIndexPromotionEvidence" SET "evidenceCanonical"='attacker-rewrite'
+      WHERE "tenantId"=$1 AND "projectId"=$2 AND "nonce"=$3`,
+    input.scope.tenantId, input.scope.projectId, input.nonceA);
+  const historyDeleteRefused = await mutationRefused(input.database, input.scope,
+    `DELETE FROM "BlroRagIndexPromotionEvidence"
+      WHERE "tenantId"=$1 AND "projectId"=$2 AND "nonce"=$3`,
+    input.scope.tenantId, input.scope.projectId, input.nonceA);
+  const promotionDeleteCount = await input.database.$transaction(async (transaction) => {
+    await transaction.$executeRawUnsafe(`SELECT set_config('app.project_id',$1,true)`, input.scope.projectId);
+    return transaction.$executeRawUnsafe(`DELETE FROM "BlroRagIndexPromotion"
+      WHERE "tenantId"=$1 AND "projectId"=$2`, input.scope.tenantId, input.scope.projectId);
+  });
+  let replayAfterMutationCode: string | undefined;
+  try {
+    await promotion.apply({ scope: input.scope, evidence: first.evidence, now: second.now, reason: 'mutation replay' });
+  } catch (error) {
+    replayAfterMutationCode = refusalCode(error);
+  }
+  const restored = await promotionFixture({
+    promotion, scope: input.scope, authority: input.authority, nonce: `${input.nonceB}-restored`,
+  });
+  await promotion.apply({
+    scope: input.scope, evidence: restored.evidence, now: restored.now, reason: 'post-exploit fixture restore',
+  });
+
   return {
     oldReplayCode, concurrentCodes, restartedDigest, baseHistory: baseHistory.map((row) => row.nonce),
     crossScopeDigest, crossHistory: crossHistory.map((row) => row.nonce), corruptReason, missingReason,
+    historyUpdateRefused, historyDeleteRefused, promotionDeleteCount, replayAfterMutationCode,
   };
 }

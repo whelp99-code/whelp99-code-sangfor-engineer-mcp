@@ -120,9 +120,15 @@ export async function verifyRlsOperationMatrix(
       if (!source) throw new Error(`RLS_MATRIX_ROW_MISSING: ${table}:${scope.scope}`);
       const conflictColumns = primaryKeys.get(table)?.map((column) => `"${column}"`).join(',');
       if (!conflictColumns) throw new Error(`RLS_MATRIX_PRIMARY_KEY_MISSING: ${table}`);
+      const insertSource = table === 'BlroRagIndexPromotionEvidence'
+        ? JSON.stringify({
+          ...z.record(z.unknown()).parse(JSON.parse(source)),
+          nonce: createHash('sha256').update(`${table}:${scope.scope}`).digest('hex'),
+        })
+        : source;
       const inserted = await mutation(database,
         `INSERT INTO "${table}" SELECT (jsonb_populate_record(NULL::"${table}",$1::jsonb)).* ON CONFLICT (${conflictColumns}) DO UPDATE SET "${projectColumn}"=EXCLUDED."${projectColumn}"`,
-        [source],
+        [insertSource],
       );
       const insertAllowed = !('error' in inserted) && inserted.count === 1;
       const insertDomainRefused = scope.scope === 'exact' && table === 'BlroAuditEvent' && 'error' in inserted;
@@ -135,9 +141,10 @@ export async function verifyRlsOperationMatrix(
       );
       const updateCount = 'count' in updated ? updated.count : -1;
       const updateAllowed = updateCount === 1;
-      const updateDomainRefused = scope.scope === 'exact' && table === 'BlroAuditEvent' && 'error' in updated;
+      const appendOnly = table === 'BlroAuditEvent' || table === 'BlroRagIndexPromotionEvidence';
+      const updateDomainRefused = scope.scope === 'exact' && appendOnly && 'error' in updated;
       cells.push({ table, operation: 'UPDATE', scope: scope.scope, result: updateAllowed ? 'ALLOWED' : updateDomainRefused ? 'DOMAIN_REFUSED' : updateCount === 0 ? 'HIDDEN' : classifyRejected(updated) });
-      if (!(updateAllowed === (scope.scope === 'exact' && table !== 'BlroAuditEvent') || updateDomainRefused || (scope.scope !== 'exact' && updateCount === 0))) {
+      if (!(updateAllowed === (scope.scope === 'exact' && !appendOnly) || updateDomainRefused || (scope.scope !== 'exact' && updateCount === 0))) {
         problems.push(`${table}: UPDATE ${scope.scope} classification invalid`);
       }
 
@@ -146,7 +153,10 @@ export async function verifyRlsOperationMatrix(
       const deleteAllowed = deleteCount === 1;
       const deleteDomainRefused = scope.scope === 'exact' && 'error' in deleted;
       cells.push({ table, operation: 'DELETE', scope: scope.scope, result: deleteAllowed ? 'ALLOWED' : deleteDomainRefused ? 'DOMAIN_REFUSED' : deleteCount === 0 ? 'HIDDEN' : classifyRejected(deleted) });
-      if (!(scope.scope === 'exact' ? deleteAllowed || deleteDomainRefused : deleteCount === 0)) problems.push(`${table}: DELETE ${scope.scope} classification invalid`);
+      const appendOnlyDeleteRefused = table === 'BlroRagIndexPromotionEvidence' && deleteDomainRefused;
+      if (!(scope.scope === 'exact' ? appendOnlyDeleteRefused || (table !== 'BlroRagIndexPromotionEvidence' && (deleteAllowed || deleteDomainRefused)) : deleteCount === 0)) {
+        problems.push(`${table}: DELETE ${scope.scope} classification invalid`);
+      }
     }
   }
 

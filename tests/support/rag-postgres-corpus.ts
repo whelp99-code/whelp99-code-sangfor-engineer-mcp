@@ -50,7 +50,11 @@ export async function cleanupRagProjects(owner: PrismaClient, projectIds: readon
     }
     await owner.$transaction(async (transaction) => {
       await transaction.$executeRawUnsafe(`SELECT set_config('app.project_id',$1,true)`, projectId);
+      await transaction.$executeRawUnsafe(`ALTER TABLE "BlroRagIndexPromotionEvidence"
+        DISABLE TRIGGER "BlroRagIndexPromotionEvidence_append_only"`);
       await transaction.$executeRawUnsafe(`DELETE FROM "BlroRagIndexPromotionEvidence" WHERE "projectId"=$1`, projectId);
+      await transaction.$executeRawUnsafe(`ALTER TABLE "BlroRagIndexPromotionEvidence"
+        ENABLE TRIGGER "BlroRagIndexPromotionEvidence_append_only"`);
       await transaction.$executeRawUnsafe(`DELETE FROM "BlroRagIndexPromotion" WHERE "projectId"=$1`, projectId);
       await transaction.$executeRawUnsafe(`DELETE FROM "BlroRagEmbedding" WHERE "projectId"=$1`, projectId);
       await transaction.$executeRawUnsafe(`DELETE FROM "BlroRagAuthoritativeChunk" WHERE "projectId"=$1`, projectId);

@@ -8,11 +8,14 @@ if (!ownerUrl || process.env['SANGFOR_REQUIRE_POSTGRES_TESTS'] !== '1') {
   throw new Error('MANDATORY_POSTGRES_DATABASE_REQUIRED');
 }
 
+const RAG_COHORT_CORRECTIVE_MIGRATION =
+  'prisma/migrations/20260827190000_fix_rag_cohort_promotion_scope/migration.sql';
 const migrations = [
   'prisma/migrations/20260827010000_todo24_scoped_index/migration.sql',
   'prisma/migrations/20260827010200_todo24_local_intent_ownership/migration.sql',
   'prisma/migrations/20260827010500_todo24_composite_ownership/migration.sql',
-  'prisma/migrations/20260827190000_fix_rag_cohort_promotion_scope/migration.sql',
+  RAG_COHORT_CORRECTIVE_MIGRATION,
+  'prisma/migrations/20260831010000_rag_index_promotion_evidence_append_only/migration.sql',
 ] as const;
 
 const database = new PrismaClient({ datasources: { db: { url: ownerUrl } } });
@@ -33,6 +36,10 @@ async function catalogSnapshot(): Promise<readonly string[]> {
       'BlroSourceRootOwner_projectId_idx',
       'BlroRagEmbeddingCohort_one_active_scope_key'
     )
+    UNION ALL
+    SELECT 'trigger:' || t.tgname || ':' || pg_get_triggerdef(t.oid,true) AS definition
+    FROM pg_trigger t
+    WHERE t.tgname='BlroRagIndexPromotionEvidence_append_only' AND NOT t.tgisinternal
     ORDER BY definition
   `);
   return rows.map((row) => row.definition);
@@ -83,9 +90,7 @@ describe('Todo 24 migration replay', () => {
     });
 
     // When
-    const migration = migrations.at(-1);
-    if (!migration) throw new TypeError('CORRECTIVE_MIGRATION_MISSING');
-    const result = spawnSync(process.env['PSQL_BIN'] ?? 'psql', [ownerUrl, '-v', 'ON_ERROR_STOP=1', '-f', migration], {
+    const result = spawnSync(process.env['PSQL_BIN'] ?? 'psql', [ownerUrl, '-v', 'ON_ERROR_STOP=1', '-f', RAG_COHORT_CORRECTIVE_MIGRATION], {
       cwd: process.cwd(), encoding: 'utf8',
     });
 
@@ -105,7 +110,7 @@ describe('Todo 24 migration replay', () => {
          WHERE c.relname='BlroRagEmbeddingCohort'`,
       )).toEqual([{ enabled: true, forced: true, policy: 'BlroRagEmbeddingCohort_scope' }]);
     } finally {
-      if (result.status !== 0) spawnSync(process.env['PSQL_BIN'] ?? 'psql', [ownerUrl, '-v', 'ON_ERROR_STOP=1', '-f', migration]);
+      if (result.status !== 0) spawnSync(process.env['PSQL_BIN'] ?? 'psql', [ownerUrl, '-v', 'ON_ERROR_STOP=1', '-f', RAG_COHORT_CORRECTIVE_MIGRATION]);
       await database.$transaction(async (transaction) => {
         await transaction.$executeRawUnsafe(`SELECT set_config('app.project_id',$1,true)`, projectId);
         await transaction.$executeRawUnsafe(`DELETE FROM "BlroRagEmbeddingCohort" WHERE "projectId"=$1`, projectId);

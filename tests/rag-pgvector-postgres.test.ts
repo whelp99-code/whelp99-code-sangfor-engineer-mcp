@@ -135,6 +135,8 @@ suite('PostgreSQL-native pgvector RAG', () => {
       crossScopeDigest: expect.stringMatching(/^[a-f0-9]{64}$/u),
       crossHistory: [nonceA],
       corruptReason: 'PROMOTION_REPORT_INVALID', missingReason: 'PROMOTION_REPORT_INVALID',
+      historyUpdateRefused: true, historyDeleteRefused: true, promotionDeleteCount: 1,
+      replayAfterMutationCode: 'PROMOTION_EVIDENCE_REPLAY',
     });
   });
 
