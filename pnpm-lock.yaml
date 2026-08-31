@@ -30,9 +30,6 @@ importers:
       '@types/node':
         specifier: ^22.10.2
         version: 22.19.19
-      '@types/pg':
-        specifier: ^8.23.1
-        version: 8.23.1
       prisma:
         specifier: ^6.19.3
         version: 6.19.3(typescript@5.9.3)
