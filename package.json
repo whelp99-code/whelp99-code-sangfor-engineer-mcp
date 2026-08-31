@@ -98,6 +98,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
+    "@types/pg": "^8.23.1",
     "prisma": "^6.19.3",
     "typescript": "^5.9.3",
     "vitest": "^4.1.8"
