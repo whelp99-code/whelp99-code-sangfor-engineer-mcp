@@ -93,7 +93,7 @@ export interface ProductEngineerCard {
 
 ### 3. Tool surface is derived, not enumerated
 
-A hand-maintained `allowedTools` array across 115+ growing tools rots: every new tool would need an edit in every card, and the first person under deadline writes `"*"`.
+A hand-maintained `allowedTools` array across the growing tool surface rots: every new tool would need an edit in every card, and the first person under deadline writes `"*"`.
 
 Invert it. Each MCP tool already carries `readOnlyHint` / `destructiveHint` annotations. Derive the default per role:
 

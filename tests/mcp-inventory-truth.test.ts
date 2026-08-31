@@ -74,13 +74,23 @@ describe('MCP inventory truth — violations', () => {
     });
   });
 
-  it('extracts counts with backticked toolset labels and Korean MCP wording', () => {
+  it('extracts counts from canonical English and Korean tool-count wording', () => {
     const text = [
       'server (118 `sangfor.*` tools; no port)',
+      'server (118 sangfor.* tools; no port)',
+      '118 live MCP tools',
+      '118 (live) tools',
+      '118 canonical MCP tools',
       '현재 118개 MCP 도구의 전체 기능 목록',
+      '현재 118개의 라이브 도구',
+      'MCP 도구 118개',
     ].join('\n');
 
-    expect(extractDocumentedToolCounts(text)).toEqual([118, 118]);
+    expect(extractDocumentedToolCounts(text)).toEqual(Array.from({ length: 8 }, () => 118));
+  });
+
+  it('does not treat an unrelated number before the word tools as a tool census', () => {
+    expect(extractDocumentedToolCounts('118 endpoints and several tools')).toEqual([]);
   });
 
   it('Given a mutator falsely marked read-only, When evaluated, Then mutation_marked_read_only is reported', () => {

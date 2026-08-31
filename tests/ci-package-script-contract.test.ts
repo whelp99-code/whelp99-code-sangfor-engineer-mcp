@@ -7,7 +7,7 @@ const ROOT = process.cwd();
 const PackageManifestSchema = z.object({ scripts: z.record(z.string(), z.string()) });
 const REQUIRED_CI_SCRIPTS = {
   'test:postgres:mandatory': 'tsx scripts/run-mandatory-postgres-tests.ts --require',
-  'check:mcp-inventory-truth': 'tsx scripts/check-mcp-inventory-truth.ts',
+  'check:mcp-inventory-truth': 'tsx scripts/check-mcp-inventory-truth.ts --documented AGENTS.md --documented apps/mcp-server/AGENTS.md --documented README.md --documented ARCHITECTURE.md --documented docs/MCP_FEATURES_AND_USAGE.md --documented docs/BLRO_OPERATIONS_RUNBOOK.md --documented docs/START_HERE_TODAY.md --documented docs/TOMORROW_MORNING.md --documented docs/design-docs/thin-apps-fat-packages.md',
   'check:tracker-truth:offline': 'tsx scripts/check-tracker-truth.ts --offline-fixture tests/fixtures/tracker/valid.json',
   'check:tracker-truth': 'tsx scripts/check-tracker-truth.ts',
 } as const;

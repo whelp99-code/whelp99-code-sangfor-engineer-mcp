@@ -38,11 +38,11 @@ export type DocumentedCount = {
 };
 
 const DOCUMENTED_COUNT =
-  /(\d+)\s*(?:개\s*)?(?:MCP\s*)?(?:`[^`\r\n]+`\s*)?(?:tools?\b|도구)/giu;
+  /(?:(\d+)\s*(?:개(?:의)?\s*)?(?:(?:\(\s*)?(?:MCP|live|canonical|registered|라이브|`[^`\r\n]+`|sangfor(?:\.\*)?)(?:\s*\))?\s*){0,4}(?:tools?\b|도구)|(?:MCP\s*)?도구\s*(\d+)\s*개)/giu;
 
 export function extractDocumentedToolCounts(source: string): readonly number[] {
   return [...source.matchAll(DOCUMENTED_COUNT)].flatMap((match) => {
-    const digits = match[1];
+    const digits = match[1] ?? match[2];
     return digits === undefined ? [] : [Number(digits)];
   });
 }
