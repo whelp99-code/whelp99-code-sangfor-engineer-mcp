@@ -22,7 +22,7 @@ SELECT c."id",c."text",c."title",c."sourceRef",candidate."distance"
 FROM candidates candidate
 JOIN "BlroRagAuthoritativeChunk" c
   ON c."tenantId"=candidate."tenantId" AND c."projectId"=candidate."projectId" AND c."id"=candidate."chunkId"
-ORDER BY candidate."distance",c."id"
+ORDER BY candidate."distance"::real,c."id"
 LIMIT $10`;
 
 export const EXPLAIN_HNSW_SQL = `EXPLAIN (FORMAT TEXT, COSTS OFF) ${SEARCH_SQL}`;

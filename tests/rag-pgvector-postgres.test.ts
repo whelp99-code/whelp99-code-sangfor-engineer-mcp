@@ -150,11 +150,11 @@ suite('PostgreSQL-native pgvector RAG', () => {
         && (!query.filters.sourceType || row.sourceType === query.filters.sourceType)
         && (!query.filters.trustLevel || row.trustLevel === query.filters.trustLevel));
       const expectedExact = candidates
-        .map((candidate) => ({
-          id: candidate.id,
-          distance: 1 - cosineSimilarity([...search.query], [...candidate.embedding]),
-        }))
-        .sort((left, right) => left.distance - right.distance || left.id.localeCompare(right.id))
+        .map((candidate) => {
+          const distance = 1 - cosineSimilarity([...search.query], [...candidate.embedding]);
+          return { id: candidate.id, distance, rankingDistance: Math.fround(distance) };
+        })
+        .sort((left, right) => left.rankingDistance - right.rankingDistance || left.id.localeCompare(right.id))
         .slice(0, query.limit);
       expect(exact.map((hit) => hit.id), query.id).toEqual(expectedExact.map((hit) => hit.id));
       for (const hit of exact) {
