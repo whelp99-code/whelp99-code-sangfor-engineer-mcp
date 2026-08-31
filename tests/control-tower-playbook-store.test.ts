@@ -1,10 +1,11 @@
-import { testFileLocalWriteAuthority, testLocalWriteAuthority } from './helpers/local-write-authority.js';
+import { testLocalWriteAuthority } from './helpers/local-write-authority.js';
 import { describe, expect, it, beforeEach, afterEach } from 'vitest';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { PlaybookStore, PlaybookValidationError, type PlaybookBlock } from '../apps/control-tower/src/playbook-store.js';
 import { AnalysisStore, AgentTaskStore, type PlaybookAnalysis } from '../apps/control-tower/src/playbook-store.js';
+import { RuntimeSchemaError } from '../packages/shared/src/runtime-schema.js';
 
 const READ2: PlaybookBlock[] = [
   { id: 'b1', type: 'tool', toolId: 'sangfor_advisor_fortios_advanced', deviceId: 'dev_1' },
@@ -101,11 +102,22 @@ describe('AnalysisStore — append/fold/verdict·마스킹 (T-PB-2)', () => {
     expect(store.listByRun('pbrun_1').map((a) => a.id)).toContain(saved.id);
   });
 
-  it('maskSecrets: 비밀 키 필드는 저장 시 *** 마스킹 (§7.5)', async () => {
+  it('unknown secret-bearing analysis fields produce a typed invalid report without changing bytes', () => {
+    // Given
     const store = new AnalysisStore(dir, testLocalWriteAuthority('runs_steps', dir));
-    const saved = await store.append({ ...analysisInput({ id: undefined as unknown as string, createdAt: undefined as unknown as string }), token: 'shouldmask' } as any);
-    const retrieved = store.get(saved.id) as any;
-    expect(retrieved.token).toBe('***');
+    const analysisDir = join(dir, 'analyses');
+    const path = join(analysisDir, '2026-08-27.jsonl');
+    mkdirSync(analysisDir, { recursive: true });
+    const malformed = { ...analysisInput({ id: 'analysis-bad', createdAt: '2026-08-27T00:00:00.000Z' }), token: 'should-not-echo' };
+    const prior = `${JSON.stringify(malformed)}\n`;
+    writeFileSync(path, prior);
+
+    // When
+    const read = () => store.get('analysis-bad');
+
+    // Then
+    expect(read).toThrow(RuntimeSchemaError);
+    expect(readFileSync(path, 'utf8')).toBe(prior);
   });
 
   it('setVerdict: improvements/proposals 항목 갱신은 새 스냅샷 append (fold last-wins), 범위 밖 400', async () => {
@@ -146,18 +158,41 @@ describe('AgentTaskStore — 큐 상태기계 (T-PB-2)', () => {
     await expect(async () => await store.cancel(t2.id)).rejects.toThrow(expect.objectContaining({ status: 409 }));
   });
 
-  it('maskSecrets: create payload의 비밀 키는 저장 시 *** 마스킹 (§7.5)', async () => {
+  it('unknown secret-bearing task payload fields freeze the task store', () => {
+    // Given
     const store = new AgentTaskStore(dir, testLocalWriteAuthority('pm_tasks', dir));
-    const t = await store.create({ kind: 'assemble', payload: { goal: 'x', token: 'shouldmask' } as any });
-    const retrieved = store.list('open')[0] as any;
-    expect(retrieved.payload.token).toBe('***');
+    const path = join(dir, 'agent-tasks.json');
+    const malformed = [{
+      id: 'task-bad', kind: 'assemble', payload: { goal: 'x', token: 'should-not-echo' },
+      status: 'open', createdAt: '2026-08-27T00:00:00.000Z',
+    }];
+    const prior = JSON.stringify(malformed);
+    writeFileSync(path, prior);
+
+    // When
+    const read = () => store.list('open');
+
+    // Then
+    expect(read).toThrow(RuntimeSchemaError);
+    expect(readFileSync(path, 'utf8')).toBe(prior);
   });
 
-  it('maskSecrets: close result의 비밀 키는 저장 시 *** 마스킹 (§7.5)', async () => {
+  it('unknown secret-bearing task result fields freeze the task store', () => {
+    // Given
     const store = new AgentTaskStore(dir, testLocalWriteAuthority('pm_tasks', dir));
-    const t = await store.create({ kind: 'assemble', payload: { goal: 'x' } });
-    const done = await store.close(t.id, { playbookId: 'pb_1', secret: 'shouldmask' } as any);
-    const retrieved = store.list('done')[0] as any;
-    expect(retrieved.result.secret).toBe('***');
+    const path = join(dir, 'agent-tasks.json');
+    const malformed = [{
+      id: 'task-bad', kind: 'assemble', payload: { goal: 'x' }, status: 'done',
+      result: { playbookId: 'pb-1', token: 'should-not-echo' }, createdAt: '2026-08-27T00:00:00.000Z',
+    }];
+    const prior = JSON.stringify(malformed);
+    writeFileSync(path, prior);
+
+    // When
+    const read = () => store.list('done');
+
+    // Then
+    expect(read).toThrow(RuntimeSchemaError);
+    expect(readFileSync(path, 'utf8')).toBe(prior);
   });
 });

@@ -14,6 +14,7 @@ import { createHash } from 'node:crypto';
 import { expectedLocalWriteScope, requireLocalWriteAuthority, withDirLock, writeFileAtomicSync, type LocalWriteAuthority } from '@sangfor/shared';
 import { canonicalJson } from './canonical.js';
 import { buildEngineerReport, type EngineerReport, type EngineerReportInput, type EngineerReportRecord } from './report.js';
+import { parseBoundaryEngineerReportLineV1 } from './runtime-boundaries.js';
 
 export const GENESIS = 'GENESIS';
 const LEDGER_FILE = 'engineer-reports.jsonl';
@@ -42,7 +43,7 @@ function readRecords(dir: string): EngineerReportRecord[] {
     if (!trimmed) continue;
     // A malformed line is tampering or truncation, not something to skip past:
     // silently dropping it would let a deletion pass verification.
-    records.push(JSON.parse(trimmed) as EngineerReportRecord);
+    records.push(parseBoundaryEngineerReportLineV1(trimmed));
   }
   return records;
 }

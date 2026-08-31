@@ -8,12 +8,14 @@
  * would look like drift and the DAG would grow one node per poll forever.
  */
 
+import { parseBoundaryChronicleCanonicalV1 } from './runtime-boundaries.js';
+
 export type ChangeClass = 'added' | 'removed' | 'changed';
 
 export interface SemanticChange {
   key: string;
-  before: unknown;
-  after: unknown;
+  before?: unknown;
+  after?: unknown;
   changeClass: ChangeClass;
 }
 
@@ -79,5 +81,5 @@ export function semanticDiff(
 
 /** Parse a canonical JSON preimage back into its observation map. */
 export function parseCanonical(canonical: string): Record<string, unknown> {
-  return JSON.parse(canonical) as Record<string, unknown>;
+  return parseBoundaryChronicleCanonicalV1(canonical);
 }

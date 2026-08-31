@@ -1,20 +1,15 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { appendJsonl, nowId, resolveEngagementScopedData } from '../../../packages/shared/src/index.js';
+import {
+  parseBoundaryMcpSearchGapLineV1,
+  type SearchGapEvent,
+} from './runtime-boundaries.js';
+
+export type { SearchGapEvent } from './runtime-boundaries.js';
 
 const SEARCH_GAP_FILE = 'search-gaps.jsonl';
 const DEFAULT_SEARCH_GAP_WEAK_THRESHOLD = 0.15;
-
-interface SearchGapEvent {
-  id: string;
-  ts: string;
-  query: string;
-  product?: string;
-  version?: string;
-  hitCount: number;
-  topScore?: number;
-  reason: 'no_hits' | 'low_score';
-}
 
 function searchGapCaptureEnabled(): boolean {
   return process.env.SANGFOR_SEARCH_GAP_CAPTURE !== '0';
@@ -61,7 +56,7 @@ export function readSearchGaps(): SearchGapEvent[] {
     .split('\n')
     .map((line) => line.trim())
     .filter(Boolean)
-    .map((line) => JSON.parse(line) as SearchGapEvent);
+    .map((line) => parseBoundaryMcpSearchGapLineV1(line));
 }
 
 // ─── C3: safety self-test ───────────────────────────────────────────────────

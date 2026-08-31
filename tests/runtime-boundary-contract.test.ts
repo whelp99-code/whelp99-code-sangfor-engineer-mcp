@@ -39,10 +39,22 @@ describe('runtime JSON boundary contract', () => {
 
     // Then
     expect(result.status).toBe(0);
-    expect(JSON.parse(result.stdout)).toMatchObject({
+    expect(JSON.parse(result.stdout)).toEqual({
       status: 'pass',
-      message: 'RUNTIME_BOUNDARY_INVENTORY_PASS',
-      count: 49,
+      message: 'RUNTIME_BOUNDARY_INVENTORY_V2_PASS',
+      inventoryVersion: 2,
+      strictCalls: 49,
+      unsafeAssertions: 0,
+      stale: 0,
+      duplicate: 0,
+      unowned: 0,
+      policyCounts: {
+        freeze: 20,
+        deny: 9,
+        loud_failure: 9,
+        invalid_report: 6,
+        INDETERMINATE: 5,
+      },
     });
   });
 
@@ -122,6 +134,40 @@ describe('runtime JSON boundary contract', () => {
 
     // Then
     expect(error.issues).toEqual([{ code: 'duplicate_id', path: ['records', 1, 'id'] }]);
+  });
+
+  it('rejects a source before parsing when its UTF-8 byte bound is exceeded', () => {
+    // Given
+    const source = JSON.stringify({ value: '123456789' });
+    const contract = {
+      schema: z.object({ value: z.string() }).strict(),
+      schemaName: 'byte-limited.v1',
+      policy: 'deny',
+      maxBytes: 8,
+    } as const;
+
+    // When
+    const error = captureRuntimeSchemaError(() => parseRuntimeJson(source, contract));
+
+    // Then
+    expect(error.issues).toEqual([{ code: 'source_too_large', path: [] }]);
+  });
+
+  it('rejects excessive breadth even when the JSON is shallow and schema-permissible', () => {
+    // Given
+    const source = JSON.stringify([1, 2, 3]);
+    const contract = {
+      schema: z.array(z.number()),
+      schemaName: 'array-limited.v1',
+      policy: 'loud_failure',
+      maxArrayLength: 2,
+    } as const;
+
+    // When
+    const error = captureRuntimeSchemaError(() => parseRuntimeJson(source, contract));
+
+    // Then
+    expect(error.issues).toEqual([{ code: 'max_array_length_exceeded', path: [] }]);
   });
 
   it('never echoes rejected secret values in the typed error shape', () => {

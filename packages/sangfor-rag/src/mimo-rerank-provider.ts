@@ -5,7 +5,8 @@ import {
   resolveLitellmBaseUrl,
   resolveLitellmChatModel
 } from './litellm-config.js';
-import { resolveMimoBaseUrl, resolveMimoBillingMode } from './mimo-config.js';
+import { resolveMimoBaseUrl } from './mimo-config.js';
+import { parseBoundaryRagRerankResponseV1 } from './runtime-boundaries.js';
 
 type ChatAuthHeader = 'authorization' | 'api-key';
 
@@ -76,7 +77,7 @@ export class MimoRerankProvider implements RerankProvider {
       const content = data.choices?.[0]?.message?.content ?? '';
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       if (!jsonMatch) throw new Error('MiMo rerank: no JSON in response');
-      const parsed = JSON.parse(jsonMatch[0]) as { ranked?: string[] };
+      const parsed = parseBoundaryRagRerankResponseV1(jsonMatch[0]);
       const ranked = parsed.ranked?.filter(id => candidates.some(c => c.id === id)) ?? [];
       if (ranked.length) return ranked.slice(0, topK);
     } finally {

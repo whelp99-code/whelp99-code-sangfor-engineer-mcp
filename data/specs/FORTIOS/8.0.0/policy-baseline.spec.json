@@ -8,7 +8,9 @@
       "capabilityId": "internet_policy",
       "label": "파이어월 정책 개수",
       "observedKey": "policyCount",
-      "citation": {
+      "op": "exists",
+      "severity": "must",
+      "source": {
         "manual": "FortiOS 8.0.0 Administration Guide — Firewall Policies"
       }
     },
@@ -17,7 +19,9 @@
       "capabilityId": "internet_policy",
       "label": "SSL/TLS 검사 활성",
       "observedKey": "sslInspectionEnabled",
-      "citation": {
+      "op": "exists",
+      "severity": "must",
+      "source": {
         "manual": "FortiOS 8.0.0 Administration Guide — SSL Inspection"
       }
     },
@@ -26,7 +30,9 @@
       "capabilityId": "internet_policy",
       "label": "위협 로깅 활성",
       "observedKey": "threatLoggingEnabled",
-      "citation": {
+      "op": "exists",
+      "severity": "must",
+      "source": {
         "manual": "FortiOS 8.0.0 Administration Guide — Logging"
       }
     }

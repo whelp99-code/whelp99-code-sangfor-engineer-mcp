@@ -1,6 +1,6 @@
 import {
   closeSync, constants, fstatSync, fsyncSync, lstatSync, openSync, realpathSync, writeSync,
-  type Stats,
+  type BigIntStats,
 } from 'node:fs';
 import { dirname } from 'node:path';
 
@@ -71,22 +71,46 @@ function statOrRefuse(path: string) {
   }
 }
 
-/** The device+inode pair that identifies one exact file across a race. */
-export type FileIdentity = { readonly dev: number; readonly ino: number };
+/** Kernel identity for one exact file, including its inode incarnation. */
+export type FileIdentity = {
+  readonly dev: bigint;
+  readonly ino: bigint;
+  readonly birthtimeNs: bigint;
+};
 
 export function fileIdentity(path: string): FileIdentity {
-  const stats = statOrRefuse(path);
-  return { dev: stats.dev, ino: stats.ino };
+  const stats = statBigIntOrRefuse(path);
+  if (!stableIdentity(stats)) {
+    throw new RefusalJournalError(JOURNAL_REFUSALS.FILE_INSECURE);
+  }
+  return { dev: stats.dev, ino: stats.ino, birthtimeNs: stats.birthtimeNs };
 }
 
-function sameFile(left: Stats, right: Stats): boolean {
-  return left.dev === right.dev && left.ino === right.ino;
+function statBigIntOrRefuse(path: string): BigIntStats {
+  try {
+    return lstatSync(path, { bigint: true });
+  } catch {
+    throw new RefusalJournalError(JOURNAL_REFUSALS.NOT_ESTABLISHED);
+  }
 }
 
-function secureRegularFile(stats: Stats): boolean {
+function stableIdentity(stats: BigIntStats): boolean {
+  return stats.birthtimeNs > 0n;
+}
+
+function sameFile(left: FileIdentity, right: FileIdentity): boolean {
+  return left.dev === right.dev
+    && left.ino === right.ino
+    && left.birthtimeNs === right.birthtimeNs;
+}
+
+function secureRegularFile(stats: BigIntStats): boolean {
+  const uid = process.getuid?.();
   return stats.isFile()
-    && (stats.mode & 0o777) === 0o600
-    && stats.uid === process.getuid?.();
+    && (stats.mode & 0o777n) === 0o600n
+    && uid !== undefined
+    && stats.uid === BigInt(uid)
+    && stableIdentity(stats);
 }
 
 /**
@@ -95,19 +119,19 @@ function secureRegularFile(stats: Stats): boolean {
  * The window between "we checked the file" and "we wrote to it" is closed by
  * identity, not by hope: lstat before, open without O_CREAT and without
  * following symlinks, fstat the OPEN DESCRIPTOR and require the same
- * device+inode plus regular/mode/owner, write, fsync, then lstat the path once
- * more and require the same device+inode. If the file is deleted, replaced, or
+ * device+inode+birth-time plus regular/mode/owner, write, fsync, then lstat the path once
+ * more and require the same inode incarnation. If the file is deleted, replaced, or
  * swapped for a symlink at any point, the append refuses and NOTHING is
  * recreated.
  */
 export function appendDurably(path: string, line: string, pinned?: FileIdentity): void {
-  const before = statOrRefuse(path);
+  const before = statBigIntOrRefuse(path);
   if (before.isSymbolicLink() || !secureRegularFile(before)) {
     throw new RefusalJournalError(JOURNAL_REFUSALS.FILE_INSECURE);
   }
   // When the caller pinned an identity at open time, the file must STILL be
-  // that exact inode: a delete-and-replace between open and append is refused.
-  if (pinned && (pinned.dev !== before.dev || pinned.ino !== before.ino)) {
+  // that exact inode incarnation: delete-and-replace before append is refused.
+  if (pinned && !sameFile(pinned, before)) {
     throw new RefusalJournalError(JOURNAL_REFUSALS.FILE_INSECURE);
   }
   let handle: number | undefined;
@@ -118,7 +142,7 @@ export function appendDurably(path: string, line: string, pinned?: FileIdentity)
     throw new RefusalJournalError(openRefusal(error));
   }
   try {
-    const opened = fstatSync(handle);
+    const opened = fstatSync(handle, { bigint: true });
     // The descriptor must be the very file we inspected a moment ago.
     if (!sameFile(before, opened) || !secureRegularFile(opened)) {
       throw new RefusalJournalError(JOURNAL_REFUSALS.FILE_INSECURE);
@@ -133,7 +157,7 @@ export function appendDurably(path: string, line: string, pinned?: FileIdentity)
     closeSync(handle);
   }
   // A deletion that happened while we were writing still invalidates the append.
-  const after = statOrRefuse(path);
+  const after = statBigIntOrRefuse(path);
   if (after.isSymbolicLink() || !sameFile(before, after)) {
     throw new RefusalJournalError(JOURNAL_REFUSALS.FILE_INSECURE);
   }

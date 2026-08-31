@@ -2,6 +2,18 @@ import type http from 'node:http';
 import type { AuthorityRuntimePort } from './authority-runtime.js';
 import { firstReadinessFailure } from './authority-readiness.js';
 import { dashboardHtml } from './ui.js';
+import {
+  MAX_REQUEST_BODY_BYTES,
+  readCappedRequestBody,
+} from '../../../packages/shared/src/runtime-body-cap.js';
+import {
+  decodeControlTowerRequestBody,
+  parseBoundaryControlTowerRequestBodyV1,
+} from './runtime-boundaries.js';
+import type {
+  ControlTowerRequestBody,
+  ControlTowerRequestRoute,
+} from './request-boundaries.js';
 
 export function sendJson(
   response: http.ServerResponse,
@@ -19,12 +31,13 @@ type HealthRouteInput = {
   readonly authorityRuntime?: AuthorityRuntimePort;
 };
 
-export async function readJsonBody(request: http.IncomingMessage): Promise<Record<string, unknown>> {
-  const chunks: Buffer[] = [];
-  for await (const chunk of request) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-  const raw = Buffer.concat(chunks).toString('utf8');
-  if (!raw.trim()) return {};
-  return JSON.parse(raw) as Record<string, unknown>;
+export async function readJsonBody<TRoute extends ControlTowerRequestRoute>(
+  request: http.IncomingMessage,
+  route: TRoute,
+): Promise<ControlTowerRequestBody<TRoute>> {
+  const raw = await readCappedRequestBody(request, MAX_REQUEST_BODY_BYTES);
+  const body = parseBoundaryControlTowerRequestBodyV1(raw.trim() ? raw : '{}');
+  return decodeControlTowerRequestBody(body, route);
 }
 
 export async function refuseUnreadyAuthorityApi(input: HealthRouteInput): Promise<boolean> {

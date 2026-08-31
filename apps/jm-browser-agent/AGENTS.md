@@ -47,10 +47,11 @@ established journal and refuses otherwise.
   the same JTI across any other job is refused; distinct jobs succeed.
 - The reservation is written **before** the executor is called; the post-dispatch
   INDETERMINATE observation is appended after.
-- Every append is **TOCTOU-safe**: `lstat` the established file, open with
-  `O_WRONLY|O_APPEND|O_NOFOLLOW` (never `'a'`, which implies `O_CREAT`), `fstat` the
-  descriptor and require the same device+inode plus regular/0600/owner, write, `fsync`,
-  then `lstat` again and require the same device+inode, then `fsync` the directory. A
+- Every append is **TOCTOU-safe**: `lstat` the established file, require a stable birth-time
+  identity, open with `O_WRONLY|O_APPEND|O_NOFOLLOW` (never `'a'`, which implies `O_CREAT`),
+  `fstat` the descriptor and require the same device+inode+birth-time incarnation plus
+  regular/0600/owner, write, `fsync`, then `lstat` again and require that same incarnation,
+  then `fsync` the directory. A
   journal deleted, replaced, or symlinked at any point refuses and is **never recreated**;
   the executor does not run. Only the operator initialiser may create a file, exclusively.
 - Fail closed on: missing root/file (`JOURNAL_NOT_ESTABLISHED`), missing header, empty
@@ -122,6 +123,7 @@ and never yields PASS.
 - Depended on by: none. BLRO calls it over mTLS, never by import.
 
 ## Tests
-`tests/jm-browser-agent-runtime.test.ts`, `-tls-integration.test.ts`, `-boundary.test.ts`.
+`tests/jm-browser-agent-runtime-*.test.ts`, `tests/jm-runtime-decomposition.test.ts`,
+`tests/jm-browser-agent-tls-integration.test.ts`, and `tests/jm-browser-agent-boundary.test.ts`.
 
 <!-- MANUAL: Notes below this line are preserved on regeneration -->

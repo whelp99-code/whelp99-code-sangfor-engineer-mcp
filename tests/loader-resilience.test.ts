@@ -18,6 +18,7 @@ describe('loadSpec — one corrupt spec file must not crash the whole product lo
     const vdir = join(root, 'IAG', '13.0.120');
     mkdirSync(vdir, { recursive: true });
     writeFileSync(join(vdir, 'good.json'), JSON.stringify({
+      id: 'good-spec',
       product: 'IAG',
       items: [{ id: 'ok1', capabilityId: 'c', label: 'ok item', observedKey: 'k', op: 'exists', severity: 'recommended' }],
     }));

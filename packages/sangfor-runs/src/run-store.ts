@@ -2,6 +2,7 @@ import { appendFileSync, mkdirSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { nowId, expectedLocalWriteScope, requireLocalWriteAuthority, resolveEngagementScopedData, type LocalWriteAuthority } from '@sangfor/shared';
 import { maskSecrets } from './mask.js';
+import { parseBoundaryRunRecordLineV1 } from './runtime-boundaries.js';
 
 export type RunStatus = 'pending_approval' | 'rejected' | 'running' | 'succeeded' | 'failed';
 export type RunSafety = 'read_only' | 'write' | 'destructive';
@@ -183,12 +184,8 @@ export class RunStore {
     }
     for (const line of raw.split('\n')) {
       if (!line.trim()) continue;
-      try {
-        const record = JSON.parse(line) as RunRecord;
-        if (record && typeof record.runId === 'string') out.set(record.runId, record);
-      } catch {
-        process.stderr.write(`[runs] skipping unparseable line in ${path}\n`);
-      }
+      const record = parseBoundaryRunRecordLineV1(line);
+      out.set(record.runId, record);
     }
     return out;
   }

@@ -1,8 +1,9 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { runLearnSourcesExecutor } from '../packages/sangfor-loop/src/executors/learn-sources.js';
+import { RuntimeSchemaError } from '../packages/shared/src/runtime-schema.js';
 
 /**
  * Edge e2 (gap-queries -> learn-sources) used to be declared `manual`, so the
@@ -89,16 +90,29 @@ describe('learn-sources executor', () => {
     expect(result.detail).toContain('no pending gap queries');
   });
 
-  it('does not mistake a corrupt queue for an empty one silently succeeding on junk', () => {
-    writeFileSync(gapPath, '{not json', 'utf8');
-    const result = runLearnSourcesExecutor({ gapQueriesPath: gapPath, glassFlagPath: flagPath });
-    expect(result.pending).toEqual([]);
-    expect(result.detail).toContain('no pending gap queries');
+  it('rejects a corrupt queue instead of resetting it to empty', () => {
+    // Given
+    const corrupt = '{not json';
+    writeFileSync(gapPath, corrupt, 'utf8');
+
+    // When
+    const run = () => runLearnSourcesExecutor({ gapQueriesPath: gapPath, glassFlagPath: flagPath });
+
+    // Then
+    expect(run).toThrow(RuntimeSchemaError);
+    expect(readFileSync(gapPath, 'utf8')).toBe(corrupt);
   });
 
-  it('ignores malformed entries rather than dispatching them', () => {
+  it('rejects a parseable invalid entry instead of dispatching a partial queue', () => {
+    // Given
     writeQueries([{ query: 'good' }, { notAQuery: true }, null]);
-    const result = runLearnSourcesExecutor({ gapQueriesPath: gapPath, glassFlagPath: flagPath });
-    expect(result.pending.map((p) => p.query)).toEqual(['good']);
+    const prior = readFileSync(gapPath, 'utf8');
+
+    // When
+    const run = () => runLearnSourcesExecutor({ gapQueriesPath: gapPath, glassFlagPath: flagPath });
+
+    // Then
+    expect(run).toThrow(RuntimeSchemaError);
+    expect(readFileSync(gapPath, 'utf8')).toBe(prior);
   });
 });

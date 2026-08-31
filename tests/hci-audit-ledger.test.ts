@@ -11,7 +11,7 @@ describe('maskSecrets', () => {
       auth: { passwordCredentials: { username: 'admin', password: 'Itac123!' } },
       headers: { 'x-auth-token': 'abc', accept: 'json' },
       nested: [{ apiSecret: 's' }],
-    }) as any;
+    });
     expect(masked.auth.passwordCredentials.password).toBe('***');
     expect(masked.headers['x-auth-token']).toBe('***');
     expect(masked.nested[0].apiSecret).toBe('***');
@@ -45,6 +45,18 @@ describe('AuditLedger', () => {
     const v = ledger.verify('run2');
     expect(v.ok).toBe(false);
     expect(v.brokenAt).toBe(0);
+  });
+
+  it('rejects a parseable malformed ledger line as broken at the boundary', () => {
+    // Given
+    const ledger = new AuditLedger({ dir, secret: 's', authority: testLocalWriteAuthority('audit', dir) });
+    writeFileSync(ledger.pathFor('run-malformed'), `${JSON.stringify({ seq: 'zero', runId: 'run-malformed' })}\n`);
+
+    // When
+    const verdict = ledger.verify('run-malformed');
+
+    // Then
+    expect(verdict).toEqual({ ok: false, keyed: false, brokenAt: 0 });
   });
 
   it('is honest about an unkeyed chain', async () => {

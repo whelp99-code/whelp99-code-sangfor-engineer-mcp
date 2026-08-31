@@ -11,10 +11,11 @@ import {
   rmdirSync,
   writeSync,
 } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { dirname } from 'node:path';
 import { expectedLocalWriteScope, requireLocalWriteAuthority, type LocalWriteAuthority } from '@sangfor/shared';
 import type { MethodCode } from './methods.js';
 import type { LearningApprovalEvent } from './approval.js';
+import { parseBoundaryLearningStrategyStoreV1 } from './runtime-boundaries.js';
 import {
   createRevisionMirrorEvent,
   validateMirrorEvent,
@@ -136,34 +137,9 @@ export class StrategyStoreManager {
 
   load(): StrategyStore | null {
     if (!existsSync(this.storePath)) return null;
-    try {
-      const content = readFileSync(this.storePath, 'utf8');
-      const parsed = JSON.parse(content) as Partial<StrategyStore>;
-      if (!parsed || typeof parsed !== 'object' || typeof parsed.strategyId !== 'string' || parsed.strategyId.length === 0
-        || !Array.isArray(parsed.generations) || !Number.isSafeInteger(parsed.currentGeneration) || parsed.currentGeneration! < 0) return null;
-      const mirrorOutbox = parsed.mirrorOutbox ?? [];
-      const mirrorReceipts = parsed.mirrorReceipts ?? [];
-      const lifecycleEvents = parsed.lifecycleEvents ?? [];
-      if (!Array.isArray(mirrorOutbox) || !Array.isArray(mirrorReceipts) || !Array.isArray(lifecycleEvents)) return null;
-      for (const event of mirrorOutbox) validateMirrorEvent(event);
-      if (mirrorReceipts.some((receipt) => !receipt || typeof receipt !== 'object'
-        || typeof receipt.eventId !== 'string' || typeof receipt.payloadDigest !== 'string'
-        || typeof receipt.mirroredAt !== 'string' || receipt.status !== 'mirrored')) return null;
-      if (lifecycleEvents.some((event) => !event || typeof event !== 'object'
-        || event.type !== 'learning.lifecycle.approval' || event.domain !== 'learning-strategy-v1'
-        || typeof event.occurredAt !== 'string' || !event.payload || typeof event.payload !== 'object')) return null;
-      return {
-        schemaVersion: 1,
-        strategyId: parsed.strategyId,
-        generations: parsed.generations,
-        currentGeneration: parsed.currentGeneration!,
-        mirrorOutbox,
-        mirrorReceipts,
-        lifecycleEvents,
-      };
-    } catch {
-      return null; // Corrupt generation fail-closed
-    }
+    const store = parseBoundaryLearningStrategyStoreV1(readFileSync(this.storePath, 'utf8'));
+    for (const event of store.mirrorOutbox) validateMirrorEvent(event);
+    return store;
   }
 
   async commit(store: StrategyStore, expectedGeneration: number): Promise<{ ok: boolean; error?: string }> {

@@ -3,10 +3,15 @@ import { listResources, readResource } from './mcp-resources.js';
 import type { ToolRuntime } from './mcp-contracts.js';
 import { listToolsForProfile, toolRuntime } from './tool-registry.js';
 import { activeToolProfile, annotationsFor, isToolVisibleInProfile } from './tool-profile.js';
+import type { JsonRpcRequest } from './runtime-boundaries.js';
 
-export type JsonRpcRequest = { jsonrpc: '2.0'; id?: string | number; method: string; params?: any };
+export type { JsonRpcRequest } from './runtime-boundaries.js';
 
 const DEFAULT_RESULT_MAX_CHARS = 100_000;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
 
 function resolveResultMaxChars(): number {
   const raw = process.env.SANGFOR_MCP_RESULT_MAX_CHARS;
@@ -59,6 +64,7 @@ export async function dispatchToolCall(name: string, args: unknown, runtime: Too
 
 export async function handle(req: JsonRpcRequest) {
   try {
+    const params = isRecord(req.params) ? req.params : {};
     if (req.method === 'initialize') {
       return { jsonrpc: '2.0', id: req.id, result: { protocolVersion: '2025-06-18', serverInfo: { name: 'sangfor-engineer-mcp', version: '0.1.0' }, capabilities: { tools: { listChanged: false }, resources: { listChanged: false }, prompts: { listChanged: false } } } };
     }
@@ -69,20 +75,24 @@ export async function handle(req: JsonRpcRequest) {
       return { jsonrpc: '2.0', id: req.id, result: { resources: listResources() } };
     }
     if (req.method === 'resources/read') {
-      const uri = req.params?.uri;
+      const uri = params['uri'];
+      if (typeof uri !== 'string') throw new TypeError('resources/read requires a string uri');
       return { jsonrpc: '2.0', id: req.id, result: readResource(uri) };
     }
     if (req.method === 'prompts/list') {
       return { jsonrpc: '2.0', id: req.id, result: { prompts: listPrompts() } };
     }
     if (req.method === 'prompts/get') {
-      const name = req.params?.name;
-      const args = req.params?.arguments;
-      return { jsonrpc: '2.0', id: req.id, result: getPrompt(name, args) };
+      const name = params['name'];
+      const args = params['arguments'];
+      if (typeof name !== 'string') throw new TypeError('prompts/get requires a string name');
+      const promptArgs = isRecord(args) ? args : undefined;
+      return { jsonrpc: '2.0', id: req.id, result: getPrompt(name, promptArgs) };
     }
     if (req.method === 'tools/call') {
-      const name = req.params?.name;
-      const args = req.params?.arguments;
+      const name = params['name'];
+      const args = params['arguments'];
+      if (typeof name !== 'string') throw new TypeError('tools/call requires a string name');
       return { jsonrpc: '2.0', id: req.id, result: await dispatchToolCall(name, args) };
     }
     return { jsonrpc: '2.0', id: req.id, error: { code: -32601, message: `Method not found: ${req.method}` } };

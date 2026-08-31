@@ -9,6 +9,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import type { IntendedSpec, Verdict } from '@sangfor/spec';
+import { parseBoundaryEngineerGoldenFixtureV1 } from './runtime-boundaries.js';
 
 export type GoldenVendor = 'fortios' | 'cisco';
 
@@ -42,7 +43,7 @@ export function listGoldenFixtures(dir: string): string[] {
 
 /** Read and validate one fixture. Throws on a missing file or a malformed shape. */
 export function loadGoldenFixture(dir: string, name: string): GoldenFixture {
-  const parsed = JSON.parse(readFileSync(join(dir, name), 'utf8')) as GoldenFixture;
+  const parsed = parseBoundaryEngineerGoldenFixtureV1(readFileSync(join(dir, name), 'utf8'));
   assert(VENDORS.includes(parsed.vendor), `unknown vendor "${parsed.vendor}" in ${name}`);
   assert(typeof parsed.firmware === 'string' && parsed.firmware !== '', `missing firmware in ${name}`);
   assert(parsed.rawPayload !== null && typeof parsed.rawPayload === 'object', `missing rawPayload in ${name}`);

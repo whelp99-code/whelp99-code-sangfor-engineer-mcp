@@ -13,6 +13,7 @@ import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { expectedLocalWriteScope, requireLocalWriteAuthority, writeFileAtomicSync, withDirLock, type LocalWriteAuthority } from '@sangfor/shared';
 import { canonicalize, parseCanonical, semanticDiff, type SemanticChange } from './diff.js';
+import { parseBoundaryChronicleChainV1 } from './runtime-boundaries.js';
 
 export interface ChronicleSnapshot {
   hash: string;
@@ -69,7 +70,7 @@ function chainPath(deviceId: string, dir: string): string {
 function readChain(deviceId: string, dir: string): ChronicleChain {
   const path = chainPath(deviceId, dir);
   if (!existsSync(path)) return { deviceId, snapshots: [] };
-  return JSON.parse(readFileSync(path, 'utf8')) as ChronicleChain;
+  return parseBoundaryChronicleChainV1(readFileSync(path, 'utf8'));
 }
 
 /**

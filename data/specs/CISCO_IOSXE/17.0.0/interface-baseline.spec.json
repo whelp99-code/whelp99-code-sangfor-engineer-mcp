@@ -8,7 +8,9 @@
       "capabilityId": "wan_connectivity",
       "label": "인터페이스 개수",
       "observedKey": "interfaceCount",
-      "citation": {
+      "op": "exists",
+      "severity": "must",
+      "source": {
         "manual": "Cisco IOS XE 17.0 Configuration Guide — Interface Configuration"
       }
     },
@@ -17,7 +19,9 @@
       "capabilityId": "wan_connectivity",
       "label": "Loopback 인터페이스 개수",
       "observedKey": "loopbackCount",
-      "citation": {
+      "op": "exists",
+      "severity": "must",
+      "source": {
         "manual": "Cisco IOS XE 17.0 Configuration Guide — Loopback Interfaces"
       }
     }

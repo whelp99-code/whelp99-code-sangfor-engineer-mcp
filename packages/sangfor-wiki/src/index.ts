@@ -2,135 +2,16 @@ import { execFileSync } from 'node:child_process';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { KnowledgeChunk, ProductCode, normalizeProduct, nowId, expectedLocalWriteScope, requireLocalWriteAuthority, resolveRepoData, appendJsonl, foldJsonlById, type LocalWriteAuthority } from '@sangfor/shared';
+import { nowId, expectedLocalWriteScope, requireLocalWriteAuthority, appendJsonl, type LocalWriteAuthority } from '@sangfor/shared';
+import { cardsFile, getProposal, proposalsFile, wikiRoot } from './wiki-store.js';
+import type { KnowledgeCard, WikiAdapter, WikiUpdateProposal } from './wiki-types.js';
 
-const WIKI_CHUNKS: KnowledgeChunk[] = [
-  {
-    id: 'wiki_hci_mtu_lesson_001',
-    sourceType: 'wiki',
-    product: 'HCI',
-    title: 'HCI 3-Node Deployment Lessons',
-    section: 'Storage Network MTU',
-    text: 'Internal lesson: HCI 3-node deployment should include MTU consistency check on storage network before cluster initialization. Missing this precheck caused unstable storage heartbeat in previous PoC.',
-    trustLevel: 'internal'
-  },
-  {
-    id: 'wiki_iag_policy_order_001',
-    sourceType: 'wiki',
-    product: 'IAG',
-    title: 'IAG Policy Ordering Notes',
-    section: 'Policy Priority',
-    text: 'Internal lesson: define emergency bypass and admin exception policy before applying restrictive internet access policies. Always capture current policy export before applying changes.',
-    trustLevel: 'internal'
-  },
-  {
-    id: 'wiki_es_staged_rollout_001',
-    sourceType: 'wiki',
-    product: 'ENDPOINT_SECURE',
-    title: 'Endpoint Secure Staged Rollout',
-    section: 'Pilot Group',
-    text: 'Internal lesson: deploy Endpoint Secure agents to a pilot group first, validate performance impact, then expand by department. Keep rollback uninstall package ready.',
-    trustLevel: 'internal'
-  },
-  {
-    id: 'wiki_cc_time_sync_001',
-    sourceType: 'wiki',
-    product: 'CYBER_COMMAND',
-    title: 'Cyber Command Event Correlation',
-    section: 'NTP and Timezone',
-    text: 'Internal lesson: event correlation quality depends on NTP and timezone consistency across all sources. Add NTP validation to Cyber Command onboarding precheck.',
-    trustLevel: 'internal'
-  },
-  {
-    id: 'wiki_hci_license_001',
-    sourceType: 'wiki',
-    product: 'HCI',
-    title: 'HCI License Activation Pitfall',
-    section: 'Cluster UUID',
-    text: 'Internal lesson: activate licenses only after all nodes join cluster; re-activation may be required if a node is replaced with different hardware UUID.',
-    trustLevel: 'internal'
-  },
-  {
-    id: 'wiki_hci_vmware_001',
-    sourceType: 'wiki',
-    product: 'HCI',
-    title: 'VMware to HCI Migration',
-    section: 'Cutover Window',
-    text: 'Internal lesson: keep source VMware powered off validation step in runbook; document LUN mapping and boot order before cutover weekend.',
-    trustLevel: 'internal'
-  },
-  {
-    id: 'wiki_iag_ssl_001',
-    sourceType: 'wiki',
-    product: 'IAG',
-    title: 'IAG SSL Inspection Exceptions',
-    section: 'Certificate Pinning Apps',
-    text: 'Internal lesson: maintain exception list for banking and health apps that break on SSL inspection; review quarterly.',
-    trustLevel: 'internal'
-  },
-  {
-    id: 'wiki_es_perf_001',
-    sourceType: 'wiki',
-    product: 'ENDPOINT_SECURE',
-    title: 'Endpoint Secure Performance',
-    section: 'Full Scan Schedule',
-    text: 'Internal lesson: schedule full scans outside business hours; disable concurrent full scan on VDI gold images.',
-    trustLevel: 'internal'
-  },
-  {
-    id: 'wiki_cc_playbook_001',
-    sourceType: 'wiki',
-    product: 'CYBER_COMMAND',
-    title: 'SOC Playbook Links',
-    section: 'Runbook Integration',
-    text: 'Internal lesson: link each high-severity alert rule to Confluence/Jira runbook URL in rule description for faster L1 response.',
-    trustLevel: 'internal'
-  }
-];
-
-export interface WikiUpdateProposal {
-  id: string;
-  targetPage: string;
-  title: string;
-  beforeText: string;
-  afterText: string;
-  status: 'pending' | 'approved' | 'rejected' | 'applied';
-  adapter?: 'memory' | 'obsidian' | 'github_wiki';
-  reviewer?: string;
-}
-
-export type KnowledgeCardType = 'procedure' | 'troubleshooting' | 'known_issue' | 'config_recipe' | 'compatibility_note';
-
-export interface KnowledgeCardCitation {
-  sourceId: string;
-  sourceRevision?: string;
-  headingPath?: string[];
-  spanText: string;
-  quoteHash: string;
-}
-
-export interface KnowledgeCard {
-  id: string;
-  type: KnowledgeCardType;
-  product: ProductCode;
-  version?: string;
-  title: string;
-  symptom?: string;
-  cause?: string;
-  prerequisites: string[];
-  steps: string[];
-  warnings: string[];
-  verification: string[];
-  rollback: string[];
-  citations: KnowledgeCardCitation[];
-  trustLevel: KnowledgeChunk['trustLevel'];
-  updatedAt: string;
-}
-
-export interface WikiAdapter {
-  readPage(path: string): Promise<string>;
-  writePage(path: string, content: string, message: string): Promise<{ ok: boolean; path: string; message: string }>;
-}
+export type {
+  KnowledgeCard, KnowledgeCardCitation, KnowledgeCardType, WikiAdapter, WikiUpdateProposal,
+} from './wiki-types.js';
+export { listSeedWiki } from './wiki-seed.js';
+export { searchWiki } from './wiki-search.js';
+export { listKnowledgeCards } from './wiki-store.js';
 
 export class ObsidianVaultAdapter implements WikiAdapter {
   private readonly authority: LocalWriteAuthority;
@@ -201,20 +82,8 @@ export class GitHubWikiGitAdapter implements WikiAdapter {
   }
 }
 
-const wikiRoot = () => resolveRepoData('data/wiki', 'SANGFOR_WIKI_ROOT');
-const proposalsFile = () => join(wikiRoot(), 'proposals.jsonl');
-const cardsFile = () => join(wikiRoot(), 'knowledge-cards.jsonl');
-const getProposal = (id: string) => foldJsonlById<WikiUpdateProposal>(proposalsFile()).get(id);
 const saveProposal = (proposal: WikiUpdateProposal) => appendJsonl(proposalsFile(), proposal);
 const saveCard = (card: KnowledgeCard) => appendJsonl(cardsFile(), card);
-
-export function listSeedWiki(): KnowledgeChunk[] {
-  return [...WIKI_CHUNKS];
-}
-
-export function listKnowledgeCards(): KnowledgeCard[] {
-  return [...foldJsonlById<KnowledgeCard>(cardsFile()).values()];
-}
 
 export async function upsertKnowledgeCard(input: Omit<KnowledgeCard, 'id' | 'updatedAt'> & { id?: string }, injectedAuthority: LocalWriteAuthority): Promise<KnowledgeCard> {
   if (input.citations.length === 0) {
@@ -230,39 +99,6 @@ export async function upsertKnowledgeCard(input: Omit<KnowledgeCard, 'id' | 'upd
   ));
   await authority.fence.write(authority, { operation: 'wiki.upsert-card', targetPaths: [cardsFile()] }, () => saveCard(card));
   return card;
-}
-
-export function searchWiki(input: { product?: string; version?: string; query?: string; limit?: number }): KnowledgeChunk[] {
-  const product = normalizeProduct(input.product);
-  const query = (input.query ?? '').toLowerCase();
-  const cardChunks: KnowledgeChunk[] = listKnowledgeCards().map((card) => ({
-    id: card.id,
-    sourceType: 'wiki',
-    product: card.product,
-    version: card.version,
-    title: card.title,
-    section: card.type,
-    text: [
-      card.symptom,
-      card.cause,
-      ...card.prerequisites,
-      ...card.steps,
-      ...card.warnings,
-      ...card.verification,
-      ...card.rollback
-    ].filter(Boolean).join('\n'),
-    trustLevel: card.trustLevel
-  }));
-  return [...WIKI_CHUNKS, ...cardChunks]
-    .filter(chunk => chunk.product === product)
-    .map(chunk => {
-      const text = `${chunk.title} ${chunk.section ?? ''} ${chunk.text}`.toLowerCase();
-      const score = query.split(/\s+/).filter(Boolean).reduce((sum, term) => sum + (text.includes(term) ? 1 : 0), 0);
-      return { chunk, score };
-    })
-    .sort((a, b) => b.score - a.score)
-    .slice(0, input.limit ?? 5)
-    .map(item => item.chunk);
 }
 
 export async function proposeWikiUpdate(input: { lessonTitle: string; lessonBody: string; targetPage?: string; adapter?: WikiUpdateProposal['adapter'] }, injectedAuthority: LocalWriteAuthority): Promise<WikiUpdateProposal> {

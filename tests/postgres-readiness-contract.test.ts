@@ -1,9 +1,11 @@
 import { spawnSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { globSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { AUTHORITY_MANIFEST } from '../packages/sangfor-authority/src/migration-manifest.js';
 import {
+  assertDatabaseLanePartition,
   assertMandatoryPostgresCoverage,
+  externalDatabaseOnlyTestFiles,
   mandatoryPostgresFiles,
 } from '../scripts/lib/mandatory-postgres-files.js';
 import {
@@ -70,6 +72,61 @@ describe('Todo 24 mandatory PostgreSQL file census', () => {
     // When / Then
     expect(() => assertMandatoryPostgresCoverage(discovered, discovered.slice(1)))
       .toThrow('MANDATORY_POSTGRES_FILE_OMITTED: tests/a-postgres.test.ts');
+  });
+});
+
+describe('Todo 24 database lane partition gate', () => {
+  // Reads the real default config rather than re-deriving its globs, so a config
+  // edit that re-admits a database suite into `pnpm test` fails this gate.
+  function defaultSuiteSelection(): readonly string[] {
+    const result = spawnSync('node_modules/.bin/vitest', ['list', '--config', 'vitest.config.ts', '--filesOnly'], {
+      cwd: process.cwd(), env: process.env, encoding: 'utf8', maxBuffer: 32 * 1024 * 1024,
+    });
+    if (result.status !== 0) throw new Error(`vitest list failed: ${result.stdout}${result.stderr}`);
+    return result.stdout.split('\n').map((line) => line.trim()).filter((line) => line.endsWith('.test.ts')).sort();
+  }
+
+  const drifted = {
+    onDisk: ['tests/pure.test.ts', 'tests/external-db.test.ts'],
+    defaultSelection: ['tests/pure.test.ts'],
+    mandatorySelection: ['tests/external-db.test.ts'],
+    externalDatabaseOnly: ['tests/external-db.test.ts'],
+  } as const;
+
+  it('Given the real default and mandatory configs, When both lanes are selected, Then the default lane is exactly the on-disk suites minus the external-database files', () => {
+    // Given
+    const onDisk = globSync('tests/**/*.test.ts').sort();
+    const external = externalDatabaseOnlyTestFiles();
+    expect(external.length).toBe(6);
+
+    // When
+    const defaultSelection = defaultSuiteSelection();
+
+    // Then
+    expect(defaultSelection).toEqual(onDisk.filter((file) => !external.includes(file)));
+    expect(() => assertDatabaseLanePartition({
+      onDisk, defaultSelection, mandatorySelection: mandatoryPostgresFiles(), externalDatabaseOnly: external,
+    })).not.toThrow();
+  });
+
+  it('Given an external-database file leaks back into the default suite, When the gate runs, Then the overlap is refused', () => {
+    // Given / When / Then
+    expect(() => assertDatabaseLanePartition({
+      ...drifted, defaultSelection: ['tests/pure.test.ts', 'tests/external-db.test.ts'],
+    })).toThrow('DATABASE_LANE_NOT_DISJOINT: tests/external-db.test.ts');
+  });
+
+  it('Given the mandatory profile stops enforcing a declared external-database file, When the gate runs, Then the gap is refused', () => {
+    // Given / When / Then
+    expect(() => assertDatabaseLanePartition({ ...drifted, mandatorySelection: [] }))
+      .toThrow('DATABASE_LANE_UNENFORCED: tests/external-db.test.ts');
+  });
+
+  it('Given a suite is dropped from the default lane without being declared external-database, When the gate runs, Then the silent exclusion is refused', () => {
+    // Given / When / Then
+    expect(() => assertDatabaseLanePartition({
+      ...drifted, onDisk: [...drifted.onDisk, 'tests/silently-dropped.test.ts'],
+    })).toThrow('DATABASE_LANE_UNDECLARED_EXCLUSION: tests/silently-dropped.test.ts');
   });
 });
 

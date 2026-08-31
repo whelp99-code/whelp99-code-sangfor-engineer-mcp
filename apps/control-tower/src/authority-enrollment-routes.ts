@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from 'node:crypto';
 import type http from 'node:http';
 import { isLoopback, checkAuth } from '../../../packages/shared/src/index.js';
+import { RequestBodyTooLargeError } from '../../../packages/shared/src/runtime-body-cap.js';
 import {
   acknowledgeRotationInputSchema,
   claimBootstrapTokenInputSchema,
@@ -93,7 +94,9 @@ export async function routeAuthorityEnrollment(input: AuthorityEnrollmentRouteIn
   }
   try {
     if (input.method === 'POST' && input.path === '/api/enrollments/bootstrap-tokens') {
-      const request = issueBootstrapTokenRequestSchema.parse(await readJsonBody(input.request));
+      const request = issueBootstrapTokenRequestSchema.parse(
+        await readJsonBody(input.request, 'enrollment-bootstrap-token'),
+      );
       const bootstrapToken = randomBytes(32).toString('base64url');
       const decision = await api.issueBootstrapToken(issueBootstrapTokenInputSchema.parse({
         ...request,
@@ -108,7 +111,9 @@ export async function routeAuthorityEnrollment(input: AuthorityEnrollmentRouteIn
     }
     if (input.method === 'POST' && input.path === '/api/enrollments/bootstrap') {
       sendDecision(input.response, await api.claimBootstrapToken(
-        claimBootstrapTokenInputSchema.parse(await readJsonBody(input.request)),
+        claimBootstrapTokenInputSchema.parse(
+          await readJsonBody(input.request, 'enrollment-bootstrap-claim'),
+        ),
       ));
       return true;
     }
@@ -123,22 +128,27 @@ export async function routeAuthorityEnrollment(input: AuthorityEnrollmentRouteIn
       return true;
     }
     if (input.method !== 'POST' || operation === undefined) return false;
-    const body = await readJsonBody(input.request);
     switch (operation) {
       case 'rotate': {
-        const parsed = rotateEnrollmentInputSchema.parse(body);
+        const parsed = rotateEnrollmentInputSchema.parse(
+          await readJsonBody(input.request, 'enrollment-rotate'),
+        );
         assertPathInstallation(installationId, parsed.installationId);
         sendDecision(input.response, await api.rotate(parsed));
         return true;
       }
       case 'acknowledge': {
-        const parsed = acknowledgeRotationInputSchema.parse(body);
+        const parsed = acknowledgeRotationInputSchema.parse(
+          await readJsonBody(input.request, 'enrollment-acknowledge'),
+        );
         assertPathInstallation(installationId, parsed.installationId);
         sendDecision(input.response, await api.acknowledgeRotation(parsed));
         return true;
       }
       case 'revoke': {
-        const parsed = revokeEnrollmentInputSchema.parse(body);
+        const parsed = revokeEnrollmentInputSchema.parse(
+          await readJsonBody(input.request, 'enrollment-revoke'),
+        );
         assertPathInstallation(installationId, parsed.installationId);
         sendDecision(input.response, await api.revoke(parsed));
         return true;
@@ -147,6 +157,7 @@ export async function routeAuthorityEnrollment(input: AuthorityEnrollmentRouteIn
         return false;
     }
   } catch (error) {
+    if (error instanceof RequestBodyTooLargeError) throw error;
     if (error instanceof EnrollmentRouteInputError
       || error instanceof SyntaxError
       || error instanceof URIError

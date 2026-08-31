@@ -1,5 +1,9 @@
 import { defineConfig } from 'vitest/config';
 import { fileURLToPath } from 'node:url';
+import {
+  EXTERNAL_DATABASE_ONLY_AUXILIARY_FILES,
+  EXTERNAL_DATABASE_ONLY_TEST_DIRECTORY,
+} from './scripts/lib/mandatory-postgres-files.js';
 
 const fromRoot = (path: string) => fileURLToPath(new URL(path, import.meta.url));
 
@@ -33,6 +37,14 @@ export default defineConfig({
   test: {
     env: { SANGFOR_BLRO_AUTHORITY_STORE: 'local' },
     include: ['tests/**/*.test.ts'],
-    exclude: ['**/node_modules/**', '**/dist/**', 'tests/mandatory-postgres/**']
+    // Suites that require a reachable external PostgreSQL are owned by
+    // `pnpm run test:postgres:mandatory`; they fail rather than skip without a
+    // database, so selecting them here would make the default suite unrunnable.
+    exclude: [
+      '**/node_modules/**',
+      '**/dist/**',
+      `${EXTERNAL_DATABASE_ONLY_TEST_DIRECTORY}/**`,
+      ...EXTERNAL_DATABASE_ONLY_AUXILIARY_FILES,
+    ]
   }
 });

@@ -1,6 +1,12 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { nowId, expectedLocalWriteScope, requireLocalWriteAuthority, resolveRepoData, withDirLock, writeFileAtomicSync, type LocalWriteAuthority } from '../../../packages/shared/src/index.js';
+import type { NamedRuntimeCodec } from '../../../packages/shared/src/runtime-schema.js';
+import {
+  deviceRegistryCodec,
+  parseBoundaryControlTowerRegistryV1,
+  vendorRegistryCodec,
+} from './runtime-boundaries.js';
 
 export interface VendorDescriptor {
   product: string;             // 열린 값 (enum 아님)
@@ -58,7 +64,7 @@ export class Registry {
   }
 
   vendors(): VendorDescriptor[] {
-    return this.loadOrSeed<VendorDescriptor[]>(join(this.dir, 'vendors.json'), SEED_VENDORS);
+    return this.loadOrSeed(join(this.dir, 'vendors.json'), SEED_VENDORS, vendorRegistryCodec);
   }
 
   async seedVendors(): Promise<VendorDescriptor[]> {
@@ -74,7 +80,7 @@ export class Registry {
   }
 
   devices(): Device[] {
-    return this.loadOrSeed<Device[]>(join(this.dir, 'devices.json'), []);
+    return this.loadOrSeed(join(this.dir, 'devices.json'), [], deviceRegistryCodec);
   }
 
   // devices.json's own read-modify-write sequence (existence check → mutate →
@@ -127,9 +133,9 @@ export class Registry {
     }));
   }
 
-  private loadOrSeed<T>(path: string, seed: T): T {
+  private loadOrSeed<T>(path: string, seed: T, codec: NamedRuntimeCodec<T>): T {
     try {
-      return JSON.parse(readFileSync(path, 'utf8')) as T;
+      return parseBoundaryControlTowerRegistryV1(readFileSync(path, 'utf8'), codec);
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') return structuredClone(seed);
       throw error; // corrupt registry must fail loud, not silently reset

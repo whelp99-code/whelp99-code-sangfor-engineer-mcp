@@ -2,6 +2,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { AuditLedger, maskSecrets } from '@sangfor/hci-client';
 import { resolveProductionLocalWriteAuthority, resolveEngagementScopedData } from '@sangfor/shared';
+import { parseBoundaryEvidenceLedgerLineV1 } from './runtime-boundaries.js';
 
 // Path-segment safety for runId, same precedent as the product/version segment
 // guard in packages/sangfor-spec/src/index.ts:137-190 (isSafeSpecPathSegment) —
@@ -21,7 +22,7 @@ export function isSafeRunId(value: unknown): value is string {
 
 type LedgerKind = 'request' | 'response' | 'state' | 'verdict';
 
-interface LedgerLine {
+export interface LedgerLine {
   seq: number;
   at: string;
   runId: string;
@@ -44,7 +45,7 @@ function readLedgerLines(path: string): LedgerLine[] {
     .trim()
     .split('\n')
     .filter(Boolean)
-    .map((line) => JSON.parse(line) as LedgerLine);
+    .map((line) => parseBoundaryEvidenceLedgerLineV1(line));
 }
 
 function payloadField(payload: unknown, key: string): unknown {

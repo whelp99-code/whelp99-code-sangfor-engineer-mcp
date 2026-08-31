@@ -4,6 +4,19 @@ import { createTowerServer } from '../apps/control-tower/src/server.js';
 import type { AuthorityRuntimePort } from '../apps/control-tower/src/authority-runtime.js';
 import type { BrowserExecutionResult } from '../packages/sangfor-browser-contracts/src/index.js';
 
+const VALID_REMOTE_JOB_REQUEST = {
+  purpose: 'mutation',
+  bodyText: '{"requestId":"request-a"}',
+  target: {
+    installationId: 'installation-a',
+    clientIdentityId: 'client-a',
+    deviceBindingDigest: 'd'.repeat(64),
+    origin: 'https://device.example.test',
+    certificate: { encoding: 'der-base64', value: 'YQ==' },
+    environment: 'lab',
+  },
+} as const;
+
 const servers: http.Server[] = [];
 afterEach(async () => Promise.all(servers.splice(0).map((server) => new Promise<void>((resolve) => server.close(() => resolve())))));
 
@@ -36,7 +49,7 @@ function runtime(submit?: (input: unknown) => Promise<BrowserExecutionResult>): 
 async function post(baseUrl: string, token: string): Promise<Response> {
   return fetch(`${baseUrl}/api/remote-browser-jobs`, {
     method: 'POST', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
-    body: JSON.stringify({ sentinel: 'exact-body' }),
+    body: JSON.stringify(VALID_REMOTE_JOB_REQUEST),
   });
 }
 
@@ -51,7 +64,7 @@ describe('Control Tower remote job API', () => {
     expect(submit).not.toHaveBeenCalled();
     const response = await post(baseUrl, 'tower-token');
     expect(response.status).toBe(200);
-    expect(submit).toHaveBeenCalledWith({ sentinel: 'exact-body' });
+    expect(submit).toHaveBeenCalledWith(VALID_REMOTE_JOB_REQUEST);
   });
 
   it('fails closed when production dispatcher composition is unavailable', async () => {

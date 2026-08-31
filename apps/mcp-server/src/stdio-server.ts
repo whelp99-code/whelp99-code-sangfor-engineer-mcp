@@ -2,7 +2,9 @@ import readline from 'node:readline';
 import { configureJmBrowserRuntime, disposeJmBrowserRuntime, isJmBrowserRuntimeConfigured } from './browser-runtime-composition.js';
 import { createDefaultJmBrowserRuntime } from './jm-browser-runtime.js';
 import { createRemoteBrowserExecutionPortFromEnv } from './remote-browser-runtime.js';
+import { RuntimeSchemaError } from '../../../packages/shared/src/runtime-schema.js';
 import { handle, type JsonRpcRequest } from './mcp-runtime.js';
+import { parseBoundaryMcpStdioRequestV1 } from './runtime-boundaries.js';
 
 export function startStdioServer() {
   if (!isJmBrowserRuntimeConfigured()) {
@@ -44,9 +46,10 @@ export function startStdioServer() {
     if (!line.trim()) return;
     let req: JsonRpcRequest;
     try {
-      req = JSON.parse(line) as JsonRpcRequest;
-    } catch {
-      // Malformed JSON must not crash the stdio server — emit a JSON-RPC parse error.
+      req = parseBoundaryMcpStdioRequestV1(line);
+    } catch (error) {
+      if (!(error instanceof RuntimeSchemaError)) throw error;
+      // Invalid JSON must not crash the stdio server or dispatch a request.
       process.stdout.write(`${JSON.stringify({ jsonrpc: '2.0', id: null, error: { code: -32700, message: 'Parse error' } })}\n`);
       return;
     }

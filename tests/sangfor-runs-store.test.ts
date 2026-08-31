@@ -1,11 +1,12 @@
-import { testFileLocalWriteAuthority, testLocalWriteAuthority } from './helpers/local-write-authority.js';
+import { testLocalWriteAuthority } from './helpers/local-write-authority.js';
 import { describe, expect, it, beforeEach, afterEach } from 'vitest';
 import { maskSecrets, scrubSecretValues } from '@sangfor/runs';
 import { maskSecrets as hciMaskSecrets } from '@sangfor/hci-client';
-import { appendFileSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { appendFileSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { RunStore, type RunRecord } from '@sangfor/runs';
+import { RuntimeSchemaError } from '../packages/shared/src/runtime-schema.js';
 
 // §4.6 마스킹 계약: /password|secret|token|authorization|cookie/i 키 + string 값 → '***'
 describe('maskSecrets — @sangfor/runs 복제본 (T-RUN-2)', () => {
@@ -144,11 +145,20 @@ describe('RunStore — 라이프사이클/영속/필터 (T-RUN-1)', () => {
     expect(store.getRun('run_old')?.status).toBe('succeeded'); // getRun은 전 파일 스캔
   });
 
-  it('파싱 불가 줄은 경고 후 skip (파일 전체를 버리지 않는다)', async () => {
+  it('파싱 불가 줄은 typed freeze로 전체 ledger bytes를 보존한다', async () => {
+    // Given
     const store = new RunStore(dir, testLocalWriteAuthority('runs_steps', dir));
     const run = await store.createRun({ toolId: 't', toolSafety: 'read_only', args: {}, initialStatus: 'running' });
-    appendFileSync(join(dir, `${run.requestedAt.slice(0, 10)}.jsonl`), 'not-json\n');
-    expect(store.listRuns().map((r) => r.runId)).toContain(run.runId);
+    const path = join(dir, `${run.requestedAt.slice(0, 10)}.jsonl`);
+    appendFileSync(path, 'not-json\n');
+    const prior = readFileSync(path, 'utf8');
+
+    // When
+    const list = () => store.listRuns();
+
+    // Then
+    expect(list).toThrow(RuntimeSchemaError);
+    expect(readFileSync(path, 'utf8')).toBe(prior);
   });
 
   it('pendingApprovals는 14일 윈도우·100건 리밋을 무시하고 전체를 반환한다', async () => {

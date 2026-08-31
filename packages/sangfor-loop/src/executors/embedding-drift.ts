@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, rmSync } from 'node:fs';
 import { resolveRepoData, writeFileAtomicSync } from '../../../shared/src/index.js';
+import { parseBoundaryLoopEmbeddingIndexV1 } from '../runtime-boundaries.js';
 
 // P2 — detect embedding-model drift: chunks embedded with a model other than
 // the currently configured one make query and index vectors incomparable
@@ -10,18 +11,13 @@ import { resolveRepoData, writeFileAtomicSync } from '../../../shared/src/index.
 export const EMBEDDING_DRIFT_INDEX = () => resolveRepoData('data/rag/index.json', 'SANGFOR_RAG_INDEX_PATH');
 export const EMBEDDING_DRIFT_FLAG = () => resolveRepoData('data/runtime/needs-reembed.flag', 'SANGFOR_REEMBED_FLAG_PATH');
 
-interface MinimalIndexChunk { embeddingModel?: string }
+export interface MinimalIndexChunk { embeddingModel?: string }
 
 export function runEmbeddingDriftExecutor(input: { indexPath?: string; flagPath?: string; configuredModel: string }): { detail: string; drift: boolean } {
   const indexPath = input.indexPath ?? EMBEDDING_DRIFT_INDEX();
   const flagPath = input.flagPath ?? EMBEDDING_DRIFT_FLAG();
   if (!existsSync(indexPath)) return { detail: 'no rag index — nothing to compare', drift: false };
-  let chunks: MinimalIndexChunk[];
-  try {
-    chunks = (JSON.parse(readFileSync(indexPath, 'utf8')) as { chunks: MinimalIndexChunk[] }).chunks;
-  } catch {
-    throw new Error(`EMBEDDING_DRIFT_INDEX_CORRUPT: ${indexPath}`);
-  }
+  const { chunks } = parseBoundaryLoopEmbeddingIndexV1(readFileSync(indexPath, 'utf8'));
   const models = [...new Set(chunks.map((c) => c.embeddingModel ?? 'hash'))].sort();
   const driftModels = models.filter((m) => m !== input.configuredModel);
   if (chunks.length > 0 && driftModels.length > 0) {

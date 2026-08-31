@@ -1,5 +1,6 @@
 import { ConfigPlan, nowId, expectedLocalWriteScope, requireLocalWriteAuthority, resolveRepoData, appendJsonl, foldJsonlById, type LocalWriteAuthority } from '@sangfor/shared';
 import { join } from 'node:path';
+import { evalCaseCodec } from './runtime-codecs.js';
 
 export interface EvalCase {
   id: string;
@@ -19,7 +20,7 @@ const evalsFile = () => join(resolveRepoData('data/evals', 'SANGFOR_EVALS_ROOT')
 
 /** Seeds + feedback-derived cases. Exported for the loop runtime's P3 regression executor. */
 export function allEvalCases(): EvalCase[] {
-  return [...SEED_EVAL_CASES, ...foldJsonlById<EvalCase>(evalsFile()).values()];
+  return [...SEED_EVAL_CASES, ...foldJsonlById(evalsFile(), evalCaseCodec).values()];
 }
 
 export async function createEvalCaseFromFeedback(

@@ -1,16 +1,14 @@
-import { testFileLocalWriteAuthority, testLocalWriteAuthority } from './helpers/local-write-authority.js';
+import { testFileLocalWriteAuthority } from './helpers/local-write-authority.js';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtempSync, rmSync, existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { mkdtempSync, rmSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { spawn } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
 import {
   StrategyStoreManager,
   computeContentHash,
-  type StrategyStore,
   type StrategyRevision,
 } from '../packages/sangfor-learning-strategy/src/store.js';
+import { RuntimeSchemaError } from '../packages/shared/src/runtime-schema.js';
 
 const CONTENT_A = 'a'.repeat(64);
 const CONTENT_B = 'b'.repeat(64);
@@ -112,10 +110,17 @@ describe('PR-001C: Strategy store', () => {
   });
 
   describe('corrupt generation — fail-closed', () => {
-    it('returns null for corrupt JSON', () => {
-      writeFileSync(storePath, '{invalid-json');
-      const loaded = manager.load();
-      expect(loaded).toBeNull();
+    it('throws a typed freeze error for corrupt JSON', () => {
+      // Given
+      const prior = '{invalid-json';
+      writeFileSync(storePath, prior);
+
+      // When
+      const load = () => manager.load();
+
+      // Then
+      expect(load).toThrow(RuntimeSchemaError);
+      expect(readFileSync(storePath, 'utf8')).toBe(prior);
     });
 
     it('returns null for non-existent file', () => {

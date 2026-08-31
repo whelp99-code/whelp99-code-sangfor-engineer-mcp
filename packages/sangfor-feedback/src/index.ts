@@ -1,5 +1,6 @@
 import { nowId, normalizeProduct, expectedLocalWriteScope, requireLocalWriteAuthority, resolveEngagementScopedData, appendJsonl, foldJsonlById, type LocalWriteAuthority } from '@sangfor/shared';
 import { join } from 'node:path';
+import { feedbackEventCodec, lessonLearnedCodec } from './runtime-codecs.js';
 
 export interface FeedbackEvent {
   id: string;
@@ -44,7 +45,7 @@ export async function extractLesson(feedbackId: string, injectedAuthority: Local
     injectedAuthority, injectedAuthority?.projectId ?? '', 'feedback_lessons', dir(),
   ));
   return authority.fence.write(authority, { operation: 'feedback.extract-lesson', targetPaths: [feedbackFile(), lessonsFile()] }, () => {
-  const event = foldJsonlById<FeedbackEvent>(feedbackFile()).get(feedbackId);
+  const event = foldJsonlById(feedbackFile(), feedbackEventCodec).get(feedbackId);
   if (!event) throw new Error(`Unknown feedback: ${feedbackId}`);
   const lesson: LessonLearned = {
     id: nowId('lesson'),
@@ -64,5 +65,5 @@ export async function extractLesson(feedbackId: string, injectedAuthority: Local
 }
 
 export function listLessons(): LessonLearned[] {
-  return [...foldJsonlById<LessonLearned>(lessonsFile()).values()];
+  return [...foldJsonlById(lessonsFile(), lessonLearnedCodec).values()];
 }
