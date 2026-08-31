@@ -2,11 +2,12 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
-import type {
-  BrowserExecutionPort,
-  BrowserExecutionRequest,
-  BrowserExecutionResult,
-  JsonValue,
+import {
+  createBrowserExecutionAuthorityPort,
+  type BrowserExecutionPort,
+  type BrowserExecutionRequest,
+  type BrowserExecutionResult,
+  type JsonValue,
 } from '../packages/sangfor-browser-contracts/src/index.js';
 import type { IagMutationActionAuthority } from '../packages/sangfor-competency/src/index.js';
 import {
@@ -65,7 +66,11 @@ function ports(before: JsonValue, after: JsonValue, dispatch: 'change' | 'noop' 
     return result(request, { iagPolicy: after });
   });
   return {
-    executor: createIagExecutor({ executionPort: { execute }, readBackPort: { execute: verify }, now: () => NOW }),
+    executor: createIagExecutor({
+      executionPort: createBrowserExecutionAuthorityPort({ execute }),
+      readBackPort: createBrowserExecutionAuthorityPort({ execute: verify }),
+      now: () => NOW,
+    }),
     execute, verify, executionRequests, readBackRequests,
   };
 }

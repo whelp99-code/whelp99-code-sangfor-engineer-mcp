@@ -1,5 +1,5 @@
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { dirname } from 'node:path';
 import {
   loadCollectedManifest,
   saveCollectedManifest,
@@ -14,6 +14,7 @@ import {
 } from '../packages/sangfor-collector/src/site-learning-crawler.js';
 import { createFineTuneDataset, validateFineTuneDataset } from '../packages/sangfor-finetune/src/index.js';
 import { exportRagIndexSummary, ingestDocumentsBatch } from '../packages/sangfor-rag/src/index.js';
+import { supportCommunityCliHelp } from './lib/support-community-cli.js';
 
 const rawDir = process.env.SANGFOR_SOURCES_RAW_ROOT ?? 'data/sources/raw';
 const reportPath = process.env.SANGFOR_TWO_SITE_REPORT_PATH ?? 'data/sources/two-site-learning-report.json';
@@ -22,22 +23,6 @@ const checkpointPath = process.env.SANGFOR_TWO_SITE_CHECKPOINT_PATH
 const manifestPath = process.env.SANGFOR_SOURCES_MANIFEST_PATH ?? 'data/sources/manifest.json';
 const ragIndexPath = process.env.SANGFOR_RAG_INDEX_PATH ?? 'data/rag/index.json';
 const finetunePath = process.env.SANGFOR_FINETUNE_PATH ?? 'data/finetune/sangfor-sources.jsonl';
-
-const HELP_TEXT = `Usage: pnpm run learn:sites:full
-
-Crawls the registered Sangfor Support and Community learning sites, writes raw
-documents, updates the collected-source manifest, ingests documents into the RAG
-index, and rebuilds the lesson-extraction fine-tune dataset.
-
-Important environment controls:
-  SANGFOR_TWO_SITE_FRESH=1                  remove the previous checkpoint first
-  SANGFOR_SUPPORT_MAX_VERSIONS=<n>          cap Support product versions
-  SANGFOR_SUPPORT_MAX_DOCUMENTS=<n>         cap Support documents
-  SANGFOR_COMMUNITY_MAX_FORUMS=<n>          cap Community forums
-  SANGFOR_COMMUNITY_MAX_PAGES_PER_FORUM=<n> cap Community forum pages
-  SANGFOR_COMMUNITY_MAX_THREADS=<n>         cap Community threads
-  SANGFOR_SITE_CRAWL_DELAY_MS=<n>           polite delay between page actions
-`;
 
 function optionalLimit(name: string): number | undefined {
   const value = process.env[name]?.trim();
@@ -159,8 +144,9 @@ async function main(): Promise<void> {
   console.log(JSON.stringify(finalReport, null, 2));
 }
 
-if (process.argv.includes('--help') || process.argv.includes('-h')) {
-  console.log(HELP_TEXT);
+const help = supportCommunityCliHelp(process.argv.slice(2));
+if (help) {
+  console.log(help);
   process.exit(0);
 }
 

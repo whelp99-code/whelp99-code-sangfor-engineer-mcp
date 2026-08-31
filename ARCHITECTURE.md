@@ -15,7 +15,7 @@ pnpm workspace (`apps/*` + `packages/*`), run directly from TypeScript source vi
 ## Runtime topology
 
 ```
-Cursor / MCP client ──stdio JSON-RPC──► apps/mcp-server        (108 sangfor.* tools; no port)
+Cursor / MCP client ──stdio JSON-RPC──► apps/mcp-server        (118 sangfor.* tools; no port)
                                           │ pure JSON BrowserExecutionPort
                                           ▼
                                       JM local runtime ──► Playwright / loopback CDP

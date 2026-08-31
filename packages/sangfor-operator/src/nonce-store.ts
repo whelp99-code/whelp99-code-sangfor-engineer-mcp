@@ -1,5 +1,5 @@
 import { dirname, join } from 'node:path';
-import { FileSingleUseNonceStore } from '@sangfor/approval';
+import { FileSingleUseNonceStore, hasApprovalControlCharacters } from '@sangfor/approval';
 import { PostgresSingleUseNonceStore } from '../../sangfor-approval/src/postgres-nonce-store.js';
 import { resolveProjectId } from '@sangfor/identity';
 import { resolveProductionLocalWriteAuthority, resolveRepoData } from '@sangfor/shared';
@@ -128,6 +128,7 @@ export async function consumeApprovalNonceAsync(
   now?: Date,
   environment: Env = process.env,
 ): Promise<NonceConsumeResult> {
+  if (hasApprovalControlCharacters(approval.nonce)) return { ok: false, reason: 'invalid nonce input' };
   const selection = resolveNonceStoreSelection(environment);
   if (!selection.ok) return { ok: false, reason: selection.reason };
   if (selection.kind === 'file') {
@@ -149,6 +150,7 @@ export async function consumeApprovalNonce(
   approval: { nonce: string; expiresAt: string; authorityEpoch: number },
   now?: Date,
 ): Promise<NonceConsumeResult> {
+  if (hasApprovalControlCharacters(approval.nonce)) return { ok: false, reason: 'invalid nonce input' };
   const selection = resolveNonceStoreSelection();
   if (!selection.ok) return { ok: false, reason: selection.reason };
   if (selection.kind !== 'file') {

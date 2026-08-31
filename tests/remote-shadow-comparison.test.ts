@@ -83,14 +83,14 @@ function compare(local: RemoteShadowObservation, remote: RemoteShadowObservation
 }
 
 describe('remote shadow promotion comparison', () => {
-  it('Given exact current read-only observations, When compared, Then promotion passes', () => {
+  it('Given exact current read-only observations without authenticated proof, When compared, Then comparison passes candidate-only', () => {
     // Given
     const local = observation('local');
     const remote = observation('remote');
     // When
     const report = compare(local, remote);
     // Then
-    expect(report).toMatchObject({ verdict: 'PASS', code: 'REMOTE_SHADOW_PASS', promotionEligible: true, factCount: 2 });
+    expect(report).toMatchObject({ verdict: 'PASS', code: 'REMOTE_SHADOW_CANDIDATE', promotionEligible: false, factCount: 2 });
   });
 
   it.each([

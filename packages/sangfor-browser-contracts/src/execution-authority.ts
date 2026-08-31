@@ -38,9 +38,9 @@ export function assertIndependentBrowserExecutionAuthorities(
 ): void {
   const executionRoot = authorityRoots.get(executionPort);
   const verificationRoot = authorityRoots.get(verificationPort);
-  if ((executionRoot === undefined) !== (verificationRoot === undefined)
-    || (executionRoot !== undefined && executionRoot === verificationRoot)
-    || (executionRoot === undefined && executionPort === verificationPort)) {
+  if (executionRoot === undefined
+    || verificationRoot === undefined
+    || executionRoot === verificationRoot) {
     throw new TypeError('IAG_INDEPENDENT_READ_BACK_PORT_REQUIRED');
   }
 }

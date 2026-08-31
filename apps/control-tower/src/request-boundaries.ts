@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { runtimeJsonObjectSchema } from '../../../packages/shared/src/runtime-json-codecs.js';
+import { hasApprovalControlCharacters } from '../../../packages/sangfor-approval/src/index.js';
 import {
   acknowledgeRotationInputSchema,
   claimBootstrapTokenInputSchema,
@@ -12,6 +13,7 @@ import {
 const textSchema = z.string().max(1_000_000);
 const idSchema = z.string().max(4_096);
 const stringListSchema = z.array(z.string().max(4_096)).max(100_000);
+const approvalTextSchema = z.string().max(4_096).refine((value) => !hasApprovalControlCharacters(value));
 
 const credentialEnvSchema = z.record(
   z.string().min(1).max(256),
@@ -70,11 +72,11 @@ export const controlTowerRequestSchemas = {
   'device-update': z.object(deviceFields).strict(),
   sweep: z.object({ deviceIds: stringListSchema.optional() }).strict(),
   'approval-mint': z.object({
-    actionType: idSchema.optional(),
-    actionTarget: textSchema.optional(),
-    approvedBy: idSchema.optional(),
-    changeTicketId: idSchema.optional(),
-    rollbackPlanId: idSchema.optional(),
+    actionType: approvalTextSchema.optional(),
+    actionTarget: approvalTextSchema.optional(),
+    approvedBy: approvalTextSchema.optional(),
+    changeTicketId: approvalTextSchema.optional(),
+    rollbackPlanId: approvalTextSchema.optional(),
     authorityEpoch: z.number().int().nonnegative().optional(),
     ttlSec: z.number().finite().positive().optional(),
   }).strict(),
@@ -124,9 +126,9 @@ export const controlTowerRequestSchemas = {
     result: agentResultSchema.optional(),
   }).strict(),
   'run-approve': z.object({
-    approvedBy: idSchema.optional(),
-    changeTicketId: idSchema.optional(),
-    rollbackPlanId: idSchema.optional(),
+    approvedBy: approvalTextSchema.optional(),
+    changeTicketId: approvalTextSchema.optional(),
+    rollbackPlanId: approvalTextSchema.optional(),
   }).strict(),
   'run-reject': z.object({ reason: textSchema.optional() }).strict(),
   'enrollment-bootstrap-token': issueBootstrapTokenRequestSchema,

@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -25,6 +25,7 @@ import {
   type WikiAdapter,
   type WikiUpdateProposal,
 } from '../packages/sangfor-wiki/src/index.js';
+import { AuthorityRunStore, RunStore, type RunRecord } from '../packages/sangfor-runs/src/index.js';
 import { testLocalWriteAuthority } from './helpers/local-write-authority.js';
 
 const feedbackInput = {
@@ -39,6 +40,17 @@ const feedbackInput = {
 // origin/main consumer contract, proving that the shipped one-argument API and
 // synchronous return types remain source-compatible during the cutover.
 function originMainConsumerCompiles(adapter: WikiAdapter, card: Omit<KnowledgeCard, 'id' | 'updatedAt'>): void {
+  const runStore = new RunStore('/tmp/runs');
+  const run: RunRecord = runStore.createRun({
+    toolId: 'tool', toolSafety: 'read_only', args: {}, initialStatus: 'running',
+  });
+  const transitioned: RunRecord = runStore.transition(run.runId, {
+    status: 'running',
+    approval: {
+      approvedBy: 'legacy', approvedAt: '2026-08-31T00:00:00.000Z',
+      changeTicketId: 'CHG-legacy', rollbackPlanId: 'RB-legacy',
+    },
+  });
   const feedback: FeedbackEvent = submitFeedback(feedbackInput);
   const lesson: LessonLearned = extractLesson(feedback.id);
   const proposal: WikiUpdateProposal = proposeWikiUpdate({ lessonTitle: lesson.lessonTitle, lessonBody: lesson.lessonBody });
@@ -50,7 +62,15 @@ function originMainConsumerCompiles(adapter: WikiAdapter, card: Omit<KnowledgeCa
   const storedCard: KnowledgeCard = upsertKnowledgeCard(card);
   const obsidianAdapter: WikiAdapter = new ObsidianVaultAdapter('/tmp/wiki');
   const githubAdapter: WikiAdapter = new GitHubWikiGitAdapter({ repoUrl: 'https://example.invalid/wiki.git', localPath: '/tmp/wiki-git' });
-  void [adapted, obsidian, github, storedCard, obsidianAdapter, githubAdapter];
+  void [transitioned, adapted, obsidian, github, storedCard, obsidianAdapter, githubAdapter];
+}
+
+function authorityRunConsumerCompiles(store: AuthorityRunStore): void {
+  const created: Promise<RunRecord> = store.createRun({
+    toolId: 'tool', toolSafety: 'read_only', args: {}, initialStatus: 'running',
+  });
+  const transitioned: Promise<RunRecord> = store.transition('run-id', { status: 'succeeded' });
+  void [created, transitioned];
 }
 
 const knowledgeCardInput: Omit<KnowledgeCard, 'id' | 'updatedAt'> = {
@@ -90,6 +110,43 @@ describe('legacy local-write public API cutover', () => {
     // When TypeScript compiles this test module.
     // Then every legacy call retains its shipped input and return type.
     expect(originMainConsumerCompiles).toBeTypeOf('function');
+    expect(authorityRunConsumerCompiles).toBeTypeOf('function');
+  });
+
+  it('refuses legacy run writes synchronously without creating storage', () => {
+    // Given a shipped synchronous RunStore consumer and an empty data root.
+    const runsRoot = join(root, 'runs');
+    const store = new RunStore(runsRoot);
+
+    // When it invokes the old write API without authority.
+    const invoke = () => store.createRun({
+      toolId: 'tool', toolSafety: 'read_only', args: {}, initialStatus: 'running',
+    });
+
+    // Then migration is required and no storage is created.
+    expect(invoke).toThrow(/AuthorityRunStore/);
+    expect(existsSync(runsRoot)).toBe(false);
+  });
+
+  it('refuses legacy run transitions synchronously without changing ledger bytes', () => {
+    // Given a readable historical ledger and its shipped synchronous store.
+    const runsRoot = join(root, 'runs');
+    mkdirSync(runsRoot, { recursive: true });
+    const record: RunRecord = {
+      schemaVersion: 1, runId: 'run-existing', toolId: 'tool', toolSafety: 'read_only',
+      args: {}, status: 'running', requestedAt: '2026-08-31T00:00:00.000Z',
+    };
+    const path = join(runsRoot, '2026-08-31.jsonl');
+    writeFileSync(path, `${JSON.stringify(record)}\n`);
+    const prior = readFileSync(path, 'utf8');
+    const store = new RunStore(runsRoot);
+
+    // When it invokes the old transition API without authority.
+    const invoke = () => store.transition(record.runId, { status: 'succeeded' });
+
+    // Then migration is required and the existing ledger remains untouched.
+    expect(invoke).toThrow(/AuthorityRunStore/);
+    expect(readFileSync(path, 'utf8')).toBe(prior);
   });
 
   it('refuses a legacy feedback write synchronously without creating storage', () => {
@@ -137,6 +194,22 @@ describe('legacy local-write public API cutover', () => {
 });
 
 describe('authority-bound local-write public API', () => {
+  it('creates and transitions runs through the explicit asynchronous store', async () => {
+    // Given matching run-ledger authority.
+    const runsRoot = join(root, 'runs');
+    const store = new AuthorityRunStore(runsRoot, testLocalWriteAuthority('runs_steps', runsRoot));
+
+    // When both writes use the authority-bound API.
+    const run = await store.createRun({
+      toolId: 'tool', toolSafety: 'read_only', args: {}, initialStatus: 'running',
+    });
+    const transitioned = await store.transition(run.runId, { status: 'succeeded' });
+
+    // Then the authorized ledger stores the final state.
+    expect(transitioned.status).toBe('succeeded');
+    expect(store.getRun(run.runId)?.status).toBe('succeeded');
+  });
+
   it('submits feedback and extracts a lesson through explicit authority APIs', async () => {
     // Given matching authority for the engagement-scoped feedback root.
     const authority = testLocalWriteAuthority('feedback_lessons');

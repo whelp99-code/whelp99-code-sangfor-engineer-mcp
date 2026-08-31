@@ -47,6 +47,7 @@ function localRefs(refs: readonly string[]): readonly string[] {
     && !reference.startsWith('persist:packages/sangfor-rag/src/pgvector-store.ts#')
     && !reference.startsWith('persist:scripts/rag-pgvector-qa.ts#')
     && !reference.startsWith('persist:packages/sangfor-rag/src/index-promotion-store.ts#')
+    && !reference.startsWith('persist:packages/sangfor-rag/src/index-promotion-history.ts#')
     && !reference.startsWith('persist:scripts/rag-index-promotion-qa.ts#'));
 }
 

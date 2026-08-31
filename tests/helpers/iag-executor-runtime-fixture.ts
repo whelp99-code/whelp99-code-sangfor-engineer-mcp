@@ -1,7 +1,8 @@
-import type {
-  BrowserExecutionPort,
-  BrowserExecutionRequest,
-  BrowserExecutionResult,
+import {
+  createBrowserExecutionAuthorityPort,
+  type BrowserExecutionPort,
+  type BrowserExecutionRequest,
+  type BrowserExecutionResult,
 } from '../../packages/sangfor-browser-contracts/src/index.js';
 import type { IagMutationActionAuthority } from '../../packages/sangfor-competency/src/index.js';
 import {
@@ -148,7 +149,9 @@ export function replayFixture(
   };
   return {
     executor: createIagExecutor({
-      executionPort, readBackPort, now: () => IAG_EXECUTOR_TEST_NOW,
+      executionPort: createBrowserExecutionAuthorityPort(executionPort),
+      readBackPort: createBrowserExecutionAuthorityPort(readBackPort),
+      now: () => IAG_EXECUTOR_TEST_NOW,
       dispatchTimeoutMs: 1_000, scheduler: new FakeDispatchScheduler(),
     }),
     executionPort, readBackPort, preflights, dispatches, readBacks,

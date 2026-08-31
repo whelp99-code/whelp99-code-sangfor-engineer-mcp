@@ -4,7 +4,7 @@ import { Registry } from '../../apps/control-tower/src/registry.js';
 import { FileSingleUseNonceStore } from '../../packages/sangfor-approval/src/index.js';
 import { AuditLedger } from '../../packages/sangfor-hci-client/src/index.js';
 import { appendEngineerReport } from '../../packages/sangfor-engineer-report/src/index.js';
-import { RunStore } from '../../packages/sangfor-runs/src/index.js';
+import { AuthorityRunStore as RunStore } from '../../packages/sangfor-runs/src/index.js';
 import { createEvalCaseFromFeedback } from '../../packages/sangfor-evals/src/index.js';
 import { extractLesson, submitFeedback } from '../../packages/sangfor-feedback/src/index.js';
 import {
@@ -94,7 +94,7 @@ export async function localWriterRefusalCases(
     { reference: 'persist:apps/control-tower/src/playbook-store.ts#PlaybookStore', invoke: () => new PlaybookStore(registryRoot, registryAuthority).create({ name: 'p', goal: 'g', blocks: [{ id: 'b', type: 'tool', toolId: 't' }], authoredBy: 'a' }) },
     { reference: 'persist:apps/control-tower/src/registry.ts#Registry', invoke: () => new Registry(registryRoot, registryAuthority).seedVendors() },
     { reference: 'persist:apps/control-tower/src/playbook-store.ts#AnalysisStore', invoke: () => new AnalysisStore(runsRoot, runsAuthority).append({ schemaVersion: 1, id: 'a', playbookId: 'p', playbookRunId: 'r', summary: 's', improvements: [], proposals: [], authoredBy: 'a', createdAt: '2026-08-27T00:00:00.000Z' }) },
-    { reference: 'persist:packages/sangfor-runs/src/run-store.ts#RunStore', invoke: () => new RunStore(runsRoot, runsAuthority).createRun({ toolId: 't', toolSafety: 'read_only', args: {}, initialStatus: 'succeeded' }) },
+    { reference: 'persist:packages/sangfor-runs/src/run-store.ts#AuthorityRunStore', invoke: () => new RunStore(runsRoot, runsAuthority).createRun({ toolId: 't', toolSafety: 'read_only', args: {}, initialStatus: 'succeeded' }) },
     { reference: 'persist:packages/sangfor-approval/src/index.ts#FileSingleUseNonceStore', invoke: () => new FileSingleUseNonceStore(join(nonceRoot, 'nonces.json'), nonceAuthority).consume('n', '2099-01-01T00:00:00.000Z') },
     { reference: 'persist:packages/sangfor-hci-client/src/audit-ledger.ts#AuditLedger', invoke: () => new AuditLedger({ dir: auditRoot, authority: auditAuthority }).append('r', 'request', {}) },
     { reference: 'persist:packages/sangfor-engineer-report/src/ledger.ts#appendEngineerReport', invoke: () => appendEngineerReport(evidenceRoot, { reportId: 'r', deviceId: 'd', snapshotHash: 'a'.repeat(64), engineResult, riskNote: '', recommendations: [], rollbackPlan: [], ragCitations: [], modelId: 'm', promptHash: 'b'.repeat(64), createdAt: '2026-08-27T00:00:00.000Z' }, evidenceAuthority) },

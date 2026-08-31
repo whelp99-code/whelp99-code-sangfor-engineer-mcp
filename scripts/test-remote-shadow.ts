@@ -110,7 +110,8 @@ async function main(): Promise<void> {
       && pass.remoteProvenanceDigest === equalTimingReport.remoteProvenanceDigest;
 
     const after = sha256(await readFile(statePath));
-    if (!pass.promotionEligible || !timingDigestsStable || before !== after) {
+    if (pass.verdict !== 'PASS' || pass.promotionEligible || pass.code !== 'REMOTE_SHADOW_CANDIDATE'
+      || !timingDigestsStable || before !== after) {
       throw new RemoteShadowQaError('QA_INVARIANT_FAILED');
     }
     process.stdout.write(`REMOTE_VERIFICATION_STATUS=${remoteExecution.status} ERROR_CODE=${remoteExecution.error?.code ?? 'none'}\n`);

@@ -47,8 +47,7 @@ vi.mock('node:fs', async (importOriginal) => {
 describe('shared approval primitives', () => {
   it('preserves ordered UTF-8 fields without an extra newline and signs bytes deterministically', async () => {
     const canonical = canonicalizeApprovalPayload(['approved', '한글', 'target']);
-    expect(canonical).toBe('approved\n한글\ntarget');
-    expect(canonical.endsWith('\n')).toBe(false);
+    expect(canonical).toBe('approval-v2:["approved","한글","target"]');
     const signature = signDomainApproval('secret', canonical);
     expect(signature).toBeInstanceOf(Uint8Array);
     expect(Buffer.from(signature).toString('hex')).toBe(

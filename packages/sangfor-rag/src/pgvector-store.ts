@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import {
   ACTIVE_COHORT_SQL,
+  EXACT_SEARCH_SQL,
   EXPLAIN_HNSW_SQL,
   REBUILD_HNSW_SQL,
   SEARCH_SQL,
@@ -172,7 +173,8 @@ export class PgvectorRagStore {
         await transaction.$executeRawUnsafe(`SET LOCAL hnsw.iterative_scan='strict_order'`);
       }
       const active = await requireActive(transaction, input.scope);
-      const rows = await transaction.$queryRawUnsafe<unknown>(SEARCH_SQL, ...this.searchValues(input, active.id));
+      const sql = mode === 'exact' ? EXACT_SEARCH_SQL : SEARCH_SQL;
+      const rows = await transaction.$queryRawUnsafe<unknown>(sql, ...this.searchValues(input, active.id));
       return z.array(PgvectorHitRowSchema).parse(rows);
     }));
   }

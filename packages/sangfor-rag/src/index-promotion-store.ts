@@ -1,13 +1,24 @@
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
-import { canonicalPromotionJson, evaluateIndexPromotion, parseIndexPromotionReport } from './index-promotion-evaluator.js';
+import {
+  IndexPromotionEvidenceError,
+  IndexPromotionEvidenceSchema,
+  parseIndexPromotionEvidence,
+  verifyIndexPromotionEvidence,
+} from './index-promotion-authority.js';
+import { canonicalPromotionJson, evaluateIndexPromotion } from './index-promotion-evaluator.js';
+import {
+  appendPromotionEvidenceHistory,
+  IndexPromotionHistoryError,
+  requirePromotionEvidenceHistory,
+} from './index-promotion-history.js';
 import {
   hnswIndexIdentityDigest,
   readHnswIndexIdentity,
   sameHnswIndexIdentity,
 } from './index-promotion-identity.js';
 import type { HnswIndexIdentity, IndexPromotionReport, PromotionCurrentState, PromotionSearchPort } from './index-promotion-types.js';
-import { IndexPromotionReportSchema, PromotionCurrentStateSchema } from './index-promotion-types.js';
+import { PromotionCurrentStateSchema } from './index-promotion-types.js';
 import { PgvectorRagStore } from './pgvector-store.js';
 import { ACTIVE_COHORT_SQL, EXPLAIN_HNSW_SQL, SEARCH_SQL, vectorLiteral } from './pgvector-sql.js';
 import { RagPgvectorRefusal, RagPgvectorUnavailableError, parsePgvectorScope } from './pgvector-schema.js';
@@ -21,16 +32,21 @@ const CurrentRowSchema = z.object({
   cohortId: z.string(), indexEpoch: z.number().int(), extensionName: z.string(), extensionVersion: z.string(),
   candidateRowCount: z.union([z.number(), z.bigint(), z.string()]).transform(Number).pipe(z.number().int().nonnegative()),
 }).strict();
-
 type CandidateIdentityProbe = (transaction: PgvectorSqlExecutor, indexName: string) => Promise<HnswIndexIdentity | null>;
+type PromotionAuthority = {
+  readonly actorId: string;
+  readonly secret: string;
+};
+
 type IndexPromotionStoreOptions = {
   readonly candidateIdentityProbe?: CandidateIdentityProbe;
   readonly afterCandidateQuery?: () => Promise<void>;
+  readonly promotionAuthority?: PromotionAuthority;
 };
 
 type ApplyInput = {
   readonly scope: PgvectorScope;
-  readonly report: unknown;
+  readonly evidence: unknown;
   readonly now: Date;
   readonly reason: string;
 };
@@ -69,11 +85,25 @@ export class IndexPromotionStore implements PromotionSearchPort {
       if (rows.length > 1) throw new RagPgvectorRefusal('RAG_INDEX_PROMOTION_AMBIGUOUS', scope.projectId);
       const row = rows[0];
       if (!row) return null;
-      const report = IndexPromotionReportSchema.safeParse(row.report);
-      if (!report.success || row.reportCanonical !== canonicalPromotionJson(report.data) || row.reportDigest !== report.data.reportDigest) {
+      const authority = this.options.promotionAuthority;
+      const evidence = IndexPromotionEvidenceSchema.safeParse(row.report);
+      if (!authority || !evidence.success || row.reportCanonical !== canonicalPromotionJson(evidence.data)
+        || row.reportDigest !== evidence.data.report.reportDigest) {
         return { schemaVersion: 'persisted-promotion-envelope-tampered' };
       }
-      return report.data;
+      const verificationAuthority = {
+        tenantId: scope.tenantId, projectId: scope.projectId,
+        authorityActorId: authority.actorId, secret: authority.secret,
+      };
+      try {
+        await requirePromotionEvidenceHistory(transaction, scope, evidence.data, verificationAuthority);
+        return verifyIndexPromotionEvidence(evidence.data, verificationAuthority);
+      } catch (error) {
+        if (error instanceof IndexPromotionEvidenceError || error instanceof IndexPromotionHistoryError) {
+          return { schemaVersion: 'persisted-promotion-envelope-tampered' };
+        }
+        throw error;
+      }
     }));
   }
 
@@ -110,13 +140,29 @@ export class IndexPromotionStore implements PromotionSearchPort {
 
   async apply(raw: ApplyInput): Promise<IndexPromotionReport> {
     const scope = parsePgvectorScope(raw.scope);
-    const report = parseIndexPromotionReport(raw.report);
+    const authority = this.options.promotionAuthority;
+    if (!authority) throw new RagPgvectorRefusal('PROMOTION_EVIDENCE_AUTHORITY_MISSING', scope.projectId);
+    const evidence = parseIndexPromotionEvidence(raw.evidence);
+    if (scope.actorId !== authority.actorId) throw new RagPgvectorRefusal('PROMOTION_EVIDENCE_ACTOR_MISMATCH', scope.actorId);
+    const report = verifyIndexPromotionEvidence(evidence, {
+      tenantId: scope.tenantId, projectId: scope.projectId,
+      authorityActorId: authority.actorId, secret: authority.secret,
+    });
     const current = await this.readCurrentState(scope);
     const evaluation = evaluateIndexPromotion(report, current, raw.now);
     if (!evaluation.eligible) throw new RagPgvectorRefusal(evaluation.reason, report.reportDigest);
     await this.execute(() => this.database.$transaction(async (transaction) => {
       await setScope(transaction, scope);
-      await transaction.$executeRawUnsafe(`SELECT pg_advisory_xact_lock(hashtext($1),0)`, scope.projectId);
+      await transaction.$executeRawUnsafe(`SELECT pg_advisory_xact_lock(hashtext($1),hashtext($2))`, scope.tenantId, scope.projectId);
+      try {
+        await appendPromotionEvidenceHistory(transaction, scope, evidence, {
+          tenantId: scope.tenantId, projectId: scope.projectId,
+          authorityActorId: authority.actorId, secret: authority.secret,
+        });
+      } catch (error) {
+        if (error instanceof IndexPromotionHistoryError) throw new RagPgvectorRefusal(error.code, error.message);
+        throw error;
+      }
       await transaction.$executeRawUnsafe(`UPDATE "BlroRagIndexPromotion" SET "state"='demoted',"demotedAt"=$3,"updatedAt"=$3,"reason"='superseded' WHERE "tenantId"=$1 AND "projectId"=$2 AND "state"='promoted'`, scope.tenantId, scope.projectId, raw.now);
       await transaction.$executeRawUnsafe(`
         INSERT INTO "BlroRagIndexPromotion" ("tenantId","projectId","cohortId","indexEpoch","report","reportCanonical","reportDigest","state","reason","promotedAt","updatedAt")
@@ -124,8 +170,8 @@ export class IndexPromotionStore implements PromotionSearchPort {
         ON CONFLICT ("tenantId","projectId","cohortId","indexEpoch") DO UPDATE SET
           "report"=EXCLUDED."report","reportCanonical"=EXCLUDED."reportCanonical","reportDigest"=EXCLUDED."reportDigest",
           "state"='promoted',"reason"=EXCLUDED."reason","promotedAt"=EXCLUDED."promotedAt","demotedAt"=NULL,"updatedAt"=EXCLUDED."updatedAt"`,
-      scope.tenantId, scope.projectId, report.cohortId, report.indexEpoch, canonicalPromotionJson(report),
-      canonicalPromotionJson(report), report.reportDigest, raw.reason, raw.now);
+      scope.tenantId, scope.projectId, report.cohortId, report.indexEpoch, canonicalPromotionJson(evidence),
+      canonicalPromotionJson(evidence), report.reportDigest, raw.reason, raw.now);
     }, { isolationLevel: 'Serializable' }));
     return report;
   }

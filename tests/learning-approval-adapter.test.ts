@@ -41,11 +41,11 @@ describe('learning-strategy-v1 approval adapter', () => {
     const dir = mkdtempSync(join(tmpdir(), 'learning-approval-'));
     try {
       const { payload } = fixture(dir);
-      expect(canonicalizeLearningApprovalPayload(payload)).toBe([
+      expect(canonicalizeLearningApprovalPayload(payload)).toBe(`approval-v2:${JSON.stringify([
         'learning-strategy-v1', payload.entityType, payload.entityId, payload.revisionId,
         payload.contentHash, payload.fromState, payload.toState, payload.evidenceFile,
         payload.evidenceDigest, payload.nonce, payload.expiresAt,
-      ].join('\n'));
+      ])}`);
       expect(signLearningApproval(payload, SECRET)).toMatch(/^[a-f0-9]{64}$/);
       expect(() => signLearningApproval(payload, 'not-base64')).toThrowError(/INVALID_SECRET_ENCODING/);
       expect(() => verifyLearningApprovalSignature({ payload, approvalToken: 'A'.repeat(64), secret: SECRET }))

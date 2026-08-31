@@ -145,7 +145,7 @@ describe('Todo 24 mandatory PostgreSQL profile refusal', () => {
 
     // Then
     expect(result.status).not.toBe(0);
-    expect(result.stdout).toContain('MANDATORY_POSTGRES_SELECTION: 28 exact files');
+    expect(result.stdout).toContain('MANDATORY_POSTGRES_SELECTION: 29 exact files');
     expect(`${result.stdout}${result.stderr}`).toContain('MANDATORY_POSTGRES_DATABASE_REQUIRED');
   });
 

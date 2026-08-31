@@ -246,6 +246,7 @@ model BlroTenant {
   ragAuthoritativeChunks    BlroRagAuthoritativeChunk[]
   ragEmbeddings             BlroRagEmbedding[]
   ragIndexPromotions        BlroRagIndexPromotion[]
+  ragIndexPromotionEvidence BlroRagIndexPromotionEvidence[]
 }
 
 model BlroProject {
@@ -292,6 +293,7 @@ model BlroProject {
   ragAuthoritativeChunks    BlroRagAuthoritativeChunk[]
   ragEmbeddings             BlroRagEmbedding[]
   ragIndexPromotions        BlroRagIndexPromotion[]
+  ragIndexPromotionEvidence BlroRagIndexPromotionEvidence[]
 
   @@unique([id, tenantId])
   @@unique([tenantId, id])
@@ -939,7 +941,8 @@ model BlroRagEmbeddingCohort {
   tenant     BlroTenant         @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   project    BlroProject        @relation(fields: [tenantId, projectId], references: [tenantId, id], onDelete: Restrict)
   embeddings BlroRagEmbedding[]
-  promotions BlroRagIndexPromotion[]
+  promotions       BlroRagIndexPromotion[]
+  promotionEvidence BlroRagIndexPromotionEvidence[]
 
   @@id([tenantId, projectId, id])
   @@unique([tenantId, projectId, indexEpoch, backend, model, dimensions])
@@ -991,6 +994,25 @@ model BlroRagIndexPromotion {
   cohort         BlroRagEmbeddingCohort @relation(fields: [tenantId, projectId, cohortId], references: [tenantId, projectId, id], onDelete: Restrict)
 
   @@id([tenantId, projectId, cohortId, indexEpoch])
+  @@index([tenantId, projectId, cohortId, indexEpoch])
+}
+
+model BlroRagIndexPromotionEvidence {
+  tenantId        String
+  projectId       String
+  nonce           String
+  cohortId        String
+  indexEpoch      Int
+  authorityActorId String
+  evidence        Json
+  evidenceCanonical String
+  reportDigest    String
+  createdAt       DateTime               @default(now()) @db.Timestamptz(3)
+  tenant          BlroTenant             @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  project         BlroProject            @relation(fields: [tenantId, projectId], references: [tenantId, id], onDelete: Restrict)
+  cohort          BlroRagEmbeddingCohort @relation(fields: [tenantId, projectId, cohortId], references: [tenantId, projectId, id], onDelete: Restrict)
+
+  @@id([tenantId, projectId, nonce])
   @@index([tenantId, projectId, cohortId, indexEpoch])
 }
 

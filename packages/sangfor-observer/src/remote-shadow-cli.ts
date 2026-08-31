@@ -13,7 +13,8 @@ export type RemoteShadowCliIo = {
 
 const HELP = `Usage: remote-shadow-compare --local <observation.json> --remote <observation.json> --now <ISO-8601> --max-age-ms <integer>
 
-Strictly compares required local and remote read-only facts. Exit 0 prints REMOTE_SHADOW_PASS;
+Strictly compares required local and remote read-only facts. Factual agreement without
+runtime-authenticated promotion proof prints REMOTE_SHADOW_CANDIDATE and exits 2;
 input defects or any mismatch print REMOTE_SHADOW_MISMATCH and exit 2.`;
 
 export async function runRemoteShadowCli(

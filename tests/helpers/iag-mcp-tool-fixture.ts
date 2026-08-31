@@ -1,5 +1,6 @@
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { createBrowserExecutionAuthorityPort } from '../../packages/sangfor-browser-contracts/src/index.js';
 import {
   configureIagOrchestratorToolService,
   IagOrchestratorToolService,
@@ -32,8 +33,8 @@ export async function configureIagMcpFixture(input: {
     orchestrator: { ledgerPath: fixture.ledgerPath },
   }));
   configureIagOrchestratorToolService(new IagOrchestratorToolService({
-    executionPort: fixture.adapterFixture.executionPort,
-    readBackPort: fixture.adapterFixture.readBackPort,
+    executionPort: createBrowserExecutionAuthorityPort(fixture.adapterFixture.executionPort),
+    readBackPort: createBrowserExecutionAuthorityPort(fixture.adapterFixture.readBackPort),
     now: () => IAG_ORCHESTRATOR_NOW,
   }));
   return { fixture, actionPath, configPath, approvalEnvelopePath };

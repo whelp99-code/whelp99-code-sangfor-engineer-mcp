@@ -1,13 +1,20 @@
 import { readFileSync } from 'node:fs';
 import { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
-import { evaluateIndexPromotion, parseIndexPromotionReport } from '../packages/sangfor-rag/src/index-promotion-evaluator.js';
+import { verifyIndexPromotionEvidence } from '../packages/sangfor-rag/src/index-promotion-authority.js';
+import { evaluateIndexPromotion } from '../packages/sangfor-rag/src/index-promotion-evaluator.js';
 import { IndexPromotionStore } from '../packages/sangfor-rag/src/index-promotion-store.js';
 import { parsePgvectorScope } from '../packages/sangfor-rag/src/pgvector-schema.js';
 
-const EnvironmentSchema = z.object({ DATABASE_URL: z.string().url() }).passthrough();
+const EnvironmentSchema = z.object({
+  DATABASE_URL: z.string().url(),
+  SANGFOR_RAG_PROMOTION_SECRET: z.string().min(32),
+  SANGFOR_RAG_PROMOTION_AUTHORITY_ACTOR_ID: z.string().min(1),
+  SANGFOR_TENANT_ID: z.string().min(1),
+  SANGFOR_PROJECT_ID: z.string().min(1),
+}).passthrough();
 const ArgsSchema = z.object({
-  report: z.string().min(1).optional(), actorId: z.string().min(1), apply: z.boolean(), status: z.boolean(),
+  report: z.string().min(1).optional(), actorId: z.string().min(1).optional(), apply: z.boolean(), status: z.boolean(),
   demote: z.boolean(), reason: z.string().min(1), help: z.boolean(),
 }).strict();
 type Args = z.infer<typeof ArgsSchema>;
@@ -18,8 +25,8 @@ Evaluate is dry-run by default. --apply is required to persist a promotion.
 `;
 
 function parseArgs(argv: readonly string[]): Args {
-  const values: { report?: string; actorId: string; apply: boolean; status: boolean; demote: boolean; reason: string; help: boolean } = {
-    actorId: 'rag-index-promotion-owner', apply: false, status: false, demote: false, reason: 'owner-approved benchmark', help: false,
+  const values: { report?: string; actorId?: string; apply: boolean; status: boolean; demote: boolean; reason: string; help: boolean } = {
+    apply: false, status: false, demote: false, reason: 'owner-approved benchmark', help: false,
   };
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
@@ -48,27 +55,37 @@ async function main(): Promise<void> {
   const environment = EnvironmentSchema.parse(process.env);
   const database = new PrismaClient({ datasources: { db: { url: environment.DATABASE_URL } } });
   try {
-    const store = new IndexPromotionStore(database);
+    const authority = {
+      actorId: environment.SANGFOR_RAG_PROMOTION_AUTHORITY_ACTOR_ID,
+      secret: environment.SANGFOR_RAG_PROMOTION_SECRET,
+    };
+    const store = new IndexPromotionStore(database, { promotionAuthority: authority });
     if (args.status || args.demote) {
-      const report = args.report ? parseIndexPromotionReport(JSON.parse(readFileSync(args.report, 'utf8'))) : null;
-      const tenantId = report?.tenantId ?? process.env['SANGFOR_TENANT_ID'];
-      const projectId = report?.projectId ?? process.env['SANGFOR_PROJECT_ID'];
-      const scope = parsePgvectorScope({ tenantId, projectId, actorId: args.actorId });
+      const evidence = args.report ? JSON.parse(readFileSync(args.report, 'utf8')) : null;
+      const retained = evidence === null ? null : verifyIndexPromotionEvidence(evidence, {
+        tenantId: environment.SANGFOR_TENANT_ID, projectId: environment.SANGFOR_PROJECT_ID,
+        authorityActorId: authority.actorId, secret: authority.secret,
+      });
+      const tenantId = retained?.tenantId ?? environment.SANGFOR_TENANT_ID;
+      const projectId = retained?.projectId ?? environment.SANGFOR_PROJECT_ID;
+      const scope = parsePgvectorScope({ tenantId, projectId, actorId: args.actorId ?? authority.actorId });
       if (args.demote) { await store.demote(scope, args.reason); process.stdout.write('RAG_INDEX_PROMOTION_DEMOTED\n'); return; }
       process.stdout.write(`${JSON.stringify(await store.loadPromotion(scope))}\n`); return;
     }
-    const report = parseIndexPromotionReport(JSON.parse(readFileSync(args.report ?? '', 'utf8')));
-    const expectedTenant = process.env['SANGFOR_TENANT_ID'];
-    const expectedProject = process.env['SANGFOR_PROJECT_ID'];
-    if ((expectedTenant && expectedTenant !== report.tenantId) || (expectedProject && expectedProject !== report.projectId)) {
-      process.stdout.write(`${JSON.stringify({ eligible: false, reason: 'PROMOTION_SCOPE_MISMATCH' })}\nRAG_INDEX_PROMOTION_REFUSED\n`);
-      process.exitCode = 2;
-      return;
-    }
-    const scope = parsePgvectorScope({ tenantId: report.tenantId, projectId: report.projectId, actorId: args.actorId });
+    const evidence: unknown = JSON.parse(readFileSync(args.report ?? '', 'utf8'));
+    const expectedTenant = environment.SANGFOR_TENANT_ID;
+    const expectedProject = environment.SANGFOR_PROJECT_ID;
+    const report = verifyIndexPromotionEvidence(evidence, {
+      tenantId: expectedTenant, projectId: expectedProject,
+      authorityActorId: authority.actorId, secret: authority.secret,
+    });
+    const scope = parsePgvectorScope({
+      tenantId: report.tenantId, projectId: report.projectId,
+      actorId: args.actorId ?? authority.actorId,
+    });
     const evaluation = evaluateIndexPromotion(report, await store.readCurrentState(scope), new Date());
     if (!evaluation.eligible) { process.stdout.write(`${JSON.stringify(evaluation)}\nRAG_INDEX_PROMOTION_REFUSED\n`); process.exitCode = 2; return; }
-    if (args.apply) await store.apply({ scope, report, now: new Date(), reason: args.reason });
+    if (args.apply) await store.apply({ scope, evidence, now: new Date(), reason: args.reason });
     process.stdout.write(`${JSON.stringify({ ...evaluation, applied: args.apply })}\nRAG_INDEX_PROMOTION_PASS\n`);
   } finally {
     await database.$disconnect();

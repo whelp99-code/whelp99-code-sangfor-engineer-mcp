@@ -66,7 +66,7 @@ pnpm install --frozen-lockfile
 pnpm run lint
 pnpm run build
 pnpm test
-pnpm run smoke:mcp              # expect: smoke-mcp-tools: ok (108 tools)
+pnpm run smoke:mcp              # expect: smoke-mcp-tools: ok (118 tools)
 pnpm run check:browser-boundary # expect: BLRO_READY_BROWSER_BOUNDARY_PASS
 pnpm run check:mcp-scorecard
 ```
@@ -286,6 +286,53 @@ rolls anything back — that is §3's human decision, unchanged.
 Rotation uses `EnrollmentRegistry.rotate()`. The prior serial becomes `superseded` immediately.
 A revoked identity is refused before capability verification or browser execution.
 
+### 6.1 Enrollment administration checks
+
+`blro:enrollment-admin` is an operations checker, not a second enrollment writer. It emits one JSON
+object, is read-only/dry-run by default, rejects secret-bearing arguments, and never accepts private
+keys, bootstrap tokens, capabilities, or console credentials. Even with `--apply`, it returns
+`EXISTING_AUTHORITY_REQUIRED` and `execution: "NOT_RUN"`; enrollment writes remain exclusively on
+the authenticated loopback Control Tower routes in §6.
+
+Machine-checked policy commands:
+
+```bash
+pnpm run blro:enrollment-admin -- identity --installation-id jm-001 --identity-count 1
+pnpm run blro:enrollment-admin -- rotation --installation-id jm-001 --identity-count 1 --overlap-seconds 600
+pnpm run blro:enrollment-admin -- revocation --installation-id jm-001 --observation-age-seconds 60
+pnpm run blro:enrollment-admin -- rollout --blro-version 1.1 --jm-version 1.0 --blro-ready
+pnpm run blro:enrollment-admin -- readiness --blro-ready --writes-contained
+pnpm run blro:cert-rotation:verify # expect: BLRO_CERT_ROTATION_PASS; deviceAction=false
+```
+
+There is one identity per installation. Certificate overlap must be positive and no longer than ten
+minutes. A revocation observation older than 60 seconds is stale and must be refreshed before an
+operator claims containment. Roll out BLRO first and JM second; a JM ahead of BLRO or outside the
+supported one-minor lag is a typed refusal.
+
+For suspected CA compromise, first disable write execution fleet-wide, then record containment
+without passing key material through this program:
+
+```bash
+pnpm run blro:enrollment-admin -- emergency --incident-id inc-001 --ca-compromised
+```
+
+The result requires an external witnessed CA/key-generation ceremony. This repository does not
+generate, print, persist, or rotate production private keys.
+
+A lost acknowledgement after dispatch is never retryable and never a reason to reset a nonce or
+remove a tombstone. Record the incident, then reconcile only from an independent human read-back:
+
+```bash
+pnpm run blro:enrollment-admin -- incident --job-id job-001 --dispatch-state INDETERMINATE --mutation-attempted
+pnpm run blro:enrollment-admin -- reconcile --job-id job-001 --dispatch-state INDETERMINATE --read-back INDETERMINATE
+```
+
+The first command emits `POST_DISPATCH_OUTCOME_UNKNOWN` with `retryAllowed: false` and
+`nonceResetAllowed: false`. The second remains `INDETERMINATE_REQUIRES_HUMAN_READ_BACK` until the
+operator supplies an independently observed `PASS` or `FAIL`; neither command performs device
+action.
+
 ## 7. Remote JM configuration
 
 BLRO uses the normal in-process runtime unless `SANGFOR_REMOTE_BROWSER_URL` is set. Remote mode
@@ -345,7 +392,7 @@ filtering after ranking to save a query; that leaks scores and identifiers acros
 Stated plainly so nobody operates on an assumption:
 
 - multi-JM routing, queueing, retry semantics;
-- enrollment and JM receipt service routes (the Postgres adapters are composed but not remotely exposed until Phase 26);
+- JM receipt service routes (enrollment lifecycle routes are loopback-only and shipped);
 - authoritative historical backfill;
 - production Postgres / object-store / vector-store topology;
 - active-active BLRO storage.

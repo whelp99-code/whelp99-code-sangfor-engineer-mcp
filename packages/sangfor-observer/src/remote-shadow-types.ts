@@ -101,11 +101,25 @@ export type RemoteShadowAcquisition = {
   readonly latencyMs: number;
 };
 
-export type RemoteShadowReport = {
+type RemoteShadowReportOutcome =
+  | {
+    readonly verdict: 'PASS';
+    readonly code: 'REMOTE_SHADOW_PASS';
+    readonly promotionEligible: true;
+  }
+  | {
+    readonly verdict: 'PASS';
+    readonly code: 'REMOTE_SHADOW_CANDIDATE';
+    readonly promotionEligible: false;
+  }
+  | {
+    readonly verdict: 'MISMATCH';
+    readonly code: 'REMOTE_SHADOW_MISMATCH';
+    readonly promotionEligible: false;
+  };
+
+export type RemoteShadowReport = RemoteShadowReportOutcome & {
   readonly schemaVersion: typeof REMOTE_SHADOW_REPORT_VERSION;
-  readonly verdict: 'PASS' | 'MISMATCH';
-  readonly code: 'REMOTE_SHADOW_PASS' | 'REMOTE_SHADOW_MISMATCH';
-  readonly promotionEligible: boolean;
   readonly comparedAt: string;
   readonly maxAgeMs: number;
   readonly factCount: number;
@@ -120,6 +134,38 @@ export type RemoteShadowReport = {
   readonly issues: readonly RemoteShadowIssue[];
   readonly reportDigest: string;
 };
+
+const acquisitionSchema = z.object({
+  factKey: nonEmpty,
+  collectedAt: z.string().datetime({ offset: true }),
+  latencyMs: z.number().finite().nonnegative(),
+}).strict();
+const reportFields = {
+  schemaVersion: z.literal(REMOTE_SHADOW_REPORT_VERSION),
+  comparedAt: z.string().datetime({ offset: true }),
+  maxAgeMs: z.number().int().nonnegative().safe(),
+  factCount: z.number().int().nonnegative().safe(),
+  localObservationDigest: sha256,
+  remoteObservationDigest: sha256,
+  localProvenanceDigest: sha256,
+  remoteProvenanceDigest: sha256,
+  localAcquisition: z.array(acquisitionSchema),
+  remoteAcquisition: z.array(acquisitionSchema),
+  localLatencyMs: z.number().finite().nonnegative(),
+  remoteLatencyMs: z.number().finite().nonnegative(),
+  issues: z.array(z.object({
+    kind: z.enum(REMOTE_SHADOW_ISSUE_KINDS),
+    side: z.enum(['local', 'remote', 'both']).optional(),
+    factKey: nonEmpty.optional(),
+  }).strict()),
+  reportDigest: sha256,
+} as const;
+
+export const remoteShadowReportSchema: z.ZodType<RemoteShadowReport> = z.discriminatedUnion('code', [
+  z.object({ ...reportFields, verdict: z.literal('PASS'), code: z.literal('REMOTE_SHADOW_PASS'), promotionEligible: z.literal(true) }).strict(),
+  z.object({ ...reportFields, verdict: z.literal('PASS'), code: z.literal('REMOTE_SHADOW_CANDIDATE'), promotionEligible: z.literal(false) }).strict(),
+  z.object({ ...reportFields, verdict: z.literal('MISMATCH'), code: z.literal('REMOTE_SHADOW_MISMATCH'), promotionEligible: z.literal(false) }).strict(),
+]);
 
 function isJsonObject(value: unknown): value is Readonly<Record<string, unknown>> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);

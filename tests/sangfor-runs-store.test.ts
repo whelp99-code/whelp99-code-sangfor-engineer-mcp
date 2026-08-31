@@ -5,7 +5,7 @@ import { maskSecrets as hciMaskSecrets } from '@sangfor/hci-client';
 import { appendFileSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { RunStore, type RunRecord } from '@sangfor/runs';
+import { AuthorityRunStore as RunStore, type RunRecord, type RunStoreClock } from '@sangfor/runs';
 import { RuntimeSchemaError } from '../packages/shared/src/runtime-schema.js';
 
 // §4.6 마스킹 계약: /password|secret|token|authorization|cookie/i 키 + string 값 → '***'
@@ -58,8 +58,6 @@ describe('maskSecrets — @sangfor/runs 복제본 (T-RUN-2)', () => {
     expect(scrubSecretValues('ok=true pass=3 (p)', { password: 'p' })).toBe('ok=true pass=3 (p)');
   });
 });
-
-const tick = () => new Promise((r) => setTimeout(r, 5)); // requestedAt(ms) 정렬 결정성
 
 describe('RunStore — 라이프사이클/영속/필터 (T-RUN-1)', () => {
   let dir: string;
@@ -118,11 +116,21 @@ describe('RunStore — 라이프사이클/영속/필터 (T-RUN-1)', () => {
   });
 
   it('requestedAt 내림차순 정렬 + limit + 필터(status/toolId/deviceId/sweepId)', async () => {
-    const store = new RunStore(dir, testLocalWriteAuthority('runs_steps', dir));
+    const instants = [
+      new Date('2026-08-31T00:00:00.001Z'),
+      new Date('2026-08-31T00:00:00.002Z'),
+      new Date('2026-08-31T00:00:00.003Z'),
+    ];
+    const clock: RunStoreClock = {
+      now: () => {
+        const instant = instants.shift();
+        if (instant === undefined) throw new Error('test clock exhausted');
+        return instant;
+      },
+    };
+    const store = new RunStore(dir, testLocalWriteAuthority('runs_steps', dir), clock);
     const r1 = await store.createRun({ toolId: 'a', toolSafety: 'read_only', args: {}, deviceId: 'dev_1', initialStatus: 'running' });
-    await tick();
     const r2 = await store.createRun({ toolId: 'b', toolSafety: 'read_only', args: {}, sweepId: 'sweep_1', initialStatus: 'running' });
-    await tick();
     const r3 = await store.createRun({ toolId: 'a', toolSafety: 'write', args: {}, initialStatus: 'pending_approval' });
     const all = store.listRuns();
     expect(all.map((r) => r.runId)).toEqual([r3.runId, r2.runId, r1.runId]);
@@ -143,6 +151,50 @@ describe('RunStore — 라이프사이클/영속/필터 (T-RUN-1)', () => {
     expect(store.listRuns().find((r) => r.runId === 'run_old')).toBeUndefined();
     expect(store.listRuns({ sinceDays: 10_000 }).find((r) => r.runId === 'run_old')).toBeDefined();
     expect(store.getRun('run_old')?.status).toBe('succeeded'); // getRun은 전 파일 스캔
+  });
+
+  it('Given a schema-v1 approval from before epochs, When folded, Then it migrates only the missing epoch to zero', () => {
+    // Given
+    const legacy: RunRecord = {
+      schemaVersion: 1, runId: 'run_legacy', toolId: 't', toolSafety: 'write', args: {},
+      status: 'running', requestedAt: '2020-01-01T00:00:00.000Z',
+      approval: {
+        approvedBy: 'legacy-operator', approvedAt: '2020-01-01T00:00:01.000Z',
+        changeTicketId: 'CHG-legacy', rollbackPlanId: 'RB-legacy', authorityEpoch: 0,
+      },
+    };
+    const { authorityEpoch: _authorityEpoch, ...historicalApproval } = legacy.approval ?? {};
+    writeFileSync(join(dir, '2020-01-01.jsonl'), `${JSON.stringify({ ...legacy, approval: historicalApproval })}\n`);
+    const store = new RunStore(dir, testLocalWriteAuthority('runs_steps', dir));
+
+    // When
+    const folded = store.getRun(legacy.runId);
+
+    // Then
+    expect(folded?.approval?.authorityEpoch).toBe(0);
+    expect(folded?.approval?.changeTicketId).toBe('CHG-legacy');
+  });
+
+  it.each([
+    ['a corrupt legacy approval', { approvedBy: 'operator', approvedAt: '2020-01-01T00:00:01.000Z', changeTicketId: 'CHG' }],
+    ['an unsupported future approval epoch', {
+      approvedBy: 'operator', approvedAt: '2020-01-01T00:00:01.000Z',
+      changeTicketId: 'CHG', rollbackPlanId: 'RB', authorityEpoch: 1,
+    }],
+  ])('Given %s, When folded, Then the ledger freezes', (_case, approval) => {
+    // Given
+    const record = {
+      schemaVersion: 1, runId: 'run_invalid', toolId: 't', toolSafety: 'write', args: {},
+      status: 'running', requestedAt: '2020-01-01T00:00:00.000Z', approval,
+    };
+    writeFileSync(join(dir, '2020-01-01.jsonl'), `${JSON.stringify(record)}\n`);
+    const store = new RunStore(dir, testLocalWriteAuthority('runs_steps', dir));
+
+    // When
+    const fold = () => store.getRun(record.runId);
+
+    // Then
+    expect(fold).toThrow(RuntimeSchemaError);
   });
 
   it('파싱 불가 줄은 typed freeze로 전체 ledger bytes를 보존한다', async () => {

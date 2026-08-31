@@ -2,11 +2,12 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
-import type {
-  BrowserExecutionContext,
-  BrowserExecutionPort,
-  BrowserExecutionRequest,
-  BrowserExecutionResult,
+import {
+  createBrowserExecutionAuthorityPort,
+  type BrowserExecutionContext,
+  type BrowserExecutionPort,
+  type BrowserExecutionRequest,
+  type BrowserExecutionResult,
 } from '../packages/sangfor-browser-contracts/src/index.js';
 import type { IagMutationActionAuthority } from '../packages/sangfor-competency/src/index.js';
 import { createIagExecutor } from '../packages/sangfor-product-adapters/src/apply/index.js';
@@ -66,7 +67,9 @@ describe('IAG bounded dispatch', () => {
         executorResult(request, executorObservation(action))
       ));
       const executor = createIagExecutor({
-        executionPort, readBackPort: { execute: readBack }, now: () => IAG_EXECUTOR_TEST_NOW,
+        executionPort: createBrowserExecutionAuthorityPort(executionPort),
+        readBackPort: createBrowserExecutionAuthorityPort({ execute: readBack }),
+        now: () => IAG_EXECUTOR_TEST_NOW,
         dispatchTimeoutMs: 1_000, scheduler,
       });
 
@@ -114,7 +117,9 @@ describe('IAG bounded dispatch', () => {
         executorResult(request, executorObservation(action))
       ));
       const executor = createIagExecutor({
-        executionPort, readBackPort: { execute: readBack }, now: () => IAG_EXECUTOR_TEST_NOW,
+        executionPort: createBrowserExecutionAuthorityPort(executionPort),
+        readBackPort: createBrowserExecutionAuthorityPort({ execute: readBack }),
+        now: () => IAG_EXECUTOR_TEST_NOW,
         dispatchTimeoutMs: 1_000, scheduler,
       });
 

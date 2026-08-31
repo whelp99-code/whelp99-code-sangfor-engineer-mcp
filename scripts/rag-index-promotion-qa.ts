@@ -1,16 +1,21 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { performance } from 'node:perf_hooks';
 import { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
 import { parseBenchmarkCorpus } from '../packages/sangfor-rag/src/benchmark-schema.js';
 import { hashEmbedding } from '../packages/sangfor-rag/src/hash-embedding.js';
+import { sealIndexPromotionEvidence } from '../packages/sangfor-rag/src/index-promotion-authority.js';
 import { canonicalPromotionJson, sealIndexPromotionReport } from '../packages/sangfor-rag/src/index-promotion-evaluator.js';
 import { IndexPromotionStore } from '../packages/sangfor-rag/src/index-promotion-store.js';
 import { PgvectorRagStore } from '../packages/sangfor-rag/src/pgvector-store.js';
 import { parsePgvectorCohort, parsePgvectorScope, parsePgvectorUpsert } from '../packages/sangfor-rag/src/pgvector-schema.js';
 
-const EnvironmentSchema = z.object({ DATABASE_URL: z.string().url(), BLRO_OWNER_DATABASE_URL: z.string().url() }).passthrough();
+const EnvironmentSchema = z.object({
+  DATABASE_URL: z.string().url(), BLRO_OWNER_DATABASE_URL: z.string().url(),
+  SANGFOR_RAG_PROMOTION_SECRET: z.string().min(32),
+  SANGFOR_RAG_PROMOTION_AUTHORITY_ACTOR_ID: z.string().min(1),
+}).passthrough();
 const CORPUS_PATH = 'data/evals/rag/project-completeness-v1.json';
 const INDEX_NAME = 'BlroRagEmbedding_embedding_hnsw_idx';
 const scope = parsePgvectorScope({ tenantId: 'tenant-rag-promotion-qa', projectId: 'project-rag-promotion-qa', actorId: 'actor-rag-promotion-qa' });
@@ -91,7 +96,11 @@ async function main(): Promise<void> {
       exactP95Ms: p95(exact.durations), candidateP95Ms: p95(candidate.durations), recoveryRate: 1,
       updateRate: 1, scopeIsolationProof: candidate.ids.every((id) => !forbidden.has(id)), candidateRowCount: state.candidateRowCount,
     });
-    writeFileSync(output, `${canonicalPromotionJson(report)}\n`, { flag: 'wx' });
+    const evidence = sealIndexPromotionEvidence({
+      report, authorityActorId: environment.SANGFOR_RAG_PROMOTION_AUTHORITY_ACTOR_ID,
+      nonce: randomUUID(), secret: environment.SANGFOR_RAG_PROMOTION_SECRET,
+    });
+    writeFileSync(output, `${canonicalPromotionJson(evidence)}\n`, { flag: 'wx' });
     process.stdout.write(`${JSON.stringify({ report: output, reportDigest: report.reportDigest, recallAtK: report.recallAtK, exactP95Ms: report.exactP95Ms, candidateP95Ms: report.candidateP95Ms, index: INDEX_NAME })}\nRAG_INDEX_PROMOTION_MEASURED\n`);
   } finally {
     await database.$disconnect();

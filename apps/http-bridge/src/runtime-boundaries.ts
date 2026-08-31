@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { runtimeJsonObjectSchema, runtimeJsonValueSchema } from '../../../packages/shared/src/runtime-json-codecs.js';
 import { parseRuntimeJson, type RuntimeCodec } from '../../../packages/shared/src/runtime-schema.js';
+import { hasApprovalControlCharacters } from '../../../packages/sangfor-approval/src/index.js';
 import type { JsonRpcResponse } from './mcp-child-transport.js';
 
 const responseIdSchema = z.union([z.string().max(512), z.number().finite(), z.null()]);
@@ -33,13 +34,15 @@ export function parseBoundaryHttpBridgeResponseV1(source: string): JsonRpcRespon
   });
 }
 
+const approvalTextSchema = z.string().max(4_096).refine((value) => !hasApprovalControlCharacters(value));
+
 const signedApprovalSchema = z.object({
-  approvedBy: z.string().max(4_096),
-  approvalToken: z.string().max(4_096),
-  changeTicketId: z.string().max(4_096),
-  rollbackPlanId: z.string().max(4_096),
-  nonce: z.string().max(4_096),
-  expiresAt: z.string().max(128),
+  approvedBy: approvalTextSchema,
+  approvalToken: approvalTextSchema,
+  changeTicketId: approvalTextSchema,
+  rollbackPlanId: approvalTextSchema,
+  nonce: approvalTextSchema,
+  expiresAt: z.string().max(128).refine((value) => !hasApprovalControlCharacters(value)),
   authorityEpoch: z.number().int().nonnegative(),
 }).strict();
 

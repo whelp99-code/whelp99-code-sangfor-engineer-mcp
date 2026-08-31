@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { Registry } from '../apps/control-tower/src/registry.js';
 import { AgentTaskStore, AnalysisStore, PlaybookStore } from '../apps/control-tower/src/playbook-store.js';
-import { RunStore } from '../packages/sangfor-runs/src/index.js';
+import { AuthorityRunStore as RunStore } from '../packages/sangfor-runs/src/index.js';
 import { AuditLedger } from '../packages/sangfor-hci-client/src/index.js';
 import { appendEngineerReport } from '../packages/sangfor-engineer-report/src/index.js';
 import { submitFeedback, extractLesson } from '../packages/sangfor-feedback/src/index.js';

@@ -4,7 +4,7 @@ import {
   resolveRepoData,
   type LocalWriteAuthority,
 } from '../../../packages/shared/src/index.js';
-import { RunStore } from '../../../packages/sangfor-runs/src/index.js';
+import { AuthorityRunStore as RunStore } from '../../../packages/sangfor-runs/src/index.js';
 import { Registry } from './registry.js';
 import { PlaybookStore, AnalysisStore, AgentTaskStore } from './playbook-store.js';
 import { ApiError, type TowerOptions, type TowerWriteAggregate } from './tower-contract.js';

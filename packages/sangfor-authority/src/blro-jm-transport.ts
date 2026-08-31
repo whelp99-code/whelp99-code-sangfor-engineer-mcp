@@ -5,6 +5,7 @@ import {
   CONTRACT_VERSION_HEADER,
   REMOTE_BROWSER_JOB_PATH,
   browserExecutionResultSchema,
+  collectRemoteResponseBody,
   createExactServerIdentityChecker,
   formatContractVersion,
   isLoopbackBrowserTarget,
@@ -100,14 +101,12 @@ function request(input: RequestInput, tls: RemoteTlsClientOptions): Promise<Requ
       checkServerIdentity: checker as (hostname: string, cert: PeerCertificate) => Error | undefined,
       signal: input.signal,
     }, (incoming) => {
-      const chunks: Buffer[] = [];
-      incoming.on('data', (chunk: Buffer | string) => {
-        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-      });
-      incoming.on('end', () => resolve({ kind: 'response', response: {
-        statusCode: incoming.statusCode ?? 0, body: Buffer.concat(chunks).toString('utf8'),
-      } }));
-      incoming.on('error', () => resolve({ kind: 'error', dispatched }));
+      collectRemoteResponseBody(incoming).then(
+        (body) => resolve({ kind: 'response', response: {
+          statusCode: incoming.statusCode ?? 0, body,
+        } }),
+        () => resolve({ kind: 'error', dispatched }),
+      );
     });
     outgoing.once('error', () => resolve({ kind: 'error', dispatched }));
     outgoing.once('finish', () => { dispatched = true; });

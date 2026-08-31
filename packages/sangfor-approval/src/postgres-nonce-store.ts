@@ -123,7 +123,7 @@ export class PostgresSingleUseNonceStore {
            SELECT $1, p."tenantId", p."id", $3, $4::timestamptz, $5::timestamptz, $6
            FROM "BlroProject" p
            WHERE p."id" = $2
-           ON CONFLICT ("nonce") DO NOTHING
+           ON CONFLICT DO NOTHING
            RETURNING "id"`,
           `${projectId}:${nonce}`,
           projectId,

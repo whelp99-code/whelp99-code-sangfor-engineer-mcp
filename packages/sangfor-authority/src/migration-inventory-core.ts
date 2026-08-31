@@ -44,7 +44,7 @@ export const REGISTRY_REFS = [
 
 export const RUNS_REFS = [
   "persist:apps/control-tower/src/playbook-store.ts#AnalysisStore",
-  "persist:packages/sangfor-runs/src/run-store.ts#RunStore",
+  "persist:packages/sangfor-runs/src/run-store.ts#AuthorityRunStore",
   "persist:packages/sangfor-authority/src/cutover/core-aggregate-targets.ts#RunsCutoverTarget",
   "prisma:model:BlroRun",
   "prisma:model:BlroRunStep",
@@ -103,8 +103,10 @@ export const RAG_PGVECTOR_REFS = [
 ] as const;
 
 export const RAG_INDEX_PROMOTION_REFS = [
+  "persist:packages/sangfor-rag/src/index-promotion-history.ts#appendPromotionEvidenceHistory",
   "persist:packages/sangfor-rag/src/index-promotion-store.ts#IndexPromotionStore",
   "persist:scripts/rag-index-promotion-qa.ts#main",
   "persist:scripts/rag-index-promotion-qa.ts#seedOwner",
   "prisma:model:BlroRagIndexPromotion",
+  "prisma:model:BlroRagIndexPromotionEvidence",
 ] as const;

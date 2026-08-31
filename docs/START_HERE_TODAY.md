@@ -14,12 +14,12 @@ pnpm run dev:mcp
 ```
 
 `dev:mcp` is an MCP **stdio** server — it binds no port. Point Cursor (or any MCP client) at that
-command. Verified live: **108 tools**.
+command. Verified live: **118 tools**.
 
 Sanity check without a client:
 
 ```bash
-pnpm run smoke:mcp     # observed: smoke-mcp-tools: ok (108 tools)
+pnpm run smoke:mcp     # observed: smoke-mcp-tools: ok (118 tools)
 ```
 
 ## 2. What it can do for you today
@@ -155,7 +155,7 @@ behaviour it is designed for has not been exercised against two live BLRO replic
 is no such deployment yet.
 
 **Why the remaining stores are not migrated:** they hold live data (`data/rag` 4.4 MB,
-`data/evidence` 3.4 MB) and touch every store and all 108 tools. A half-migrated data layer on the
+`data/evidence` 3.4 MB) and touch every store and all 118 tools. A half-migrated data layer on the
 day you need to work is the worst possible state, and it would give you nothing visible.
 
 Sequencing for these: [BLRO separation plan](design-docs/blro-separation-and-operations.md).

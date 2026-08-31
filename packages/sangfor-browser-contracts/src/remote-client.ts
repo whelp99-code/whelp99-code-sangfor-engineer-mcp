@@ -22,6 +22,7 @@ import {
   remoteErrorBodySchema,
   type RemoteEnvelopeOptions,
 } from './remote-protocol.js';
+import { collectRemoteResponseBody } from './remote-response.js';
 
 export interface RemoteTlsClientOptions {
   readonly cert: string | Buffer;
@@ -87,15 +88,10 @@ export function createNodeHttpsTransport(): RemoteHttpTransport {
       checkServerIdentity: checker,
       signal: request.signal,
     }, (incoming) => {
-      const chunks: Buffer[] = [];
-      incoming.on('data', (chunk: Buffer | string) => {
-        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-      });
-      incoming.on('end', () => resolve({
+      collectRemoteResponseBody(incoming).then((body) => resolve({
         statusCode: incoming.statusCode ?? 0,
-        body: Buffer.concat(chunks).toString('utf8'),
-      }));
-      incoming.on('error', reject);
+        body,
+      }), reject);
     });
     outgoing.on('error', reject);
     outgoing.on('finish', hooks.markDispatched);

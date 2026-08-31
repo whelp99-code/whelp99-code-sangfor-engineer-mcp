@@ -70,7 +70,7 @@ export const LOCAL_AND_SEED_MIGRATIONS = [
   },
   {
     id: 'm029-rag-index-promotion', order: 29, aggregate: 'rag_index_promotion', ownerPackage: '@sangfor/rag', classification: 'authoritative',
-    sources: sourcesFor(RAG_INDEX_PROMOTION_REFS), target: { kind: 'postgres', tables: ['BlroRagIndexPromotion'] },
+    sources: sourcesFor(RAG_INDEX_PROMOTION_REFS), target: { kind: 'postgres', tables: ['BlroRagIndexPromotion', 'BlroRagIndexPromotionEvidence'] },
     projectScope: 'required', rlsRequired: true, secretPolicy: 'redact_before_authority', prerequisites: ['measured-pgvector-report-v1'], dependsOn: ['m028-rag-embeddings-pgvector-index'], inventoryRefs: [...RAG_INDEX_PROMOTION_REFS],
   },
 ] as const;

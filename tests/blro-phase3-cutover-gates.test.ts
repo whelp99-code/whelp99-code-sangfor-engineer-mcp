@@ -7,7 +7,7 @@ import { Registry } from '../apps/control-tower/src/registry.js';
 import { assertLocalApprovalAuthorityAllowed } from '../apps/control-tower/src/api.js';
 import { AuditLedger } from '../packages/sangfor-hci-client/src/audit-ledger.js';
 import { assertLocalRagAuthorityAllowed } from '../packages/sangfor-rag/src/index.js';
-import { RunStore } from '../packages/sangfor-runs/src/run-store.js';
+import { AuthorityRunStore as RunStore } from '../packages/sangfor-runs/src/run-store.js';
 
 const previousAuthority = process.env.SANGFOR_BLRO_AUTHORITY_STORE;
 

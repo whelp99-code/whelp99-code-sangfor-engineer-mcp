@@ -4,7 +4,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { AuditLedger } from '@sangfor/hci-client';
-import { RunStore } from '@sangfor/runs';
+import { AuthorityRunStore as RunStore } from '@sangfor/runs';
 
 // Importing the MCP server module must NOT start the stdio readline loop.
 process.env.MCP_NO_SERVE = '1';

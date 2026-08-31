@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 const TEST_ROOT = join(process.cwd(), 'tests');
 const PURE_LOC_CEILING = 249;
 const EXPECTED_TESTS = 120;
-const EXPECTED_ASSERTIONS = 343;
+const EXPECTED_ASSERTIONS = 342;
 const FAMILY_FILES = [
   'jm-browser-agent-tls-integration.test.ts',
   'jm-browser-agent-drain.test.ts',

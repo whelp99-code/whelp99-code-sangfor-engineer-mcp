@@ -2,7 +2,10 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import type { BrowserExecutionPort } from '../packages/sangfor-browser-contracts/src/index.js';
+import {
+  createBrowserExecutionAuthorityPort,
+  type BrowserExecutionPort,
+} from '../packages/sangfor-browser-contracts/src/index.js';
 import {
   createIagExecutor,
   createIagOrchestrator,
@@ -65,7 +68,9 @@ function orchestratorWithPorts(
   readBackPort: BrowserExecutionPort,
 ) {
   const executor = createIagExecutor({
-    executionPort, readBackPort, now: () => IAG_ORCHESTRATOR_NOW,
+    executionPort: createBrowserExecutionAuthorityPort(executionPort),
+    readBackPort: createBrowserExecutionAuthorityPort(readBackPort),
+    now: () => IAG_ORCHESTRATOR_NOW,
     dispatchTimeoutMs: 1_000, scheduler: new FakeDispatchScheduler(),
   });
   return createIagOrchestrator({ executor, store: fixture.store, now: () => IAG_ORCHESTRATOR_NOW });

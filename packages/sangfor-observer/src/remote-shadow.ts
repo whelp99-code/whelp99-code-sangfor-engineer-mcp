@@ -3,19 +3,33 @@ import {
   REMOTE_SHADOW_OBSERVATION_VERSION,
   REMOTE_SHADOW_REPORT_VERSION,
   remoteShadowObservationSchema,
+  remoteShadowReportSchema,
   type RemoteShadowFact,
   type RemoteShadowIssue,
   type RemoteShadowObservation,
   type RemoteShadowReport,
 } from './remote-shadow-types.js';
+import {
+  hasAuthenticatedRemoteShadowPromotionEvidence,
+  type RemoteShadowPromotionTrust,
+} from './remote-shadow-promotion.js';
 
 export type * from './remote-shadow-types.js';
+export { remoteShadowReportSchema } from './remote-shadow-types.js';
+export {
+  remoteShadowPromotionProofSchema,
+  remoteShadowPromotionPayload,
+  type RemoteShadowPromotionProof,
+  type RemoteShadowPromotionTrust,
+} from './remote-shadow-promotion.js';
 
 export type CompareRemoteShadowInput = {
   readonly local: RemoteShadowObservation;
   readonly remote: RemoteShadowObservation;
   readonly now: Date;
   readonly maxAgeMs: number;
+  readonly promotionProof?: unknown;
+  readonly promotionTrust?: RemoteShadowPromotionTrust;
 };
 
 export class RemoteShadowInputError extends Error {
@@ -69,11 +83,24 @@ export function compareRemoteShadow(input: CompareRemoteShadowInput): RemoteShad
   const localProvenanceDigest = digest(canonicalProvenance(input.local));
   const remoteProvenanceDigest = digest(canonicalProvenance(input.remote));
   const verdict = sortedIssues.length === 0 ? 'PASS' : 'MISMATCH';
+  const promotionEligible = verdict === 'PASS' && hasAuthenticatedRemoteShadowPromotionEvidence({
+    local: input.local,
+    remote: input.remote,
+    localObservationDigest,
+    remoteObservationDigest,
+    proof: input.promotionProof,
+    trust: input.promotionTrust,
+  });
+  const code = verdict === 'MISMATCH'
+    ? 'REMOTE_SHADOW_MISMATCH'
+    : promotionEligible
+      ? 'REMOTE_SHADOW_PASS'
+      : 'REMOTE_SHADOW_CANDIDATE';
   const semanticReport = {
     schemaVersion: REMOTE_SHADOW_REPORT_VERSION,
     verdict,
-    code: verdict === 'PASS' ? 'REMOTE_SHADOW_PASS' : 'REMOTE_SHADOW_MISMATCH',
-    promotionEligible: verdict === 'PASS',
+    code,
+    promotionEligible,
     comparedAt: input.now.toISOString(),
     maxAgeMs: input.maxAgeMs,
     factCount: keys.length,
@@ -83,14 +110,14 @@ export function compareRemoteShadow(input: CompareRemoteShadowInput): RemoteShad
     remoteProvenanceDigest,
     issues: sortedIssues,
   } as const;
-  return {
+  return remoteShadowReportSchema.parse({
     ...semanticReport,
     localAcquisition: acquisitionMetadata(input.local),
     remoteAcquisition: acquisitionMetadata(input.remote),
     localLatencyMs: totalLatency(input.local),
     remoteLatencyMs: totalLatency(input.remote),
     reportDigest: digest(canonical(semanticReport)),
-  };
+  });
 }
 
 function compareFact(

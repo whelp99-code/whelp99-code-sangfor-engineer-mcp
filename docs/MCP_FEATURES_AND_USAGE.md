@@ -1,7 +1,7 @@
 # Sangfor Engineer MCP 기능 및 사용 가이드
 
 기준: `feat/customer-ready-mcp-scorecard` (2026-07-31, 도구명 `sangfor_*` snake_case 전환 + 디스커버리 2종 추가)
-MCP 표면: **108 tools** · mcp-scorecard **96/100 (grade A)**
+MCP 표면: **118 tools** · mcp-scorecard **96/100 (grade A)**
 
 이 문서는 현재 실행 코드의 `listTools()` 결과를 기준으로 작성한 사용자용 가이드다. 도구 이름·입력 스키마·안전 분류의 정본은 [MCP server registry](../apps/mcp-server/src/index.ts)이며, HTTP 동작의 정본은 [HTTP bridge](../apps/http-bridge/src/server.ts)와 [tool guard](../packages/sangfor-operator/src/tool-authorization.ts)다.
 
@@ -87,7 +87,7 @@ HTTP bridge는 전용 제품 REST API가 아니라 MCP의 범용 프록시다. �
 | Method | Route | 설명 |
 |---|---|---|
 | `GET` | `/health` | MCP child 연결 상태. 인증 없음 |
-| `GET` | `/tools` | 108-tool schema/annotation 조회 |
+| `GET` | `/tools` | 118-tool schema/annotation 조회 |
 | `POST` | `/tools/call` | `{name, arguments, approval?}` 호출 |
 
 실행:
@@ -340,7 +340,7 @@ pnpm run dev:control-tower     # 기동 로그: 기본 플레이북 시드: N건
 **미확인(INDETERMINATE) 항목**을 별도로 싣는다 — 근거가 없어 판정하지 못한 항목을
 통과로 읽으면 안 된다.
 
-## 6. 전체 108개 도구
+## 6. 전체 118개 도구
 
 표의 필수 입력은 top-level JSON Schema의 `required`만 표시한다. optional field와 enum은 `tools/list` 결과를 확인한다.
 
@@ -550,7 +550,7 @@ pnpm run dev:control-tower     # 기동 로그: 기본 플레이북 시드: N건
 ## 8. 운영 점검
 
 ```bash
-pnpm run smoke:mcp          # 108 tools
+pnpm run smoke:mcp          # 118 tools
 pnpm run check:mcp-scorecard
 pnpm run lint
 pnpm run build

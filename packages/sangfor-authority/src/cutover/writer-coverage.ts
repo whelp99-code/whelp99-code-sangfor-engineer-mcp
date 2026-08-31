@@ -7,7 +7,7 @@ import { AuthorityCutoverError } from './errors.js';
 
 export const LOCAL_WRITER_REFS = [
   'persist:apps/control-tower/src/playbook-store.ts#PlaybookStore', 'persist:apps/control-tower/src/registry.ts#Registry',
-  'persist:apps/control-tower/src/playbook-store.ts#AnalysisStore', 'persist:packages/sangfor-runs/src/run-store.ts#RunStore',
+  'persist:apps/control-tower/src/playbook-store.ts#AnalysisStore', 'persist:packages/sangfor-runs/src/run-store.ts#AuthorityRunStore',
   'persist:packages/sangfor-approval/src/index.ts#FileSingleUseNonceStore', 'persist:packages/sangfor-hci-client/src/audit-ledger.ts#AuditLedger',
   'persist:packages/sangfor-engineer-report/src/ledger.ts#appendEngineerReport', 'persist:apps/control-tower/src/playbook-store.ts#AgentTaskStore',
   'persist:packages/sangfor-feedback/src/index.ts#submitFeedback', 'persist:packages/sangfor-feedback/src/index.ts#extractLesson',
@@ -91,6 +91,7 @@ export function verifyLocalWriterCoverage(root: string): void {
     .filter((reference) => !reference.includes('postgres-nonce-store.ts'))
     .filter((reference) => !reference.startsWith('persist:packages/sangfor-rag/src/pgvector-store.ts#'))
     .filter((reference) => !reference.startsWith('persist:packages/sangfor-rag/src/index-promotion-store.ts#'))
+    .filter((reference) => !reference.startsWith('persist:packages/sangfor-rag/src/index-promotion-history.ts#'))
     .filter((reference) => !INTERNAL_LOCAL_HELPERS.has(reference)).sort();
   const expected = [...LOCAL_WRITER_REFS].sort();
   if (discovered.join('\n') !== expected.join('\n')) throw new AuthorityCutoverError('LOCAL_WRITER_SET_DRIFT');

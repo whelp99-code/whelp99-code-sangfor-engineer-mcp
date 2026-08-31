@@ -69,6 +69,8 @@
     "check:browser-boundary": "node scripts/check-browser-boundary.mjs",
     "check:data-scope-boundary": "node scripts/check-data-scope-boundary.mjs",
     "verify:rls": "node scripts/verify-rls-isolation.mjs",
+    "blro:enrollment-admin": "tsx scripts/blro-enrollment-admin.ts",
+    "blro:cert-rotation:verify": "tsx scripts/test-blro-cert-rotation.ts",
     "jm:endpoint:preflight": "node scripts/jm-endpoint-preflight.mjs",
     "jm:endpoint:doctor": "node scripts/jm-endpoint-install.mjs --doctor",
     "jm:endpoint:install": "node scripts/jm-endpoint-install.mjs --run",
@@ -102,5 +104,9 @@
     "prisma": "^6.19.3",
     "typescript": "^5.9.3",
     "vitest": "^4.1.8"
-  }
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ]
 }

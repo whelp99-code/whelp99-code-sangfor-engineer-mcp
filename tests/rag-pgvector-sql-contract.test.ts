@@ -1,21 +1,25 @@
 import { describe, expect, it } from 'vitest';
-import { SEARCH_SQL } from '../packages/sangfor-rag/src/pgvector-sql.js';
+import { EXACT_SEARCH_SQL, SEARCH_SQL } from '../packages/sangfor-rag/src/pgvector-sql.js';
 
+const normalizedExactSql = EXACT_SEARCH_SQL.replace(/\s+/g, ' ').trim();
 const normalizedSearchSql = SEARCH_SQL.replace(/\s+/g, ' ').trim();
 
 describe('pgvector search SQL contract', () => {
-  it('ranks final candidates at stored-vector precision while returning the raw distance', () => {
-    // Given: one SQL query serving exact and HNSW search.
-    const rawDistanceProjection = 'candidate."distance" FROM candidates candidate';
-    const stableFinalRanking = 'ORDER BY candidate."distance"::real,c."id" LIMIT $10';
+  it('preserves raw cosine precision through final ranking', () => {
+    // Given: the SQL ranking expression used for returned candidates.
+    const finalRanking = normalizedExactSql.slice(normalizedExactSql.lastIndexOf('ORDER BY'));
 
-    // When: its machine-consumed projection and final ordering are inspected.
-    const projectionIndex = normalizedSearchSql.indexOf(rawDistanceProjection);
-    const rankingIndex = normalizedSearchSql.indexOf(stableFinalRanking);
+    // When: final ordering is inspected.
+    // Then: stable ids break only true SQL distance ties without quantization.
+    expect(finalRanking).toBe('ORDER BY e."embedding" <=> $8::vector,c."id" LIMIT $10');
+    expect(normalizedExactSql).not.toContain('::real');
+  });
 
-    // Then: raw distance remains output while only final ranking is quantized.
-    expect(projectionIndex).toBeGreaterThan(-1);
-    expect(rankingIndex).toBeGreaterThan(projectionIndex);
+  it('does not truncate the exact candidate universe at one thousand rows', () => {
+    // Given: exact search has a dedicated SQL statement.
+    // When: its candidate bounds are inspected.
+    // Then: exact semantics do not inherit the HNSW exploration cap.
+    expect(normalizedExactSql).not.toContain('LIMIT 1000');
   });
 
   it('preserves raw distance ordering for HNSW candidate generation', () => {

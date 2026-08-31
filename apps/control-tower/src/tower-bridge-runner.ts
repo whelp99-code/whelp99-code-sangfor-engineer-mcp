@@ -1,5 +1,5 @@
 import type { SignedApproval } from '../../../packages/sangfor-operator/src/approval.js';
-import { RunStore, maskSecrets, scrubSecretValues, type RunRecord } from '../../../packages/sangfor-runs/src/index.js';
+import { maskSecrets, scrubSecretValues, type AuthorityRunStore, type RunRecord } from '../../../packages/sangfor-runs/src/index.js';
 import { BridgeClient, type BridgeTool } from './bridge-client.js';
 import { summarize } from './run-summary.js';
 import { ApiError } from './tower-contract.js';
@@ -18,7 +18,7 @@ export interface BridgeRunner {
 }
 
 // 브리지를 향한 유일한 통로: 도구 목록·카테고리 그룹핑, 그리고 한 run의 호출→기록 단계.
-export function createBridgeRunner(client: BridgeClient, store: RunStore): BridgeRunner {
+export function createBridgeRunner(client: BridgeClient, store: AuthorityRunStore): BridgeRunner {
   const listTools = async (): Promise<BridgeTool[]> => {
     try {
       return await client.listTools();
