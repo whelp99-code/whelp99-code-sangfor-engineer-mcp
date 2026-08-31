@@ -125,9 +125,15 @@ export class PostgresRemoteJobStore implements RemoteJobStore, BlroDispatchAutho
       const first = await classify();
       if (first.kind !== 'pending') return first;
       pendingRequestId = first.requestId;
-      await this.reservationObserver?.waiting?.(first.requestId);
-      if (!this.completionObserver) return { kind: 'indeterminate', requestId: first.requestId };
-      await this.completionObserver.wait(first.completionKey, AbortSignal.timeout(this.completionTimeoutMs));
+      if (!this.completionObserver) {
+        await this.reservationObserver?.waiting?.(first.requestId);
+        return { kind: 'indeterminate', requestId: first.requestId };
+      }
+      await this.completionObserver.wait(
+        first.completionKey,
+        AbortSignal.timeout(this.completionTimeoutMs),
+        async () => { await this.reservationObserver?.waiting?.(first.requestId); },
+      );
       const completed = await classify();
       return completed.kind === 'pending'
         ? { kind: 'indeterminate', requestId: completed.requestId }

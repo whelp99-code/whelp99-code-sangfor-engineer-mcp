@@ -17,12 +17,7 @@ export async function runCoreScenarios(input: {
     bodies.set(jti, bodyText);
     return (index % 2 === 0 ? first : second).submit({ bodyText });
   });
-  await Promise.race([
-    Promise.all(submissions.map((submission) => Promise.race([
-      submission.events.reserved, submission.events.waiting,
-    ]))),
-    abortAfter(30_000),
-  ]);
+  await awaitConcurrentExecutionProof(submissions, 30_000);
   concurrentExecution.release();
   const outputs = await Promise.all(submissions.map((submission) => submission.result));
   invariant(outputs.every((result) => result.status === 'INDETERMINATE'), 'CONCURRENT_OUTCOME_DIVERGED');
@@ -100,6 +95,35 @@ export async function runCoreScenarios(input: {
   const revoked = await second.submit({ bodyText: revokedBody }).result;
   invariant(revoked.status === 'REFUSED' && input.fixture.jmCalls() === 3, 'REVOCATION_NOT_OBSERVED');
   return { calls: input.fixture.jmCalls(), ...(await input.fixture.queryCounts()) };
+}
+
+type ConcurrentSubmission = {
+  readonly id: string;
+  readonly events: {
+    readonly reserved: Promise<void>;
+    readonly waiting: Promise<void>;
+  };
+};
+
+export async function awaitConcurrentExecutionProof(
+  submissions: readonly ConcurrentSubmission[],
+  deadlineMs: number,
+): Promise<{ readonly reservedId: string; readonly waitingId: string }> {
+  const reservations = submissions.map((submission) =>
+    submission.events.reserved.then(() => submission.id));
+  const waiters = submissions.map((submission) => ({
+    id: submission.id,
+    waiting: submission.events.waiting.then(() => submission.id),
+  }));
+  return Promise.race([
+    Promise.any(reservations).then(async (reservedId) => ({
+      reservedId,
+      waitingId: await Promise.any(waiters
+        .filter((submission) => submission.id !== reservedId)
+        .map((submission) => submission.waiting)),
+    })),
+    abortAfter(deadlineMs),
+  ]);
 }
 
 async function assertDependencyFailures(

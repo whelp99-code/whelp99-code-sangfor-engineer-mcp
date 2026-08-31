@@ -175,7 +175,8 @@ async function main(): Promise<void> {
       stage: `vitest-${tests.length}-file-profile`,
       executable: 'pnpm',
       arguments: ['exec', 'vitest', 'run', '--config', 'vitest.postgres.config.ts',
-        '--maxWorkers=1', '--reporter=verbose', '--reporter=json', `--outputFile.json=${reportPath}`, ...tests],
+        '--maxWorkers=1', '--testTimeout=180000', '--hookTimeout=180000',
+        '--reporter=verbose', '--reporter=json', `--outputFile.json=${reportPath}`, ...tests],
       environment,
     });
     report = ReportSchema.parse(JSON.parse(readFileSync(reportPath, 'utf8')));

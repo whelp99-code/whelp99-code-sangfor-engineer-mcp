@@ -13,7 +13,11 @@ export type RemoteJobCompletionIdentity = {
 
 export interface RemoteJobCompletionObserver {
   ready(): Promise<void>;
-  wait(completionKey: string, signal: AbortSignal): Promise<void>;
+  wait(
+    completionKey: string,
+    signal: AbortSignal,
+    subscriptionReady?: () => Promise<void>,
+  ): Promise<void>;
   close(): Promise<void>;
 }
 
@@ -49,26 +53,32 @@ export function createPostgresRemoteJobCompletionObserver(
 
   return {
     ready,
-    async wait(completionKey: string, signal: AbortSignal): Promise<void> {
+    async wait(
+      completionKey: string,
+      signal: AbortSignal,
+      subscriptionReady?: () => Promise<void>,
+    ): Promise<void> {
       await ready();
       if (observed.delete(completionKey)) return;
-      await new Promise<void>((resolve, reject) => {
-        const finish = (): void => {
-          signal.removeEventListener('abort', abort);
-          resolve();
-        };
-        const abort = (): void => {
-          const listeners = waiters.get(completionKey);
-          listeners?.delete(finish);
-          if (listeners?.size === 0) waiters.delete(completionKey);
-          reject(signal.reason);
-        };
-        const listeners = waiters.get(completionKey) ?? new Set<() => void>();
-        listeners.add(finish);
-        waiters.set(completionKey, listeners);
-        signal.addEventListener('abort', abort, { once: true });
-        if (signal.aborted) abort();
+      let finish = (): void => undefined;
+      let abort = (): void => undefined;
+      const completion = new Promise<void>((resolve, reject) => {
+        finish = resolve;
+        abort = () => { reject(signal.reason); };
       });
+      const listeners = waiters.get(completionKey) ?? new Set<() => void>();
+      listeners.add(finish);
+      waiters.set(completionKey, listeners);
+      signal.addEventListener('abort', abort, { once: true });
+      try {
+        await subscriptionReady?.();
+        if (signal.aborted) abort();
+        await completion;
+      } finally {
+        signal.removeEventListener('abort', abort);
+        listeners.delete(finish);
+        if (listeners.size === 0) waiters.delete(completionKey);
+      }
     },
     async close(): Promise<void> {
       if (connected) await client.end();

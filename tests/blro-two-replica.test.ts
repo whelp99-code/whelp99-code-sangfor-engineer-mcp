@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { PrismaClient } from '@prisma/client';
 import { describe, expect, it } from 'vitest';
 import { createHarnessAuthorityDatabase } from '../scripts/lib/blro-two-replica-database.js';
+import { awaitConcurrentExecutionProof } from '../scripts/lib/blro-two-replica-scenarios.js';
 import { createTaskCertificateFixture } from './helpers/blro-certificate-fixture.js';
 import {
   JM_DEVICE_DIGEST,
@@ -79,6 +80,32 @@ describe.skipIf(!databaseUrl)('BLRO two-live-replica production harness', () => 
 if (required && !databaseUrl) {
   throw new TypeError('BLRO_TWO_REPLICA_POSTGRES_REQUIRED');
 }
+
+it('Given 1,000 concurrent submissions, When one reserves and a distinct duplicate waits, Then the proof completes without awaiting the other 998', async () => {
+  // Given: every submission is already subscribed, while 998 lifecycle pairs remain unresolved.
+  const resolvers: Array<{ readonly reserve: () => void; readonly wait: () => void }> = [];
+  const submissions = Array.from({ length: 1_000 }, (_, index) => {
+    let reserve = (): void => undefined;
+    let wait = (): void => undefined;
+    const reserved = new Promise<void>((resolve) => { reserve = resolve; });
+    const waiting = new Promise<void>((resolve) => { wait = resolve; });
+    resolvers.push({ reserve, wait });
+    return { id: `submission-${String(index)}`, events: { reserved, waiting } };
+  });
+
+  // When: the dispatch reservation and one different duplicate waiting are observed.
+  const proof = awaitConcurrentExecutionProof(submissions, 1_000);
+  resolvers[0]?.reserve();
+  resolvers[0]?.wait();
+  resolvers[1]?.wait();
+
+  // Then: the exact distinct pair releases the proof without reducing the fanout.
+  await expect(proof).resolves.toEqual({
+    reservedId: 'submission-0',
+    waitingId: 'submission-1',
+  });
+  expect(submissions).toHaveLength(1_000);
+});
 
 it('locks dispatch ordering, no-retry uncertainty, revocation and event coordination', () => {
   // Given: the shipped production dispatcher and deterministic harness scenario.
