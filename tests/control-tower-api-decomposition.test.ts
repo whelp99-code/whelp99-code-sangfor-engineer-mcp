@@ -197,12 +197,11 @@ describe('control-tower API module decomposition', () => {
     });
 
     // When the assembled surface is enumerated.
-    const surface = api as unknown as Record<string, unknown>;
-    const methods = Object.keys(surface).sort();
+    const methods = Object.keys(api).sort();
 
     // Then every route `server.ts` dispatches to is present, callable, and nothing extra is.
     expect(methods).toEqual([...EXPECTED_API_METHODS].sort());
-    expect(methods.filter((name) => typeof surface[name] !== 'function')).toEqual([]);
+    expect(methods.filter((name) => typeof api[name as keyof typeof api] !== 'function')).toEqual([]);
   });
 
   it('composes the tower surface in one direction only, from the root outwards', () => {

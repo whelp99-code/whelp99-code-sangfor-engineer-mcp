@@ -49,8 +49,8 @@ describe('PR-001A1 ADAPTERS-derived registry digest canonicalization', () => {
       'FOO BAR': { lookupCode: 'IAG', acceptedReturnedCodes: ['IAG'] },
     };
     expect(() => resolveProductAdapterStrict('IAG', { snapshot: productCollision })).toThrow('INVALID_REGISTRY');
-    expect(() => resolveInjectedAdapterProductCode(getProductRegistrySnapshot(), 'NDR', {
-      productVariant: ['CYBER_COMMAND'] as unknown as string,
-    })).toThrow('SPEC_IDENTITY_MISMATCH');
+    const invalidVariant = { productVariant: ['CYBER_COMMAND'] } satisfies { readonly productVariant: unknown };
+    expect(() => Reflect.apply(resolveInjectedAdapterProductCode, undefined, [getProductRegistrySnapshot(), 'NDR', invalidVariant]))
+      .toThrow('SPEC_IDENTITY_MISMATCH');
   });
 });

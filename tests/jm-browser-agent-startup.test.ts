@@ -100,20 +100,20 @@ describe('real operated execution preflight', () => {
     const base = {
       browserChromiumPath: chromiumStubPath(),
       browserProfileRoot: profileRootPath(),
-    } as unknown as Parameters<typeof operatedReadinessPreflight>[0];
+    } satisfies Pick<Parameters<typeof operatedReadinessPreflight>[0], 'browserChromiumPath' | 'browserProfileRoot'>;
 
-    expect(operatedReadinessPreflight(base).ok).toBe(true);
-    expect(operatedReadinessPreflight({
+    expect(Reflect.apply(operatedReadinessPreflight, undefined, [base]).ok).toBe(true);
+    expect(Reflect.apply(operatedReadinessPreflight, undefined, [{
       ...base, browserChromiumPath: '/nonexistent/chromium',
-    } as typeof base)).toMatchObject({ reason: 'EXECUTION_CHROMIUM_MISSING' });
+    }])).toMatchObject({ reason: 'EXECUTION_CHROMIUM_MISSING' });
     const notExecutable = join(fixtureRoot(), 'chromium-noexec');
     writeFileSync(notExecutable, 'x', { mode: 0o600 });
-    expect(operatedReadinessPreflight({
+    expect(Reflect.apply(operatedReadinessPreflight, undefined, [{
       ...base, browserChromiumPath: notExecutable,
-    } as typeof base)).toMatchObject({ reason: 'EXECUTION_CHROMIUM_NOT_EXECUTABLE' });
-    expect(operatedReadinessPreflight({
+    }])).toMatchObject({ reason: 'EXECUTION_CHROMIUM_NOT_EXECUTABLE' });
+    expect(Reflect.apply(operatedReadinessPreflight, undefined, [{
       ...base, browserProfileRoot: '/nonexistent/profile',
-    } as typeof base)).toMatchObject({ reason: 'EXECUTION_PROFILE_MISSING' });
+    }])).toMatchObject({ reason: 'EXECUTION_PROFILE_MISSING' });
   });
 
   it('proves the exact loopback address the listener will take can be bound', async () => {
@@ -133,11 +133,10 @@ describe('real operated execution preflight', () => {
     try {
       // When the startup preflight probes that exact address. Then it refuses.
       await expect(probeLoopbackBind('127.0.0.1', bound)).resolves.toBe(false);
-      const decision = await operatedStartupPreflight({
+      const decision = await Reflect.apply(operatedStartupPreflight, undefined, [{
         browserChromiumPath: chromiumStubPath(),
         browserProfileRoot: profileRootPath(),
-      } as unknown as Parameters<typeof operatedStartupPreflight>[0],
-      { host: '127.0.0.1', port: bound });
+      }, { host: '127.0.0.1', port: bound }]);
       expect(decision).toMatchObject({ reason: 'EXECUTION_PORT_UNAVAILABLE' });
     } finally {
       await new Promise((resolve) => blocker.close(resolve));

@@ -37,6 +37,16 @@ export type DocumentedCount = {
   readonly count: number;
 };
 
+const DOCUMENTED_COUNT =
+  /(\d+)\s*(?:개\s*)?(?:MCP\s*)?(?:`[^`\r\n]+`\s*)?(?:tools?\b|도구)/giu;
+
+export function extractDocumentedToolCounts(source: string): readonly number[] {
+  return [...source.matchAll(DOCUMENTED_COUNT)].flatMap((match) => {
+    const digits = match[1];
+    return digits === undefined ? [] : [Number(digits)];
+  });
+}
+
 /**
  * Documented counts are compared only when a caller supplies sources. CI runs the
  * annotation/write-set half on every push; the docs-regeneration gate passes its

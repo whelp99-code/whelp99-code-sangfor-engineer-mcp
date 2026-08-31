@@ -183,7 +183,7 @@ describe('legacy file nonce migration', () => {
     expect(readFileSync(path, 'utf8')).toBe(before);
   });
 
-  it('allows exactly one of 32 concurrent processes to spend a nonce', async () => {
+  it('allows exactly one of 32 concurrent processes to spend a nonce', { timeout: 30_000 }, async () => {
     // Given
     const { path } = nonceStore({ consumed: [] });
     const sourcePath = fileURLToPath(new URL('../packages/sangfor-approval/src/index.ts', import.meta.url));

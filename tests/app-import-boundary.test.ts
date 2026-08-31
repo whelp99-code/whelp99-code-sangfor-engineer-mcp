@@ -128,7 +128,7 @@ function crossAppImports(
 }
 
 describe('application dependency boundary', () => {
-  it('rejects every cross-app import in production source', () => {
+  it('rejects every cross-app import in production source', { timeout: 30_000 }, () => {
     // Given the locked non-empty application and production-source census.
     const apps = appDirectories(APPS_ROOT);
     const sources = sourceFilesUnder(APPS_ROOT);

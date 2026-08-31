@@ -78,7 +78,8 @@ describe('PR-001A1 firmware truth eligibility and transitions', () => {
       getProductRegistrySnapshot(),
       { evidenceRoot: root },
     )).toThrow('SPEC_IDENTITY_MISMATCH');
-    expect(() => resolveVerifiedFirmwareIdentity(null as unknown as FirmwareTruthRecord, getProductRegistrySnapshot(), { evidenceRoot: root })).toThrow('INVALID_FIRMWARE_TRUTH');
-    expect(() => resolveVerifiedFirmwareIdentity({ status: 'conflict' } as unknown as FirmwareTruthRecord, getProductRegistrySnapshot(), { evidenceRoot: root })).toThrow('INVALID_FIRMWARE_TRUTH');
+    expect(() => Reflect.apply(resolveVerifiedFirmwareIdentity, undefined, [null, getProductRegistrySnapshot(), { evidenceRoot: root }])).toThrow('INVALID_FIRMWARE_TRUTH');
+    const incomplete = { status: 'conflict' } satisfies { readonly status: string };
+    expect(() => Reflect.apply(resolveVerifiedFirmwareIdentity, undefined, [incomplete, getProductRegistrySnapshot(), { evidenceRoot: root }])).toThrow('INVALID_FIRMWARE_TRUTH');
   });
 });

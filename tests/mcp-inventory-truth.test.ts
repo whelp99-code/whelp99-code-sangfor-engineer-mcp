@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { beforeAll, describe, expect, it } from 'vitest';
 import {
   evaluateInventoryTruth,
+  extractDocumentedToolCounts,
   parseToolInventory,
   summarizeInventory,
   type DocumentedCountInput,
@@ -71,6 +72,15 @@ describe('MCP inventory truth — violations', () => {
       subject: 'docs/START_HERE_TODAY.md',
       detail: 'documented 108 tools but the live server exposes 2',
     });
+  });
+
+  it('extracts counts with backticked toolset labels and Korean MCP wording', () => {
+    const text = [
+      'server (118 `sangfor.*` tools; no port)',
+      '현재 118개 MCP 도구의 전체 기능 목록',
+    ].join('\n');
+
+    expect(extractDocumentedToolCounts(text)).toEqual([118, 118]);
   });
 
   it('Given a mutator falsely marked read-only, When evaluated, Then mutation_marked_read_only is reported', () => {

@@ -60,9 +60,10 @@ describe('PR-001A1 ADAPTERS-derived registry strict resolution', () => {
     const drifted = structuredClone(getProductRegistrySnapshot()) as ProductRegistryView;
     drifted.registryDigest = '0'.repeat(64);
     expect(() => resolveProductAdapterStrict('IAG', { snapshot: drifted })).toThrow('REGISTRY_DRIFT');
-    const malformed = { schemaVersion: 1, registryDigest: '0'.repeat(64), entries: null } as unknown as ProductRegistryView;
+    const malformed = structuredClone(getProductRegistrySnapshot());
+    Reflect.set(malformed, 'entries', null);
     expect(() => resolveProductAdapterStrict('IAG', { snapshot: malformed, registryDigest: '1'.repeat(64) })).toThrow('INVALID_REGISTRY');
-    expect(() => resolveInjectedAdapterProductCode(null as unknown as ProductRegistryView, 'IAG')).toThrow('INVALID_REGISTRY');
+    expect(() => Reflect.apply(resolveInjectedAdapterProductCode, undefined, [null, 'IAG'])).toThrow('INVALID_REGISTRY');
     expect(() => resolveInjectedAdapterProductCode(malformed, 'IAG')).toThrow('INVALID_REGISTRY');
     const emptyProduct = structuredClone(getProductRegistrySnapshot()) as ProductRegistryView;
     emptyProduct.entries.find((entry) => entry.adapterProduct === 'IAG')!.adapterProduct = '' as AdapterProductCode;
@@ -128,7 +129,7 @@ describe('PR-001A1 ADAPTERS-derived registry strict resolution', () => {
       },
       entries: { enumerable: true, value: structuredClone(trustedSnapshot.entries) },
     });
-    expect(() => resolveProductAdapterStrict('IAG', { snapshot: productTopLevelGetter as unknown as ProductRegistryView }))
+    expect(() => Reflect.apply(resolveProductAdapterStrict, undefined, ['IAG', { snapshot: productTopLevelGetter }]))
       .toThrow('INVALID_REGISTRY');
     expect(productDigestReads).toBeLessThanOrEqual(1);
 
@@ -145,11 +146,11 @@ describe('PR-001A1 ADAPTERS-derived registry strict resolution', () => {
       },
       entries: { enumerable: true, value: structuredClone(trustedSnapshot.entries) },
     });
-    expect(() => resolveInjectedAdapterProductCode(
-      learningTopLevelGetter as unknown as ProductRegistryView,
+    expect(() => Reflect.apply(resolveInjectedAdapterProductCode, undefined, [
+      learningTopLevelGetter,
       'IAG',
       { expectedRegistryDigest: trustedSnapshot.registryDigest },
-    )).toThrow('INVALID_REGISTRY');
+    ])).toThrow('INVALID_REGISTRY');
     expect(learningDigestReads).toBeLessThanOrEqual(1);
 
     const alternatingEntries = structuredClone(trustedSnapshot.entries) as ProductRegistryView['entries'];

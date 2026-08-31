@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import {
   evaluateInventoryTruth,
+  extractDocumentedToolCounts,
   parseToolInventory,
   type DocumentedCount,
   type DocumentedCountInput,
@@ -23,8 +24,6 @@ import {
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const BOOT_TIMEOUT_MS = 60_000;
-const DOCUMENTED_COUNT = /(\d+)\s*(?:개\s*)?(?:MCP\s*)?tools?\b|(\d+)\s*개\s*도구/gi;
-
 type CliOptions = {
   readonly documentedSources: readonly string[];
   readonly offlineInventory: string | undefined;
@@ -50,10 +49,8 @@ function readDocumentedCounts(sources: readonly string[]): DocumentedCountInput 
   const claims = new Map<string, DocumentedCount>();
   for (const source of sources) {
     const text = readFileSync(source, 'utf8');
-    for (const match of text.matchAll(DOCUMENTED_COUNT)) {
-      const digits = match[1] ?? match[2];
-      if (digits === undefined) continue;
-      claims.set(`${source}:${digits}`, { source: `${source} claims ${digits}`, count: Number(digits) });
+    for (const count of extractDocumentedToolCounts(text)) {
+      claims.set(`${source}:${count}`, { source: `${source} claims ${count}`, count });
     }
   }
   return { kind: 'required', counts: [...claims.values()] };
