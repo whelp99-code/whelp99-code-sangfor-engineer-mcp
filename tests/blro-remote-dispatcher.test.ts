@@ -41,8 +41,17 @@ class FakeAuthority implements BlroDispatchAuthority {
   authorize = true;
   preflightFailure = false;
   conflict = false;
+  activeAuthorizations = 0; peakAuthorizations = 0;
+  private authorizationBarrier: Promise<void> | undefined; private releaseAuthorizations: (() => void) | undefined;
 
-  async authorizeTarget(): Promise<boolean> { this.events.push('authorize'); return this.authorize; }
+  holdAuthorizations(): void { this.authorizationBarrier = new Promise((resolve) => { this.releaseAuthorizations = resolve; }); }
+  async authorizeTarget(): Promise<boolean> {
+    this.events.push('authorize'); this.activeAuthorizations += 1;
+    this.peakAuthorizations = Math.max(this.peakAuthorizations, this.activeAuthorizations);
+    if (this.activeAuthorizations === 4) this.releaseAuthorizations?.();
+    await this.authorizationBarrier;
+    this.activeAuthorizations -= 1; return this.authorize;
+  }
   async classify(input: { readonly envelope: JobEnvelope }) {
     this.events.push('classify');
     if (this.conflict) return { kind: 'refused' as const, reason: 'REQUEST_CONFLICT' as const };
@@ -156,12 +165,13 @@ describe('BLRO production remote dispatcher', () => {
   });
 
   it('dispatches exactly once for 32 concurrent exact duplicates', async () => {
-    const { transport, dispatcher } = fixture(); transport.holdDispatch();
+    const { authority, transport, dispatcher } = fixture(); authority.holdAuthorizations(); transport.holdDispatch();
     const bodyText = JSON.stringify(envelope('mutation-a', 'mutation'));
     const calls = Array.from({ length: 32 }, () => dispatcher.submit({ purpose: 'mutation', bodyText, target }));
     await transport.started;
     transport.releaseDispatch(); const outputs = await Promise.all(calls);
-    expect(transport.executions).toBe(1); expect(outputs.every((value) => value.status !== 'PASS')).toBe(true);
+    expect(authority.peakAuthorizations).toBe(4); expect(transport.executions).toBe(1);
+    expect(outputs.every((value) => value.status !== 'PASS')).toBe(true);
   });
 
   it('does not reserve when the real JM read-only preflight is unavailable', async () => {

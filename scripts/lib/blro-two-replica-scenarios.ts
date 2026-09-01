@@ -20,7 +20,14 @@ export async function runCoreScenarios(input: {
   await awaitConcurrentExecutionProof(submissions, 30_000);
   concurrentExecution.release();
   const outputs = await Promise.all(submissions.map((submission) => submission.result));
-  invariant(outputs.every((result) => result.status === 'INDETERMINATE'), 'CONCURRENT_OUTCOME_DIVERGED');
+  const distribution = new Map<string, number>();
+  for (const result of outputs) {
+    const key = [result.status, result.error?.code ?? '', result.error?.message ?? '',
+      String(result.mutationAttempted), result.readBack?.status ?? ''].join('|');
+    distribution.set(key, (distribution.get(key) ?? 0) + 1);
+  }
+  invariant(outputs.every((result) => result.status === 'INDETERMINATE'),
+    `CONCURRENT_OUTCOME_DIVERGED:${JSON.stringify([...distribution].slice(0, 10))}`);
   invariant(input.fixture.jmCalls() === 1, 'CONCURRENT_EXECUTOR_COUNT');
   const retained = JSON.stringify(outputs[0]);
   invariant(outputs.every((result) => JSON.stringify(result) === retained), 'RETAINED_RESULT_DIVERGED');

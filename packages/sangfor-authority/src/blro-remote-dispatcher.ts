@@ -24,42 +24,70 @@ import type {
 } from './blro-remote-dispatcher-contracts.js';
 export type * from './blro-remote-dispatcher-contracts.js';
 
+const MAX_CONCURRENT_SUBMISSIONS = 4 as const;
+
 export function createBlroRemoteDispatcher(options: BlroRemoteDispatcherOptions) {
+  let activeSubmissions = 0;
+  const waitingSubmissions: Array<() => void> = [];
+  const acquire = async (): Promise<void> => {
+    if (activeSubmissions < MAX_CONCURRENT_SUBMISSIONS) {
+      activeSubmissions += 1;
+      return;
+    }
+    await new Promise<void>((resolve) => { waitingSubmissions.push(resolve); });
+  };
+  const release = (): void => {
+    const next = waitingSubmissions.shift();
+    if (next) next();
+    else activeSubmissions -= 1;
+  };
   return {
     async submit(input: BlroRemoteSubmission): Promise<BrowserExecutionResult> {
-      if (!executionAllowed(input, options.executionPolicy)) return refusal('EXECUTION_GATE_REFUSED');
-      if (!await options.authority.authorizeTarget({ target: input.target })) {
-        return refusal('TARGET_AUTHORIZATION_REFUSED');
+      await acquire();
+      try {
+        return await submit(options, input);
+      } finally {
+        release();
       }
-      const envelope = parseEnvelope(input.bodyText, options.receiptSigner.now());
-      if (!envelope) return refusal('ENVELOPE_INVALID');
-      if (!matchesTarget(envelope, input.target) || !matchesPurpose(envelope, input.purpose)) {
-        return refusedResult(envelope.request.requestId, 'REQUEST_BINDING_REFUSED', 'Remote request binding was refused.');
-      }
-      const authorityInput = { envelope, certificate: input.target.certificate };
-      const classification = await options.authority.classify(authorityInput);
-      if (classification.kind !== 'candidate') {
-        return resultFromReservation(classification, input.purpose, envelope.request.requestId);
-      }
-      if (classification.claim.installationId !== input.target.installationId
-        || classification.claim.clientIdentityId !== input.target.clientIdentityId) {
-        return refusedResult(envelope.request.requestId, 'CAPABILITY_IDENTITY_REFUSED', 'Capability identity was refused.');
-      }
-      if (!await options.transport.preflight(input.target)) {
-        return refusedResult(envelope.request.requestId, 'JM_PREFLIGHT_UNAVAILABLE', 'JM read-only preflight is unavailable.');
-      }
-      const reservation = await options.authority.reserve(authorityInput);
-      if (reservation.kind !== 'dispatch') {
-        const settled = reservation.kind === 'indeterminate'
-          ? await options.authority.classify(authorityInput)
-          : reservation;
-        return resultFromReservation(settled.kind === 'candidate'
-          ? reservation
-          : settled, input.purpose, envelope.request.requestId);
-      }
-      return dispatchReserved(options, input, envelope, classification, reservation.dispatch);
     },
   };
+}
+
+async function submit(
+  options: BlroRemoteDispatcherOptions,
+  input: BlroRemoteSubmission,
+): Promise<BrowserExecutionResult> {
+  if (!executionAllowed(input, options.executionPolicy)) return refusal('EXECUTION_GATE_REFUSED');
+  if (!await options.authority.authorizeTarget({ target: input.target })) {
+    return refusal('TARGET_AUTHORIZATION_REFUSED');
+  }
+  const envelope = parseEnvelope(input.bodyText, options.receiptSigner.now());
+  if (!envelope) return refusal('ENVELOPE_INVALID');
+  if (!matchesTarget(envelope, input.target) || !matchesPurpose(envelope, input.purpose)) {
+    return refusedResult(envelope.request.requestId, 'REQUEST_BINDING_REFUSED', 'Remote request binding was refused.');
+  }
+  const authorityInput = { envelope, certificate: input.target.certificate };
+  const classification = await options.authority.classify(authorityInput);
+  if (classification.kind !== 'candidate') {
+    return resultFromReservation(classification, input.purpose, envelope.request.requestId);
+  }
+  if (classification.claim.installationId !== input.target.installationId
+    || classification.claim.clientIdentityId !== input.target.clientIdentityId) {
+    return refusedResult(envelope.request.requestId, 'CAPABILITY_IDENTITY_REFUSED', 'Capability identity was refused.');
+  }
+  if (!await options.transport.preflight(input.target)) {
+    return refusedResult(envelope.request.requestId, 'JM_PREFLIGHT_UNAVAILABLE', 'JM read-only preflight is unavailable.');
+  }
+  const reservation = await options.authority.reserve(authorityInput);
+  if (reservation.kind !== 'dispatch') {
+    const settled = reservation.kind === 'indeterminate'
+      ? await options.authority.classify(authorityInput)
+      : reservation;
+    return resultFromReservation(settled.kind === 'candidate'
+      ? reservation
+      : settled, input.purpose, envelope.request.requestId);
+  }
+  return dispatchReserved(options, input, envelope, classification, reservation.dispatch);
 }
 
 async function dispatchReserved(
