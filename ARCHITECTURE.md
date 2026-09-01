@@ -15,7 +15,7 @@ pnpm workspace (`apps/*` + `packages/*`), run directly from TypeScript source vi
 ## Runtime topology
 
 ```
-Cursor / MCP client ──stdio JSON-RPC──► apps/mcp-server        (108 sangfor.* tools; no port)
+Cursor / MCP client ──stdio JSON-RPC──► apps/mcp-server        (118 sangfor.* tools; no port)
                                           │ pure JSON BrowserExecutionPort
                                           ▼
                                       JM local runtime ──► Playwright / loopback CDP
@@ -24,6 +24,7 @@ Remote MCP client ──HTTP POST /mcp──► apps/http-bridge (:3600) (statel
 apps/control-tower (:3700) ──HTTP──► http-bridge (:3600), mock-console (:3400)
 apps/operator-console (:3502) ──in-process──► packages/* (no MCP hop)
 apps/mock-sangfor-console (:3400)  = fake Sangfor/FortiOS/Cisco/OpenStack device
+apps/jm-browser-agent (:39443, HTTPS mTLS, loopback) ◄──BLRO dispatches signed browser jobs
 ```
 
 Apps import packages by **relative path** (`../../../packages/<pkg>/src/index.js`); packages import each other via the `@sangfor/*` / `@sangfor-engineer/*` tsconfig aliases.
@@ -34,6 +35,7 @@ Apps import packages by **relative path** (`../../../packages/<pkg>/src/index.js
 L3 orchestration : verifier, product-adapters, screenshot, pptx  ── apps
 L2 execution     : operator (→approval,browser-contracts), planner (→approval,knowledge,rag,wiki)
 JM runtime edge  : jm-execution (→observer,browser-contracts; only maintained Playwright/CDP behavior)
+                   jm-agent (→browser-contracts,shared; receipt-verifying JM agent runtime, never authority)
 L1 domain/data   : approval · safety · runs · evidence · config-state · hci-client · spec
                    version · sizing · rca · pm · store · integration · knowledge · rag
                    feedback · finetune · evals · wiki · competency · collector · observer
@@ -49,7 +51,7 @@ Enforced invariants of the graph: no L1 package imports an L2/L3 package; `opera
 | `@sangfor/shared` | L0 | domain types, product catalog, `resolveRepoData`/`nowId`, HTTP-bind safety (`assertBindSafety`, `checkAuth`) |
 | `@sangfor/browser-contracts` | L0 | strict JSON-serializable `BrowserExecutionPort` request/result schemas; no browser runtime or credentials |
 | `@sangfor/identity` | L0 | fail-closed tenant/project/actor/role/membership authorization read model |
-| `@sangfor/authority` | L1 | sole Postgres writer for BLRO registry, run/step, approval, audit, evidence, and RAG aggregates |
+| `@sangfor/authority` | L1 | sole Postgres writer for BLRO enrollment, at-most-once remote-job tombstones/results, registry, run/step, approval, audit, evidence, and RAG aggregates |
 | `@sangfor/approval` | L1 | keyword risk classifier → is-approval-required (the risk brain) |
 | `@sangfor/safety` | L1 | data-driven capability safety/maturity oracle; fail-safe deny |
 | `@sangfor/runs` | L1 | append-only JSONL run ledger + secret masking |
@@ -62,13 +64,14 @@ Enforced invariants of the graph: no L1 package imports an L2/L3 package; `opera
 | `@sangfor/store` | L1 | optional Prisma/Postgres persistence (no-op unless `DATABASE_URL`) |
 | `@sangfor/integration` | L1 | static cited LDAP/RADIUS/SIEM recipes (human executes) |
 | `@sangfor/knowledge` | L1 | in-memory seed manuals + keyword search |
-| `@sangfor/rag` | L1 | ingest→chunk→embed→local vector index + semantic search/rerank |
+| `@sangfor/rag` | L1 | ingest→chunk→embed plus project-scoped PostgreSQL/pgvector authority, persisted measured HNSW promotion, and diagnostic exact/HNSW routing; legacy JSON is derived-only |
 | `@sangfor/feedback` `/evals` `/finetune` | L1 | feedback→lesson, planner safety-text evals, JSONL fine-tune datasets/jobs |
 | `@sangfor/wiki` | L1 | review-gated proposal→approve→apply to Obsidian/GitHub-wiki adapters |
 | `@sangfor/competency` | L1 | WorkAtom taxonomy + honest "1인 대체율" replacement-rate metric |
 | `@sangfor/collector` | L1 | scrape Sangfor KB/community → normalized docs → learn pipeline |
 | `@sangfor/observer` | L1 | fail-closed, read-only structural observation policy with injected transport |
 | `@sangfor/jm-execution` | JM runtime edge | local session resolution, Playwright/CDP execution, screenshots, and observer transport behind `BrowserExecutionPort` |
+| `@sangfor/jm-agent` | JM runtime edge | JM agent runtime: strict config/TLS-material boundary, signed BLRO authority-receipt verification, exact BLRO client pin, readiness/drain, and a receipt-backed `RemoteJobStore` that can only refuse — never mints or mutates authority, and holds no database credential |
 | `@sangfor/chrome` | legacy | retained compatibility helpers; not part of the maintained MCP/operator/verifier/evidence browser path |
 | `@sangfor/operator` | L2 | mock/live console execution + the signed-approval write gate |
 | `@sangfor/planner` | L2 | ProjectInput → cited, risk-classified ConfigPlan |
@@ -85,13 +88,13 @@ Not an OO device interface — a **data contract + shared engine**. Each vendor 
 ## Execution & approval flow (the safety spine)
 
 1. Every action defaults to **dry-run**. A non-dry-run live write requires the execution flags, a valid complete-action-bound HMAC approval, origin/request validation, an authoritative read-only preflight, and a durable single-use nonce consumed immediately before mutation dispatch. `SANGFOR_OPERATOR_APPROVAL_SECRET` signs `approvedBy·changeTicketId·rollbackPlanId·nonce·expiresAt·canonicalActionJson`; the canonical JSON includes all supplied action fields, including browser `value`, `menuPath`, and `formFields`. Any missing piece **fails closed**. Central gate: `assertRealExecutionAllowed()` in `@sangfor/operator`.
-2. Control Tower playbooks pause at a write block, mint a bridge approval on human approve, and resume (`continueFromApprove`). The HTTP bridge (`tool-guard.ts`) refuses destructive tools without a valid single-use approval and refuses write tools on non-loopback binds without `SANGFOR_ALLOW_REMOTE_WRITE`.
+2. Control Tower playbooks pause at a write block, mint a bridge approval on human approve, and resume (`continueFromApprove`). The HTTP bridge uses `@sangfor/operator`'s `tool-authorization.ts`, which refuses destructive tools without a valid single-use approval and refuses write tools on non-loopback binds without `SANGFOR_ALLOW_REMOTE_WRITE`.
 3. Apply never trusts a 2xx — only a **PASS read-back** is success; INDETERMINATE ≠ PASS; failure **halts for a human** (no auto-rollback). Every step lands in a hash-chained audit ledger.
 
 ## Data flow (learning pipeline)
 
-`collector` scrapes Sangfor KB + community → `data/sources/raw/*.md` + `manifest.json` → `rag.ingestDocument` chunks+embeds into the **local JSON vector index `data/rag/index.json`** → `ragSearch` cosine-ranks (+optional rerank) → runtime feedback → `feedback` lessons → `wiki` proposals (`pending_review`, token-gated) → `evals` safety-text checks → `finetune` JSONL datasets (`data/finetune/`) + job specs. Embeddings are local by default (`rapid-mlx` MLX server), with a deterministic `hash` fallback so ingest/search always work offline; cloud is gated by `SANGFOR_ALLOW_CLOUD_RAG`.
+`collector` scrapes Sangfor KB + community → `data/sources/raw/*.md` + `manifest.json` → `rag.ingestDocument`; BLRO authority writes scoped chunks, one active embedding cohort, and `vector(384)` rows to PostgreSQL/pgvector, while compatibility-mode `data/rag/index.json` remains derived-only → scoped SQL search (+optional rerank) → runtime feedback → `feedback` lessons → `wiki` proposals (`pending_review`, token-gated) → `evals` safety-text checks → `finetune` JSONL datasets (`data/finetune/`) + job specs. Embeddings are local by default (`rapid-mlx` MLX server), with a deterministic `hash` fallback so ingest/search always work offline; cloud is gated by `SANGFOR_ALLOW_CLOUD_RAG`.
 
 ## Persistence
 
-In JM-local compatibility mode, primary state is **file-based** (see `data/`): RAG index, run ledgers (`data/runs/*.jsonl`), registry (`vendors.json` seed + gitignored `devices.json`), evidence/change-run ledgers, nonce store (`data/runtime/`). In BLRO cutover mode (`SANGFOR_BLRO_AUTHORITY_STORE=postgres`), those aggregate writers refuse and `BlroAuthorityStore` is the sole Postgres writer; approval nonces remain exclusively owned by `PostgresSingleUseNonceStore`. The superseded paths are enumerated in `docs/design-docs/blro-authority-migration-manifest.json`. Postgres via Prisma (`@sangfor/store`) is an **optional bridge**, only active with `DATABASE_URL` + `SANGFOR_DB_ENABLED!=0`. Feedback/lessons/wiki proposals/eval cases are **persisted as file-based JSONL** (`@sangfor/shared` `appendJsonl`/`foldJsonlById`, roots configurable via `SANGFOR_FEEDBACK_ROOT`/`SANGFOR_EVALS_ROOT`/`SANGFOR_WIKI_ROOT`) — survives restart. Control-tower paused-block `originalArgs` remain intentionally in-memory only. Curated seeds under `data/` are committed; runtime artifacts are gitignored. Multi-customer deployments can set `SANGFOR_ENGAGEMENT_ID` to isolate the run ledger, search-gap feedback file, and saved session reports under an extra `<engagementId>` path segment (`@sangfor/shared` `resolveEngagementScopedData`); unset, these roots are unchanged from single-tenant behavior. All JSON-file stores (RAG index, control-tower registry/playbooks, HCI audit ledger) now write via `@sangfor/shared`'s `writeFileAtomicSync`/`withDirLock` (wx-temp + fsync + directory-mutex, generalized from `sangfor-learning-strategy`'s store) and `ragSearch` ranks a hybrid of BM25 keyword score and cosine similarity with an mtime-invalidated index cache, rather than a pure O(n) cosine scan. SQLite/vector-DB migration for the RAG index remains deliberately deferred — this stays a dependency-free `npx`-installable server, and ANN indexing is still open (tech-debt #5).
+In JM-local compatibility mode, primary state is **file-based** (see `data/`): RAG index, run ledgers (`data/runs/*.jsonl`), registry (`vendors.json` seed + gitignored `devices.json`), evidence/change-run ledgers, nonce store (`data/runtime/`). In BLRO cutover mode (`SANGFOR_BLRO_AUTHORITY_STORE=postgres`), those aggregate writers refuse and `BlroAuthorityStore` is the sole Postgres writer; approval nonces remain exclusively owned by `PostgresSingleUseNonceStore`. The superseded paths are enumerated in `docs/design-docs/blro-authority-migration-manifest.json`. Postgres via Prisma (`@sangfor/store`) is an **optional bridge**, only active with `DATABASE_URL` + `SANGFOR_DB_ENABLED!=0`. Feedback/lessons/wiki proposals/eval cases are **persisted as file-based JSONL** (`@sangfor/shared` `appendJsonl`/`foldJsonlById`, roots configurable via `SANGFOR_FEEDBACK_ROOT`/`SANGFOR_EVALS_ROOT`/`SANGFOR_WIKI_ROOT`) — survives restart. Control-tower paused-block `originalArgs` remain intentionally in-memory only. Curated seeds under `data/` are committed; runtime artifacts are gitignored. Multi-customer deployments can set `SANGFOR_ENGAGEMENT_ID` to isolate the run ledger, search-gap feedback file, and saved session reports under an extra `<engagementId>` path segment (`@sangfor/shared` `resolveEngagementScopedData`); unset, these roots are unchanged from single-tenant behavior. All JSON-file stores (RAG index, control-tower registry/playbooks, HCI audit ledger) now write via `@sangfor/shared`'s `writeFileAtomicSync`/`withDirLock` (wx-temp + fsync + directory-mutex, generalized from `sangfor-learning-strategy`'s store) and `ragSearch` ranks a hybrid of BM25 keyword score and cosine similarity with an mtime-invalidated index cache, rather than a pure O(n) cosine scan. BLRO PostgreSQL authority uses pgvector 0.8.1 with exact cosine oracle search and an HNSW `vector_cosine_ops` candidate index. Exact search is the default; HNSW is selected only by a fresh, digest-verified, scope/cohort/corpus/index-bound persisted promotion. Candidate dispatch carries the preflight index OID, relfilenode, definition digest, name, table, operator class, and valid/ready state into one READ COMMITTED transaction. That transaction verifies the identity, requires EXPLAIN to name the exact HNSW Index Scan, executes without emitting rows, and rechecks identity afterward. EXPLAIN/query relation locks prevent DROP/REINDEX from completing during execution; a drop before dispatch or same-name replacement is detected by the fresh transaction identity statement, while a missing index before dispatch may visibly fall back to exact. Candidate dispatch errors are typed unavailable and never mix with or retry through exact rows. The compatibility JSON index is not an authority fallback and is never consulted on PostgreSQL outage.

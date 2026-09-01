@@ -1,5 +1,6 @@
 import {
   canonicalizeApprovalPayload,
+  hasApprovalControlCharacters,
   signDomainApproval,
   verifyDomainApprovalSignature,
 } from '@sangfor/approval';
@@ -47,13 +48,17 @@ export interface SignedApproval {
   rollbackPlanId: string;
   nonce: string;
   expiresAt: string; // ISO 8601
+  authorityEpoch: number;
 }
 
 function canonicalJson(value: unknown): string {
   if (value === null || typeof value === 'boolean' || typeof value === 'number') {
     return JSON.stringify(value);
   }
-  if (typeof value === 'string') return JSON.stringify(value);
+  if (typeof value === 'string') {
+    if (hasApprovalControlCharacters(value)) throw new Error('approval field contains a control character');
+    return JSON.stringify(value);
+  }
   if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
   if (typeof value === 'object' && value !== null) {
     const entries = Object.entries(value)
@@ -65,18 +70,26 @@ function canonicalJson(value: unknown): string {
   throw new Error('Approval action contains a non-JSON value.');
 }
 
-export function approvalCanonicalString(
+function approvalCanonicalFields(
   action: ApprovalActionRef,
   approval: Omit<SignedApproval, 'approvalToken'>,
-): string {
-  return canonicalizeApprovalPayload([
+): readonly string[] {
+  return [
     approval.approvedBy,
     approval.changeTicketId,
     approval.rollbackPlanId,
     approval.nonce,
     approval.expiresAt,
+    String(approval.authorityEpoch),
     canonicalJson(action),
-  ]);
+  ];
+}
+
+export function approvalCanonicalString(
+  action: ApprovalActionRef,
+  approval: Omit<SignedApproval, 'approvalToken'>,
+): string {
+  return canonicalizeApprovalPayload(approvalCanonicalFields(action, approval));
 }
 
 export function signApprovalToken(
@@ -97,15 +110,20 @@ export function verifyExecutionApproval(params: {
   const now = params.now ?? new Date();
 
   if (!secret) return { ok: false, reason: 'approval secret not configured (fail-closed)' };
-  if (
-    !approval?.approvedBy ||
-    !approval.approvalToken ||
-    !approval.changeTicketId ||
-    !approval.rollbackPlanId ||
-    !approval.nonce ||
-    !approval.expiresAt
-  ) {
+  if (approval === undefined) return { ok: false, reason: 'missing approval fields' };
+  const requiredFields = [
+    approval.approvedBy,
+    approval.approvalToken,
+    approval.changeTicketId,
+    approval.rollbackPlanId,
+    approval.nonce,
+    approval.expiresAt,
+  ];
+  if (requiredFields.some((field) => typeof field !== 'string' || field.length === 0)) {
     return { ok: false, reason: 'missing approval fields' };
+  }
+  if (requiredFields.some(hasApprovalControlCharacters)) {
+    return { ok: false, reason: 'approval contains control character' };
   }
 
   const expiry = new Date(approval.expiresAt).getTime();
@@ -115,11 +133,25 @@ export function verifyExecutionApproval(params: {
   if (typeof approval.approvalToken !== 'string') {
     return { ok: false, reason: 'approval token signature mismatch' };
   }
+  let fields: readonly string[];
+  try {
+    fields = approvalCanonicalFields(action, approval);
+    if (fields.some(hasApprovalControlCharacters)) {
+      return { ok: false, reason: 'approval contains control character' };
+    }
+  } catch (error) {
+    if (error instanceof Error && /control character/u.test(error.message)) {
+      return { ok: false, reason: 'approval contains control character' };
+    }
+    throw error;
+  }
+  const signature = Buffer.from(approval.approvalToken, 'hex');
   const verdict = verifyDomainApprovalSignature(
     secret,
-    approvalCanonicalString(action, approval),
-    Buffer.from(approval.approvalToken, 'hex'),
+    canonicalizeApprovalPayload(fields),
+    signature,
   );
-  if (!verdict.ok) return { ok: false, reason: 'approval token signature mismatch' };
-  return { ok: true };
+  return verdict.ok
+    ? { ok: true }
+    : { ok: false, reason: 'approval token signature mismatch' };
 }

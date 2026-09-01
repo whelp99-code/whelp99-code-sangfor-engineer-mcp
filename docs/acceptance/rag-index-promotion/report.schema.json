@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sangfor.local/schemas/rag.index-promotion.v1.json",
+  "title": "RAG index promotion report v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion", "tenantId", "projectId", "cohortId", "indexEpoch", "corpusDigest",
+    "exactResultDigest", "candidateResultDigest", "extensionName", "extensionVersion", "indexName",
+    "indexIdentity", "measuredAt", "maxAgeSeconds", "recallAtK", "exactP95Ms", "candidateP95Ms",
+    "recoveryRate", "updateRate", "scopeIsolationProof", "candidateRowCount", "reportDigest"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "rag.index-promotion/1" },
+    "tenantId": { "$ref": "#/$defs/nonempty" },
+    "projectId": { "$ref": "#/$defs/nonempty" },
+    "cohortId": { "$ref": "#/$defs/nonempty" },
+    "indexEpoch": { "type": "integer", "minimum": 0 },
+    "corpusDigest": { "$ref": "#/$defs/digest" },
+    "exactResultDigest": { "$ref": "#/$defs/digest" },
+    "candidateResultDigest": { "$ref": "#/$defs/digest" },
+    "extensionName": { "type": "string", "minLength": 1 },
+    "extensionVersion": { "type": "string", "minLength": 1 },
+    "indexName": { "$ref": "#/$defs/nonempty" },
+    "indexIdentity": { "$ref": "#/$defs/digest" },
+    "measuredAt": { "type": "string", "format": "date-time" },
+    "maxAgeSeconds": { "type": "integer", "exclusiveMinimum": 0 },
+    "recallAtK": { "$ref": "#/$defs/rate" },
+    "exactP95Ms": { "type": "number", "minimum": 0 },
+    "candidateP95Ms": { "type": "number", "minimum": 0 },
+    "recoveryRate": { "$ref": "#/$defs/rate" },
+    "updateRate": { "$ref": "#/$defs/rate" },
+    "scopeIsolationProof": { "type": "boolean" },
+    "candidateRowCount": { "type": "integer", "minimum": 0 },
+    "reportDigest": { "$ref": "#/$defs/digest" }
+  },
+  "$defs": {
+    "nonempty": { "type": "string", "minLength": 1 },
+    "digest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "rate": { "type": "number", "minimum": 0, "maximum": 1 }
+  }
+}

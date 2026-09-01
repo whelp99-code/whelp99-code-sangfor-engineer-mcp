@@ -13,7 +13,8 @@
 //     on stderr. Standalone HTTP servers (`apps/*/src/server.ts`) may log to stdout.
 //  2. No `TODO`/`FIXME` markers in shipped source under `packages/` or `apps/`.
 
-import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { join, relative, sep } from 'node:path';
 
 const ROOT = process.cwd();
@@ -41,6 +42,21 @@ function* walk(dir) {
 }
 
 const violations = [];
+
+// Office creates tracked lock files as `~$<document>.<extension>`; they are never deliverables.
+let trackedFiles;
+try {
+  trackedFiles = execFileSync('git', ['ls-files', '-z'], { cwd: ROOT }).toString().split('\0').filter(Boolean);
+} catch {
+  console.error('check-source-hygiene: unable to enumerate tracked files');
+  process.exit(2);
+}
+for (const file of trackedFiles) {
+  if (!existsSync(join(ROOT, file))) continue;
+  if (/^~\$.+\.(?:doc|docx|ppt|pptx|xls|xlsx)$/i.test(file.split('/').pop() ?? '')) {
+    violations.push(`${file}  tracked Office lock/temp artifact`);
+  }
+}
 
 for (const root of SCAN_ROOTS) {
   const abs = join(ROOT, root);

@@ -3,7 +3,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync, symlinkSync } from 'node
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { loadSpec, listSpecCoverage } from '../packages/sangfor-spec/src/index.js';
-import { loadWorkAtoms } from '../packages/sangfor-competency/src/index.js';
+import { loadWorkAtomCatalog } from '../packages/sangfor-competency/src/index.js';
 import { recommendSizing } from '../packages/sangfor-sizing/src/index.js';
 import { getCapabilitySafety } from '../packages/sangfor-safety/src/index.js';
 import { loadAuditFrameworks } from '../packages/sangfor-audit/src/index.js';
@@ -18,6 +18,7 @@ describe('loadSpec — one corrupt spec file must not crash the whole product lo
     const vdir = join(root, 'IAG', '13.0.120');
     mkdirSync(vdir, { recursive: true });
     writeFileSync(join(vdir, 'good.json'), JSON.stringify({
+      id: 'good-spec',
       product: 'IAG',
       items: [{ id: 'ok1', capabilityId: 'c', label: 'ok item', observedKey: 'k', op: 'exists', severity: 'recommended' }],
     }));
@@ -35,17 +36,24 @@ describe('loadSpec — one corrupt spec file must not crash the whole product lo
   });
 });
 
-describe('loadWorkAtoms — one corrupt atom file is skipped, the rest still load', () => {
-  it('does not throw and returns atoms from the valid files', () => {
+// Unlike the spec/safety/audit loaders above, the competency catalog is a
+// DENOMINATOR: a partially-loaded catalog still produces a confident
+// percentage, so skipping the corrupt file would silently over-claim the
+// replacement rate. It therefore refuses the whole load instead of degrading.
+describe('loadWorkAtomCatalog — one corrupt atom file invalidates the whole catalog', () => {
+  it('does not throw, and returns a typed corruptFile violation instead of a partial atom list', () => {
     const root = mk();
     writeFileSync(join(root, 'good.json'), JSON.stringify({
       atoms: [{ id: 'a1', product: 'EPP', phase: 'operate', title: 't', automatability: 'auto', maturity: 'planned' }],
     }));
     writeFileSync(join(root, 'bad.json'), 'NOT JSON AT ALL');
 
-    let atoms: ReturnType<typeof loadWorkAtoms> = [];
-    expect(() => { atoms = loadWorkAtoms(root); }).not.toThrow();
-    expect(atoms.some((a) => a.id === 'a1')).toBe(true);
+    let loaded: ReturnType<typeof loadWorkAtomCatalog> | undefined;
+    expect(() => { loaded = loadWorkAtomCatalog(root); }).not.toThrow();
+    expect(loaded?.ok).toBe(false);
+    if (!loaded || loaded.ok) return;
+    expect(loaded.violations.map((v) => v.kind)).toEqual(['corruptFile']);
+    expect(loaded).not.toHaveProperty('atoms');
   });
 });
 

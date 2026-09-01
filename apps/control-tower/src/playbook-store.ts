@@ -1,131 +1,34 @@
 import { appendFileSync, mkdirSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { nowId, resolveEngagementScopedData, resolveRepoData, withDirLock, writeFileAtomicSync } from '../../../packages/shared/src/index.js';
+import { nowId, expectedLocalWriteScope, requireLocalWriteAuthority, resolveEngagementScopedData, resolveRepoData, withDirLock, writeFileAtomicSync, type LocalWriteAuthority } from '../../../packages/shared/src/index.js';
 import { maskSecrets } from '../../../packages/sangfor-runs/src/index.js';
+import {
+  parseBoundaryControlTowerAgentTasksV1,
+  parseBoundaryControlTowerAnalysisLineV1,
+  parseBoundaryControlTowerPlaybooksV1,
+} from './runtime-boundaries.js';
+import { activeApprovedRevision, nextRevisionNumber, parseReviewVerdict, type ReviewVerdictInput } from './playbook-review.js';
+import type { AgentTask, AgentTaskKind, AnalysisProposal, AnalysisVerdict, Playbook, PlaybookAnalysis, PlaybookBlock, PlaybookRevision } from './playbook-types.js';
+import { maskBlocks, PlaybookValidationError, validateBlocks } from './playbook-validation.js';
 
-// ── 플레이북 정의 ────────────────────────────────────────────────────────────
-export interface PlaybookBlock {
-  id: string;                  // 리비전 내 유일, 템플릿 참조 앵커
-  type: 'tool' | 'report';
-  title?: string;
-  toolId?: string;             // type==='tool' 필수
-  args?: Record<string, unknown>;  // 값에 템플릿 문자열 허용 (Task 4)
-  deviceId?: string;           // 지정 시 v1 인자 병합 규칙 재사용
-}
-
-export interface PlaybookRevision {
-  rev: number;
-  blocks: PlaybookBlock[];
-  authoredBy: string;
-  note?: string;
-  status: 'draft' | 'approved' | 'rejected';
-  createdAt: string;
-  reviewedBy?: string;
-  reviewedAt?: string;
-  rejectReason?: string;
-}
-
-export interface Playbook {
-  id: string;
-  name: string;
-  goal: string;
-  revisions: PlaybookRevision[];  // rev 오름차순
-  createdAt: string;
-  updatedAt: string;
-  seedKey?: string;               // 기본 제공 시드로 생성된 경우의 멱등 키 (사용자 작성본은 없음)
-}
-
-// ── AI 분석 아티팩트 ─────────────────────────────────────────────────────────
-export type AnalysisVerdict = 'accepted' | 'dismissed';
-
-export interface AnalysisImprovement {
-  observation: string;
-  evidenceRunId?: string;
-  recommendation: string;
-  verdict?: AnalysisVerdict;
-  reviewedBy?: string;
-}
-
-export interface AnalysisProposal {
-  action: string;
-  rationale: string;
-  linkedPlaybookId?: string;
-  verdict?: AnalysisVerdict;
-  reviewedBy?: string;
-}
-
-export interface PlaybookAnalysis {
-  schemaVersion: 1;
-  id: string;
-  playbookId: string;
-  playbookRunId: string;
-  summary: string;
-  improvements: AnalysisImprovement[];
-  proposals: AnalysisProposal[];
-  authoredBy: string;
-  createdAt: string;
-}
-
-// ── 에이전트 작업 큐 ─────────────────────────────────────────────────────────
-export type AgentTaskKind = 'assemble' | 'revise' | 'analyze';
-
-export interface AgentTask {
-  id: string;
-  kind: AgentTaskKind;
-  payload: { goal?: string; playbookId?: string; playbookRunId?: string; feedback?: string };
-  status: 'open' | 'done' | 'cancelled';
-  result?: { playbookId?: string; rev?: number; analysisId?: string; note?: string };
-  createdAt: string;
-  closedAt?: string;
-}
-
-// status를 실어 api 계층이 400/404/409로 매핑 (RegistryValidationError는 항상 400이었지만
-// 플레이북은 상태기계 위반=409, 미존재=404를 구분해야 한다).
-export class PlaybookValidationError extends Error {
-  constructor(message: string, public readonly status = 400) { super(message); }
-}
-
-// create/addRevision 시 fail-closed 검증.
-export function validateBlocks(blocks: PlaybookBlock[]): void {
-  if (!Array.isArray(blocks) || blocks.length === 0) {
-    throw new PlaybookValidationError('blocks는 비어있을 수 없습니다');
-  }
-  const seen = new Set<string>();
-  let reportCount = 0;
-  for (const b of blocks) {
-    if (!b.id?.trim()) throw new PlaybookValidationError('block.id는 필수입니다');
-    if (seen.has(b.id)) throw new PlaybookValidationError(`중복 block.id: ${b.id}`);
-    seen.add(b.id);
-    if (b.type === 'tool') {
-      if (!b.toolId?.trim()) throw new PlaybookValidationError(`tool 블록 '${b.id}'에 toolId가 없습니다`);
-      // 플레이북 프록시 도구(MCP sangfor_playbook_*)를 블록으로 두면 플레이북이 플레이북을
-      // 호출한다 — 중첩 실행은 설계 비범위이므로 저장 단계에서 막는다.
-      if (b.toolId.startsWith('sangfor_playbook_')) {
-        throw new PlaybookValidationError(`블록에 플레이북 프록시 도구를 쓸 수 없습니다(중첩 실행 비범위): ${b.toolId}`);
-      }
-    } else if (b.type === 'report') {
-      if (b.toolId !== undefined || b.args !== undefined) {
-        throw new PlaybookValidationError(`report 블록 '${b.id}'에는 toolId/args를 둘 수 없습니다`);
-      }
-      reportCount += 1;
-    } else {
-      throw new PlaybookValidationError(`알 수 없는 block.type: ${String((b as PlaybookBlock).type)}`);
-    }
-  }
-  if (reportCount > 1) throw new PlaybookValidationError('report 블록은 최대 1개입니다');
-}
-
-function maskBlocks(blocks: PlaybookBlock[]): PlaybookBlock[] {
-  return blocks.map((b) => (b.args ? { ...b, args: maskSecrets(b.args) } : b));
-}
+export type { AgentTask, AgentTaskKind, AnalysisImprovement, AnalysisProposal, AnalysisVerdict, Playbook, PlaybookAnalysis, PlaybookBlock, PlaybookRevision } from './playbook-types.js';
+export { PlaybookValidationError, validateBlocks } from './playbook-validation.js';
 
 export class PlaybookStore {
   private readonly dir: string;
   private readonly path: string;
+  private readonly authority: LocalWriteAuthority;
 
-  constructor(dir?: string) {
+  constructor(dir: string | undefined, authority: LocalWriteAuthority) {
     this.dir = dir ?? resolveRepoData('data/registry', 'SANGFOR_REGISTRY_ROOT');
     this.path = join(this.dir, 'playbooks.json');
+    this.authority = requireLocalWriteAuthority(authority, expectedLocalWriteScope(
+      authority, authority?.projectId ?? '', 'registry_services', this.dir,
+    ));
+  }
+
+  private fenced<T>(operation: string, write: () => T): Promise<T> {
+    return this.authority.fence.write(this.authority, { operation, targetPaths: [this.path] }, write);
   }
 
   list(): Playbook[] { return this.load(); }
@@ -135,9 +38,9 @@ export class PlaybookStore {
     return `${this.path}.lock`;
   }
 
-  create(input: { name: string; goal: string; blocks: PlaybookBlock[]; authoredBy: string; note?: string; seedKey?: string }): Playbook {
+  async create(input: { name: string; goal: string; blocks: PlaybookBlock[]; authoredBy: string; note?: string; seedKey?: string }): Promise<Playbook> {
     validateBlocks(input.blocks);
-    return withDirLock(this.lockPath, () => {
+    return this.fenced('playbooks.create', () => withDirLock(this.lockPath, () => {
       const now = new Date().toISOString();
       const pb: Playbook = {
         id: nowId('pb'), name: input.name, goal: input.goal,
@@ -147,50 +50,49 @@ export class PlaybookStore {
       };
       this.save([...this.load(), pb]);
       return pb;
-    });
+    }));
   }
 
-  addRevision(id: string, input: { blocks: PlaybookBlock[]; authoredBy: string; note?: string }): Playbook {
+  async addRevision(id: string, input: { blocks: PlaybookBlock[]; authoredBy: string; note?: string }): Promise<Playbook> {
     validateBlocks(input.blocks);
-    return withDirLock(this.lockPath, () => {
+    return this.fenced('playbooks.add-revision', () => withDirLock(this.lockPath, () => {
       const pbs = this.load();
       const pb = pbs.find((p) => p.id === id);
       if (!pb) throw new PlaybookValidationError(`unknown playbook: ${id}`, 404);
-      const nextRev = Math.max(...pb.revisions.map((r) => r.rev)) + 1;
+      const nextRev = nextRevisionNumber(pb.revisions);
       pb.revisions.push({ rev: nextRev, blocks: maskBlocks(input.blocks), authoredBy: input.authoredBy, note: input.note, status: 'draft', createdAt: new Date().toISOString() });
       pb.updatedAt = new Date().toISOString();
       this.save(pbs);
       return pb;
-    });
+    }));
   }
 
-  reviewRevision(id: string, rev: number, verdict: { approve: boolean; reviewedBy: string; rejectReason?: string }): Playbook {
-    return withDirLock(this.lockPath, () => {
+  async reviewRevision(id: string, rev: number, verdict: ReviewVerdictInput): Promise<Playbook> {
+    return this.fenced('playbooks.review-revision', () => withDirLock(this.lockPath, () => {
       const pbs = this.load();
       const pb = pbs.find((p) => p.id === id);
       if (!pb) throw new PlaybookValidationError(`unknown playbook: ${id}`, 404);
       const r = pb.revisions.find((x) => x.rev === rev);
       if (!r) throw new PlaybookValidationError(`unknown revision: ${rev}`, 404);
       if (r.status !== 'draft') throw new PlaybookValidationError(`리비전이 draft가 아닙니다: ${r.status}`, 409);
-      if (!verdict.reviewedBy?.trim()) throw new PlaybookValidationError('reviewedBy는 필수입니다');
-      if (!verdict.approve && !verdict.rejectReason?.trim()) throw new PlaybookValidationError('반려 사유(rejectReason)는 필수입니다');
-      r.status = verdict.approve ? 'approved' : 'rejected';
-      r.reviewedBy = verdict.reviewedBy;
+      const decision = parseReviewVerdict(verdict);
+      r.status = decision.approve ? 'approved' : 'rejected';
+      r.reviewedBy = decision.reviewedBy;
       r.reviewedAt = new Date().toISOString();
-      if (!verdict.approve) r.rejectReason = verdict.rejectReason!.trim();
+      if (!decision.approve) r.rejectReason = decision.rejectReason;
       pb.updatedAt = new Date().toISOString();
       this.save(pbs);
       return pb;
-    });
+    }));
   }
 
   activeRevision(pb: Playbook): PlaybookRevision | undefined {
-    return pb.revisions.filter((r) => r.status === 'approved').sort((a, b) => b.rev - a.rev)[0];
+    return activeApprovedRevision(pb.revisions);
   }
 
   private load(): Playbook[] {
     try {
-      return JSON.parse(readFileSync(this.path, 'utf8')) as Playbook[];
+      return parseBoundaryControlTowerPlaybooksV1(readFileSync(this.path, 'utf8'));
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') return [];
       throw error; // corrupt store must fail loud
@@ -208,23 +110,30 @@ const ANALYSIS_FILE_RE = /^\d{4}-\d{2}-\d{2}\.jsonl$/;
 // createdAt를 보존한 새 스냅샷을 같은 날짜 파일에 append (RunStore.transition과 동형).
 export class AnalysisStore {
   private readonly dir: string;
+  private readonly authority: LocalWriteAuthority;
 
-  constructor(dir?: string) {
+  constructor(dir: string | undefined, authority: LocalWriteAuthority) {
     // Engagement-scoped, matching RunStore: both write under data/runs, so an
     // unscoped root here would split one project's runs across two partitions.
     const root = dir ?? resolveEngagementScopedData('data/runs', 'SANGFOR_RUNS_ROOT');
     this.dir = join(root, 'analyses');
+    this.authority = requireLocalWriteAuthority(authority, expectedLocalWriteScope(
+      authority, authority?.projectId ?? '', 'runs_steps', root,
+    ));
   }
 
-  append(analysis: PlaybookAnalysis): PlaybookAnalysis {
+  async append(analysis: PlaybookAnalysis): Promise<PlaybookAnalysis> {
     const record: PlaybookAnalysis = maskSecrets({
       ...analysis,
       schemaVersion: 1,
       id: analysis.id ?? nowId('anl'),
       createdAt: analysis.createdAt ?? new Date().toISOString(),
     });
-    mkdirSync(this.dir, { recursive: true });
-    appendFileSync(join(this.dir, `${record.createdAt.slice(0, 10)}.jsonl`), `${JSON.stringify(record)}\n`);
+    const target = join(this.dir, `${record.createdAt.slice(0, 10)}.jsonl`);
+    await this.authority.fence.write(this.authority, { operation: 'analyses.append', targetPaths: [target] }, () => {
+      mkdirSync(this.dir, { recursive: true });
+      appendFileSync(target, `${JSON.stringify(record)}\n`);
+    });
     return record;
   }
 
@@ -238,10 +147,10 @@ export class AnalysisStore {
       .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
   }
 
-  setVerdict(
+  async setVerdict(
     id: string, part: 'improvements' | 'proposals', index: number,
     verdict: AnalysisVerdict, reviewedBy: string, linkedPlaybookId?: string,
-  ): PlaybookAnalysis {
+  ): Promise<PlaybookAnalysis> {
     const current = this.get(id);
     if (!current) throw new PlaybookValidationError(`unknown analysis: ${id}`, 404);
     const arr = current[part];
@@ -265,12 +174,8 @@ export class AnalysisStore {
       const raw = readFileSync(join(this.dir, file), 'utf8');
       for (const line of raw.split('\n')) {
         if (!line.trim()) continue;
-        try {
-          const rec = JSON.parse(line) as PlaybookAnalysis;
-          if (rec && typeof rec.id === 'string') out.set(rec.id, rec);
-        } catch {
-          process.stderr.write(`[analyses] skipping unparseable line in ${file}\n`);
-        }
+        const record = parseBoundaryControlTowerAnalysisLineV1(line);
+        out.set(record.id, record);
       }
     }
     return out;
@@ -281,10 +186,14 @@ export class AnalysisStore {
 export class AgentTaskStore {
   private readonly dir: string;
   private readonly path: string;
+  private readonly authority: LocalWriteAuthority;
 
-  constructor(dir?: string) {
+  constructor(dir: string | undefined, authority: LocalWriteAuthority) {
     this.dir = dir ?? resolveRepoData('data/registry', 'SANGFOR_REGISTRY_ROOT');
     this.path = join(this.dir, 'agent-tasks.json');
+    this.authority = requireLocalWriteAuthority(authority, expectedLocalWriteScope(
+      authority, authority?.projectId ?? '', 'pm_tasks', this.dir,
+    ));
   }
 
   private get lockPath(): string {
@@ -296,18 +205,18 @@ export class AgentTaskStore {
     return status ? all.filter((t) => t.status === status) : all;
   }
 
-  create(input: { kind: AgentTaskKind; payload: AgentTask['payload'] }): AgentTask {
-    return withDirLock(this.lockPath, () => {
+  async create(input: { kind: AgentTaskKind; payload: AgentTask['payload'] }): Promise<AgentTask> {
+    return this.authority.fence.write(this.authority, { operation: 'agent-tasks.create', targetPaths: [this.path] }, () => withDirLock(this.lockPath, () => {
       const task: AgentTask = {
         id: nowId('atask'), kind: input.kind, payload: maskSecrets(input.payload ?? {}),
         status: 'open', createdAt: new Date().toISOString(),
       };
       this.save([...this.load(), task]);
       return task;
-    });
+    }));
   }
 
-  close(id: string, result: AgentTask['result']): AgentTask {
+  async close(id: string, result: AgentTask['result']): Promise<AgentTask> {
     return this.transition(id, (t) => {
       t.status = 'done';
       t.result = maskSecrets(result ?? {});
@@ -315,15 +224,15 @@ export class AgentTaskStore {
     });
   }
 
-  cancel(id: string): AgentTask {
+  async cancel(id: string): Promise<AgentTask> {
     return this.transition(id, (t) => {
       t.status = 'cancelled';
       t.closedAt = new Date().toISOString();
     });
   }
 
-  private transition(id: string, mutate: (t: AgentTask) => void): AgentTask {
-    return withDirLock(this.lockPath, () => {
+  private async transition(id: string, mutate: (t: AgentTask) => void): Promise<AgentTask> {
+    return this.authority.fence.write(this.authority, { operation: 'agent-tasks.transition', targetPaths: [this.path] }, () => withDirLock(this.lockPath, () => {
       const tasks = this.load();
       const t = tasks.find((x) => x.id === id);
       if (!t) throw new PlaybookValidationError(`unknown agent-task: ${id}`, 404);
@@ -331,12 +240,12 @@ export class AgentTaskStore {
       mutate(t);
       this.save(tasks);
       return t;
-    });
+    }));
   }
 
   private load(): AgentTask[] {
     try {
-      return JSON.parse(readFileSync(this.path, 'utf8')) as AgentTask[];
+      return parseBoundaryControlTowerAgentTasksV1(readFileSync(this.path, 'utf8'));
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') return [];
       throw error;

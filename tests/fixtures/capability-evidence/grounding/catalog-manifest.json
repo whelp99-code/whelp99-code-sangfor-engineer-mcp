@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "semanticSha256": "5223f2012cbdcf524c66772a700b801c88ae153ae0469bfc7b3187c2573d1bbd",
+  "atomIds": [
+    "op_daily_health",
+    "pm_signoff"
+  ],
+  "counts": {
+    "atoms": 2,
+    "automatable": 1,
+    "human": 1
+  }
+}

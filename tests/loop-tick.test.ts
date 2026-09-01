@@ -6,6 +6,7 @@ import { loadLoopGraph, runLoopTick, type LoopGraph, type TickResult } from '../
 import { runGapQueriesExecutor } from '../packages/sangfor-loop/src/executors/gap-queries.js';
 import { runEmbeddingDriftExecutor } from '../packages/sangfor-loop/src/executors/embedding-drift.js';
 import { runRagEvalExecutor } from '../packages/sangfor-loop/src/executors/rag-eval.js';
+import { RuntimeSchemaError } from '../packages/shared/src/runtime-schema.js';
 
 // S2-S5 — loop engine contract. All paths are temp-dir scoped; nothing in this
 // file touches the real data/ tree.
@@ -101,6 +102,24 @@ describe('runLoopTick (S2 idempotency + ledger + gates)', () => {
     expect(result.outcomes.find((o) => o.edge === 'e2')?.outcome).toBe('gate-pending');
   });
 
+  it('rejects an injected graph with an unknown target before executor dispatch', async () => {
+    // Given
+    const graph = structuredClone(fixtureGraph());
+    graph.edges[0].to = 'ghost';
+    let calls = 0;
+
+    // When
+    const run = runLoopTick({
+      graph,
+      ...paths(),
+      executors: { consumer: () => { calls += 1; return {}; } },
+    });
+
+    // Then
+    await expect(run).rejects.toThrow(/LOOP_GRAPH_CORRUPT/);
+    expect(calls).toBe(0);
+  });
+
   it('corrupt cursor store fails closed', async () => {
     writeFileSync(paths().cursorsPath, '{broken');
     await expect(runLoopTick({ graph: fixtureGraph(), ...paths(), executors: {} })).rejects.toThrow(/LOOP_CURSORS_CORRUPT/);
@@ -129,11 +148,21 @@ describe('P1 gapQueries executor (S3 dedupe)', () => {
     expect(parsed2.queries.find((q: { query: string }) => q.query === 'ssl vpn 설정').count).toBe(3);
   });
 
-  it('malformed lines are skipped, not fatal', () => {
+  it('freezes the prior queue when one new JSONL event is malformed', () => {
+    // Given
     const out = join(dir, 'gap-queries.json');
-    const r = runGapQueriesExecutor({ newLines: ['{broken', JSON.stringify({ id: 'g', query: 'q', hitCount: 0, reason: 'no_hits' })], outPath: out });
-    expect(JSON.parse(readFileSync(out, 'utf8')).queries).toHaveLength(1);
-    expect(r.detail).toContain('1 skipped');
+    const prior = '{"version":1,"updatedAt":"before","queries":[]}';
+    writeFileSync(out, prior);
+
+    // When
+    const run = () => runGapQueriesExecutor({
+      newLines: ['{broken', JSON.stringify({ id: 'g', query: 'q', hitCount: 0, reason: 'no_hits' })],
+      outPath: out,
+    });
+
+    // Then
+    expect(run).toThrow(RuntimeSchemaError);
+    expect(readFileSync(out, 'utf8')).toBe(prior);
   });
 });
 

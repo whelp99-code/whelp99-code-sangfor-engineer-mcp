@@ -6,7 +6,7 @@
 There are multiple surfaces onto the same domain: an MCP stdio server, a REST bridge, an ops dashboard, and an engineer web console. If each app reimplemented planning/approval/execution, the safety logic would fork and drift — a fatal outcome for a security-critical product.
 
 ## Decision
-- **All domain logic lives in `packages/*`.** Apps (`apps/*`) are thin transport adapters: they parse a request, call a package function, and shape a response. `apps/mcp-server` is the widest consumer (imports packages to expose 108 tools); `operator-console` calls packages in-process; `control-tower` and `http-bridge` mostly call *over HTTP* to other apps.
+- **All domain logic lives in `packages/*`.** Apps (`apps/*`) are thin transport adapters: they parse a request, call a package function, and shape a response. `apps/mcp-server` is the widest consumer (imports packages to expose 118 tools); `operator-console` calls packages in-process; `control-tower` and `http-bridge` mostly call *over HTTP* to other apps.
 - **Dependency graph is layered and points downward** (see ARCHITECTURE.md):
   `L0 shared + browser-contracts` (leaves) → `L1 domain/data` → `L2
   execution` (operator, planner, JM runtime edge) → `L3 orchestration`

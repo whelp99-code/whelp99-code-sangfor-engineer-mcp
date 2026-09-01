@@ -14,6 +14,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { appendJsonl, nowId } from '@sangfor/shared';
+import { parseBoundaryTimeSavedLineV1 } from './runtime-boundaries.js';
 
 export type TimeSavedKind = 'auto-closed-finding' | 'dossier-assembled' | 'report-generated';
 
@@ -112,7 +113,7 @@ function readLedger(ledgerDir: string): TimeSavedEntry[] {
   for (const line of raw.split('\n')) {
     const trimmed = line.trim();
     if (!trimmed) continue;
-    entries.push(JSON.parse(trimmed) as TimeSavedEntry);
+    entries.push(parseBoundaryTimeSavedLineV1(trimmed));
   }
   return entries;
 }

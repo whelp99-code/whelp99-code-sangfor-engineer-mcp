@@ -55,7 +55,7 @@ describe('BridgeClient', () => {
     const client = new BridgeClient(base, 'tok-2');
     const payload = { evaluation: { ok: true } };
     callResponse = { status: 200, body: { result: { content: [{ type: 'text', text: 'ignored' }], structuredContent: payload, isError: false } } };
-    const approval = { approvedBy: 'a', approvalToken: 't', changeTicketId: 'c', rollbackPlanId: 'r', nonce: 'n', expiresAt: 'e' };
+    const approval = { approvedBy: 'a', approvalToken: 't', changeTicketId: 'c', rollbackPlanId: 'r', nonce: 'n', expiresAt: 'e' , authorityEpoch: 0};
     const result = await client.callTool('x.tool', { q: 1 }, approval);
     expect(result).toEqual({ ok: true, data: payload });
     expect(lastCall!.headers.authorization).toBe('Bearer tok-2');

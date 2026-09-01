@@ -20,7 +20,8 @@ function makeApproval(
     nonce: 'nonce-abc',
     expiresAt: new Date(Date.now() + 60_000).toISOString(),
     ...overrides,
-  };
+
+  authorityEpoch: 0,};
   return { ...base, approvalToken: signApprovalToken(SECRET, action, base) };
 }
 
@@ -77,14 +78,17 @@ describe('verifyExecutionApproval — action-bound, time-bound, signed', () => {
 
   it('canonicalizes the complete action as stable JSON and accepts uppercase hex tokens', () => {
     const approval = makeApproval(action);
-    expect(approvalCanonicalString(action, approval)).toBe([
+    const canonical = approvalCanonicalString(action, approval);
+    expect(canonical.startsWith('approval-v2:')).toBe(true);
+    expect(JSON.parse(canonical.slice('approval-v2:'.length))).toEqual([
       approval.approvedBy,
       approval.changeTicketId,
       approval.rollbackPlanId,
       approval.nonce,
       approval.expiresAt,
+      String(approval.authorityEpoch),
       '{"target":"button#create-volume","type":"click"}',
-    ].join('\n'));
+    ]);
     expect(verifyExecutionApproval({
       action,
       approval: { ...approval, approvalToken: approval.approvalToken.toUpperCase() },

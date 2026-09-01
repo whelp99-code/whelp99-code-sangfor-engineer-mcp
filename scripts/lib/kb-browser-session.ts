@@ -1,27 +1,42 @@
 /**
- * Shared Playwright session for authenticated knowledgebase.sangfor.com browsing.
+ * Where an authenticated knowledgebase.sangfor.com session comes from: the ONE
+ * config, the environment, and the local Safari WebKit localStorage database.
+ *
+ * This module also re-exports the launcher, page driver, and lifecycle scope so
+ * `./kb-browser-session.js` stays the single import path for KB browsing.
  */
 import { execSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, readdirSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { chromium, type Browser, type BrowserContext, type Page } from 'playwright';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
 import { loadOneSessionFromEnv, resolveAuthTokens } from '../../packages/sangfor-collector/src/index.js';
 import type { OneSessionConfig } from '../../packages/sangfor-collector/src/one-session.js';
+import { parseBoundaryKbSessionItemTableV1 } from './kb-runtime-boundaries.js';
+import type { KbBrowserTokens } from './kb-browser-contracts.js';
 
-const KB_HOME = 'https://knowledgebase.sangfor.com/home';
-const KB_BASE = 'https://knowledgebase.sangfor.com';
-const ONE_BASE = 'https://one.sangfor.com';
+export type {
+  KbBrowserHandle,
+  KbBrowserLauncher,
+  KbBrowserTokens
+} from './kb-browser-contracts.js';
+export {
+  createKbContextWithStorage,
+  kbStorageStatePath,
+  launchKbBrowser,
+  resolveKbPersistentLaunchOptions,
+  saveKbStorageState
+} from './kb-browser-launcher.js';
+export { withKbBrowser } from './kb-browser-lifecycle.js';
+export {
+  injectKbSession,
+  openKbViaOne,
+  prepareKbPage,
+  waitForKbReady
+} from './kb-page-session.js';
 
 const SAFARI_WEBKIT_DEFAULT = join(
   process.env.HOME ?? '',
   'Library/Containers/com.apple.Safari/Data/Library/WebKit/WebsiteData/Default'
 );
-
-export interface KbBrowserTokens {
-  libraryToken: string;
-  tokenByCode: string;
-  oneAccessToken?: string;
-}
 
 function decodeWebKitLocalStorageValue(hex: string): string {
   const buf = Buffer.from(hex, 'hex');
@@ -53,7 +68,7 @@ function readSafariKbLocalStorage(): Record<string, string> | undefined {
       `sqlite3 -json ${JSON.stringify(dbPath)} "SELECT key, hex(value) AS value_hex FROM ItemTable;"`,
       { encoding: 'utf8', maxBuffer: 50_000_000 }
     );
-    const parsed = JSON.parse(out.trim() || '[]') as Array<{ key: string; value_hex: string }>;
+    const parsed = parseBoundaryKbSessionItemTableV1(out.trim() || '[]');
     const rows: Record<string, string> = {};
     for (const row of parsed) rows[row.key] = decodeWebKitLocalStorageValue(row.value_hex);
     return rows;
@@ -85,229 +100,8 @@ export async function resolveKbBrowserTokens(config: OneSessionConfig = loadOneS
   return { libraryToken, tokenByCode, oneAccessToken };
 }
 
-export async function injectKbSession(page: Page, tokens: KbBrowserTokens): Promise<void> {
-  await page.goto(KB_BASE, { waitUntil: 'domcontentloaded', timeout: 60_000 });
-  await page.evaluate((t) => {
-    if (t.library) localStorage.setItem('library_token', t.library);
-    if (t.byCode) localStorage.setItem('token_by_code', t.byCode);
-    if (t.one) {
-      localStorage.setItem('access_token_mh', t.one);
-      localStorage.setItem('access_token', t.one);
-    }
-    localStorage.setItem('library_login_type', 'partner');
-  }, {
-    library: tokens.libraryToken,
-    byCode: tokens.tokenByCode,
-    one: tokens.oneAccessToken ?? ''
-  });
-  await page.reload({ waitUntil: 'domcontentloaded', timeout: 60_000 });
-}
-
-/** Open KB via ONE partner context so Vue app recognizes session. */
-export async function openKbViaOne(page: Page, tokens: KbBrowserTokens): Promise<void> {
-  if (!tokens.oneAccessToken) {
-    await injectKbSession(page, tokens);
-    return;
-  }
-  try {
-    await page.goto(ONE_BASE, { waitUntil: 'domcontentloaded', timeout: 30_000 });
-  } catch {
-    // ONE portal unreachable — fall back to direct KB injection
-    await injectKbSession(page, tokens);
-    return;
-  }
-  await page.evaluate((t) => {
-    if (t.one) {
-      localStorage.setItem('access_token_mh', t.one);
-      localStorage.setItem('access_token', t.one);
-    }
-    if (t.library) localStorage.setItem('library_token', t.library);
-    if (t.byCode) localStorage.setItem('token_by_code', t.byCode);
-    localStorage.setItem('library_login_type', 'partner');
-  }, {
-    one: tokens.oneAccessToken ?? '',
-    library: tokens.libraryToken,
-    byCode: tokens.tokenByCode
-  });
-
-  const kbEntry = page.locator('a[href*="knowledgebase"], a[href*="knowledge"]').first();
-  if (await kbEntry.count()) {
-    await kbEntry.click({ timeout: 20_000 }).catch(() => {});
-    await page.waitForTimeout(3000);
-  }
-  if (!page.url().includes('knowledgebase')) {
-    await page.goto(KB_HOME, { waitUntil: 'domcontentloaded', timeout: 60_000 });
-    await injectKbSession(page, tokens);
-  }
-}
-
-export async function waitForKbReady(page: Page, timeoutMs = 45_000): Promise<boolean> {
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    const state = await page.evaluate(() => {
-      const text = (document.body?.innerText || '').slice(0, 4000);
-      const loginOnly = /^\s*Login\s*$/im.test(text.trim()) || (text.includes('Login') && text.length < 800);
-      const hasTiles = document.querySelectorAll('.home-page button, .home-page [class*="product"], .home-page .el-button').length > 5;
-      const hasNav = document.querySelectorAll('.el-menu-item').length > 3;
-      const treeLen = localStorage.getItem('library_tree')?.length ?? 0;
-      const links = document.querySelectorAll('a[href*="detailPage"]').length;
-      return { loginOnly, hasTiles, hasNav, treeLen, links, url: location.href };
-    });
-    if (!state.loginOnly && (state.hasTiles || state.hasNav || state.treeLen > 500 || state.links > 0)) {
-      return true;
-    }
-    await page.waitForTimeout(1500);
-  }
-  return false;
-}
-
 export function readSafariLibraryTree(): string | undefined {
   const rows = readSafariKbLocalStorage();
   const tree = rows?.library_tree;
   return tree && tree.length > 100 ? tree : undefined;
-}
-
-export interface KbBrowserHandle {
-  browser: Browser;
-  context: BrowserContext;
-  page: Page;
-  close: () => Promise<void>;
-}
-
-type KbBrowserLauncher = (tokens: KbBrowserTokens) => Promise<KbBrowserHandle>;
-
-const CHROME_PROFILE = process.env.CHROME_USER_DATA ?? (
-  process.platform === 'darwin'
-    ? `${process.env.HOME}/Library/Application Support/Google/Chrome`
-    : `${process.env.HOME}/.config/google-chrome`
-);
-
-const DEFAULT_CDP_URL = 'http://127.0.0.1:9222';
-
-export function resolveKbPersistentLaunchOptions(
-  env: NodeJS.ProcessEnv = process.env
-): { executablePath: string } | { channel: 'chrome' } {
-  const executablePath = env.SANGFOR_CHROMIUM_PATH?.trim();
-  return executablePath ? { executablePath } : { channel: 'chrome' };
-}
-
-export function kbStorageStatePath(): string {
-  const repo = process.env.SANGFOR_REPO_DIR?.trim() || process.cwd();
-  return join(repo, 'data/runtime/kb-storage-state.json');
-}
-
-export async function saveKbStorageState(context: BrowserContext): Promise<void> {
-  const path = kbStorageStatePath();
-  mkdirSync(dirname(path), { recursive: true });
-  await context.storageState({ path });
-}
-
-export async function createKbContextWithStorage(browser: Browser, headed: boolean): Promise<BrowserContext> {
-  const statePath = kbStorageStatePath();
-  const base = headed ? { viewport: null, ignoreHTTPSErrors: true } : { ignoreHTTPSErrors: true };
-  if (existsSync(statePath)) {
-    return browser.newContext({ ...base, storageState: statePath });
-  }
-  return browser.newContext(base);
-}
-
-export async function launchKbBrowser(tokens: KbBrowserTokens): Promise<KbBrowserHandle> {
-  const cdpUrl = (
-    process.env.SANGFOR_CDP_URL?.trim()
-    || (process.env.SANGFOR_GLASS_CDP_REQUIRED === '1' ? DEFAULT_CDP_URL : '')
-  );
-  const headed = process.env.SANGFOR_KB_HEADED === '1';
-  const useChromeProfile = process.env.SANGFOR_USE_CHROME_PROFILE === '1';
-
-  if (useChromeProfile && existsSync(CHROME_PROFILE)) {
-    const context = await chromium.launchPersistentContext(CHROME_PROFILE, {
-      ...resolveKbPersistentLaunchOptions(),
-      headless: false,
-      args: ['--profile-directory=Default'],
-      ignoreHTTPSErrors: true
-    });
-    const page = context.pages()[0] ?? await context.newPage();
-    const browser = context.browser()!;
-    return {
-      browser,
-      context,
-      page,
-      close: async () => { await context.close(); }
-    };
-  }
-
-  if (cdpUrl) {
-    const browser = await chromium.connectOverCDP(cdpUrl);
-    const contexts = browser.contexts();
-    let page: Page | undefined;
-    for (const ctx of contexts) {
-      for (const p of ctx.pages()) {
-        if (/knowledgebase\.sangfor\.com/i.test(p.url())) {
-          page = p;
-          break;
-        }
-      }
-      if (page) break;
-    }
-    const context = page?.context() ?? contexts[0] ?? await browser.newContext();
-    page ??= context.pages()[0] ?? await context.newPage();
-    return {
-      browser,
-      context,
-      page,
-      close: async () => { /* keep Glass/CDP browser open */ }
-    };
-  }
-
-  const browser = await chromium.launch({
-    headless: !headed,
-    args: headed ? ['--start-maximized'] : []
-  });
-  const context = await createKbContextWithStorage(browser, headed);
-  const page = await context.newPage();
-  return {
-    browser,
-    context,
-    page,
-    close: async () => {
-      await context.close();
-      await browser.close();
-    }
-  };
-}
-
-export async function withKbBrowser<T>(
-  tokens: KbBrowserTokens,
-  operation: (handle: KbBrowserHandle) => Promise<T>,
-  launcher: KbBrowserLauncher = launchKbBrowser
-): Promise<T> {
-  const handle = await launcher(tokens);
-  try {
-    return await operation(handle);
-  } finally {
-    await handle.close();
-  }
-}
-
-export async function prepareKbPage(tokens: KbBrowserTokens, page: Page): Promise<boolean> {
-  if (process.env.SANGFOR_CDP_URL && /knowledgebase\.sangfor\.com/i.test(page.url())) {
-    return waitForKbReady(page);
-  }
-  // Navigate directly to KB and inject tokens — skip ONE portal in headless mode
-  try {
-    await page.goto(KB_HOME, { waitUntil: 'domcontentloaded', timeout: 30_000 });
-  } catch {
-    // If KB_HOME fails, try base URL first
-    try {
-      await page.goto(KB_BASE, { waitUntil: 'domcontentloaded', timeout: 30_000 });
-    } catch {
-      return false;
-    }
-  }
-  await injectKbSession(page, tokens);
-  const ready = await waitForKbReady(page);
-  if (ready) {
-    await saveKbStorageState(page.context()).catch(() => {});
-  }
-  return ready;
 }

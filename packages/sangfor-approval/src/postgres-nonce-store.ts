@@ -26,11 +26,19 @@
 export interface NonceConsumeResult {
   readonly ok: boolean;
   readonly reason?: string;
+  readonly code?: 'ALREADY_USED' | 'STORE_UNAVAILABLE' | 'STALE_EPOCH';
 }
 
-export interface PostgresNonceStoreOptions {
-  readonly connectionString: string;
+interface NonceDatabase {
+  $queryRawUnsafe: Function;
+  $executeRawUnsafe: Function;
+  $transaction: Function;
+  $disconnect?: Function;
 }
+
+export type PostgresNonceStoreOptions =
+  | { readonly connectionString: string; readonly database?: never }
+  | { readonly database: NonceDatabase; readonly connectionString?: never };
 
 /** Strip credentials from anything that might carry a connection string. */
 function scrub(message: string): string {
@@ -38,13 +46,14 @@ function scrub(message: string): string {
 }
 
 export class PostgresSingleUseNonceStore {
-  private client:
-    | { $queryRawUnsafe: Function; $executeRawUnsafe: Function; $transaction: Function; $disconnect: Function }
-    | undefined;
-  private readonly connectionString: string;
+  private client: NonceDatabase | undefined;
+  private readonly connectionString: string | undefined;
+  private readonly ownsClient: boolean;
 
   constructor(options: PostgresNonceStoreOptions) {
     this.connectionString = options.connectionString;
+    this.client = options.database;
+    this.ownsClient = options.database === undefined;
   }
 
   private async getClient() {
@@ -70,6 +79,7 @@ export class PostgresSingleUseNonceStore {
     projectId: string,
     nonce: string,
     expiresAt: string,
+    authorityEpoch: number,
     now: Date = new Date(),
   ): Promise<NonceConsumeResult> {
     if (typeof projectId !== 'string' || projectId.length === 0) {
@@ -101,26 +111,36 @@ export class PostgresSingleUseNonceStore {
         $queryRawUnsafe: Function;
       }) => {
         await tx.$executeRawUnsafe(`SELECT set_config('app.project_id', $1, true)`, projectId);
-        return (await tx.$queryRawUnsafe(
-          `INSERT INTO "BlroApprovalNonce" ("id", "tenantId", "projectId", "nonce", "expiresAt", "consumedAt")
-           SELECT $1, p."tenantId", p."id", $3, $4::timestamptz, $5::timestamptz
+        await tx.$executeRawUnsafe(
+          `INSERT INTO "BlroProjectAuthorityEpoch" ("projectId","epoch","revision") SELECT "id",0,0 FROM "BlroProject" WHERE "id"=$1 ON CONFLICT DO NOTHING`, projectId,
+        );
+        const epochs = await tx.$queryRawUnsafe(
+          `SELECT "epoch" FROM "BlroProjectAuthorityEpoch" WHERE "projectId"=$1 FOR SHARE`, projectId,
+        ) as Array<{ epoch: number }>;
+        if (epochs[0]?.epoch !== authorityEpoch) return { kind: 'stale' as const };
+        const rows = (await tx.$queryRawUnsafe(
+          `INSERT INTO "BlroApprovalNonce" ("id", "tenantId", "projectId", "nonce", "expiresAt", "consumedAt", "authorityEpoch")
+           SELECT $1, p."tenantId", p."id", $3, $4::timestamptz, $5::timestamptz, $6
            FROM "BlroProject" p
            WHERE p."id" = $2
-           ON CONFLICT ("nonce") DO NOTHING
+           ON CONFLICT DO NOTHING
            RETURNING "id"`,
           `${projectId}:${nonce}`,
           projectId,
           nonce,
           new Date(expiryMs).toISOString(),
           now.toISOString(),
+          authorityEpoch,
         )) as unknown[];
+        return rows.length > 0 ? { kind: 'inserted' as const } : { kind: 'duplicate' as const };
       });
 
-      if (Array.isArray(inserted) && inserted.length > 0) return { ok: true };
-      return { ok: false, reason: `approval nonce already used: ${nonce}` };
+      if (inserted.kind === 'inserted') return { ok: true };
+      if (inserted.kind === 'stale') return { ok: false, code: 'STALE_EPOCH', reason: 'approval authority epoch is stale' };
+      return { ok: false, code: 'ALREADY_USED', reason: `approval nonce already used: ${nonce}` };
     } catch (error) {
       const detail = scrub(error instanceof Error ? error.message : String(error));
-      return { ok: false, reason: `nonce store unavailable (fail-closed): ${detail}` };
+      return { ok: false, code: 'STORE_UNAVAILABLE', reason: `nonce store unavailable (fail-closed): ${detail}` };
     }
   }
 
@@ -140,7 +160,7 @@ export class PostgresSingleUseNonceStore {
   }
 
   async close(): Promise<void> {
-    if (this.client) {
+    if (this.client && this.ownsClient && this.client.$disconnect) {
       await this.client.$disconnect().catch(() => {});
       this.client = undefined;
     }

@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { randomBytes } from 'node:crypto';
-import { authorizeToolCall } from '../apps/http-bridge/src/tool-guard.js';
+import { authorizeToolCall } from '../packages/sangfor-operator/src/tool-authorization.js';
 import { signApprovalToken, type SignedApproval } from '../packages/sangfor-operator/src/approval.js';
 
 const toolList = {
@@ -53,7 +53,8 @@ function mint(toolName: string, opts: { secret?: string; ttlMs?: number; nonce?:
     rollbackPlanId: 'RB-1',
     nonce: opts.nonce ?? randomBytes(8).toString('hex'),
     expiresAt: new Date(Date.now() + (opts.ttlMs ?? 60_000)).toISOString(),
-  };
+
+  authorityEpoch: 0,};
   return { ...base, approvalToken: signApprovalToken(opts.secret ?? SECRET, { type: BRIDGE_ACTION, target: toolName }, base) };
 }
 

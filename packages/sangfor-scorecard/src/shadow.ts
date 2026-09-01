@@ -12,6 +12,12 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { appendJsonl, nowId } from '@sangfor/shared';
+import type { NamedRuntimeCodec } from '../../shared/src/runtime-schema.js';
+import {
+  humanActionCodec,
+  parseBoundaryShadowLedgerLineV1,
+  shadowRunCodec,
+} from './runtime-boundaries.js';
 
 export type ShadowAction = Record<string, unknown>;
 
@@ -74,7 +80,7 @@ export type ShadowMatcher = (automated: ShadowAction, human: ShadowAction) => bo
 const SHADOW_RUNS_FILE = 'shadow-runs.jsonl';
 const HUMAN_ACTIONS_FILE = 'human-actions.jsonl';
 
-function readEntries<T>(path: string): T[] {
+function readEntries<T>(path: string, codec: NamedRuntimeCodec<T>): T[] {
   let raw: string;
   try {
     raw = readFileSync(path, 'utf8');
@@ -86,7 +92,7 @@ function readEntries<T>(path: string): T[] {
   for (const line of raw.split('\n')) {
     const trimmed = line.trim();
     if (!trimmed) continue;
-    entries.push(JSON.parse(trimmed) as T);
+    entries.push(parseBoundaryShadowLedgerLineV1(trimmed, codec));
   }
   return entries;
 }
@@ -116,10 +122,10 @@ export function shadowAgreement(
   automationId: string,
   matcher: ShadowMatcher,
 ): ShadowAgreementResult {
-  const runs = readEntries<ShadowRunEntry>(join(ledgerDir, SHADOW_RUNS_FILE)).filter(
+  const runs = readEntries(join(ledgerDir, SHADOW_RUNS_FILE), shadowRunCodec).filter(
     (entry) => entry.automationId === automationId,
   );
-  const humans = readEntries<HumanActionEntry>(join(ledgerDir, HUMAN_ACTIONS_FILE)).filter(
+  const humans = readEntries(join(ledgerDir, HUMAN_ACTIONS_FILE), humanActionCodec).filter(
     (entry) => entry.automationId === automationId,
   );
 

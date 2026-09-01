@@ -1,7 +1,14 @@
 import http from 'node:http';
 import { URL } from 'node:url';
+import { ZodError } from 'zod';
 import { loadEnvFile } from '../../../packages/sangfor-collector/src/load-env.js';
 import { PRODUCTS, resolveBindHost, checkAuth, assertBindSafety } from '../../../packages/shared/src/index.js';
+import {
+  MAX_REQUEST_BODY_BYTES,
+  RequestBodyTooLargeError,
+  readCappedRequestBody,
+} from '../../../packages/shared/src/runtime-body-cap.js';
+import { RuntimeSchemaError } from '../../../packages/shared/src/runtime-schema.js';
 import {
   getSummary,
   getKnowledge,
@@ -20,6 +27,12 @@ import {
 } from './api.js';
 import { postCaseResolution } from './case-resolution.js';
 import { dashboardHtml } from './ui.js';
+import {
+  decodeOperatorRequestBody,
+  parseBoundaryOperatorRequestBodyV1,
+  type OperatorRequestBody,
+  type OperatorRequestRoute,
+} from './runtime-boundaries.js';
 
 loadEnvFile('.env');
 
@@ -32,12 +45,13 @@ function error(res: http.ServerResponse, message: string, status = 400) {
   json(res, { error: message }, status);
 }
 
-async function readJsonBody(req: http.IncomingMessage): Promise<Record<string, unknown>> {
-  const chunks: Buffer[] = [];
-  for await (const chunk of req) chunks.push(chunk as Buffer);
-  const raw = Buffer.concat(chunks).toString('utf8');
-  if (!raw.trim()) return {};
-  return JSON.parse(raw) as Record<string, unknown>;
+async function readJsonBody<TRoute extends OperatorRequestRoute>(
+  req: http.IncomingMessage,
+  route: TRoute,
+): Promise<OperatorRequestBody<TRoute>> {
+  const raw = await readCappedRequestBody(req, MAX_REQUEST_BODY_BYTES);
+  const body = parseBoundaryOperatorRequestBodyV1(raw.trim() ? raw : '{}');
+  return decodeOperatorRequestBody(body, route);
 }
 
 export function createOperatorServer(): http.Server {
@@ -69,7 +83,7 @@ export function createOperatorServer(): http.Server {
       }
 
       if (method === 'GET' && url.pathname === '/api/coverage') {
-        return json(res, getFieldEngineerCoverage());
+        return json(res, await getFieldEngineerCoverage());
       }
 
       if (method === 'GET' && url.pathname === '/api/spec-coverage') {
@@ -89,52 +103,43 @@ export function createOperatorServer(): http.Server {
       }
 
       if (method === 'POST' && url.pathname === '/api/analyze-project') {
-        const body = await readJsonBody(req);
-        if (!body.customerName) return error(res, 'customerName is required');
+        const body = await readJsonBody(req, 'analyze-project');
         return json(res, await postAnalyzeProject(body));
       }
 
       if (method === 'POST' && url.pathname === '/api/generate-config-plan') {
-        const body = await readJsonBody(req);
-        if (!body.customerName || !body.product) return error(res, 'customerName and product are required');
+        const body = await readJsonBody(req, 'generate-config-plan');
         return json(res, await postGenerateConfigPlan(body));
       }
 
       if (method === 'POST' && url.pathname === '/api/rag-search') {
-        const body = await readJsonBody(req);
-        if (typeof body.query !== 'string' || !body.query.trim()) return error(res, 'query is required');
-        return json(res, await postRagSearch(body as Parameters<typeof postRagSearch>[0]));
+        const body = await readJsonBody(req, 'rag-search');
+        if (!body.query.trim()) return error(res, 'query is required');
+        return json(res, await postRagSearch(body));
       }
 
       if (method === 'POST' && url.pathname === '/api/case-resolution') {
-        const body = await readJsonBody(req);
-        if (!body.product || !body.caseSummary || !body.resolution || !body.targetWikiPage) {
-          return error(res, 'product, caseSummary, resolution, and targetWikiPage are required');
-        }
-        return json(res, await postCaseResolution(body as unknown as Parameters<typeof postCaseResolution>[0]));
+        const body = await readJsonBody(req, 'case-resolution');
+        return json(res, await postCaseResolution(body));
       }
 
       if (method === 'POST' && url.pathname === '/api/discover-console') {
-        const body = await readJsonBody(req);
+        const body = await readJsonBody(req, 'discover-console');
         return json(res, await postDiscoverConsole(body));
       }
 
       if (method === 'POST' && url.pathname === '/api/analyze-requirements') {
-        const body = await readJsonBody(req);
-        if (!Array.isArray(body.requirements) || body.requirements.length === 0) {
-          return error(res, 'requirements array is required');
-        }
+        const body = await readJsonBody(req, 'analyze-requirements');
         return json(res, await postAnalyzeRequirements(body));
       }
 
       if (method === 'POST' && url.pathname === '/api/import-excel') {
-        const body = await readJsonBody(req);
-        return json(res, await postImportExcel(body as Parameters<typeof postImportExcel>[0]));
+        const body = await readJsonBody(req, 'import-excel');
+        return json(res, await postImportExcel(body));
       }
 
       if (method === 'POST' && url.pathname === '/api/feedback') {
-        const body = await readJsonBody(req);
-        if (!body.product || !body.feedbackText) return error(res, 'product and feedbackText are required');
+        const body = await readJsonBody(req, 'feedback');
         return json(res, await postFeedback(body));
       }
 
@@ -147,6 +152,14 @@ export function createOperatorServer(): http.Server {
       res.writeHead(404);
       res.end('Not found');
     } catch (err) {
+      if (err instanceof RequestBodyTooLargeError) {
+        error(res, 'request body too large', 413);
+        return;
+      }
+      if (err instanceof ZodError || (err instanceof RuntimeSchemaError && err.policy === 'deny')) {
+        error(res, 'invalid JSON request body', 400);
+        return;
+      }
       error(res, err instanceof Error ? err.message : String(err), 500);
     }
   });

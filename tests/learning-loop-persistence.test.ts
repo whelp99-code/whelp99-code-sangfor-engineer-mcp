@@ -1,3 +1,4 @@
+import { testFileLocalWriteAuthority, testLocalWriteAuthority } from './helpers/local-write-authority.js';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
@@ -21,22 +22,22 @@ describe('Learning-loop state survives restart (tech-debt #2)', () => {
     rmSync(root, { recursive: true, force: true });
   });
 
-  it('feedback → lesson is folded back from disk (no in-memory cache)', () => {
-    const fb = submitFeedback({ product: 'HCI', feedbackType: 'bug', severity: 'high', feedbackText: 'MTU mismatch', sourceRole: 'engineer' });
-    const lesson = extractLesson(fb.id);
+  it('feedback → lesson is folded back from disk (no in-memory cache)', async () => {
+    const fb = await submitFeedback({ product: 'HCI', feedbackType: 'bug', severity: 'high', feedbackText: 'MTU mismatch', sourceRole: 'engineer' }, testLocalWriteAuthority('feedback_lessons'));
+    const lesson = await extractLesson(fb.id, testLocalWriteAuthority('feedback_lessons'));
     expect(listLessons().map((l) => l.id)).toContain(lesson.id);
   });
 
-  it('a user-added eval case is loaded by runPlannerEval after persistence', () => {
-    const ec = createEvalCaseFromFeedback({ product: 'HCI', name: 'jumbo frames check', requiredText: 'zznotinplanzz' });
+  it('a user-added eval case is loaded by runPlannerEval after persistence', async () => {
+    const ec = await createEvalCaseFromFeedback({ product: 'HCI', name: 'jumbo frames check', requiredText: 'zznotinplanzz' }, testLocalWriteAuthority('evals'));
     const plan = generateConfigPlan({ customerName: 'T', product: 'HCI', environment: { nodeCount: 3 }, requirements: ['VMware migration'] });
     expect(runPlannerEval(plan).results.map((r) => r.id)).toContain(ec.id);
   });
 
-  it('wiki proposal + approval persist so a later apply sees the approved status', () => {
+  it('wiki proposal + approval persist so a later apply sees the approved status', async () => {
     process.env.SANGFOR_WIKI_APPROVAL_SECRET = 'tok';
-    const p = proposeWikiUpdate({ lessonTitle: 'L', lessonBody: 'B' });
-    approveWikiUpdate(p.id, 'approved', { token: mintWikiApproval(p.id) });
-    expect(applyWikiUpdate(p.id).status).toBe('applied');
+    const p = await proposeWikiUpdate({ lessonTitle: 'L', lessonBody: 'B' }, testLocalWriteAuthority('wiki_proposals'));
+    await approveWikiUpdate(p.id, 'approved', { token: mintWikiApproval(p.id) }, testLocalWriteAuthority('wiki_proposals'));
+    expect((await applyWikiUpdate(p.id, testLocalWriteAuthority('wiki_proposals'))).status).toBe('applied');
   });
 });

@@ -8,6 +8,7 @@
  * rollback plan — is annotation that sits BESIDE the verdict, never over it.
  */
 import type { EvaluationResult } from '@sangfor/spec';
+import { parseBoundaryEngineerEvaluationCloneV1 } from './runtime-boundaries.js';
 
 export const ENGINEER_REPORT_SCHEMA_VERSION = 1;
 
@@ -95,14 +96,14 @@ export function buildEngineerReport(input: EngineerReportInput): EngineerReport 
 
   // Deep copy: a caller that keeps mutating its EvaluationResult after handing
   // it over must not be able to change what the ledger already committed to.
-  const engineResult = JSON.parse(JSON.stringify(input.engineResult)) as EvaluationResult;
+  const engineResult = parseBoundaryEngineerEvaluationCloneV1(JSON.stringify(input.engineResult));
 
   return Object.freeze({
     schemaVersion: ENGINEER_REPORT_SCHEMA_VERSION,
     reportId: input.reportId,
     deviceId: input.deviceId,
     snapshotHash: input.snapshotHash,
-    engineResult: engineResult as ReadonlyEvaluationResult,
+    engineResult,
     riskNote: input.riskNote,
     recommendations: [...input.recommendations],
     rollbackPlan: [...input.rollbackPlan],
@@ -110,5 +111,5 @@ export function buildEngineerReport(input: EngineerReportInput): EngineerReport 
     modelId: input.modelId,
     promptHash: input.promptHash,
     createdAt: input.createdAt,
-  }) as EngineerReport;
+  });
 }

@@ -1,3 +1,4 @@
+import { testFileLocalWriteAuthority, testLocalWriteAuthority } from './helpers/local-write-authority.js';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { AddressInfo } from 'node:net';
 import { mkdtempSync, rmSync } from 'node:fs';
@@ -25,7 +26,7 @@ const fast = { pollIntervalMs: 1, maxPolls: 5 };
 let dir: string;
 beforeEach(() => { dir = mkdtempSync(join(tmpdir(), 'apply-')); });
 afterEach(() => { rmSync(dir, { recursive: true, force: true }); });
-const ledger = () => new AuditLedger({ dir, secret: 'apply-secret' });
+const ledger = () => new AuditLedger({ dir, secret: 'apply-secret' , authority: testLocalWriteAuthority('audit', dir)});
 
 describe('applyCreateVolume state machine', () => {
   it('completes PENDING→…→SUCCEEDED with a PASS read-back, fully ledgered', async () => {

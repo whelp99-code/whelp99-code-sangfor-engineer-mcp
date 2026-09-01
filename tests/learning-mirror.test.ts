@@ -1,3 +1,4 @@
+import { testFileLocalWriteAuthority, testLocalWriteAuthority } from './helpers/local-write-authority.js';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -17,19 +18,19 @@ describe('PR-010 local outbox mirror', () => {
 
   beforeEach(() => {
     root = mkdtempSync(join(tmpdir(), 'learning-mirror-'));
-    manager = new StrategyStoreManager(join(root, 'strategy.json'));
+    manager = new StrategyStoreManager(join(root, 'strategy.json'), testFileLocalWriteAuthority('learning_strategy_lifecycle', join(root, 'strategy.json')));
   });
   afterEach(() => rmSync(root, { recursive: true, force: true }));
 
-  function seed(): void {
+  async function seed(): Promise<void> {
     const store = manager.addRevision(manager.createStrategy('strategy-1'), {
       strategyId: 'strategy-1', state: 'draft', contentHash: CONTENT,
     });
-    expect(manager.commit(store, 0)).toEqual({ ok: true });
+    expect(await manager.commit(store, 0)).toEqual({ ok: true });
   }
 
-  it('creates a sanitized pending outbox event in the same local generation commit', () => {
-    seed();
+  it('creates a sanitized pending outbox event in the same local generation commit', async () => {
+    await seed();
     const loaded = manager.load()!;
     expect(loaded.schemaVersion).toBe(1);
     expect(loaded.mirrorOutbox).toHaveLength(1);
@@ -42,7 +43,7 @@ describe('PR-010 local outbox mirror', () => {
   });
 
   it('upserts once by event ID and records an idempotent receipt', async () => {
-    seed();
+    await seed();
     const seen = new Set<string>();
     let calls = 0;
     const adapter: LearningMirrorAdapter = {
@@ -62,7 +63,7 @@ describe('PR-010 local outbox mirror', () => {
   });
 
   it('keeps local success with pending exponential retry when the DB adapter is unavailable', async () => {
-    seed();
+    await seed();
     const before = manager.load()!;
     const result = await syncStrategyMirror(manager, { async upsert() { throw new Error('MIRROR_DB_UNAVAILABLE'); } },
       new Date('2099-07-28T00:00:01.000Z'));
@@ -75,11 +76,11 @@ describe('PR-010 local outbox mirror', () => {
   });
 
   it('moves the tenth failed attempt to DLQ without deleting local records', async () => {
-    seed();
+    await seed();
     const store = manager.load()!;
     store.mirrorOutbox[0]!.attempts = 9;
     store.mirrorOutbox[0]!.nextAttemptAt = '2026-07-28T00:00:00.000Z';
-    expect(manager.commit(store, store.currentGeneration)).toEqual({ ok: true });
+    expect(await manager.commit(store, store.currentGeneration)).toEqual({ ok: true });
     const result = await syncStrategyMirror(manager, { async upsert() { throw new Error('DB_DOWN'); } },
       new Date('2026-07-28T00:00:01.000Z'));
     expect(result).toMatchObject({ attempted: 1, failed: 0, dlq: 1, pending: 0 });

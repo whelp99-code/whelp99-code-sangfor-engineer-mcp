@@ -42,12 +42,13 @@ async function call(method: string, path: string, body?: unknown) {
   return { status: res.status, body: await res.json() as Record<string, unknown> };
 }
 
-function startTower(seedOnStart = false): Promise<http.Server> {
-  const s = createTowerServer({
+async function startTower(seedOnStart = false): Promise<http.Server> {
+  const s = createTowerServer({ authorityMode: 'local',
     bridgeUrl, runsDir, registryDir, playbookOutputDir: outDir,
     approvalSecret: 'sec', apiToken: 'test-token', mockConsoleUrl: 'http://127.0.0.1:1',
     seedOnStart,
   });
+  await (s as http.Server & { startup?: () => Promise<void> }).startup?.();
   return new Promise((r) => s.listen(0, '127.0.0.1', () => r(s)));
 }
 

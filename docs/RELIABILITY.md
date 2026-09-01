@@ -9,11 +9,20 @@ Reliability here means: a change either **provably** happened (verified by read-
 4. **Idempotency.** Writes carry an `X-Client-Token` idempotency key (≥8 chars) so a retried request cannot double-apply.
 5. **Fail-closed dependencies.** A service missing from the Keystone catalog, a corrupt safety/nonce/ledger file, or an ambiguous UI locator (0 or >1 matches) → refuse, don't guess.
 6. **Read-only never mutates.** `@sangfor/verifier` throws if asked to `apply` without `SANGFOR_ALLOW_REAL_EXECUTION`; config collection is always `{readOnly:true, mutationBlocked:true}`.
+7. **Remote dispatch is at most once, never exactly once.** BLRO atomically commits a scoped capability JTI and permanent dispatch tombstone before calling the external executor. Pre-commit failure is retryable; every post-tombstone path without a digest-verified retained result is `INDETERMINATE` and is never redispatched automatically.
 
 ## Evidence & auditability
 - Every apply step is written to a **hash-chained audit ledger** (`data/evidence/change-runs/<runId>.jsonl`): `request | response | state | verdict`.
 - The **run ledger** (`data/runs/YYYY-MM-DD.jsonl`, `@sangfor/runs`) is append-only, date-partitioned, last-line-wins; captures `toolId`, `toolSafety`, masked args, status (incl. `pending_approval`/`rejected`), and the approval block.
 - Before/after **screenshots** land under `data/evidence/<sessionId>/` for browser-driven actions (captured even on live dry-run, which stops before the click/type).
+
+## Backup, RPO and restore drills
+- **Publication is a restore proof, not an archive check.** `scripts/blro-backup.mjs` captures manifest state and `pg_dump` from one exported read-only snapshot, restores the unsigned draft into a fresh reserved loopback scratch database, and requires the shared PRE-recovery verifier to report zero differences before signing or atomic final rename. Scratch teardown completes first; any failure leaves only quarantined temporary bytes and no publication sentinel.
+- **RPO is never rounded down.** A quarterly custom-format dump gives an RPO equal to the age of the dump, and the manifest says exactly that. RPO=0 for committed job/nonce/audit authority is claimed only when synchronous commit, a non-empty synchronous standby set, `wal_level` ≥ `replica`, `fsync`, `full_page_writes`, `archive_mode`, **and** at least one live in-sync replica are all machine-checked against `pg_settings`. `--mode production` fails closed with `BLRO_RPO_SYNC_DURABILITY_UNPROVEN` when they are not.
+- **Commits before the recovery point are proven present, not assumed.** The manifest records the LSN observed while the dump snapshot was open; the drill requires total committed rows after restore to equal the manifest's, or halts with `BLRO_DRILL_RECOVERY_POINT_COMMITS_LOST`.
+- **The drill proves the whole chain or halts.** `scripts/blro-restore-drill.mjs` verifies signature, dump hash, dump readability, evidence-object hashes, and schema compatibility *before* creating any database; then restores into a fresh loopback `blro_scratch_*` database and requires 100% equality of tables, set digests, FK relationships and cardinalities, audit chain heads, epochs, and evidence hashes. RTO is measured on a monotonic clock against a 60-minute budget, and it prints `BLRO_RESTORE_DRILL_PASS` only on success.
+- **Recovery policy never launders uncertainty.** In scratch only, and only after the equality proof is clean, it bumps the authority epoch and spends every outstanding approval and nonce so pre-recovery-point authority refuses on replay — while preserving every completed and `INDETERMINATE` remote-job tombstone byte-exact. Converting or deleting an `INDETERMINATE` job halts the drill.
+- **No auto promotion or rollback.** The drill has no production target path; promotion remains the human decision in [BLRO Operations Runbook §3](BLRO_OPERATIONS_RUNBOOK.md#3-deploy-and-upgrade).
 
 ## Availability & degradation
 - **Offline-safe knowledge**: if an embedding provider fails its health check or times out (`SANGFOR_EMBEDDING_INIT_TIMEOUT_MS`, default 5000ms), the deterministic hash provider takes over so ingest/search keep working.

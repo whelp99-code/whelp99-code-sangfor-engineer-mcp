@@ -27,7 +27,9 @@ must never destroy truth.
 
 ## Requirements
 
-- Node.js 20 or newer. The preflight refuses anything older with `NODE_VERSION_UNSUPPORTED`.
+- Node.js 22 or newer (BLRO runs 22, JM endpoints run 24; `package.json` engines pins
+  `>=22 <25` and `.npmrc` sets `engine-strict=true`). The preflight refuses anything older with
+  `NODE_VERSION_UNSUPPORTED`.
 - pnpm, activated through `corepack` (pinned by `packageManager` in `package.json`). The npm
   lockfile is not maintained.
 - A Playwright-supported OS, or an approved Chrome/Chromium executable path.
@@ -132,7 +134,7 @@ Readiness is **fail-closed**: it exits non-zero and names a reason code unless e
 Observed on a ready host:
 
 ```text
-[PASS] node_runtime: node major 24 >= 20
+[PASS] node_runtime: node major 24 >= 22
 [PASS] browser_executable: resolved browser executable: /home/…/chrome-linux64/chrome
 [PASS] cdp_profiles: no borrowed CDP profile registered; JM will only use managed browsers
 [PASS] execution_gates: read-only default: SANGFOR_ALLOW_REAL_EXECUTION is not enabled
@@ -152,7 +154,7 @@ JM_ENDPOINT_PREFLIGHT_NOT_READY: BROWSER_EXECUTABLE_UNSET
 
 | Code | Meaning | Fix |
 |---|---|---|
-| `NODE_VERSION_UNSUPPORTED` | Node older than 20 | Upgrade the runtime |
+| `NODE_VERSION_UNSUPPORTED` | Node older than 22 | Upgrade the runtime |
 | `BROWSER_EXECUTABLE_UNSET` | No browser configured | `pnpm exec playwright install chromium` or set `SANGFOR_CHROMIUM_PATH` |
 | `BROWSER_EXECUTABLE_MISSING` | Configured path is absent or not executable | Correct the path |
 | `CDP_PROFILE_REGISTRY_CORRUPT` | `SANGFOR_JM_CDP_PROFILES_JSON` is not a JSON array | Repair the registry; borrowed attach fails closed until then |

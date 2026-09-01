@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isToolAllowedByAnnotations } from '../apps/http-bridge/src/tool-guard.js';
+import { isToolAllowedByAnnotations } from '../packages/sangfor-operator/src/tool-authorization.js';
 
 describe('http bridge annotation guard', () => {
   it('rejects tools marked destructive by MCP annotations', () => {

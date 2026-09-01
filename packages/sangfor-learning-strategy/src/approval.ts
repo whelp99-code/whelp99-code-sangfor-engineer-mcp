@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { lstatSync, readFileSync, realpathSync } from 'node:fs';
-import { isAbsolute, join, resolve, win32 } from 'node:path';
+import { dirname, isAbsolute, join, resolve, win32 } from 'node:path';
 import {
   canonicalizeApprovalPayload,
   FileSingleUseNonceStore,
@@ -8,7 +8,7 @@ import {
   verifyDomainApprovalSignature,
   type NonceConsumeResult,
 } from '@sangfor/approval';
-import { resolveRepoData } from '@sangfor/shared';
+import { resolveProductionLocalWriteAuthority, resolveRepoData } from '@sangfor/shared';
 import { isEvidenceFileConfined } from '@sangfor/version';
 
 export const LEARNING_APPROVAL_DOMAIN = 'learning-strategy-v1';
@@ -180,7 +180,7 @@ export interface PromoteLearningApprovalInput extends VerifyLearningApprovalInpu
   currentContentHash?: unknown;
   content?: string | Uint8Array;
   evidenceRoot: unknown;
-  appendEvent: (event: LearningApprovalEvent) => void;
+  appendEvent: (event: LearningApprovalEvent) => void | Promise<void>;
   nonceStore?: Pick<FileSingleUseNonceStore, 'consume'>;
 }
 
@@ -201,7 +201,7 @@ function evidenceDigest(root: string, evidenceFile: string): string {
   }
 }
 
-export function promoteLearningApproval(input: PromoteLearningApprovalInput): LearningApprovalEvent {
+export async function promoteLearningApproval(input: PromoteLearningApprovalInput): Promise<LearningApprovalEvent> {
   const payload = normalizePayload(input.payload);
   if (typeof input.currentState !== 'string' || payload.fromState !== input.currentState) fail('INVALID_PAYLOAD', 'fromState does not match the current lifecycle state.');
   if (typeof input.evidenceRoot !== 'string' || input.evidenceRoot.length === 0) fail('INVALID_PAYLOAD', 'evidenceRoot is required.');
@@ -213,8 +213,12 @@ export function promoteLearningApproval(input: PromoteLearningApprovalInput): Le
   if (evidenceDigest(input.evidenceRoot, payload.evidenceFile) !== payload.evidenceDigest) fail('INVALID_PAYLOAD', 'evidence digest does not match the approval payload.');
   const verifiedPayload = verifyNormalizedLearningApproval(payload, input.approvalToken, input.now, input.secret);
   const now = input.now ?? new Date();
-  const store = input.nonceStore ?? new FileSingleUseNonceStore(defaultLearningNonceStorePath());
-  const consumed: NonceConsumeResult = store.consume(verifiedPayload.nonce, verifiedPayload.expiresAt, now);
+  const noncePath = defaultLearningNonceStorePath();
+  const store = input.nonceStore ?? new FileSingleUseNonceStore(noncePath, resolveProductionLocalWriteAuthority({
+    tenantId: 'local-primary', projectId: process.env.SANGFOR_ENGAGEMENT_ID ?? 'local-primary', actorId: 'local-primary',
+    aggregate: 'approvals_nonces', sourceRoot: dirname(noncePath),
+  }));
+  const consumed: NonceConsumeResult = await store.consume(verifiedPayload.nonce, verifiedPayload.expiresAt, now);
   if (!consumed.ok) {
     if (consumed.reason?.startsWith('approval nonce already used:')) fail('NONCE_REPLAY', consumed.reason);
     fail('NONCE_STORE_UNAVAILABLE', consumed.reason ?? 'learning nonce store unavailable.');
@@ -225,7 +229,7 @@ export function promoteLearningApproval(input: PromoteLearningApprovalInput): Le
     occurredAt: now.toISOString(),
     payload: verifiedPayload,
   };
-  try { input.appendEvent(event); } catch (error) {
+  try { await input.appendEvent(event); } catch (error) {
     fail('EVENT_APPEND_FAILED', error instanceof Error ? error.message : String(error));
   }
   return event;

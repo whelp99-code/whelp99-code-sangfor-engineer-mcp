@@ -1,3 +1,4 @@
+import { testFileLocalWriteAuthority, testLocalWriteAuthority } from './helpers/local-write-authority.js';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -134,7 +135,7 @@ describe.skipIf(!officeCliInstalled)('buildEvidencePackage (skipped: officecli n
   });
 
   it('reports an honest "no ledger entries" note (not a false allMatch:true) when captureRunId has no ledger data', async () => {
-    const ledger = new AuditLedger({ dir: ledgerDir });
+    const ledger = new AuditLedger({ dir: ledgerDir , authority: testLocalWriteAuthority('audit', ledgerDir)});
     const result = await buildEvidencePackage(
       // A path relative to the confined root, not an absolute join(root, ..)
       // reconstruction — root itself may be mkdtemp's pre-realpath form
@@ -149,11 +150,11 @@ describe.skipIf(!officeCliInstalled)('buildEvidencePackage (skipped: officecli n
   });
 
   it('reports per-file hash match/mismatch and chain integrity from a real (fake) capture ledger', async () => {
-    const ledger = new AuditLedger({ dir: ledgerDir });
+    const ledger = new AuditLedger({ dir: ledgerDir , authority: testLocalWriteAuthority('audit', ledgerDir)});
     const capturedAt = new Date().toISOString();
     const sha256 = createHash('sha256').update(TINY_PNG).digest('hex');
-    ledger.append(runId, 'response', { filePath: imagePath, sha256, capturedAt, ok: true });
-    ledger.append(runId, 'response', { filePath: join(root, 'tampered.png'), sha256: 'not-the-real-hash', capturedAt, ok: true });
+    await ledger.append(runId, 'response', { filePath: imagePath, sha256, capturedAt, ok: true });
+    await ledger.append(runId, 'response', { filePath: join(root, 'tampered.png'), sha256: 'not-the-real-hash', capturedAt, ok: true });
     // The second recorded file doesn't need to exist on disk — its
     // currentHash simply comes back null and match:false, same as
     // console-evidence-capture's own tamper-detection semantics.

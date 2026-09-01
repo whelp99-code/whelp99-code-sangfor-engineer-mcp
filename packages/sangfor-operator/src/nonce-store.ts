@@ -1,8 +1,8 @@
-import { join } from 'node:path';
-import { FileSingleUseNonceStore } from '@sangfor/approval';
+import { dirname, join } from 'node:path';
+import { FileSingleUseNonceStore, hasApprovalControlCharacters } from '@sangfor/approval';
 import { PostgresSingleUseNonceStore } from '../../sangfor-approval/src/postgres-nonce-store.js';
 import { resolveProjectId } from '@sangfor/identity';
-import { resolveRepoData } from '@sangfor/shared';
+import { resolveProductionLocalWriteAuthority, resolveRepoData } from '@sangfor/shared';
 
 // Durable single-use store for live-execution approval nonces (closes redteam R1:
 // replay of a verified (action, nonce, expiresAt) tuple within its expiry window).
@@ -16,7 +16,11 @@ import { resolveRepoData } from '@sangfor/shared';
 // believed it had a replica-safe control while actually holding a per-process one
 // is precisely the failure this store exists to prevent.
 
-export interface NonceConsumeResult { ok: boolean; reason?: string; }
+export interface NonceConsumeResult {
+  ok: boolean;
+  reason?: string;
+  code?: 'ALREADY_USED' | 'STORE_UNAVAILABLE' | 'STALE_EPOCH';
+}
 
 type Env = Readonly<Record<string, string | undefined>>;
 
@@ -78,11 +82,14 @@ export class FileNonceStore {
   private readonly sharedStore: FileSingleUseNonceStore;
 
   constructor(filePath: string = defaultNonceStorePath()) {
-    this.sharedStore = new FileSingleUseNonceStore(filePath);
+    this.sharedStore = new FileSingleUseNonceStore(filePath, resolveProductionLocalWriteAuthority({
+      tenantId: 'local-primary', projectId: process.env.SANGFOR_ENGAGEMENT_ID ?? 'local-primary', actorId: 'local-primary',
+      aggregate: 'approvals_nonces', sourceRoot: dirname(filePath),
+    }));
   }
 
-  consume(nonce: string, expiresAt: string, now: Date = new Date()): NonceConsumeResult {
-    const result = this.sharedStore.consume(nonce, expiresAt, now);
+  async consume(nonce: string, expiresAt: string, now: Date = new Date()): Promise<NonceConsumeResult> {
+    const result = await this.sharedStore.consume(nonce, expiresAt, now);
     if (result.ok || result.reason?.startsWith('approval nonce already used:')) return result;
     return { ok: false, reason: `nonce store unavailable (fail-closed): ${result.reason ?? 'unknown store error'}` };
   }
@@ -117,16 +124,18 @@ function postgresStoreFor(connectionString: string, projectId: string): Postgres
  * is a database.
  */
 export async function consumeApprovalNonceAsync(
-  approval: { nonce: string; expiresAt: string },
+  approval: { nonce: string; expiresAt: string; authorityEpoch: number },
   now?: Date,
+  environment: Env = process.env,
 ): Promise<NonceConsumeResult> {
-  const selection = resolveNonceStoreSelection();
+  if (hasApprovalControlCharacters(approval.nonce)) return { ok: false, reason: 'invalid nonce input' };
+  const selection = resolveNonceStoreSelection(environment);
   if (!selection.ok) return { ok: false, reason: selection.reason };
   if (selection.kind === 'file') {
     return fileStoreFor(selection.path).consume(approval.nonce, approval.expiresAt, now);
   }
   return postgresStoreFor(selection.connectionString, selection.projectId)
-    .consume(selection.projectId, approval.nonce, approval.expiresAt, now ?? new Date());
+    .consume(selection.projectId, approval.nonce, approval.expiresAt, approval.authorityEpoch, now ?? new Date());
 }
 
 /**
@@ -137,10 +146,11 @@ export async function consumeApprovalNonceAsync(
  * single-use control mean "once per store", which is worse than not having the
  * database at all.
  */
-export function consumeApprovalNonce(
-  approval: { nonce: string; expiresAt: string },
+export async function consumeApprovalNonce(
+  approval: { nonce: string; expiresAt: string; authorityEpoch: number },
   now?: Date,
-): NonceConsumeResult {
+): Promise<NonceConsumeResult> {
+  if (hasApprovalControlCharacters(approval.nonce)) return { ok: false, reason: 'invalid nonce input' };
   const selection = resolveNonceStoreSelection();
   if (!selection.ok) return { ok: false, reason: selection.reason };
   if (selection.kind !== 'file') {

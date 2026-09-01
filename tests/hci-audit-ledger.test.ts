@@ -1,3 +1,4 @@
+import { testFileLocalWriteAuthority, testLocalWriteAuthority } from './helpers/local-write-authority.js';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -10,7 +11,7 @@ describe('maskSecrets', () => {
       auth: { passwordCredentials: { username: 'admin', password: 'Itac123!' } },
       headers: { 'x-auth-token': 'abc', accept: 'json' },
       nested: [{ apiSecret: 's' }],
-    }) as any;
+    });
     expect(masked.auth.passwordCredentials.password).toBe('***');
     expect(masked.headers['x-auth-token']).toBe('***');
     expect(masked.nested[0].apiSecret).toBe('***');
@@ -23,20 +24,20 @@ describe('AuditLedger', () => {
   beforeEach(() => { dir = mkdtempSync(join(tmpdir(), 'ledger-')); });
   afterEach(() => { rmSync(dir, { recursive: true, force: true }); });
 
-  it('appends masked entries and verifies the keyed chain', () => {
-    const ledger = new AuditLedger({ dir, secret: 'ledger-secret' });
-    ledger.append('run1', 'request', { op: 'create-volume', password: 'leak-me' });
-    ledger.append('run1', 'response', { status: 202 });
+  it('appends masked entries and verifies the keyed chain', async () => {
+    const ledger = new AuditLedger({ dir, secret: 'ledger-secret' , authority: testLocalWriteAuthority('audit', dir)});
+    await ledger.append('run1', 'request', { op: 'create-volume', password: 'leak-me' });
+    await ledger.append('run1', 'response', { status: 202 });
     const raw = readFileSync(ledger.pathFor('run1'), 'utf8');
     expect(raw).not.toContain('leak-me');
     const v = ledger.verify('run1');
     expect(v).toEqual({ ok: true, keyed: true });
   });
 
-  it('detects tampering', () => {
-    const ledger = new AuditLedger({ dir, secret: 's' });
-    ledger.append('run2', 'request', { a: 1 });
-    ledger.append('run2', 'response', { b: 2 });
+  it('detects tampering', async () => {
+    const ledger = new AuditLedger({ dir, secret: 's' , authority: testLocalWriteAuthority('audit', dir)});
+    await ledger.append('run2', 'request', { a: 1 });
+    await ledger.append('run2', 'response', { b: 2 });
     const path = ledger.pathFor('run2');
     const lines = readFileSync(path, 'utf8').trim().split('\n');
     const doctored = JSON.parse(lines[0]); doctored.payload = { a: 999 };
@@ -46,9 +47,21 @@ describe('AuditLedger', () => {
     expect(v.brokenAt).toBe(0);
   });
 
-  it('is honest about an unkeyed chain', () => {
-    const ledger = new AuditLedger({ dir });
-    ledger.append('run3', 'state', { s: 'PENDING' });
+  it('rejects a parseable malformed ledger line as broken at the boundary', () => {
+    // Given
+    const ledger = new AuditLedger({ dir, secret: 's', authority: testLocalWriteAuthority('audit', dir) });
+    writeFileSync(ledger.pathFor('run-malformed'), `${JSON.stringify({ seq: 'zero', runId: 'run-malformed' })}\n`);
+
+    // When
+    const verdict = ledger.verify('run-malformed');
+
+    // Then
+    expect(verdict).toEqual({ ok: false, keyed: false, brokenAt: 0 });
+  });
+
+  it('is honest about an unkeyed chain', async () => {
+    const ledger = new AuditLedger({ dir , authority: testLocalWriteAuthority('audit', dir)});
+    await ledger.append('run3', 'state', { s: 'PENDING' });
     expect(ledger.verify('run3').keyed).toBe(false);
   });
 });

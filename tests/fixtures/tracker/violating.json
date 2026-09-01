@@ -1,0 +1,87 @@
+{
+  "version": 1,
+  "issues": [
+    {
+      "number": 30,
+      "state": "OPEN",
+      "title": "Program: project completeness and production readiness (Todos 1-44)",
+      "createdAt": "2026-08-25T19:19:33Z",
+      "labels": [
+        "agent",
+        "status:backlog",
+        "tracker:github",
+        "domain:tracker",
+        "wave:0",
+        "program:project-completeness"
+      ],
+      "body": "## Program\n\n| Todo | Issue | Title | Depends on | Domain |\n| --- | --- | --- | --- | --- |\n| **Wave 0** | | | | |\n| 2 | #31 | Make WorkAtom loading and replacement coverage canonical | — | competency |\n| 3 | #32 | Define the critical runtime-schema error contract | — | runtime-boundary |\n| 4 | #33 | Make GitHub tracker state and MCP tool inventory machine-derived CI truth | — | ci, tracker |\n\n## Tracker contract\n\n- Every child carries exactly one `status:*` label.\n- Every future PR ends with `Closes #<child>`.\n| 5 | #34 | Pin Node 22/24 | — | ci |\n| 6 | #35 | Capture a reproducible baseline | — | docs |"
+    },
+    {
+      "number": 31,
+      "state": "OPEN",
+      "title": "Todo 2: Make WorkAtom loading and replacement coverage canonical",
+      "createdAt": "2026-08-25T19:19:33Z",
+      "labels": [
+        "agent",
+        "tracker:github",
+        "domain:competency"
+      ],
+      "body": "## Plan todo\n\n**Todo 2. Make WorkAtom loading and replacement coverage canonical**\n\nSource of truth: `.omo/plans/project-completeness-production-readiness.md` — parent program: #30"
+    },
+    {
+      "number": 32,
+      "state": "OPEN",
+      "title": "Todo 3: Define the critical runtime-schema error contract",
+      "createdAt": "2026-08-25T19:19:33Z",
+      "labels": [
+        "agent",
+        "status:backlog",
+        "status:in-review",
+        "tracker:github"
+      ],
+      "body": "## Plan todo\n\n**Todo 3. Define the critical runtime-schema error contract**\n\nSource of truth: `.omo/plans/project-completeness-production-readiness.md` — parent program: #30"
+    },
+    {
+      "number": 33,
+      "state": "OPEN",
+      "title": "Todo 4: Make GitHub tracker state and MCP tool inventory machine-derived CI truth",
+      "createdAt": "2026-08-25T19:19:33Z",
+      "labels": [
+        "agent",
+        "status:backlog",
+        "tracker:github",
+        "domain:ci",
+        "domain:tracker",
+        "wave:0"
+      ],
+      "body": "Todo 4 with no parent reference at all."
+    },
+    {
+      "number": 34,
+      "state": "CLOSED",
+      "title": "Todo 5: runtime apply",
+      "createdAt": "2026-08-25T19:19:33Z",
+      "labels": [
+        "agent",
+        "tracker:github",
+        "ready-for-blro",
+        "ops"
+      ],
+      "body": "parent program: #30 — applied on BLRO, evidence pending."
+    }
+  ],
+  "pullRequests": [
+    {
+      "number": 3,
+      "state": "MERGED",
+      "createdAt": "2026-06-12T15:30:59Z",
+      "body": "Legacy PR merged before the program contract existed."
+    },
+    {
+      "number": 14,
+      "state": "OPEN",
+      "createdAt": "2026-08-26T04:00:00Z",
+      "body": "feat(tracker): enforce machine-derived delivery truth\n\nCloses #999"
+    }
+  ]
+}

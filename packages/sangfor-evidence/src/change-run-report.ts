@@ -1,7 +1,8 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { AuditLedger, maskSecrets } from '@sangfor/hci-client';
-import { resolveEngagementScopedData } from '@sangfor/shared';
+import { resolveProductionLocalWriteAuthority, resolveEngagementScopedData } from '@sangfor/shared';
+import { parseBoundaryEvidenceLedgerLineV1 } from './runtime-boundaries.js';
 
 // Path-segment safety for runId, same precedent as the product/version segment
 // guard in packages/sangfor-spec/src/index.ts:137-190 (isSafeSpecPathSegment) —
@@ -21,7 +22,7 @@ export function isSafeRunId(value: unknown): value is string {
 
 type LedgerKind = 'request' | 'response' | 'state' | 'verdict';
 
-interface LedgerLine {
+export interface LedgerLine {
   seq: number;
   at: string;
   runId: string;
@@ -44,7 +45,7 @@ function readLedgerLines(path: string): LedgerLine[] {
     .trim()
     .split('\n')
     .filter(Boolean)
-    .map((line) => JSON.parse(line) as LedgerLine);
+    .map((line) => parseBoundaryEvidenceLedgerLineV1(line));
 }
 
 function payloadField(payload: unknown, key: string): unknown {
@@ -151,7 +152,11 @@ export function buildChangeRunReport(input: { runId: string; ledgerRoot?: string
   }
   // Engagement-scoped, matching AuditLedger (the writer of these change-runs).
   const evidenceRoot = input.ledgerRoot ?? resolveEngagementScopedData('data/evidence', 'SANGFOR_EVIDENCE_ROOT');
-  const ledger = new AuditLedger({ dir: join(evidenceRoot, 'change-runs') });
+  const ledgerRoot = join(evidenceRoot, 'change-runs');
+  const ledger = new AuditLedger({ dir: ledgerRoot, authority: resolveProductionLocalWriteAuthority({
+    tenantId: 'local-primary', projectId: process.env.SANGFOR_ENGAGEMENT_ID ?? 'local-primary', actorId: 'evidence-reader',
+    aggregate: 'audit', sourceRoot: ledgerRoot,
+  }) });
   // Defense in depth: AuditLedger.append already masks secret-bearing fields
   // at write time, but this render path re-applies the identical rule
   // (password|secret|token|authorization|cookie key -> '***') before any

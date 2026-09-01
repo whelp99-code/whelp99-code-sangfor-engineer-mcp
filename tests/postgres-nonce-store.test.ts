@@ -29,6 +29,12 @@ function future(minutes = 60): string {
   return new Date(Date.now() + minutes * 60_000).toISOString();
 }
 
+describe('Postgres nonce outage typing',()=>{
+  it('returns STORE_UNAVAILABLE rather than ALREADY_USED for an unreachable database',async()=>{
+    const unavailable=new PostgresSingleUseNonceStore({connectionString:'postgresql://invalid:invalid@127.0.0.1:1/none?connect_timeout=1'});const result=await unavailable.consume('project','nonce','2099-01-01T00:00:00.000Z',0,new Date('2026-08-27T00:00:00.000Z'));expect(result).toMatchObject({ok:false,code:'STORE_UNAVAILABLE'});expect(result.reason).not.toContain('already used');await unavailable.close();
+  });
+});
+
 describeDb('PostgresSingleUseNonceStore', () => {
   let store: PostgresSingleUseNonceStore;
   let prisma: PrismaClient;
@@ -77,33 +83,33 @@ describeDb('PostgresSingleUseNonceStore', () => {
   });
 
   it('consumes an unused nonce exactly once', async () => {
-    const first = await store.consume(PROJECT_A, 'nonce-1', future());
+    const first = await store.consume(PROJECT_A, 'nonce-1', future(), 0);
     expect(first.ok).toBe(true);
   });
 
   it('refuses a replayed nonce with the caller-visible prefix', async () => {
-    await store.consume(PROJECT_A, 'nonce-replay', future());
-    const second = await store.consume(PROJECT_A, 'nonce-replay', future());
+    await store.consume(PROJECT_A, 'nonce-replay', future(), 0);
+    const second = await store.consume(PROJECT_A, 'nonce-replay', future(), 0);
     expect(second.ok).toBe(false);
     expect(second.reason ?? '').toContain('approval nonce already used:');
   });
 
   it('refuses an already-expired nonce', async () => {
     const past = new Date(Date.now() - 1000).toISOString();
-    const result = await store.consume(PROJECT_A, 'nonce-expired', past);
+    const result = await store.consume(PROJECT_A, 'nonce-expired', past, 0);
     expect(result.ok).toBe(false);
     expect(result.reason ?? '').toMatch(/expired/i);
   });
 
   it('refuses malformed input rather than storing it', async () => {
-    expect((await store.consume(PROJECT_A, '', future())).ok).toBe(false);
-    expect((await store.consume(PROJECT_A, 'n', 'not-a-date')).ok).toBe(false);
-    expect((await store.consume('', 'n', future())).ok).toBe(false);
+    expect((await store.consume(PROJECT_A, '', future(), 0)).ok).toBe(false);
+    expect((await store.consume(PROJECT_A, 'n', 'not-a-date', 0)).ok).toBe(false);
+    expect((await store.consume('', 'n', future(), 0)).ok).toBe(false);
   });
 
   it('refuses the same signed-approval nonce in another project', async () => {
-    const inA = await store.consume(PROJECT_A, 'shared-value', future());
-    const inB = await store.consume(PROJECT_B, 'shared-value', future());
+    const inA = await store.consume(PROJECT_A, 'shared-value', future(), 0);
+    const inB = await store.consume(PROJECT_B, 'shared-value', future(), 0);
     expect(inA.ok).toBe(true);
     expect(inB.ok, 'a nonce consumed in project A must be blocked globally').toBe(false);
     expect(inB.reason ?? '').toContain('approval nonce already used:');
@@ -113,7 +119,7 @@ describeDb('PostgresSingleUseNonceStore', () => {
     // The reason this migration exists. With the JSON file both callers could
     // read the same prior state and both believe they won.
     const attempts = await Promise.all(
-      Array.from({ length: 8 }, () => store.consume(PROJECT_A, 'race-nonce', future())),
+      Array.from({ length: 8 }, () => store.consume(PROJECT_A, 'race-nonce', future(), 0)),
     );
     const winners = attempts.filter((r) => r.ok);
     expect(winners, `expected exactly 1 winner, got ${winners.length}`).toHaveLength(1);
@@ -124,7 +130,7 @@ describeDb('PostgresSingleUseNonceStore', () => {
       connectionString: 'postgresql://nobody:nobody@127.0.0.1:1/nonexistent',
     });
     try {
-      const result = await broken.consume(PROJECT_A, 'nonce-unreachable', future());
+      const result = await broken.consume(PROJECT_A, 'nonce-unreachable', future(), 0);
       expect(result.ok, 'an unreachable store must refuse, never allow').toBe(false);
       expect(result.reason ?? '').toMatch(/unavailable|refus|ECONNREFUSED|connect/i);
     } finally {
@@ -138,7 +144,7 @@ describeDb('PostgresSingleUseNonceStore', () => {
       connectionString: `postgresql://user:${secret}@127.0.0.1:1/nonexistent`,
     });
     try {
-      const result = await broken.consume(PROJECT_A, 'nonce-secret', future());
+      const result = await broken.consume(PROJECT_A, 'nonce-secret', future(), 0);
       expect(result.ok).toBe(false);
       expect(JSON.stringify(result)).not.toContain(secret);
     } finally {

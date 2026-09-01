@@ -1,7 +1,9 @@
 import { createHash, createHmac } from 'node:crypto';
 import { appendFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { resolveEngagementScopedData, withDirLock } from '@sangfor/shared';
+import { expectedLocalWriteScope, requireLocalWriteAuthority, resolveEngagementScopedData, withDirLock, type LocalWriteAuthority } from '@sangfor/shared';
+import { RuntimeSchemaError } from '../../shared/src/runtime-schema.js';
+import { parseBoundaryHciAuditLineV1 } from './runtime-boundaries.js';
 
 // Masked, append-only JSONL ledger with a hash chain. Every HCI change request,
 // response, state transition, and verdict is recorded with secrets masked. When
@@ -16,21 +18,24 @@ export function assertLocalAuditAuthorityAllowed(): void {
   }
 }
 
-export function maskSecrets<T>(value: T): T {
-  if (Array.isArray(value)) return value.map((v) => maskSecrets(v)) as unknown as T;
+export function maskSecrets<T>(value: T): T;
+export function maskSecrets(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map((item) => maskSecrets(item));
   if (value !== null && typeof value === 'object') {
-    const out: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
-      out[k] = SECRET_KEY_RE.test(k) && typeof v === 'string' ? '***' : maskSecrets(v);
+    const masked: Record<string, unknown> = {};
+    for (const [key, child] of Object.entries(value)) {
+      masked[key] = SECRET_KEY_RE.test(key) && typeof child === 'string'
+        ? '***'
+        : maskSecrets(child);
     }
-    return out as unknown as T;
+    return masked;
   }
   return value;
 }
 
 export type LedgerKind = 'request' | 'response' | 'state' | 'verdict';
 
-interface LedgerLine { seq: number; at: string; runId: string; kind: LedgerKind; payload: unknown; prevHash: string; hash: string; keyed: boolean; }
+export interface LedgerLine { seq: number; at: string; runId: string; kind: LedgerKind; payload: unknown; prevHash: string; hash: string; keyed: boolean; }
 
 function digest(secret: string | undefined, prevHash: string, seq: number, kind: string, payload: unknown): string {
   const material = `${prevHash}\n${seq}\n${kind}\n${JSON.stringify(payload)}`;
@@ -40,28 +45,32 @@ function digest(secret: string | undefined, prevHash: string, seq: number, kind:
 export class AuditLedger {
   private readonly dir: string;
   private readonly secret: string | undefined;
+  private readonly authority: LocalWriteAuthority;
 
-  constructor(opts: { dir?: string; secret?: string } = {}) {
-    assertLocalAuditAuthorityAllowed();
+  constructor(opts: { dir?: string; secret?: string; authority: LocalWriteAuthority }) {
     // Engagement-scoped: change-run audit lines are per-project evidence, so an
     // unscoped root would pool several projects' audit chains in one partition.
-    this.dir = opts.dir ?? join(resolveEngagementScopedData('data/evidence'), 'change-runs');
+    this.dir = opts.dir ?? join(resolveEngagementScopedData('data/evidence', 'SANGFOR_EVIDENCE_ROOT'), 'change-runs');
     this.secret = opts.secret ?? process.env.SANGFOR_CHANGE_LEDGER_SECRET;
+    this.authority = requireLocalWriteAuthority(opts.authority, expectedLocalWriteScope(
+      opts.authority, opts.authority?.projectId ?? '', 'audit', this.dir,
+    ));
   }
 
   pathFor(runId: string): string { return join(this.dir, `${runId}.jsonl`); }
 
   private readLines(runId: string): LedgerLine[] {
     try {
-      return readFileSync(this.pathFor(runId), 'utf8').trim().split('\n').filter(Boolean).map((l) => JSON.parse(l) as LedgerLine);
+      return readFileSync(this.pathFor(runId), 'utf8').trim().split('\n').filter(Boolean).map((line) => parseBoundaryHciAuditLineV1(line));
     } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === 'ENOENT') return [];
+      if (error instanceof Error && 'code' in error && error.code === 'ENOENT') return [];
       throw error;
     }
   }
 
-  append(runId: string, kind: LedgerKind, payload: unknown): void {
-    mkdirSync(this.dir, { recursive: true });
+  async append(runId: string, kind: LedgerKind, payload: unknown): Promise<void> {
+    await this.authority.fence.write(this.authority, { operation: `audit.append:${kind}`, targetPaths: [this.pathFor(runId)] }, () => {
+      mkdirSync(this.dir, { recursive: true });
     // The hash chain reads the prior line's hash before computing this line's
     // hash — two concurrent appends to the same run would otherwise both read
     // the same "prior" tail and each produce a line claiming the same prevHash,
@@ -76,11 +85,18 @@ export class AuditLedger {
         prevHash, hash: digest(this.secret, prevHash, seq, kind, masked), keyed: Boolean(this.secret),
       };
       appendFileSync(this.pathFor(runId), `${JSON.stringify(line)}\n`);
+      });
     });
   }
 
   verify(runId: string): { ok: boolean; keyed: boolean; brokenAt?: number } {
-    const lines = this.readLines(runId);
+    let lines: LedgerLine[];
+    try {
+      lines = this.readLines(runId);
+    } catch (error) {
+      if (!(error instanceof RuntimeSchemaError)) throw error;
+      return { ok: false, keyed: false, brokenAt: 0 };
+    }
     const keyed = lines.every((l) => l.keyed) && Boolean(this.secret);
     let prevHash = 'GENESIS';
     for (const [i, line] of lines.entries()) {

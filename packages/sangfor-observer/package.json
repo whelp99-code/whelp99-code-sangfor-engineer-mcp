@@ -5,6 +5,8 @@
   "type": "module",
   "main": "src/index.ts",
   "dependencies": {
-    "@sangfor/collector": "workspace:*"
+    "@sangfor/browser-contracts": "workspace:*",
+    "@sangfor/collector": "workspace:*",
+    "zod": "^3.25.76"
   }
 }

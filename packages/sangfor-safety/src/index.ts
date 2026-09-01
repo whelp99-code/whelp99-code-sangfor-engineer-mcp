@@ -1,6 +1,25 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { resolveRepoData } from '../../shared/src/index.js';
+import { RuntimeSchemaError } from '../../shared/src/runtime-schema.js';
+import {
+  parseBoundaryMaturityPolicyV1,
+  parseBoundarySafetyPolicyV1,
+} from './runtime-boundaries.js';
+
+export {
+  O1_ACTION_KINDS,
+  O1_NEGATIVE_CASE_CODES,
+  WRITE_ELIGIBILITY_OUTCOMES,
+  resolveWriteEligibility,
+  type ActiveWriteEvidence,
+  type IagBootstrapEligibilityInput,
+  type IagBootstrapScope,
+  type OrdinaryWriteEligibilityInput,
+  type WriteEligibility,
+  type WriteEligibilityInput,
+  type WriteScope,
+} from './write-eligibility.js';
 
 export type SafetyClass = 'auto_allowed' | 'read_only' | 'human_only';
 export type MaturityLevel = 'planned' | 'implemented_local' | 'tested_mock' | 'field_verified';
@@ -50,10 +69,11 @@ export function loadSafetyPolicy(dataRoot: string = defaultDataRoot()): SafetyPo
   const deny: SafetyPolicy = { version: 1, defaultSafetyClass: 'human_only', entries: [] };
   if (!existsSync(path)) return deny;
   try {
-    return JSON.parse(readFileSync(path, 'utf8')) as SafetyPolicy;
-  } catch {
+    return parseBoundarySafetyPolicyV1(readFileSync(path, 'utf8'));
+  } catch (error) {
+    if (!(error instanceof RuntimeSchemaError)) throw error;
     // A corrupt safety policy must fail SAFE (deny / human_only), never crash the gate.
-    process.stderr.write('[safety] unparseable capability-safety.json — defaulting to human_only deny\n');
+    process.stderr.write('[safety] invalid capability-safety policy — human_only deny\n');
     return deny;
   }
 }
@@ -62,9 +82,10 @@ export function loadMaturityPolicy(dataRoot: string = defaultDataRoot()): Maturi
   const path = join(dataRoot, MATURITY_PATH);
   if (!existsSync(path)) return { version: 1, entries: [] };
   try {
-    return JSON.parse(readFileSync(path, 'utf8')) as MaturityPolicy;
-  } catch {
-    process.stderr.write('[safety] unparseable capability-maturity.json — treating as no maturity evidence\n');
+    return parseBoundaryMaturityPolicyV1(readFileSync(path, 'utf8'));
+  } catch (error) {
+    if (!(error instanceof RuntimeSchemaError)) throw error;
+    process.stderr.write('[safety] invalid capability-maturity policy — denying maturity evidence\n');
     return { version: 1, entries: [] };
   }
 }

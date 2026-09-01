@@ -1,7 +1,11 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { writeFileAtomicSync } from '@sangfor/shared';
-import type { RagIndex } from './index.js';
+import type { RagIndex } from './rag-types.js';
+import {
+  parseBoundaryRagShardLineV1,
+  parseBoundaryRagShardManifestV1,
+} from './runtime-boundaries.js';
 
 export interface RagIndexStore {
   readonly kind: 'json-file' | 'external';
@@ -83,13 +87,13 @@ export function saveShardedJsonlIndex(index: RagIndex, outputDir: string): Shard
 export function loadShardedJsonlIndex(inputDir: string): RagIndex {
   const manifestPath = join(inputDir, 'manifest.json');
   if (!existsSync(manifestPath)) throw new Error(`Missing sharded RAG manifest: ${manifestPath}`);
-  const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as ShardedJsonlManifest;
+  const manifest = parseBoundaryRagShardManifestV1(readFileSync(manifestPath, 'utf8'));
   const chunks = manifest.shards.flatMap((shard) => {
     const path = join(inputDir, shard.file);
     return readFileSync(path, 'utf8')
       .split('\n')
       .filter(Boolean)
-      .map((line) => JSON.parse(line) as RagIndex['chunks'][number]);
+      .map((line) => parseBoundaryRagShardLineV1(line));
   });
   return {
     version: 2,

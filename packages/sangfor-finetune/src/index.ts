@@ -1,6 +1,8 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { ProductCode, containsSensitiveLearningTopic, normalizeProduct, nowId, resolveRepoData } from '@sangfor/shared';
+import { RuntimeSchemaError } from '../../shared/src/runtime-schema.js';
+import { parseBoundaryFinetuneDatasetLineV1 } from './runtime-boundaries.js';
 
 export type FineTuneTaskType = 'config_planning' | 'risk_classification' | 'lesson_extraction' | 'wiki_update_writing';
 
@@ -86,12 +88,12 @@ export function validateFineTuneDataset(path: string): { ok: boolean; count: num
   const errors: string[] = [];
   lines.forEach((line, idx) => {
     try {
-      const row = JSON.parse(line) as { messages?: unknown };
-      if (!Array.isArray(row.messages) || row.messages.length < 3) errors.push(`line ${idx + 1}: messages must include system/user/assistant`);
+      const row = parseBoundaryFinetuneDatasetLineV1(line);
       if (containsSensitiveLearningTopic(JSON.stringify(row))) {
         errors.push(`line ${idx + 1}: possible sensitive information`);
       }
     } catch (error) {
+      if (!(error instanceof RuntimeSchemaError)) throw error;
       errors.push(`line ${idx + 1}: invalid JSONL`);
     }
   });

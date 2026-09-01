@@ -1,11 +1,11 @@
 import { mkdirSync } from 'node:fs';
-import { dirname } from 'node:path';
+import { dirname, join } from 'node:path';
 import {
   isReadOnlyEvidenceLabel,
   maskSensitiveMetadataText,
 } from '../../sangfor-browser-contracts/src/index.js';
 import { AuditLedger } from '../../sangfor-hci-client/src/index.js';
-import { nowId } from '../../shared/src/index.js';
+import { resolveProductionLocalWriteAuthority, nowId, resolveEngagementScopedData } from '../../shared/src/index.js';
 import {
   buildCaptureFilePath,
   formatDateStamp,
@@ -69,7 +69,11 @@ export async function captureConsoleEvidence(
   deps: CaptureConsoleEvidenceDeps = {},
 ): Promise<CaptureConsoleEvidenceResult> {
   const dateStamp = input.dateStamp ?? formatDateStamp(new Date());
-  const ledger = deps.ledger ?? new AuditLedger();
+  const ledgerRoot = join(resolveEngagementScopedData('data/evidence'), 'change-runs');
+  const ledger = deps.ledger ?? new AuditLedger({ authority: resolveProductionLocalWriteAuthority({
+    tenantId: 'local-primary', projectId: process.env.SANGFOR_ENGAGEMENT_ID ?? 'local-primary', actorId: 'screenshot',
+    aggregate: 'audit', sourceRoot: ledgerRoot,
+  }) });
   const runId = nowId('console_capture');
   const outputDir = resolveConfinedOutputDir(input.outputDir);
   if (!deps.executionPort || !deps.sessionId || !deps.origin) {
@@ -104,7 +108,7 @@ export async function captureConsoleEvidence(
         error: `REFUSED_DESTRUCTIVE_MENU_LABEL: ${destructiveLabel}`,
       };
       results.push(record);
-      ledger.append(runId, 'response', ledgerPayload(record, input));
+      await ledger.append(runId, 'response', ledgerPayload(record, input));
       continue;
     }
 
@@ -161,7 +165,7 @@ export async function captureConsoleEvidence(
         ok: true,
       };
       results.push(record);
-      ledger.append(runId, 'response', ledgerPayload(record, input));
+      await ledger.append(runId, 'response', ledgerPayload(record, input));
     } catch (error) {
       const record: ConsoleCaptureItemResult = {
         reqId: item.reqId,
@@ -173,7 +177,7 @@ export async function captureConsoleEvidence(
         error: error instanceof Error ? error.message : String(error),
       };
       results.push(record);
-      ledger.append(runId, 'response', ledgerPayload(record, input));
+      await ledger.append(runId, 'response', ledgerPayload(record, input));
     }
   }
 

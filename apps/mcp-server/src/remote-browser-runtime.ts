@@ -21,13 +21,23 @@ function readRequiredFile(env: Environment, key: string): string {
 
 export function createRemoteBrowserExecutionPortFromEnv(
   env: Environment = process.env,
+  authority: 'execution' | 'verification' = 'execution',
 ): BrowserExecutionPort | undefined {
-  const endpointUrl = env.SANGFOR_REMOTE_BROWSER_URL?.trim();
+  const endpointKey = authority === 'execution'
+    ? 'SANGFOR_REMOTE_BROWSER_URL'
+    : 'SANGFOR_REMOTE_BROWSER_VERIFICATION_URL';
+  const endpointUrl = env[endpointKey]?.trim();
   if (!endpointUrl) return undefined;
   const tenantId = required(env, 'SANGFOR_TENANT_ID');
   const projectId = required(env, 'SANGFOR_PROJECT_ID');
-  const installationId = required(env, 'SANGFOR_REMOTE_BROWSER_INSTALLATION_ID');
-  const clientIdentityId = required(env, 'SANGFOR_REMOTE_BROWSER_CLIENT_IDENTITY_ID');
+  const authorityEpoch = Number(required(env, 'SANGFOR_AUTHORITY_EPOCH'));
+  if (!Number.isInteger(authorityEpoch) || authorityEpoch < 0) throw new Error('REMOTE_BROWSER_CONFIG_INVALID: SANGFOR_AUTHORITY_EPOCH');
+  const installationId = authority === 'execution'
+    ? required(env, 'SANGFOR_REMOTE_BROWSER_INSTALLATION_ID')
+    : required(env, 'SANGFOR_REMOTE_BROWSER_VERIFICATION_INSTALLATION_ID');
+  const clientIdentityId = authority === 'execution'
+    ? required(env, 'SANGFOR_REMOTE_BROWSER_CLIENT_IDENTITY_ID')
+    : required(env, 'SANGFOR_REMOTE_BROWSER_VERIFICATION_CLIENT_IDENTITY_ID');
   const privateKey = readRequiredFile(
     env,
     'SANGFOR_REMOTE_BROWSER_CAPABILITY_PRIVATE_KEY_PATH',
@@ -55,6 +65,7 @@ export function createRemoteBrowserExecutionPortFromEnv(
       capability: capabilityFactory({
         tenantId,
         projectId,
+        authorityEpoch,
         installationId,
         clientIdentityId,
         privateKey,
@@ -66,6 +77,7 @@ export function createRemoteBrowserExecutionPortFromEnv(
 function capabilityFactory(scope: {
   readonly tenantId: string;
   readonly projectId: string;
+  readonly authorityEpoch: number;
   readonly installationId: string;
   readonly clientIdentityId: string;
   readonly privateKey: string;

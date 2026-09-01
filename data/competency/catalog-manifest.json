@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "semanticSha256": "83816300a2093e5d1eae59b4f77af88e9443b60f73ba48c30b2f36b59fb4b493",
+  "atomIds": [
+    "deploy_asbuilt_doc",
+    "deploy_cluster_init",
+    "deploy_integration",
+    "deploy_migration",
+    "deploy_policy_impl",
+    "deploy_rack_cable",
+    "deploy_site_survey",
+    "design_competitive",
+    "design_sizing",
+    "design_topology",
+    "disc_requirements",
+    "op_backup_dr",
+    "op_daily_health",
+    "op_final_apply",
+    "op_rca",
+    "op_threat_soar",
+    "op_upgrade",
+    "pm_signoff",
+    "poc_report",
+    "poc_success_criteria"
+  ],
+  "counts": {
+    "atoms": 20,
+    "automatable": 16,
+    "human": 4
+  }
+}

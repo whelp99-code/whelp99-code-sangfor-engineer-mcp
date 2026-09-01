@@ -34,7 +34,7 @@ See **[ARCHITECTURE.md](ARCHITECTURE.md)** for the domain map, package layering,
 
 ## Project structure
 - `apps/*` — thin transport adapters, each with a boundary `AGENTS.md`:
-  - `apps/mcp-server` — MCP stdio JSON-RPC server (108 `sangfor.*` tools; no port)
+  - `apps/mcp-server` — MCP stdio JSON-RPC server (118 `sangfor.*` tools; no port)
   - `apps/http-bridge` — REST façade over the MCP server (`:3600`, fail-closed tool-guard)
   - `apps/control-tower` — ops dashboard, run/approval/registry + playbook engine (`:3700`)
   - `apps/operator-console` — engineer web console, in-process (`:3502`)

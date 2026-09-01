@@ -6,10 +6,13 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { TLSSocket } from 'node:tls';
 import {
   REMOTE_BROWSER_JOB_PATH,
+  REMOTE_EXECUTION_DEADLINE_HEADER,
+  REMOTE_JOB_BODY_MAX_BYTES,
   REMOTE_TRANSPORT_ERROR_CODES,
   errorBody,
   jsonHeaders,
   peerIdentityFromCertificate,
+  type RemoteHandlerResponse,
 } from './remote-protocol.js';
 import {
   createRemoteBrowserJobHandler,
@@ -31,29 +34,85 @@ export interface RemoteBrowserJobServerOptions extends RemoteBrowserJobHandlerOp
   readonly createServer?: typeof createHttpsServer;
 }
 
-async function readRequestBody(
+async function readBoundedRequestBody(
   request: IncomingMessage,
-): Promise<string> {
+): Promise<string | null> {
+  const contentLength = request.headers['content-length'];
+  if (
+    typeof contentLength === 'string'
+    && /^\d+$/.test(contentLength)
+    && Number(contentLength) > REMOTE_JOB_BODY_MAX_BYTES
+  ) {
+    return null;
+  }
   const chunks: Buffer[] = [];
-  for await (const chunk of request) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  let receivedBytes = 0;
+  for await (const rawChunk of request) {
+    const chunk = Buffer.isBuffer(rawChunk) ? rawChunk : Buffer.from(rawChunk);
+    if (chunk.length > REMOTE_JOB_BODY_MAX_BYTES - receivedBytes) {
+      return null;
+    }
+    chunks.push(chunk);
+    receivedBytes += chunk.length;
   }
   return Buffer.concat(chunks).toString('utf8');
+}
+
+function refuseWithoutBody(
+  request: IncomingMessage,
+  response: ServerResponse,
+  output: RemoteHandlerResponse,
+): void {
+  response.writeHead(output.statusCode, { ...output.headers, connection: 'close' });
+  response.end(output.bodyText, () => request.destroy());
 }
 
 export function createRemoteBrowserJobRequestListener(
   handler: ReturnType<typeof createRemoteBrowserJobHandler>,
 ): (request: IncomingMessage, response: ServerResponse) => void {
   return (request: IncomingMessage, response: ServerResponse) => {
+    const controller = new AbortController();
+    request.once('aborted', () => controller.abort());
+    response.once('close', () => {
+      if (!response.writableFinished) controller.abort();
+    });
     void (async () => {
       try {
         const socket = request.socket as TLSSocket;
         const certificate = socket.getPeerCertificate();
-        const output = await handler.handle({
+        const metadata = {
           client: peerIdentityFromCertificate(certificate, socket.authorized),
           method: request.method ?? 'GET',
           urlPath: request.url ?? '/',
-          bodyText: await readRequestBody(request),
+          headers: request.headers,
+        };
+        const authorization = handler.preflight(metadata);
+        if ('statusCode' in authorization) {
+          refuseWithoutBody(request, response, authorization);
+          return;
+        }
+        const bodyText = await readBoundedRequestBody(request);
+        if (bodyText === null) {
+          refuseWithoutBody(request, response, {
+            statusCode: 413,
+            headers: jsonHeaders(),
+            bodyText: errorBody(
+              REMOTE_TRANSPORT_ERROR_CODES.BODY_TOO_LARGE,
+              `Remote job envelope exceeds ${REMOTE_JOB_BODY_MAX_BYTES} bytes.`,
+            ),
+          });
+          return;
+        }
+        const deadlineHeader = request.headers[REMOTE_EXECUTION_DEADLINE_HEADER];
+        const deadline = typeof deadlineHeader === 'string'
+          && Number.isFinite(Date.parse(deadlineHeader))
+          ? new Date(deadlineHeader).toISOString()
+          : undefined;
+        const output = await handler.handleAuthorized(authorization, {
+          bodyText,
+          ...(deadline === undefined
+            ? {}
+            : { executionContext: { signal: controller.signal, deadline } }),
         });
         response.writeHead(output.statusCode, output.headers);
         response.end(output.bodyText);

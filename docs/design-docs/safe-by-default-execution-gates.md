@@ -17,7 +17,7 @@ Live execution is unlocked only when **every** layer passes, checked in order in
 5. **Single-use nonce** — a durable `FileNonceStore` consumes `(nonce, expiresAt)` (atomic tmp+rename); replay within the window is rejected. Browser execution validates target/origin/request and requires an authoritative read-only preflight before consuming the nonce immediately before mutation dispatch. Any store error refuses execution.
 6. **Origin lock** — `assertNavigationWithinTarget` refuses a cross-origin navigate even under dry-run.
 
-The HTTP bridge (`apps/http-bridge/tool-guard.ts`) is a second, independent gate: it refuses `destructiveHint` tools without a valid single-use approval, refuses write tools on a non-loopback bind unless `SANGFOR_ALLOW_REMOTE_WRITE`, and verifies the same signed approval (nonce consumed **last**).
+The HTTP bridge (`packages/sangfor-operator/src/tool-authorization.ts`) is a second, independent gate: it refuses `destructiveHint` tools without a valid single-use approval, refuses write tools on a non-loopback bind unless `SANGFOR_ALLOW_REMOTE_WRITE`, and verifies the same signed approval (nonce consumed **last**).
 
 ## Rationale
 - **Defense in depth**: env flags gate the *environment*, the HMAC gates the *specific action*, the nonce gates *replay*. Each layer fails closed independently.

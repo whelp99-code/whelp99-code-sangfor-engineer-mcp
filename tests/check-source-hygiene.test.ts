@@ -17,6 +17,11 @@ function run(cwd: string): { code: number; stderr: string } {
   return { code: r.status ?? -1, stderr: r.stderr ?? '' };
 }
 
+function git(cwd: string, ...args: string[]): void {
+  const r = spawnSync('git', args, { cwd, encoding: 'utf8' });
+  if (r.status !== 0) throw new Error(r.stderr);
+}
+
 function seed(files: Record<string, string>): void {
   for (const [rel, body] of Object.entries(files)) {
     const full = join(dir, rel);
@@ -30,6 +35,9 @@ beforeEach(() => {
   // 두 스캔 루트가 모두 존재해야 정상 경로다.
   mkdirSync(join(dir, 'packages/x/src'), { recursive: true });
   mkdirSync(join(dir, 'apps/mcp-server/src'), { recursive: true });
+  git(dir, 'init', '-q');
+  git(dir, 'config', 'user.email', 'test@example.invalid');
+  git(dir, 'config', 'user.name', 'test');
 });
 afterEach(() => rmSync(dir, { recursive: true, force: true }));
 
@@ -71,6 +79,14 @@ describe('check-source-hygiene — 게이트가 실제로 잡는다', () => {
     rmSync(join(dir, 'packages/x/src/index.ts'));
     seed({ 'packages/x/src/b.ts': '// FIXME broken\n' });
     expect(run(dir).stderr).toContain('FIXME');
+  });
+
+  it('추적된 Office 잠금 파일을 잡는다', () => {
+    seed({ 'outputs/~$draft.docx': 'lock' });
+    git(dir, 'add', '.');
+    const r = run(dir);
+    expect(r.code).toBe(1);
+    expect(r.stderr).toContain('tracked Office lock/temp artifact');
   });
 
   it('스캔 루트가 사라지면 조용히 통과하지 않고 exit 2로 실패한다', () => {

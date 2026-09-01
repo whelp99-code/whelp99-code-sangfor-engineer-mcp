@@ -6,7 +6,7 @@ import { resolveRepoData } from '../packages/shared/src/index.js';
 
 const repoRoot = process.cwd();
 const strategyCliSource = readFileSync(join(repoRoot, 'scripts/strategy-cli.ts'), 'utf8');
-const mcpServerSource = readFileSync(join(repoRoot, 'apps/mcp-server/src/index.ts'), 'utf8');
+const learningToolCatalogSource = readFileSync(join(repoRoot, 'apps/mcp-server/src/learning-tool-catalog.ts'), 'utf8');
 const originalOverride = process.env.SANGFOR_PATH_CONTRACT_TEST_ROOT;
 
 afterEach(() => {
@@ -33,10 +33,10 @@ describe('learning observer canonical data paths', () => {
   });
 
   it('pins the MCP final and transient capture directories without legacy root-level literals', () => {
-    expect(mcpServerSource).toContain("capturesDir: resolveRepoData('data/captures')");
-    expect(mcpServerSource).toContain("stagingRoot: resolveRepoData('data/runtime/learning-captures')");
-    expect(mcpServerSource).not.toContain("resolveRepoData('captures')");
-    expect(mcpServerSource).not.toContain("resolveRepoData('capture-staging')");
+    expect(learningToolCatalogSource).toContain("capturesDir: resolveRepoData('data/captures')");
+    expect(learningToolCatalogSource).toContain("stagingRoot: resolveRepoData('data/runtime/learning-captures')");
+    expect(learningToolCatalogSource).not.toContain("resolveRepoData('captures')");
+    expect(learningToolCatalogSource).not.toContain("resolveRepoData('capture-staging')");
     expect(strategyCliSource).not.toContain("resolveRepoData('learning-strategies')");
   });
 });
