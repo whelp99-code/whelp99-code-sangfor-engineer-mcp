@@ -11,12 +11,16 @@ export type RemoteJobCompletionIdentity = {
   readonly authorityEpoch: number;
 };
 
+export type RemoteJobCompletionDecision =
+  | { readonly kind: 'wait' }
+  | { readonly kind: 'complete' };
+
 export interface RemoteJobCompletionObserver {
   ready(): Promise<void>;
   wait(
     completionKey: string,
     signal: AbortSignal,
-    subscriptionReady?: () => Promise<void>,
+    subscriptionReady?: () => Promise<RemoteJobCompletionDecision>,
   ): Promise<void>;
   close(): Promise<void>;
 }
@@ -56,7 +60,7 @@ export function createPostgresRemoteJobCompletionObserver(
     async wait(
       completionKey: string,
       signal: AbortSignal,
-      subscriptionReady?: () => Promise<void>,
+      subscriptionReady?: () => Promise<RemoteJobCompletionDecision>,
     ): Promise<void> {
       await ready();
       if (observed.delete(completionKey)) return;
@@ -71,9 +75,16 @@ export function createPostgresRemoteJobCompletionObserver(
       waiters.set(completionKey, listeners);
       signal.addEventListener('abort', abort, { once: true });
       try {
-        await subscriptionReady?.();
-        if (signal.aborted) abort();
-        await completion;
+        const decision = await subscriptionReady?.() ?? { kind: 'wait' };
+        switch (decision.kind) {
+          case 'complete': return;
+          case 'wait': {
+            if (signal.aborted) abort();
+            await completion;
+            return;
+          }
+          default: return assertNever(decision);
+        }
       } finally {
         signal.removeEventListener('abort', abort);
         listeners.delete(finish);
@@ -84,4 +95,8 @@ export function createPostgresRemoteJobCompletionObserver(
       if (connected) await client.end();
     },
   };
+}
+
+function assertNever(value: never): never {
+  throw new TypeError(JSON.stringify(value));
 }

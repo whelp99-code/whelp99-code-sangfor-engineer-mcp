@@ -20,6 +20,7 @@ import type {
 } from './blro-remote-dispatcher.js';
 import { authorizeRemoteTarget } from './remote-job-authorization.js';
 import { classifyRemoteJobTransaction } from './remote-job-classification.js';
+import { resolvePendingRemoteJob } from './remote-job-pending.js';
 import type { RemoteJobCompletionObserver } from './remote-job-completion.js';
 import {
   parseTrustedIssuerBundle,
@@ -129,15 +130,13 @@ export class PostgresRemoteJobStore implements RemoteJobStore, BlroDispatchAutho
         await this.reservationObserver?.waiting?.(first.requestId);
         return { kind: 'indeterminate', requestId: first.requestId };
       }
-      await this.completionObserver.wait(
-        first.completionKey,
-        AbortSignal.timeout(this.completionTimeoutMs),
-        async () => { await this.reservationObserver?.waiting?.(first.requestId); },
-      );
-      const completed = await classify();
-      return completed.kind === 'pending'
-        ? { kind: 'indeterminate', requestId: completed.requestId }
-        : completed;
+      return await resolvePendingRemoteJob({
+        pending: first,
+        observer: this.completionObserver,
+        timeoutMs: this.completionTimeoutMs,
+        classify,
+        waiting: this.reservationObserver?.waiting,
+      });
     } catch (error) {
       if (error instanceof Error) return pendingRequestId
         ? { kind: 'indeterminate', requestId: pendingRequestId }

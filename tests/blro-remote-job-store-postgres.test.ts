@@ -1,4 +1,10 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  PostgresRemoteJobStore,
+  createPostgresRemoteJobCompletionObserver,
+  remoteJobCompletionKey,
+  type RemoteJobCompletionObserver,
+} from '../packages/sangfor-authority/src/index.js';
 import { ExactSignal } from './helpers/exact-signal.js';
 import {
   RemoteJobAuthorityFixture,
@@ -122,6 +128,65 @@ describe.runIf(runPostgres)('Todo 22 PostgreSQL remote-job authority', () => {
     ));
     expect(parsedResult(replay.bodyText)).toEqual(expected);
     expect(execute).toHaveBeenCalledOnce();
+  });
+
+  it('Given a completion edge consumed by an existing listener, When a late pending subscriber installs, Then authoritative terminal state wins without another notification', async () => {
+    // Given a durable dispatch and one listener that will consume its completion notification.
+    const request = fixture.request('late-subscriber-request');
+    const envelope = fixture.envelope({ request, jobId: 'late-subscriber-job' });
+    const authority = fixture.store();
+    const reserved = await authority.authorizeAndReserve({
+      envelope,
+      certificate: leafCertificate(),
+    });
+    if (reserved.kind !== 'dispatch') throw new TypeError('LATE_SUBSCRIBER_DISPATCH_REQUIRED');
+    const completion = createPostgresRemoteJobCompletionObserver(databaseUrl);
+    const firstSubscribed = new ExactSignal('first completion listener subscribed');
+    const lateWaitEntered = new ExactSignal('late subscriber reached wait');
+    const releaseLateSubscription = new ExactSignal('late subscriber may install');
+    const firstWait = completion.wait(
+      remoteJobCompletionKey(reserved.dispatch),
+      AbortSignal.timeout(5_000),
+      async () => { firstSubscribed.resolve(); return { kind: 'wait' }; },
+    );
+    await firstSubscribed.promise;
+    const delayedObserver: RemoteJobCompletionObserver = {
+      ready: () => completion.ready(),
+      async wait(completionKey, signal, subscriptionReady): Promise<void> {
+        lateWaitEntered.resolve();
+        await releaseLateSubscription.promise;
+        await completion.wait(completionKey, signal, subscriptionReady);
+      },
+      close: () => completion.close(),
+    };
+    const lateStore = new PostgresRemoteJobStore({
+      database: fixture.databaseB,
+      scope: fixture.scope('primary'),
+      capabilityPublicKey: fixture.publicKey,
+      trustedIssuerBundle: fixture.certificates.trustedCaPem,
+      clock: { now: () => fixture.now },
+      completionObserver: delayedObserver,
+      completionTimeoutMs: 1_000,
+    });
+
+    try {
+      // When the late caller classifies pending, then completion commits before its listener installs.
+      const lateResult = lateStore.classify({
+        envelope: fixture.envelope({ request, jobId: 'late-subscriber-job' }),
+        certificate: leafCertificate(),
+      });
+      await lateWaitEntered.promise;
+      const expected = passResult(request.requestId, 'late-subscriber');
+      await authority.retainResult({ dispatch: reserved.dispatch, result: expected });
+      await firstWait;
+      releaseLateSubscription.resolve();
+
+      // Then its post-subscription database recheck returns the retained result without another edge.
+      await expect(lateResult).resolves.toEqual({ kind: 'retained', result: expected });
+    } finally {
+      releaseLateSubscription.resolve();
+      await delayedObserver.close();
+    }
   });
 
   it('isolates the same job ID across projects and refuses cross-scope before lookup', async () => {
