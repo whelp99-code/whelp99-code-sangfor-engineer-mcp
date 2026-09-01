@@ -38,8 +38,32 @@ export type OrdinaryWriteEligibilityInput = {
 };
 
 export type IagBootstrapScope = WriteScope & {
+  readonly toolId: string;
   readonly actionKind: string;
   readonly targetEnvironment: string;
+  readonly firmwareTruth: {
+    readonly recordId: string;
+    readonly vendor: 'SANGFOR' | 'FORTINET' | 'CISCO';
+    readonly adapterProduct: string;
+    readonly productVariant: string | null;
+    readonly versionRaw: string;
+    readonly versionFamily: string;
+    readonly revision: string | null;
+    readonly buildId: string | null;
+    readonly hotfix: string | null;
+    readonly uiFingerprint: string | null;
+    readonly apiFingerprint: string | null;
+    readonly status: 'verified';
+    readonly observedAt: string;
+    readonly specVersion: string;
+    readonly specApplicability: 'verified';
+    readonly truthDigest: string;
+  };
+  readonly implementation: {
+    readonly recipeDigest: string;
+    readonly toolDigest: string;
+    readonly runtimeDigest: string;
+  };
 };
 
 export type IagBootstrapEligibilityInput = {
@@ -100,18 +124,23 @@ function ordinaryEligibility(input: OrdinaryWriteEligibilityInput): WriteEligibi
 }
 
 function completeScope(scope: IagBootstrapScope): boolean {
-  return [
+  return scope.firmwareId === scope.firmwareTruth.truthDigest && [
+    scope.toolId,
     scope.deviceId,
     scope.firmwareId,
     scope.windowId,
     scope.sessionId,
     scope.originId,
     scope.campaignId,
+    scope.implementation.recipeDigest,
+    scope.implementation.toolDigest,
+    scope.implementation.runtimeDigest,
   ].every((value) => value.trim().length > 0);
 }
 
 function bootstrapEligibility(input: IagBootstrapEligibilityInput): WriteEligibility {
-  if (input.scope.product !== 'IAG' || input.scope.capabilityId !== 'internet_policy') {
+  if (input.scope.product !== 'IAG' || input.scope.capabilityId !== 'internet_policy'
+    || input.scope.toolId !== 'iag_o1_evidence_campaign') {
     return refused('IAG_BOOTSTRAP_TARGET_REFUSED');
   }
   if (!O1_ACTION_KINDS.some((kind) => kind === input.scope.actionKind)) return refused('IAG_BOOTSTRAP_ACTION_REFUSED');

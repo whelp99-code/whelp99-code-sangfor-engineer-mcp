@@ -33,6 +33,10 @@ const currentDigestsSchema = z.object({
 
 export const evidenceValidationContextSchema = z.object({
   campaign: z.enum(EVIDENCE_CAMPAIGNS),
+  targetClassification: z.object({
+    environment: z.enum(['lab', 'production']),
+    token: sha256Schema,
+  }).strict().readonly().optional(),
   evaluatedAt: timestampSchema,
   currentFirmware: currentFirmwareIdentitySchema,
   currentDigests: currentDigestsSchema,
@@ -49,6 +53,9 @@ export function parseEvidenceValidationContext(value: unknown): EvidenceValidati
   const parsed = evidenceValidationContextSchema.parse(value);
   return {
     campaign: parsed.campaign,
+    ...(parsed.targetClassification === undefined
+      ? {}
+      : { targetClassification: parsed.targetClassification }),
     clock: { now: () => new Date(parsed.evaluatedAt) },
     currentFirmware: parsed.currentFirmware,
     currentDigests: parsed.currentDigests,

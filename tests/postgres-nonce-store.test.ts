@@ -33,6 +33,9 @@ describe('Postgres nonce outage typing',()=>{
   it('returns STORE_UNAVAILABLE rather than ALREADY_USED for an unreachable database',async()=>{
     const unavailable=new PostgresSingleUseNonceStore({connectionString:'postgresql://invalid:invalid@127.0.0.1:1/none?connect_timeout=1'});const result=await unavailable.consume('project','nonce','2099-01-01T00:00:00.000Z',0,new Date('2026-08-27T00:00:00.000Z'));expect(result).toMatchObject({ok:false,code:'STORE_UNAVAILABLE'});expect(result.reason).not.toContain('already used');await unavailable.close();
   });
+  it('fails closed when read-only inspection cannot reach the database',async()=>{
+    const unavailable=new PostgresSingleUseNonceStore({connectionString:'postgresql://invalid:invalid@127.0.0.1:1/none?connect_timeout=1'});const result=await unavailable.inspect('project','nonce','2099-01-01T00:00:00.000Z',0,new Date('2026-08-27T00:00:00.000Z'));expect(result).toMatchObject({ok:false,code:'STORE_UNAVAILABLE'});await unavailable.close();
+  });
 });
 
 describeDb('PostgresSingleUseNonceStore', () => {
@@ -85,6 +88,14 @@ describeDb('PostgresSingleUseNonceStore', () => {
   it('consumes an unused nonce exactly once', async () => {
     const first = await store.consume(PROJECT_A, 'nonce-1', future(), 0);
     expect(first.ok).toBe(true);
+  });
+
+  it('inspects availability without consuming, then observes the committed replay', async () => {
+    expect(await store.inspect(PROJECT_A, 'nonce-inspect', future(), 0)).toEqual({ ok: true });
+    expect(await store.inspect(PROJECT_A, 'nonce-inspect', future(), 0)).toEqual({ ok: true });
+    expect((await store.consume(PROJECT_A, 'nonce-inspect', future(), 0)).ok).toBe(true);
+    expect(await store.inspect(PROJECT_A, 'nonce-inspect', future(), 0))
+      .toMatchObject({ ok: false, code: 'ALREADY_USED' });
   });
 
   it('refuses a replayed nonce with the caller-visible prefix', async () => {

@@ -88,6 +88,12 @@ export class FileNonceStore {
     }));
   }
 
+  inspect(nonce: string, expiresAt: string, now: Date = new Date()): NonceConsumeResult {
+    const result = this.sharedStore.inspect(nonce, expiresAt, now);
+    if (result.ok || result.reason?.startsWith('approval nonce already used:')) return result;
+    return { ok: false, reason: `nonce store unavailable (fail-closed): ${result.reason ?? 'unknown store error'}` };
+  }
+
   async consume(nonce: string, expiresAt: string, now: Date = new Date()): Promise<NonceConsumeResult> {
     const result = await this.sharedStore.consume(nonce, expiresAt, now);
     if (result.ok || result.reason?.startsWith('approval nonce already used:')) return result;
@@ -136,6 +142,22 @@ export async function consumeApprovalNonceAsync(
   }
   return postgresStoreFor(selection.connectionString, selection.projectId)
     .consume(selection.projectId, approval.nonce, approval.expiresAt, approval.authorityEpoch, now ?? new Date());
+}
+
+/** Read-only preflight. Final execution must still call consumeApprovalNonceAsync atomically. */
+export async function inspectApprovalNonceAsync(
+  approval: { nonce: string; expiresAt: string; authorityEpoch: number },
+  now?: Date,
+  environment: Env = process.env,
+): Promise<NonceConsumeResult> {
+  if (hasApprovalControlCharacters(approval.nonce)) return { ok: false, reason: 'invalid nonce input' };
+  const selection = resolveNonceStoreSelection(environment);
+  if (!selection.ok) return { ok: false, reason: selection.reason };
+  if (selection.kind === 'file') {
+    return fileStoreFor(selection.path).inspect(approval.nonce, approval.expiresAt, now);
+  }
+  return postgresStoreFor(selection.connectionString, selection.projectId)
+    .inspect(selection.projectId, approval.nonce, approval.expiresAt, approval.authorityEpoch, now ?? new Date());
 }
 
 /**

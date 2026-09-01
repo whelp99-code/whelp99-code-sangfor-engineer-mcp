@@ -71,6 +71,10 @@ export type CurrentEvidenceDigests = Pick<Digests,
 
 export type EvidenceValidationContext = {
   readonly campaign: EvidenceCampaign;
+  readonly targetClassification?: {
+    readonly environment: 'lab' | 'production';
+    readonly token: string;
+  };
   readonly clock: EvidenceClock;
   readonly currentFirmware: CurrentFirmwareIdentity;
   readonly currentDigests: CurrentEvidenceDigests;

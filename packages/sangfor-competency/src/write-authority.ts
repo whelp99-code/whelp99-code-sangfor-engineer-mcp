@@ -5,6 +5,7 @@ import { parseGroundedCapabilityEvidence } from './evidence-grounding.js';
 import { validateAndPersistEvidenceStaleness } from './evidence-invalidation.js';
 import { validateCapabilityEvidence } from './evidence-validation.js';
 import { parseEvidenceValidationContext } from './evidence-validation-context.js';
+import { verifyExecutionTargetClassification } from './execution-target-authority.js';
 import { nodeEvidenceFilesystem } from './evidence-filesystem.js';
 import { MAX_CAPABILITY_EVIDENCE_BYTES } from './evidence-schema.js';
 import { defaultCatalogRoot, loadWorkAtomCatalog } from './loader.js';
@@ -31,20 +32,26 @@ export type ResolveWriteAuthorityInput = {
   };
 };
 
+/**
+ * What an authorized resolution vouches for: the exact scope it was derived
+ * from, plus the effective maturity replayed from the authenticated promotion
+ * ledger. Downstream gates decide on `maturity`; no caller authors its own.
+ */
+export type AuthorizedWriteAuthority = {
+  readonly scope: DerivedAuthorityScope;
+  readonly maturity: Maturity;
+};
+
 export type ResolvedWriteAuthority =
-  | {
-    readonly status: 'ordinary_active';
-    readonly scope: DerivedAuthorityScope;
-  }
-  | {
-    readonly status: 'bootstrap_candidate';
-    readonly scope: DerivedAuthorityScope;
-  }
+  | ({ readonly status: 'ordinary_active' } & AuthorizedWriteAuthority)
+  | ({ readonly status: 'bootstrap_candidate' } & AuthorizedWriteAuthority)
   | { readonly status: 'refused'; readonly code: string };
 
 export type DerivedAuthorityScope = {
   readonly product: string;
   readonly capabilityId: string;
+  readonly toolId: string;
+  readonly targetEnvironment: 'lab' | 'production' | 'unclassified';
   readonly deviceId: string;
   readonly originDigest: string;
   readonly firmwareId: string;
@@ -130,6 +137,32 @@ export async function resolveConfiguredWriteAuthority(input: ResolveWriteAuthori
     const manifest = parseGroundedCapabilityEvidence({ source: manifestSource, grounding: { atoms: catalog.atoms, context } });
     if (!exactTarget(input, manifest.target)) return { status: 'refused', code: 'AUTHORITY_TARGET_MISMATCH' };
     const validationContext = parseEvidenceValidationContext(JSON.parse(readAuthorityFile(input.references.validationContextPath)));
+    const targetClassification = validationContext.targetClassification;
+    let targetEnvironment: DerivedAuthorityScope['targetEnvironment'] = 'unclassified';
+    if (targetClassification !== undefined) {
+      const classificationValid = verifyExecutionTargetClassification(
+        process.env.SANGFOR_CAPABILITY_PROMOTION_LEDGER_SECRET,
+        {
+          environment: targetClassification.environment,
+          product: manifest.target.productId,
+          capabilityId: manifest.target.capabilityId,
+          toolId: manifest.target.toolId,
+          campaignId: manifest.manifestId,
+          deviceIdentityDigest: validationContext.currentDigests.deviceIdentityDigest,
+          originDigest: validationContext.currentDigests.originDigest,
+          firmwareTruthDigest: validationContext.currentFirmware.truthDigest,
+          recipeDigest: validationContext.currentDigests.recipeDigest,
+          toolDigest: validationContext.currentDigests.toolDigest,
+          runtimeDigest: validationContext.currentDigests.runtimeDigest,
+          windowIdentityDigest: validationContext.currentDigests.windowIdentityDigest,
+        },
+        targetClassification.token,
+      );
+      if (!classificationValid) {
+        return { status: 'refused', code: 'AUTHORITY_TARGET_CLASSIFICATION_REFUSED' };
+      }
+      targetEnvironment = targetClassification.environment;
+    }
     const baseline = context.maturityByCapability.get(`${input.expected.product}::${input.expected.capabilityId}`);
     if (baseline === undefined) return { status: 'refused', code: 'AUTHORITY_POLICY_MISSING' };
     const ledger = FilePromotionLedger.open(
@@ -155,9 +188,11 @@ export async function resolveConfiguredWriteAuthority(input: ResolveWriteAuthori
     const maturity: Maturity = deriveEffectiveMaturity(baseline, manifest.target, events);
     const firstRun = manifest.runs[0];
     if (firstRun === undefined) return { status: 'refused', code: 'AUTHORITY_RUN_MISSING' };
-    const scope = {
+    const scope: DerivedAuthorityScope = {
       product: manifest.target.productId,
       capabilityId: manifest.target.capabilityId,
+      toolId: manifest.target.toolId,
+      targetEnvironment,
       deviceId: validationContext.currentDigests.deviceIdentityDigest,
       originDigest: validationContext.currentDigests.originDigest,
       firmwareId: validationContext.currentFirmware.truthDigest,
@@ -190,11 +225,11 @@ export async function resolveConfiguredWriteAuthority(input: ResolveWriteAuthori
     };
     if (input.expected.mode === 'ordinary_field') {
       return maturity === 'field_verified' && currentPromotion(events, manifest.target, manifestSource)
-        ? { status: 'ordinary_active', scope }
+        ? { status: 'ordinary_active', scope, maturity }
         : { status: 'refused', code: 'AUTHORITY_ACTIVE_PROMOTION_REQUIRED' };
     }
     return maturity === 'tested_mock' && candidateComplete(manifest, validationContext)
-      ? { status: 'bootstrap_candidate', scope }
+      ? { status: 'bootstrap_candidate', scope, maturity }
       : { status: 'refused', code: 'AUTHORITY_MOCK_CANDIDATE_REQUIRED' };
   } catch {
     return { status: 'refused', code: 'AUTHORITY_UNAVAILABLE' };

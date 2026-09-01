@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import {
   AUTHORITY_MANIFEST,
   parseAuthorityManifest,
@@ -14,10 +14,14 @@ import {
 import { loadRepositoryCensus } from '../packages/sangfor-authority/src/repository-census.js';
 
 const ROOT = join(import.meta.dirname, '..');
+let repositoryCensus: ReturnType<typeof loadRepositoryCensus>;
+
+beforeAll(() => {
+  repositoryCensus = loadRepositoryCensus(ROOT);
+}, 30_000);
 
 describe('canonical authority manifest lock', () => {
   it('authenticates the exact repository manifest identity and lock fields', () => {
-    const census = loadRepositoryCensus(ROOT);
     const raw: unknown = JSON.parse(readFileSync(join(ROOT, AUTHORITY_MANIFEST_LOCK_PATH), 'utf8'));
 
     expect(raw).toMatchObject({
@@ -26,16 +30,16 @@ describe('canonical authority manifest lock', () => {
       // Todo 34 adds persisted PostgreSQL-native index promotion authority;
       // the legacy JSON embedding index remains separately classified derived.
       classCounts: { authoritative: 19, derived: 8, credential_local: 1, curated_seed: 1 },
-      repositoryCensusDigest: census.digest,
+      repositoryCensusDigest: repositoryCensus.digest,
       sourceOnlyRefs: ['m026-spec-registry:data/specs#curated-seed:v1'],
     });
-    expect(verifyAuthorityManifest(AUTHORITY_MANIFEST, census)).toMatchObject({ ok: true });
+    expect(verifyAuthorityManifest(AUTHORITY_MANIFEST, repositoryCensus)).toMatchObject({ ok: true });
   });
 
   it('refuses structurally valid manifests that were not authenticated by the lock', () => {
-    const census = loadRepositoryCensus(ROOT);
     const parsed = parseAuthorityManifest(structuredClone(AUTHORITY_MANIFEST));
-    expect(verifyAuthorityManifest(parsed, census)).toEqual({ ok: false, issues: ['MANIFEST_NOT_CANONICAL'] });
+    expect(verifyAuthorityManifest(parsed, repositoryCensus))
+      .toEqual({ ok: false, issues: ['MANIFEST_NOT_CANONICAL'] });
   });
 
   it('refuses a canonical census whose semantic digest differs from the lock', () => {
