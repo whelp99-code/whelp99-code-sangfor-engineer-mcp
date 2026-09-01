@@ -5,6 +5,7 @@ import { parseGroundedCapabilityEvidence } from './evidence-grounding.js';
 import { validateAndPersistEvidenceStaleness } from './evidence-invalidation.js';
 import { validateCapabilityEvidence } from './evidence-validation.js';
 import { parseEvidenceValidationContext } from './evidence-validation-context.js';
+import { verifyExecutionTargetClassification } from './execution-target-authority.js';
 import { nodeEvidenceFilesystem } from './evidence-filesystem.js';
 import { MAX_CAPABILITY_EVIDENCE_BYTES } from './evidence-schema.js';
 import { defaultCatalogRoot, loadWorkAtomCatalog } from './loader.js';
@@ -136,6 +137,32 @@ export async function resolveConfiguredWriteAuthority(input: ResolveWriteAuthori
     const manifest = parseGroundedCapabilityEvidence({ source: manifestSource, grounding: { atoms: catalog.atoms, context } });
     if (!exactTarget(input, manifest.target)) return { status: 'refused', code: 'AUTHORITY_TARGET_MISMATCH' };
     const validationContext = parseEvidenceValidationContext(JSON.parse(readAuthorityFile(input.references.validationContextPath)));
+    const targetClassification = validationContext.targetClassification;
+    let targetEnvironment: DerivedAuthorityScope['targetEnvironment'] = 'unclassified';
+    if (targetClassification !== undefined) {
+      const classificationValid = verifyExecutionTargetClassification(
+        process.env.SANGFOR_CAPABILITY_PROMOTION_LEDGER_SECRET,
+        {
+          environment: targetClassification.environment,
+          product: manifest.target.productId,
+          capabilityId: manifest.target.capabilityId,
+          toolId: manifest.target.toolId,
+          campaignId: manifest.manifestId,
+          deviceIdentityDigest: validationContext.currentDigests.deviceIdentityDigest,
+          originDigest: validationContext.currentDigests.originDigest,
+          firmwareTruthDigest: validationContext.currentFirmware.truthDigest,
+          recipeDigest: validationContext.currentDigests.recipeDigest,
+          toolDigest: validationContext.currentDigests.toolDigest,
+          runtimeDigest: validationContext.currentDigests.runtimeDigest,
+          windowIdentityDigest: validationContext.currentDigests.windowIdentityDigest,
+        },
+        targetClassification.token,
+      );
+      if (!classificationValid) {
+        return { status: 'refused', code: 'AUTHORITY_TARGET_CLASSIFICATION_REFUSED' };
+      }
+      targetEnvironment = targetClassification.environment;
+    }
     const baseline = context.maturityByCapability.get(`${input.expected.product}::${input.expected.capabilityId}`);
     if (baseline === undefined) return { status: 'refused', code: 'AUTHORITY_POLICY_MISSING' };
     const ledger = FilePromotionLedger.open(
@@ -165,7 +192,7 @@ export async function resolveConfiguredWriteAuthority(input: ResolveWriteAuthori
       product: manifest.target.productId,
       capabilityId: manifest.target.capabilityId,
       toolId: manifest.target.toolId,
-      targetEnvironment: validationContext.targetEnvironment ?? 'unclassified',
+      targetEnvironment,
       deviceId: validationContext.currentDigests.deviceIdentityDigest,
       originDigest: validationContext.currentDigests.originDigest,
       firmwareId: validationContext.currentFirmware.truthDigest,

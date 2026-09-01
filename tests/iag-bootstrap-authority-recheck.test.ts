@@ -183,4 +183,32 @@ describe('IAG bootstrap authority recheck mutations', () => {
     expect(executorCalls).toBe(0);
     expect(existsSync(process.env.SANGFOR_NONCE_STORE_PATH ?? '')).toBe(false);
   });
+
+  it('rechecks implementation authority during no-seam preflight without consuming the nonce', async () => {
+    const first = scope();
+    const changed = {
+      ...first,
+      implementation: { ...first.implementation, runtimeDigest: '8'.repeat(64) },
+    };
+    mocks.resolveAuthority
+      .mockResolvedValueOnce({ status: 'bootstrap_candidate', scope: first, maturity: 'tested_mock' })
+      .mockResolvedValueOnce({ status: 'bootstrap_candidate', scope: changed, maturity: 'tested_mock' });
+
+    const result = await runIagEvidenceBootstrap({
+      command: {
+        kind: 'run',
+        references: REFS,
+        originId: ORIGIN,
+        actionKind: 'single_url_exception',
+      },
+      approval: approvalFor(actionFor(first)),
+    });
+
+    expect(result).toEqual({
+      kind: 'REFUSED',
+      code: 'IAG_BOOTSTRAP_AUTHORITY_SCOPE_MISMATCH',
+      executorCalls: 0,
+    });
+    expect(existsSync(process.env.SANGFOR_NONCE_STORE_PATH ?? '')).toBe(false);
+  });
 });

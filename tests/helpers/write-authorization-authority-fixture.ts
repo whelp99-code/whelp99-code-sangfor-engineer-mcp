@@ -8,6 +8,7 @@ import {
   maskedPromotionRef,
   type PromotionLedgerEventInput,
 } from '../../packages/sangfor-competency/src/index.js';
+import { signExecutionTargetClassification } from '../../packages/sangfor-competency/src/execution-target-authority.js';
 import { writeValidationFixture } from './capability-evidence-validation-fixture.js';
 import { testFileLocalWriteAuthority } from './local-write-authority.js';
 
@@ -85,10 +86,28 @@ export async function writeAuthorityFixture(input: {
   const manifestSource = JSON.stringify(manifest);
   const manifestPath = join(input.root, 'manifest.json');
   const validationContextPath = join(input.root, 'context.json');
+  const targetEnvironment = input.targetEnvironment ?? 'lab';
+  const targetClassification = {
+    environment: targetEnvironment,
+    token: signExecutionTargetClassification(LEDGER_SECRET, {
+      environment: targetEnvironment,
+      product: manifest.target.productId,
+      capabilityId: manifest.target.capabilityId,
+      toolId: manifest.target.toolId,
+      campaignId: manifest.manifestId,
+      deviceIdentityDigest: digests.deviceIdentityDigest,
+      originDigest: digests.originDigest,
+      firmwareTruthDigest: firmwareTruth.truthDigest,
+      recipeDigest: digests.recipeDigest,
+      toolDigest: digests.toolDigest,
+      runtimeDigest: digests.runtimeDigest,
+      windowIdentityDigest: digests.windowIdentityDigest,
+    }),
+  } as const;
   writeFileSync(manifestPath, manifestSource);
   writeFileSync(validationContextPath, JSON.stringify({
     campaign: input.mockCampaign ? 'mock_mutation' : 'mutation',
-    targetEnvironment: input.targetEnvironment ?? 'lab',
+    targetClassification,
     evaluatedAt: '2026-08-25T12:00:00.000Z',
     currentFirmware: { ...base.context.currentFirmware, adapterProduct: input.product },
     currentDigests: digests,
@@ -146,7 +165,7 @@ export async function writeAuthorityFixture(input: {
       product: input.product,
       capabilityId: input.capabilityId,
       toolId: input.toolId,
-      targetEnvironment: input.targetEnvironment ?? 'lab',
+      targetEnvironment,
       deviceId: manifest.digests.deviceIdentityDigest,
       firmwareId: manifest.firmwareTruth.truthDigest,
       firmwareTruth: {

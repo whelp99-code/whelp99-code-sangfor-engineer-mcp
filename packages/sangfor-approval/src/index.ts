@@ -165,6 +165,27 @@ export class FileSingleUseNonceStore {
     ));
   }
 
+  inspect(nonce: string, expiresAt: string, now: Date = new Date()): NonceConsumeResult {
+    if (typeof nonce !== 'string' || nonce.length === 0 || hasApprovalControlCharacters(nonce)
+      || !Number.isFinite(Date.parse(expiresAt)) || !Number.isFinite(now.getTime())) {
+      return { ok: false, reason: 'invalid nonce input' };
+    }
+    if (Date.parse(expiresAt) < now.getTime()) {
+      return { ok: false, reason: `approval nonce expired: ${nonce}` };
+    }
+    try {
+      const state = readNonceStore(this.filePath, this.authority.epoch);
+      const replayed = state.consumed.some((record) => (
+        record.nonce === nonce && record.authorityEpoch === this.authority.epoch
+      ));
+      return replayed
+        ? { ok: false, reason: `approval nonce already used: ${nonce}` }
+        : { ok: true };
+    } catch (error) {
+      return { ok: false, reason: error instanceof Error ? error.message : String(error) };
+    }
+  }
+
   async consume(nonce: string, expiresAt: string, now: Date = new Date()): Promise<NonceConsumeResult> {
     return this.authority.fence.write(this.authority, { operation: 'approval-nonce.consume', targetPaths: [this.filePath] }, () => {
     if (typeof nonce !== 'string' || nonce.length === 0 || hasApprovalControlCharacters(nonce)

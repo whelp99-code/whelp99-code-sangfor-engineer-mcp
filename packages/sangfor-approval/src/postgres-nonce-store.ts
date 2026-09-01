@@ -71,6 +71,55 @@ export class PostgresSingleUseNonceStore {
     return this.client!;
   }
 
+  async inspect(
+    projectId: string,
+    nonce: string,
+    expiresAt: string,
+    authorityEpoch: number,
+    now: Date = new Date(),
+  ): Promise<NonceConsumeResult> {
+    if (typeof projectId !== 'string' || projectId.length === 0) {
+      return { ok: false, reason: 'invalid nonce input: projectId' };
+    }
+    if (typeof nonce !== 'string' || nonce.length === 0) {
+      return { ok: false, reason: 'invalid nonce input: nonce' };
+    }
+    const expiryMs = Date.parse(expiresAt);
+    if (!Number.isFinite(expiryMs) || !Number.isFinite(now.getTime())) {
+      return { ok: false, reason: 'invalid nonce input: expiresAt' };
+    }
+    if (expiryMs < now.getTime()) {
+      return { ok: false, reason: `approval nonce expired: ${nonce}` };
+    }
+    try {
+      const db = await this.getClient();
+      const inspected = await db.$transaction(async (tx: {
+        $executeRawUnsafe: Function;
+        $queryRawUnsafe: Function;
+      }) => {
+        await tx.$executeRawUnsafe(`SELECT set_config('app.project_id', $1, true)`, projectId);
+        const epochs = await tx.$queryRawUnsafe(
+          `SELECT COALESCE((SELECT "epoch" FROM "BlroProjectAuthorityEpoch" WHERE "projectId"=$1),0) AS "epoch"`,
+          projectId,
+        ) as Array<{ epoch: number }>;
+        if (epochs[0]?.epoch !== authorityEpoch) return { kind: 'stale' as const };
+        const rows = await tx.$queryRawUnsafe(
+          `SELECT "id" FROM "BlroApprovalNonce" WHERE "id"=$1 LIMIT 1`,
+          `${projectId}:${nonce}`,
+        ) as unknown[];
+        return rows.length > 0 ? { kind: 'duplicate' as const } : { kind: 'available' as const };
+      });
+      if (inspected.kind === 'available') return { ok: true };
+      if (inspected.kind === 'stale') {
+        return { ok: false, code: 'STALE_EPOCH', reason: 'approval authority epoch is stale' };
+      }
+      return { ok: false, code: 'ALREADY_USED', reason: `approval nonce already used: ${nonce}` };
+    } catch (error) {
+      const detail = scrub(error instanceof Error ? error.message : String(error));
+      return { ok: false, code: 'STORE_UNAVAILABLE', reason: `nonce store unavailable (fail-closed): ${detail}` };
+    }
+  }
+
   /**
    * Consume `nonce` for `projectId`. Returns ok exactly once globally while
    * unexpired; every other outcome refuses.

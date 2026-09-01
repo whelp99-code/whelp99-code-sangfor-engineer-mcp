@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { mkdirSync, mkdtempSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { FileNonceStore } from '../packages/sangfor-operator/src/nonce-store.js';
@@ -27,6 +27,16 @@ describe('FileNonceStore', () => {
     expect((await store.consume('n2', future())).ok).toBe(true);
   });
 
+  it('inspects replay state without creating or consuming the nonce store', async () => {
+    const path = join(dir, 'nonces.json');
+    const store = new FileNonceStore(path);
+
+    expect(store.inspect('n1', future())).toEqual({ ok: true });
+    expect(existsSync(path)).toBe(false);
+    expect((await store.consume('n1', future())).ok).toBe(true);
+    expect(store.inspect('n1', future())).toMatchObject({ ok: false });
+  });
+
   it('garbage-collects expired records (an expired nonce may be re-consumed; expiry itself is rejected upstream)', async () => {
     const path = join(dir, 'nonces.json');
     writeFileSync(path, JSON.stringify({ consumed: [{ nonce: 'old', expiresAt: new Date(Date.now() - 1000).toISOString(), consumedAt: new Date().toISOString() , authorityEpoch: 0}] }));
@@ -40,6 +50,7 @@ describe('FileNonceStore', () => {
     const result = await new FileNonceStore(path).consume('n1', future());
     expect(result.ok).toBe(false);
     expect(result.reason).toMatch(/fail-closed/);
+    expect(new FileNonceStore(path).inspect('n2', future())).toMatchObject({ ok: false });
   });
 
   it('keeps operator error meaning while using the shared lock and 0600 store', async () => {

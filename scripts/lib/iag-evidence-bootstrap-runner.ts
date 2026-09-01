@@ -1,4 +1,7 @@
-import { authorizeIagEvidenceBootstrap } from '../../packages/sangfor-operator/src/iag-evidence-bootstrap.js';
+import {
+  authorizeIagEvidenceBootstrap,
+  preflightIagEvidenceBootstrap,
+} from '../../packages/sangfor-operator/src/iag-evidence-bootstrap.js';
 import {
   resolveConfiguredWriteAuthority,
   type DerivedAuthorityScope,
@@ -117,9 +120,18 @@ export async function runIagEvidenceBootstrap(
   }));
   if (!authority.ok) return refused(authority.code);
   if (input.approval === undefined) return refused('IAG_BOOTSTRAP_APPROVAL_REQUIRED');
-  const createExecution = input.createExecution;
-  if (createExecution === undefined) return refused('IAG_BOOTSTRAP_EXECUTION_SEAM_REQUIRED');
   const action = derivedO1Action(input.command, authority.scope);
+  const createExecution = input.createExecution;
+  if (createExecution === undefined) {
+    const refusal = eligibilityRefusal(await preflightIagEvidenceBootstrap({
+      action,
+      authority: input.command.references,
+      approval: input.approval,
+    }));
+    return refusal === undefined
+      ? refused('IAG_BOOTSTRAP_EXECUTION_SEAM_REQUIRED')
+      : refused(refusal);
+  }
   const refusal = eligibilityRefusal(await authorizeIagEvidenceBootstrap({
     action,
     authority: input.command.references,

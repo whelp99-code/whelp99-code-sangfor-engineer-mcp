@@ -18,6 +18,8 @@ import {
   writeAuthorityFixture,
   type AuthorityFixture,
 } from './helpers/write-authorization-authority-fixture.js';
+import { signExecutionTargetClassification } from '../packages/sangfor-competency/src/execution-target-authority.js';
+import { digestCanonicalOrigin } from '../packages/shared/src/index.js';
 
 const BOOTSTRAP_SECRET = 'iag-bootstrap-runner-secret-32-bytes';
 const LEDGER_SECRET = 'write-authority-ledger-secret-32-bytes';
@@ -95,11 +97,46 @@ function setAuthorityTargetEnvironment(targetEnvironment: 'lab' | 'production' |
     throw new TypeError('AUTHORITY_CONTEXT_FIXTURE_INVALID');
   }
   const withoutClassification = Object.fromEntries(
-    Object.entries(context).filter(([key]) => key !== 'targetEnvironment'),
+    Object.entries(context).filter(([key]) => key !== 'targetClassification'),
+  );
+  const targetClassification = targetEnvironment === undefined ? undefined : {
+    environment: targetEnvironment,
+    token: signExecutionTargetClassification(LEDGER_SECRET, {
+      environment: targetEnvironment,
+      product: fixture.scope.product,
+      capabilityId: fixture.scope.capabilityId,
+      toolId: fixture.scope.toolId,
+      campaignId: fixture.scope.campaignId,
+      deviceIdentityDigest: fixture.scope.deviceId,
+      originDigest: digestCanonicalOrigin(fixture.scope.originId, 'origin'),
+      firmwareTruthDigest: fixture.scope.firmwareId,
+      recipeDigest: fixture.scope.implementation.recipeDigest,
+      toolDigest: fixture.scope.implementation.toolDigest,
+      runtimeDigest: fixture.scope.implementation.runtimeDigest,
+      windowIdentityDigest: fixture.scope.windowId,
+    }),
+  } as const;
+  writeFileSync(path, JSON.stringify({
+    ...withoutClassification,
+    ...(targetClassification === undefined ? {} : { targetClassification }),
+  }));
+}
+
+function forgeAuthorityTargetClassification(): void {
+  const path = fixture.refs.validationContextPath;
+  const context: unknown = JSON.parse(readFileSync(path, 'utf8'));
+  if (context === null || typeof context !== 'object' || Array.isArray(context)) {
+    throw new TypeError('AUTHORITY_CONTEXT_FIXTURE_INVALID');
+  }
+  const withoutClassification = Object.fromEntries(
+    Object.entries(context).filter(([key]) => key !== 'targetClassification'),
   );
   writeFileSync(path, JSON.stringify({
     ...withoutClassification,
-    ...(targetEnvironment === undefined ? {} : { targetEnvironment }),
+    targetClassification: {
+      environment: 'lab',
+      token: '0'.repeat(64),
+    },
   }));
 }
 
@@ -188,6 +225,21 @@ describe('O1 IAG evidence bootstrap runner authority refusals', () => {
     expect(existsSync(noncePath)).toBe(false);
   });
 
+  it('Given a forged lab target classification, When the runner runs, Then authority refuses before approval or execution', async () => {
+    forgeAuthorityTargetClassification();
+    const seam = recordingSeam();
+
+    const outcome = await runIagEvidenceBootstrap({
+      command: command(), approval: approvalFor(), createExecution: seam.create,
+    });
+
+    expect(outcome).toEqual({
+      kind: 'REFUSED', code: 'AUTHORITY_TARGET_CLASSIFICATION_REFUSED', executorCalls: 0,
+    });
+    expect(seam.actions).toEqual([]);
+    expect(existsSync(noncePath)).toBe(false);
+  });
+
   it('Given no approval document, When the runner runs, Then it refuses instead of minting one', async () => {
     const outcome = await runIagEvidenceBootstrap({
       command: command(), approval: undefined, createExecution: forbiddenSeam,
@@ -204,6 +256,19 @@ describe('O1 IAG evidence bootstrap runner authority refusals', () => {
 
     expect(outcome).toEqual({
       kind: 'REFUSED', code: 'IAG_BOOTSTRAP_EXECUTION_SEAM_REQUIRED', executorCalls: 0,
+    });
+    expect(existsSync(noncePath)).toBe(false);
+  });
+
+  it('Given an invalid signed approval and no execution seam, When the runner runs, Then preflight refuses the signature first', async () => {
+    const approval = { ...approvalFor(), approvalToken: '0'.repeat(64) };
+
+    const outcome = await runIagEvidenceBootstrap({
+      command: command(), approval,
+    });
+
+    expect(outcome).toEqual({
+      kind: 'REFUSED', code: 'IAG_BOOTSTRAP_APPROVAL_SIGNATURE_REFUSED', executorCalls: 0,
     });
     expect(existsSync(noncePath)).toBe(false);
   });
@@ -302,6 +367,22 @@ describe('O1 IAG evidence bootstrap runner authorized hand-off', () => {
     });
 
     // Then
+    expect(replay).toEqual({
+      kind: 'REFUSED', code: 'IAG_BOOTSTRAP_NONCE_REFUSED', executorCalls: 0,
+    });
+  });
+
+  it('Given an approval already consumed by an authorized run, When no seam is injected, Then read-only preflight still detects replay', async () => {
+    const approval = approvalFor();
+    const first = await runIagEvidenceBootstrap({
+      command: command(), approval, createExecution: recordingSeam().create,
+    });
+    expect(first).toMatchObject({ kind: 'HANDED_TO_EXECUTION' });
+
+    const replay = await runIagEvidenceBootstrap({
+      command: command(), approval,
+    });
+
     expect(replay).toEqual({
       kind: 'REFUSED', code: 'IAG_BOOTSTRAP_NONCE_REFUSED', executorCalls: 0,
     });

@@ -15,7 +15,7 @@ import {
   type IagBootstrapScope,
   type WriteEligibility,
 } from '../../sangfor-safety/src/index.js';
-import { consumeApprovalNonceAsync } from './nonce-store.js';
+import { consumeApprovalNonceAsync, inspectApprovalNonceAsync } from './nonce-store.js';
 import { canonicalizeUrlOrigin, digestCanonicalOrigin } from '../../shared/src/index.js';
 import { z } from 'zod';
 
@@ -137,8 +137,10 @@ function exactAuthorityScope(
     && action.implementation.runtimeDigest === scope.implementation.runtimeDigest;
 }
 
-/** Campaign-only high-level gate. No caller-authored maturity/evidence decision enters this boundary. */
-export async function authorizeIagEvidenceBootstrap(input: IagBootstrapAuthorizationInput): Promise<WriteEligibility> {
+async function evaluateIagEvidenceBootstrap(
+  input: IagBootstrapAuthorizationInput,
+  nonceMode: 'inspect' | 'consume',
+): Promise<WriteEligibility> {
   const parsedApproval = bootstrapApprovalSchema.safeParse(input.approval);
   if (!parsedApproval.success) return refused('IAG_BOOTSTRAP_APPROVAL_FIELDS_REQUIRED');
   const parsedInput: ParsedBootstrapInput = { ...input, approval: parsedApproval.data };
@@ -175,6 +177,22 @@ export async function authorizeIagEvidenceBootstrap(input: IagBootstrapAuthoriza
   if (preflight.kind === 'REFUSED') return preflight;
   const approvalRefusal = verifyBootstrapApproval(parsedInput);
   if (approvalRefusal !== undefined) return approvalRefusal;
-  const consumed = await consumeApprovalNonceAsync(parsedInput.approval, parsedInput.now);
-  return consumed.ok ? preflight : refused('IAG_BOOTSTRAP_NONCE_REFUSED');
+  const nonce = nonceMode === 'consume'
+    ? await consumeApprovalNonceAsync(parsedInput.approval, parsedInput.now)
+    : await inspectApprovalNonceAsync(parsedInput.approval, parsedInput.now);
+  return nonce.ok ? preflight : refused('IAG_BOOTSTRAP_NONCE_REFUSED');
+}
+
+/** Read-only approval/authority/replay preflight. It can never authorize execution by itself. */
+export async function preflightIagEvidenceBootstrap(
+  input: IagBootstrapAuthorizationInput,
+): Promise<WriteEligibility> {
+  return evaluateIagEvidenceBootstrap(input, 'inspect');
+}
+
+/** Campaign-only high-level gate. No caller-authored maturity/evidence decision enters this boundary. */
+export async function authorizeIagEvidenceBootstrap(
+  input: IagBootstrapAuthorizationInput,
+): Promise<WriteEligibility> {
+  return evaluateIagEvidenceBootstrap(input, 'consume');
 }
