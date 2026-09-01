@@ -31,20 +31,26 @@ export type ResolveWriteAuthorityInput = {
   };
 };
 
+/**
+ * What an authorized resolution vouches for: the exact scope it was derived
+ * from, plus the effective maturity replayed from the authenticated promotion
+ * ledger. Downstream gates decide on `maturity`; no caller authors its own.
+ */
+export type AuthorizedWriteAuthority = {
+  readonly scope: DerivedAuthorityScope;
+  readonly maturity: Maturity;
+};
+
 export type ResolvedWriteAuthority =
-  | {
-    readonly status: 'ordinary_active';
-    readonly scope: DerivedAuthorityScope;
-  }
-  | {
-    readonly status: 'bootstrap_candidate';
-    readonly scope: DerivedAuthorityScope;
-  }
+  | ({ readonly status: 'ordinary_active' } & AuthorizedWriteAuthority)
+  | ({ readonly status: 'bootstrap_candidate' } & AuthorizedWriteAuthority)
   | { readonly status: 'refused'; readonly code: string };
 
 export type DerivedAuthorityScope = {
   readonly product: string;
   readonly capabilityId: string;
+  readonly toolId: string;
+  readonly targetEnvironment: 'lab' | 'production' | 'unclassified';
   readonly deviceId: string;
   readonly originDigest: string;
   readonly firmwareId: string;
@@ -155,9 +161,11 @@ export async function resolveConfiguredWriteAuthority(input: ResolveWriteAuthori
     const maturity: Maturity = deriveEffectiveMaturity(baseline, manifest.target, events);
     const firstRun = manifest.runs[0];
     if (firstRun === undefined) return { status: 'refused', code: 'AUTHORITY_RUN_MISSING' };
-    const scope = {
+    const scope: DerivedAuthorityScope = {
       product: manifest.target.productId,
       capabilityId: manifest.target.capabilityId,
+      toolId: manifest.target.toolId,
+      targetEnvironment: validationContext.targetEnvironment ?? 'unclassified',
       deviceId: validationContext.currentDigests.deviceIdentityDigest,
       originDigest: validationContext.currentDigests.originDigest,
       firmwareId: validationContext.currentFirmware.truthDigest,
@@ -190,11 +198,11 @@ export async function resolveConfiguredWriteAuthority(input: ResolveWriteAuthori
     };
     if (input.expected.mode === 'ordinary_field') {
       return maturity === 'field_verified' && currentPromotion(events, manifest.target, manifestSource)
-        ? { status: 'ordinary_active', scope }
+        ? { status: 'ordinary_active', scope, maturity }
         : { status: 'refused', code: 'AUTHORITY_ACTIVE_PROMOTION_REQUIRED' };
     }
     return maturity === 'tested_mock' && candidateComplete(manifest, validationContext)
-      ? { status: 'bootstrap_candidate', scope }
+      ? { status: 'bootstrap_candidate', scope, maturity }
       : { status: 'refused', code: 'AUTHORITY_MOCK_CANDIDATE_REQUIRED' };
   } catch {
     return { status: 'refused', code: 'AUTHORITY_UNAVAILABLE' };

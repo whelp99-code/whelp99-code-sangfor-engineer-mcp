@@ -238,6 +238,37 @@ describe('capability evidence fail-closed validation', () => {
     expect(issueCodes(result)).toEqual(expect.arrayContaining(['identity_role_conflict', 'insufficient_real_runs', 'insufficient_device_diversity']));
   });
 
+  it('requires exactly two device and window identities for mutation diversity', () => {
+    // Given
+    const fixture = writeValidationFixture(root, 'mutation');
+    const devices = new Set(fixture.context.runIdentities.map(({ deviceIdentityDigest }) => deviceIdentityDigest));
+    const windows = new Set(fixture.context.runIdentities.map(({ windowIdentityDigest }) => windowIdentityDigest));
+
+    // When
+    const active = validate(root, fixture);
+    const oneDevice = validate(root, fixture, {
+      ...fixture.context,
+      runIdentities: fixture.context.runIdentities.map((identity) => ({
+        ...identity,
+        deviceIdentityDigest: fixture.context.runIdentities[0]?.deviceIdentityDigest ?? identity.deviceIdentityDigest,
+      })),
+    });
+    const oneWindow = validate(root, fixture, {
+      ...fixture.context,
+      runIdentities: fixture.context.runIdentities.map((identity) => ({
+        ...identity,
+        windowIdentityDigest: fixture.context.runIdentities[0]?.windowIdentityDigest ?? identity.windowIdentityDigest,
+      })),
+    });
+
+    // Then
+    expect(devices.size).toBe(2);
+    expect(windows.size).toBe(2);
+    expect(active).toEqual({ status: 'active', issues: [] });
+    expect(issueCodes(oneDevice)).toEqual(['insufficient_device_diversity']);
+    expect(issueCodes(oneWindow)).toEqual(['insufficient_window_diversity']);
+  });
+
   it('activates complete mutation cycles and refuses retry, collateral, window, or negative-case failures', () => {
     // Given
     const fixture = writeValidationFixture(root, 'mutation');

@@ -3,6 +3,7 @@ import {
   signDomainApproval,
   verifyDomainApprovalSignature,
 } from '@sangfor/approval';
+import { createHash } from 'node:crypto';
 import { isLoopbackBrowserTarget } from '../../sangfor-browser-contracts/src/index.js';
 import {
   resolveConfiguredWriteAuthority,
@@ -50,13 +51,30 @@ export type IagBootstrapAuthorizationInput = {
   readonly now?: Date;
 };
 
+function authorityIdentityDigest(scope: IagBootstrapScope): string {
+  const identity = canonicalizeApprovalPayload([
+    'iag-evidence-bootstrap.authority.v1',
+    scope.firmwareTruth.recordId, scope.firmwareTruth.vendor, scope.firmwareTruth.adapterProduct,
+    scope.firmwareTruth.productVariant ?? 'null', scope.firmwareTruth.versionRaw,
+    scope.firmwareTruth.versionFamily, scope.firmwareTruth.revision ?? 'null',
+    scope.firmwareTruth.buildId ?? 'null', scope.firmwareTruth.hotfix ?? 'null',
+    scope.firmwareTruth.uiFingerprint ?? 'null', scope.firmwareTruth.apiFingerprint ?? 'null',
+    scope.firmwareTruth.status, scope.firmwareTruth.observedAt, scope.firmwareTruth.specVersion,
+    scope.firmwareTruth.specApplicability, scope.firmwareTruth.truthDigest,
+    scope.implementation.recipeDigest, scope.implementation.toolDigest,
+    scope.implementation.runtimeDigest,
+  ]);
+  return createHash('sha256').update(identity, 'utf8').digest('hex');
+}
+
 function canonicalBootstrapApproval(scope: IagBootstrapScope, approval: IagBootstrapApprovalFields): string {
   return canonicalizeApprovalPayload([
     'iag-evidence-bootstrap.v1', approval.approvedBy, approval.changeTicketId,
     approval.rollbackPlanId, approval.purpose, approval.nonce, approval.expiresAt, String(approval.authorityEpoch),
-    scope.product, scope.capabilityId, scope.actionKind, scope.targetEnvironment,
+    scope.product, scope.capabilityId, scope.toolId, scope.actionKind, scope.targetEnvironment,
     scope.deviceId, scope.firmwareId, scope.windowId, scope.sessionId,
     scope.originId, scope.campaignId,
+    authorityIdentityDigest(scope),
   ]);
 }
 
@@ -94,9 +112,29 @@ function exactAuthorityScope(
   actionOriginDigest: string,
 ): boolean {
   return action.product === scope.product && action.capabilityId === scope.capabilityId
+    && action.toolId === scope.toolId && action.targetEnvironment === scope.targetEnvironment
     && action.deviceId === scope.deviceId && action.firmwareId === scope.firmwareId
     && action.windowId === scope.windowId && action.sessionId === scope.sessionId
-    && action.campaignId === scope.campaignId && actionOriginDigest === scope.originDigest;
+    && action.campaignId === scope.campaignId && actionOriginDigest === scope.originDigest
+    && action.firmwareTruth.recordId === scope.firmwareTruth.recordId
+    && action.firmwareTruth.vendor === scope.firmwareTruth.vendor
+    && action.firmwareTruth.adapterProduct === scope.firmwareTruth.adapterProduct
+    && action.firmwareTruth.productVariant === scope.firmwareTruth.productVariant
+    && action.firmwareTruth.versionRaw === scope.firmwareTruth.versionRaw
+    && action.firmwareTruth.versionFamily === scope.firmwareTruth.versionFamily
+    && action.firmwareTruth.revision === scope.firmwareTruth.revision
+    && action.firmwareTruth.buildId === scope.firmwareTruth.buildId
+    && action.firmwareTruth.hotfix === scope.firmwareTruth.hotfix
+    && action.firmwareTruth.uiFingerprint === scope.firmwareTruth.uiFingerprint
+    && action.firmwareTruth.apiFingerprint === scope.firmwareTruth.apiFingerprint
+    && action.firmwareTruth.status === scope.firmwareTruth.status
+    && action.firmwareTruth.observedAt === scope.firmwareTruth.observedAt
+    && action.firmwareTruth.specVersion === scope.firmwareTruth.specVersion
+    && action.firmwareTruth.specApplicability === scope.firmwareTruth.specApplicability
+    && action.firmwareTruth.truthDigest === scope.firmwareTruth.truthDigest
+    && action.implementation.recipeDigest === scope.implementation.recipeDigest
+    && action.implementation.toolDigest === scope.implementation.toolDigest
+    && action.implementation.runtimeDigest === scope.implementation.runtimeDigest;
 }
 
 /** Campaign-only high-level gate. No caller-authored maturity/evidence decision enters this boundary. */
@@ -127,7 +165,7 @@ export async function authorizeIagEvidenceBootstrap(input: IagBootstrapAuthoriza
     return refused(authority.status === 'refused' ? authority.code : 'IAG_BOOTSTRAP_AUTHORITY_SCOPE_MISMATCH');
   }
   const preflight = resolveWriteEligibility({
-    kind: 'iag_evidence_bootstrap', scope: parsedInput.action, maturity: 'tested_mock',
+    kind: 'iag_evidence_bootstrap', scope: parsedInput.action, maturity: authority.maturity,
     mockEvidence: { status: 'completed_green', negativeCaseCodes: O1_NEGATIVE_CASE_CODES },
     activeEvidence: { status: 'unavailable' }, target,
     allowRealExecution: process.env.SANGFOR_ALLOW_REAL_EXECUTION === 'true',

@@ -25,8 +25,33 @@ export type AuthorityFixture = {
   readonly scope: {
     readonly product: string;
     readonly capabilityId: string;
+    readonly toolId: string;
+    readonly targetEnvironment: 'lab' | 'production';
     readonly deviceId: string;
     readonly firmwareId: string;
+    readonly firmwareTruth: {
+      readonly recordId: string;
+      readonly vendor: 'SANGFOR' | 'FORTINET' | 'CISCO';
+      readonly adapterProduct: string;
+      readonly productVariant: string | null;
+      readonly versionRaw: string;
+      readonly versionFamily: string;
+      readonly revision: string | null;
+      readonly buildId: string | null;
+      readonly hotfix: string | null;
+      readonly uiFingerprint: string | null;
+      readonly apiFingerprint: string | null;
+      readonly status: 'verified';
+      readonly observedAt: string;
+      readonly specVersion: string;
+      readonly specApplicability: 'verified';
+      readonly truthDigest: string;
+    };
+    readonly implementation: {
+      readonly recipeDigest: string;
+      readonly toolDigest: string;
+      readonly runtimeDigest: string;
+    };
     readonly windowId: string;
     readonly sessionId: string;
     readonly originId: string;
@@ -41,6 +66,7 @@ export async function writeAuthorityFixture(input: {
   readonly toolId: string;
   readonly fieldVerified: boolean;
   readonly mockCampaign: boolean;
+  readonly targetEnvironment?: 'lab' | 'production';
 }): Promise<AuthorityFixture> {
   const evidenceRoot = join(input.root, 'evidence');
   mkdirSync(evidenceRoot, { recursive: true });
@@ -62,6 +88,7 @@ export async function writeAuthorityFixture(input: {
   writeFileSync(manifestPath, manifestSource);
   writeFileSync(validationContextPath, JSON.stringify({
     campaign: input.mockCampaign ? 'mock_mutation' : 'mutation',
+    targetEnvironment: input.targetEnvironment ?? 'lab',
     evaluatedAt: '2026-08-25T12:00:00.000Z',
     currentFirmware: { ...base.context.currentFirmware, adapterProduct: input.product },
     currentDigests: digests,
@@ -118,8 +145,33 @@ export async function writeAuthorityFixture(input: {
     scope: {
       product: input.product,
       capabilityId: input.capabilityId,
+      toolId: input.toolId,
+      targetEnvironment: input.targetEnvironment ?? 'lab',
       deviceId: manifest.digests.deviceIdentityDigest,
       firmwareId: manifest.firmwareTruth.truthDigest,
+      firmwareTruth: {
+        recordId: manifest.firmwareTruth.recordId,
+        vendor: manifest.firmwareTruth.vendor,
+        adapterProduct: manifest.firmwareTruth.adapterProduct,
+        productVariant: manifest.firmwareTruth.productVariant,
+        versionRaw: manifest.firmwareTruth.versionRaw,
+        versionFamily: manifest.firmwareTruth.versionFamily,
+        revision: manifest.firmwareTruth.revision,
+        buildId: manifest.firmwareTruth.buildId,
+        hotfix: manifest.firmwareTruth.hotfix,
+        uiFingerprint: manifest.firmwareTruth.uiFingerprint,
+        apiFingerprint: manifest.firmwareTruth.apiFingerprint,
+        status: manifest.firmwareTruth.status,
+        observedAt: manifest.firmwareTruth.observedAt,
+        specVersion: manifest.firmwareTruth.specVersion,
+        specApplicability: manifest.firmwareTruth.specApplicability,
+        truthDigest: manifest.firmwareTruth.truthDigest,
+      },
+      implementation: {
+        recipeDigest: manifest.digests.recipeDigest,
+        toolDigest: manifest.digests.toolDigest,
+        runtimeDigest: manifest.digests.runtimeDigest,
+      },
       windowId: manifest.digests.windowIdentityDigest,
       sessionId: manifest.runs[0]?.id ?? 'missing-run',
       originId: origin,
