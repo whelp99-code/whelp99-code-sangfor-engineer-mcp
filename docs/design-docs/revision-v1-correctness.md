@@ -35,28 +35,32 @@ GitHub 실행 단위: [#77](https://github.com/whelp99-code/whelp99-code-sangfor
 
 원본 전체 크기 때문에 통합된 공통 64MiB JSON envelope가 `source_too_large`로 거부하는 문제를 실제 재현했다. RAG에 한해 320MiB/2,000,000노드의 유한한 envelope를 선언했다. 엄격한 스키마, 위험한 객체 키, 깊이, 배열 크기, 100,000청크, 중복 ID 검사는 유지한다. 이 규모를 넘으면 기존 shard/DB 경로를 평가해야 한다. 66,767개 원본 전체를 이 경계로 읽고 검색한 결과가 아래에 남는다.
 
-고정 질문은 기존 issue-15 자료의 21개 양성 질문과 4개 버전 부정 질문이다. 질문·정답·기존 임계값을 유지했고, 검색 실행 전에 원문 front matter로 제품 필터 오류 9개를 바로잡았다. 변경 목록은 [고정 qrels](../../data/evals/rag/revision-v1-qrels.json)에 기록했다. 통제된 QA 표본이며 실장비 사용자 평가나 충분한 제품별 대규모 평가를 대체하지 않는다.
+최종 평가 v2는 기존 issue-15의 21개 양성 질문과 4개 버전 부정 질문을 사용한다. 질문·정답·기존 임계값은 유지하고 HCI와 SCP를 혼동한 6개 제품 필터를 원문으로 바로잡았다. 통합 코드의 NGFW/SCC 분류를 유지한 [고정 qrels v2](../../data/evals/rag/revision-v1-qrels-v2.json)를 후보 실행 전에 확정했다.
 
-| 측정 | 보정된 기존 검색 / 원본 색인 | 메타데이터 후보 |
+정정 기록: 최초 v1은 구형 색인의 front matter를 그대로 따라 NGFW/SCC 질문도 OTHER로 바꿨다. 통합 registry에는 NGFW/SCC가 이미 존재하므로 v1은 구형 데이터의 탐색 기록으로만 보존한다. v1의 결과나 qrels를 덮어쓰지 않고 v2를 추가했으며, 아래 최종 비교는 동일한 v2 질문을 원본과 후보 양쪽에 적용한 것이다. 임계값을 결과에 맞춰 바꾸지 않았다.
+
+| 측정 | 보정된 기존 검색 / 원본 색인 | 원문 기반 분류 후보 v2 |
 | --- | --- | --- |
-| Recall@5 / HitRate@5 | 0.6190 / 0.6190 | 0.6190 / 0.6190 |
-| MRR@5 | 0.4286 | 0.4286 |
-| nDCG@5 | 0.4758 | 0.4758 |
-| 잘못된 버전의 정답 없음 질의 반환 | 0/4 | 0/4 |
-| 평균 / p95 검색 지연 | 369.6ms / 1570.9ms | 373.2ms / 1534.5ms |
-| 최초 색인 로드 | 2541.8ms | 2469.0ms |
+| Recall@5 / HitRate@5 | 0.6190 / 0.6190 | 0.7143 / 0.7143 |
+| MRR@5 | 0.4286 | 0.5000 |
+| nDCG@5 | 0.4758 | 0.5535 |
+| 버전 부정 질의 반환 | 0/4 | 0/4 |
+| 평균 / p95 검색 지연 | 180.6ms / 374.0ms | 204.9ms / 373.9ms |
+| 최초 색인 로드 | 2442.7ms | 2429.6ms |
 
-[원본 결과](../references/revision-v1/rag-baseline.json), [후보 결과](../references/revision-v1/rag-candidate.json), [색인 감사](../references/revision-v1/corpus-audit.json)에 원본·qrels 해시, 환경, 질의별 결과와 지연을 보존했다. 단일 실행의 지연은 운영 p95 SLO가 아니다. 기존 HitRate@5 0.85 목표를 충족하지 못했으므로 후보는 **NOT_PROMOTED**다. 성능 개선이나 외부 엔진 우위를 주장하지 않는다.
+[원본 결과 v2](../references/revision-v1/rag-baseline-v2.json), [후보 결과 v2](../references/revision-v1/rag-candidate-v2.json), [색인 감사 v2](../references/revision-v1/corpus-audit-v2.json)에 원본·qrels 해시, 환경, 질의별 결과와 지연을 보존했다. 단일 실행 지연은 운영 p95 SLO가 아니며 통제된 QA 표본은 현장 사용자 평가나 충분한 제품별 대규모 평가를 대체하지 않는다. 기존 HitRate@5 0.85 목표에 미달하므로 후보는 **NOT_PROMOTED**다. 다른 엔진의 성능 우위를 주장하지 않는다.
 
-OTHER의 주된 원인은 VDI/SASE/NGFW 등 현재 분류 체계에 없는 자료다. 확인 가능한 SCP 지원 사례 1청크만 원문 product_id=45, 제목·본문을 근거로 후보에서 HCI_SCP로 재분류했다. 원본 색인·원문은 변경하지 않았다. 분류 확장, 원문 기반 버전 추출, 한국어 재현율, 고정 revision 의미 검색 및 로컬 reranker는 이 기준선 다음의 품질 개선 작업이다. 외부 OSS는 동일 질문·출처·권한·인덱싱 비용·삭제 재현성을 비교한 뒤 판단한다.
+원문 sourceUrl의 정확한 product_id와 제목을 함께 확인한 2,576개 문서, 8,385청크를 후보에서 재분류했다. NGFW 8,200청크, SCC 184청크, SCP 지원 사례 1청크다. [전체 근거 매핑](../references/revision-v1/reclassification-v2.json)에 원문 경로·해시·URL·제목·변경 전후 제품을 기록했다. 원본 색인과 원문은 변경하지 않았다. VDI/SASE 등 미등록 제품이나 불확실한 자료는 OTHER로 유지하여 후보에도 OTHER 35,547청크가 남는다.
+
+이번 표본에서 분류 정비만으로 Recall@5가 9.52%p 증가했다. 원문 기반 버전 추출, 한국어 회수 품질, 고정 revision 의미 검색과 로컬 reranker를 다음 품질 개선 항목으로 둔다. 외부 OSS는 이 기준선과 동일한 질문·출처·권한·인덱싱 비용·삭제 재현성으로 비교한 뒤 결정한다. 최초 [v1 결과](../references/revision-v1/rag-baseline.json)와 [v1 후보](../references/revision-v1/rag-candidate.json)는 감사 이력으로 남긴다.
 
 재현 명령:
 
 ```bash
-TMPDIR=/short/task-tmp pnpm --silent run rag:eval:corpus /path/to/index.json data/evals/rag/revision-v1-qrels.json
+TMPDIR=/short/task-tmp pnpm --silent run rag:eval:corpus /path/to/index.json data/evals/rag/revision-v1-qrels-v2.json
 ```
 
-원문과 대형 색인은 로컬 자료로 유지한다. 커밋된 평가 결과에는 문서 본문·벡터·고객 비밀을 포함하지 않는다.
+원문과 대형 후보 색인은 로컬 자료로 유지한다. 후보 생성 시 전체 근거 매핑의 sourceSha256을 원문과 확인하고 일치하는 filePath의 product만 수정한다. 커밋된 결과에는 문서 본문·벡터·고객 비밀을 포함하지 않는다.
 
 ## 역량과 추적 상태
 

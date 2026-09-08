@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 2,
+  "sourceIndexSha256": "e6cdc89233de3edb81ec103f7bfe8782af82e31f2d55c21ef4dc28259ccfbff7",
+  "chunkCount": 66767,
+  "productCounts": {
+    "HCI": 8673,
+    "IAG": 1288,
+    "CYBER_COMMAND": 183,
+    "ENDPOINT_SECURE": 1120,
+    "NDR": 969,
+    "OTHER": 35547,
+    "NGFW": 8200,
+    "SCC": 184,
+    "HCI_SCP": 10597,
+    "HIWARE": 6
+  },
+  "changedSourceCount": 2576,
+  "changedChunkCount": 8385,
+  "changesByProduct": {
+    "NGFW": 8200,
+    "SCC": 184,
+    "HCI_SCP": 1
+  },
+  "basis": "Canonical integrated product registry plus exact source URL product_id and explicit heading. Version and embedding revision remain unknown.",
+  "promotion": "NOT_PROMOTED"
+}
