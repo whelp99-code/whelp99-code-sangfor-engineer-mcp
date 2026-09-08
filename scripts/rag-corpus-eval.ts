@@ -3,25 +3,37 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { cpus } from 'node:os';
 import { performance } from 'node:perf_hooks';
-import { z } from 'zod';
+import { compareCorpusQuality, corpusQualityThresholdsSchema, corpusReportSchema } from '../packages/sangfor-rag/src/corpus-eval-gate.js';
+import { corpusEvalFixtureSchema } from '../packages/sangfor-rag/src/corpus-eval-contract.js';
 import { loadRagIndex, ragSearchSync, getRagSearchDiagnostics } from '../packages/sangfor-rag/src/index.js';
 import { computeRetrievalMetrics } from '../packages/sangfor-rag/src/retrieval-eval.js';
 
-const QuerySchema = z.object({
-  queryId: z.string().min(1), query: z.string().min(1), product: z.string().min(1),
-  version: z.string().optional(), relevantSources: z.array(z.string()).optional(),
-  hardNegativeSources: z.array(z.string()).optional(), forbiddenSources: z.array(z.string()).optional(),
-});
-const FixtureSchema = z.object({
-  k: z.number().int().positive(), queries: z.array(QuerySchema).min(1), noAnswerQueries: z.array(QuerySchema),
-});
-
 function main(): void {
-  const [indexPath, fixturePath] = process.argv.slice(2);
-  if (!indexPath || !fixturePath || process.argv.length !== 4) throw new Error('Usage: pnpm run rag:eval:corpus <index.json> <qrels.json>');
+  const [indexPath, fixturePath, baselinePath] = process.argv.slice(2);
+  if (!indexPath || !fixturePath || (process.argv.length !== 4 && process.argv.length !== 5)) throw new Error('Usage: pnpm run rag:eval:corpus <index.json> <qrels.json> [baseline-report.json]');
   const fixtureBytes = readFileSync(fixturePath);
-  const fixture = FixtureSchema.parse(JSON.parse(fixtureBytes.toString('utf8')));
+  const fixture = corpusEvalFixtureSchema.parse(JSON.parse(fixtureBytes.toString('utf8')));
+  const baselineBytes = baselinePath ? readFileSync(baselinePath) : undefined;
+  const baseline = baselineBytes ? JSON.parse(baselineBytes.toString('utf8')) : undefined;
+  const thresholds = baselinePath ? corpusQualityThresholdsSchema.parse(JSON.parse(fixtureBytes.toString('utf8')).thresholds) : undefined;
+  if (baselinePath) corpusReportSchema.parse(baseline);
   const indexBytes = readFileSync(indexPath);
+  const settings = {
+    hybridAlpha: process.env.SANGFOR_RAG_HYBRID_ALPHA ?? null,
+    allowCustomer: process.env.SANGFOR_ALLOW_CLOUD_RAG_CUSTOMER === '1',
+    execution: 'local-sync-no-external-inference',
+  };
+  const implementationSha256 = createHash('sha256');
+  const implementationFiles = ['scripts/rag-corpus-eval.ts', 'packages/sangfor-rag/src/corpus-eval-contract.ts',
+    'packages/sangfor-rag/src/rag-search.ts', 'packages/sangfor-rag/src/rag-ranking.ts',
+    'packages/sangfor-rag/src/bm25.ts', 'packages/sangfor-rag/src/query-normalization.ts',
+    'packages/sangfor-rag/src/retrieval-eval.ts', 'packages/sangfor-rag/src/corpus-eval-gate.ts',
+    'packages/sangfor-rag/src/hash-embedding.ts', 'packages/sangfor-rag/src/embedding-space.ts',
+    'packages/sangfor-rag/src/embedding-profile.ts', 'packages/sangfor-rag/src/rag-product.ts',
+    'packages/sangfor-rag/src/rag-index-store.ts'];
+  for (const file of implementationFiles) {
+    implementationSha256.update(file).update(readFileSync(new URL('../' + file, import.meta.url)));
+  }
   const loadStart = performance.now();
   const index = loadRagIndex(indexPath);
   const coldLoadMs = performance.now() - loadStart;
@@ -29,8 +41,9 @@ function main(): void {
     const started = performance.now();
     const hits = ragSearchSync({ query: query.query, product: query.product, version: query.version, limit: fixture.k, indexPath });
     const latencyMs = performance.now() - started;
-    return { queryId: query.queryId, latencyMs, mode: getRagSearchDiagnostics(hits).retrievalMode,
+    return { queryId: query.queryId, product: query.product, language: query.language ?? 'unknown', latencyMs, mode: getRagSearchDiagnostics(hits).retrievalMode,
       hits: hits.map((hit, i) => ({ queryId: query.queryId, sourceId: hit.filePath, rank: i + 1, score: hit.score })),
+      forbiddenHits: hits.filter((hit) => query.forbiddenSources?.includes(hit.filePath)).length,
       hardNegativeHits: hits.filter((hit) => query.hardNegativeSources?.includes(hit.filePath)).length };
   });
   const qrels = fixture.queries.flatMap((query) => (query.relevantSources ?? []).map((sourceId) => ({ queryId: query.queryId, sourceId, grade: 1 })));
@@ -38,17 +51,39 @@ function main(): void {
   const latencies = rows.map((row) => row.latencyMs).sort((a, b) => a - b);
   const noAnswerIds = new Set(fixture.noAnswerQueries.map((query) => query.queryId));
   const noAnswerRows = rows.filter((row) => noAnswerIds.has(row.queryId));
-  console.log(JSON.stringify({ schemaVersion: 1, generatedAt: new Date().toISOString(),
+  if (!readFileSync(indexPath).equals(indexBytes) || !readFileSync(fixturePath).equals(fixtureBytes)) {
+    throw new Error('RAG_EVAL_INPUT_CHANGED_DURING_RUN');
+  }
+  const qrelSources = new Set(index.chunks.map((chunk) => chunk.filePath));
+  const missingRelevantSources = [...new Set(qrels.map((row) => row.sourceId))].filter((source) => !qrelSources.has(source));
+  const bySlice = (field: 'product' | 'language') => Object.fromEntries(
+    [...new Set(fixture.queries.map((query) => query[field] ?? 'unknown'))].sort().map((value) => {
+      const ids = new Set(fixture.queries.filter((query) => (query[field] ?? 'unknown') === value).map((query) => query.queryId));
+      return [value, computeRetrievalMetrics(qrels.filter((row) => ids.has(row.queryId)), rows.flatMap((row) => row.hits), fixture.k)];
+    }));
+  const report = { schemaVersion: 2, generatedAt: new Date().toISOString(),
     indexSha256: createHash('sha256').update(indexBytes).digest('hex'),
     qrelsSha256: createHash('sha256').update(fixtureBytes).digest('hex'),
+    implementationSha256: implementationSha256.digest('hex'), implementationFiles, settings,
+    settingsSha256: createHash('sha256').update(JSON.stringify(settings)).digest('hex'),
+    evaluationOnly: true, promotionStatus: 'NOT_EVALUATED',
+    missingRelevantSources, positiveQueryCount: fixture.queries.length, noAnswerQueryCount: fixture.noAnswerQueries.length,
+    byProduct: bySlice('product'), byLanguage: bySlice('language'),
     node: process.version, cpu: cpus()[0]?.model ?? null, chunkCount: index.chunks.length,
     profile: 'local sync retrieval; legacy/unpinned vectors disabled; no reranker or external inference',
     k: fixture.k, coldLoadMs,
     meanLatencyMs: latencies.reduce((sum, n) => sum + n, 0) / latencies.length,
+    p50LatencyMs: latencies[Math.ceil(latencies.length * 0.5) - 1],
     p95LatencyMs: latencies[Math.ceil(latencies.length * 0.95) - 1],
     metrics: computeRetrievalMetrics(qrels, rows.flatMap((row) => row.hits), fixture.k),
     noAnswerFalsePositiveRate: noAnswerRows.length ? noAnswerRows.filter((row) => row.hits.length > 0).length / noAnswerRows.length : null,
-    hardNegativeHits: rows.reduce((sum, row) => sum + row.hardNegativeHits, 0), rows }, null, 2));
+    forbiddenHits: rows.reduce((sum, row) => sum + row.forbiddenHits, 0),
+    hardNegativeQueryRate: rows.filter((row) => !noAnswerIds.has(row.queryId) && row.hardNegativeHits > 0).length / fixture.queries.length,
+    hardNegativeHits: rows.reduce((sum, row) => sum + row.hardNegativeHits, 0), rows };
+  const comparison = baselinePath ? compareCorpusQuality(report, baseline, thresholds) : null;
+  console.log(JSON.stringify({ ...report, comparison,
+    baselineReportSha256: baselineBytes ? createHash('sha256').update(baselineBytes).digest('hex') : null }, null, 2));
+  if (comparison?.decision === 'NOT_ELIGIBLE') process.exitCode = 2;
 }
 
 main();

@@ -1,6 +1,17 @@
 import { z } from 'zod';
+import { embeddingSpaceSchema } from './embedding-space.js';
 
 export const PGVECTOR_DIMENSIONS = 384 as const;
+export const PGVECTOR_HASH_EMBEDDING_SPACE = embeddingSpaceSchema.parse({
+  schemaVersion: 1,
+  model: 'hash',
+  revision: 'sha256-buckets-v1',
+  dimensions: PGVECTOR_DIMENSIONS,
+  normalization: 'cosine-l2-at-search-v1',
+  preprocessing: 'rag-text-role-prefix-v1',
+  queryPrefix: '',
+  documentPrefix: '',
+});
 
 const PgvectorScopeObjectSchema = z.object({
   tenantId: z.string().min(1).brand('TenantId'),
@@ -15,7 +26,15 @@ export const PgvectorCohortSchema = PgvectorScopeObjectSchema.extend({
   backend: z.string().min(1),
   model: z.string().min(1),
   dimensions: z.literal(PGVECTOR_DIMENSIONS),
-}).strict().readonly();
+  embeddingSpace: embeddingSpaceSchema,
+}).strict().superRefine((cohort, context) => {
+  if (cohort.model !== cohort.embeddingSpace.model || cohort.dimensions !== cohort.embeddingSpace.dimensions) {
+    context.addIssue({ code: z.ZodIssueCode.custom, message: 'cohort model/dimensions must match embeddingSpace', path: ['embeddingSpace'] });
+  }
+  if ((cohort.backend === 'hash') !== (cohort.embeddingSpace.model === 'hash')) {
+    context.addIssue({ code: z.ZodIssueCode.custom, message: 'hash backend/model mismatch', path: ['embeddingSpace', 'model'] });
+  }
+}).readonly();
 
 export const PgvectorFiltersSchema = z.object({
   product: z.string().min(1).optional(),
@@ -37,11 +56,13 @@ export const PgvectorUpsertSchema = PgvectorScopeObjectSchema.extend({
   contentHash: z.string().min(1),
   aclActorIds: z.array(z.string().min(1).brand('ActorId')).readonly(),
   embedding: z.array(z.number().finite()).length(PGVECTOR_DIMENSIONS).readonly(),
+  embeddingSpace: embeddingSpaceSchema,
 }).strict().readonly();
 
 export const PgvectorSearchSchema = z.object({
   scope: PgvectorScopeSchema,
   query: z.array(z.number().finite()).length(PGVECTOR_DIMENSIONS).readonly(),
+  embeddingSpace: embeddingSpaceSchema,
   filters: PgvectorFiltersSchema,
   limit: z.number().int().positive().max(100),
 }).strict().readonly();

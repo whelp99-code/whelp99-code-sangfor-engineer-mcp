@@ -1,5 +1,5 @@
 export const ACTIVE_COHORT_SQL = `
-SELECT "id","backend","model","dimensions"
+SELECT "id","backend","model","dimensions","embeddingSpace","embeddingSpaceDigest"
 FROM "BlroRagEmbeddingCohort"
 WHERE "tenantId"=$1 AND "projectId"=$2 AND "active"=true
 ORDER BY "indexEpoch" DESC

@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { loadSpec, evaluateSpec, renderAdvisoryReportDocx } from '../packages/sangfor-spec/src/index.js';
+import { loadSpec, evaluateSpec, renderAdvisoryReportDocx, type IntendedSpec } from '../packages/sangfor-spec/src/index.js';
 
 const spec = loadSpec('IAG', '13.0.120')!;
 const result = evaluateSpec(spec, { securityEventsCount: 0, haEnabled: false });
@@ -47,6 +47,21 @@ describe('renderAdvisoryReportDocx', () => {
     expect(doc).toContain('추가');
     expect(doc).toContain('면책');
     expect(doc).not.toContain('**'); // bold markers stripped (incl. blockquote)
+  });
+
+  it('carries assessment evidence metadata and next-action guidance from Markdown into DOCX', () => {
+    const freshSpec: IntendedSpec = {
+      id: 'docx-next-actions', product: 'HCI', items: [{
+        id: 'ntp', capabilityId: 'time', label: 'NTP', observedKey: 'ntp', op: 'eq', expected: true,
+        severity: 'must', source: { manual: 'HCI guide' }, maxAgeSec: 60,
+      }],
+    };
+    const assessment = evaluateSpec(freshSpec, { ntp: { value: true, source: { collectedAt: '2026-01-01T00:00:00.000Z', collectionStatus: 'complete' } } }, { mode: 'current', now: '2026-01-01T00:05:00.000Z' });
+    const out = join(ROOT, 'next-actions.docx');
+    renderAdvisoryReportDocx(freshSpec, assessment, out);
+    const doc = execFileSync('unzip', ['-p', out, 'word/document.xml'], { encoding: 'utf8', maxBuffer: 10_000_000 });
+    expect(doc).toContain('관측 유효시간(maxAge): 60초');
+    expect(doc).toContain('RECOLLECT_OBSERVATION');
   });
 
   it('rejects a path-traversal outputPath (no arbitrary file overwrite)', () => {

@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
+import { embeddingSpaceId, embeddingSpaceSchema } from './embedding-space.js';
 import {
   IndexPromotionEvidenceError,
   IndexPromotionEvidenceSchema,
@@ -25,11 +26,15 @@ import { RagPgvectorRefusal, RagPgvectorUnavailableError, parsePgvectorScope } f
 import { PgvectorHitRowSchema, type PgvectorDatabase, type PgvectorScope, type PgvectorSearch, type PgvectorSqlExecutor } from './pgvector-types.js';
 
 const PromotionRowSchema = z.object({ report: z.unknown(), reportCanonical: z.string(), reportDigest: z.string() }).strict();
-const ActiveRowSchema = z.object({ id: z.string(), backend: z.string(), model: z.string(), dimensions: z.number().int() }).strict();
+const ActiveRowSchema = z.object({
+  id: z.string(), backend: z.string(), model: z.string(), dimensions: z.number().int(),
+  embeddingSpace: z.unknown().nullable(), embeddingSpaceDigest: z.string().nullable(),
+}).strict();
 const PlanRowSchema = z.object({ 'QUERY PLAN': z.string() }).strict();
 const CorpusRowSchema = z.object({ id: z.string(), contentHash: z.string(), embedding: z.string() }).strict();
 const CurrentRowSchema = z.object({
   cohortId: z.string(), indexEpoch: z.number().int(), extensionName: z.string(), extensionVersion: z.string(),
+  embeddingSpace: z.unknown().nullable(), embeddingSpaceDigest: z.string().nullable(),
   candidateRowCount: z.union([z.number(), z.bigint(), z.string()]).transform(Number).pipe(z.number().int().nonnegative()),
 }).strict();
 type CandidateIdentityProbe = (transaction: PgvectorSqlExecutor, indexName: string) => Promise<HnswIndexIdentity | null>;
@@ -111,10 +116,19 @@ export class IndexPromotionStore implements PromotionSearchPort {
     const scope = parsePgvectorScope(scopeRaw);
     return this.execute(() => this.database.$transaction(async (transaction) => {
       await setScope(transaction, scope);
+      return this.readCurrentStateInTransaction(transaction, scope);
+    }));
+  }
+
+  private async readCurrentStateInTransaction(
+    transaction: PgvectorSqlExecutor,
+    scope: PgvectorScope,
+  ): Promise<PromotionCurrentState> {
       const identity = await readHnswIndexIdentity(transaction, 'BlroRagEmbedding_embedding_hnsw_idx');
       if (!identity) throw new RagPgvectorRefusal('RAG_INDEX_PROMOTION_INDEX_UNAVAILABLE', scope.projectId);
       const metadata = z.array(CurrentRowSchema).parse(await transaction.$queryRawUnsafe<unknown>(`
         SELECT c."id" AS "cohortId",c."indexEpoch",e.extname AS "extensionName",e.extversion AS "extensionVersion",
+          c."embeddingSpace",c."embeddingSpaceDigest",
           (SELECT count(*) FROM "BlroRagEmbedding" r WHERE r."tenantId"=$1 AND r."projectId"=$2 AND r."cohortId"=c."id") AS "candidateRowCount"
         FROM "BlroRagEmbeddingCohort" c
         JOIN pg_extension e ON e.extname='vector'
@@ -122,6 +136,10 @@ export class IndexPromotionStore implements PromotionSearchPort {
       if (metadata.length !== 1) throw new RagPgvectorRefusal('RAG_INDEX_PROMOTION_CURRENT_STATE_AMBIGUOUS', `${metadata.length}`);
       const row = metadata[0];
       if (!row) throw new RagPgvectorRefusal('RAG_INDEX_PROMOTION_CURRENT_STATE_AMBIGUOUS', 'missing');
+      const space = embeddingSpaceSchema.safeParse(row.embeddingSpace);
+      if (!space.success || !row.embeddingSpaceDigest || embeddingSpaceId(space.data) !== row.embeddingSpaceDigest) {
+        throw new RagPgvectorRefusal('RAG_PGVECTOR_EMBEDDING_SPACE_UNVERIFIED', row.cohortId);
+      }
       const corpus = z.array(CorpusRowSchema).parse(await transaction.$queryRawUnsafe<unknown>(`
         SELECT c."id",c."contentHash",e."embedding"::text AS "embedding"
         FROM "BlroRagAuthoritativeChunk" c JOIN "BlroRagEmbedding" e
@@ -131,11 +149,11 @@ export class IndexPromotionStore implements PromotionSearchPort {
       return PromotionCurrentStateSchema.parse({
         tenantId: scope.tenantId, projectId: scope.projectId, cohortId: row.cohortId, indexEpoch: row.indexEpoch,
         corpusDigest: createHash('sha256').update(canonicalPromotionJson(corpus)).digest('hex'),
+        embeddingSpaceDigest: row.embeddingSpaceDigest,
         extensionName: row.extensionName, extensionVersion: row.extensionVersion, indexName: identity.name,
         indexIdentity: hnswIndexIdentityDigest(identity),
         candidateRowCount: row.candidateRowCount,
       });
-    }));
   }
 
   async apply(raw: ApplyInput): Promise<IndexPromotionReport> {
@@ -148,12 +166,11 @@ export class IndexPromotionStore implements PromotionSearchPort {
       tenantId: scope.tenantId, projectId: scope.projectId,
       authorityActorId: authority.actorId, secret: authority.secret,
     });
-    const current = await this.readCurrentState(scope);
-    const evaluation = evaluateIndexPromotion(report, current, raw.now);
-    if (!evaluation.eligible) throw new RagPgvectorRefusal(evaluation.reason, report.reportDigest);
     await this.execute(() => this.database.$transaction(async (transaction) => {
       await setScope(transaction, scope);
       await transaction.$executeRawUnsafe(`SELECT pg_advisory_xact_lock(hashtext($1),hashtext($2))`, scope.tenantId, scope.projectId);
+      const evaluation = evaluateIndexPromotion(report, await this.readCurrentStateInTransaction(transaction, scope), raw.now);
+      if (!evaluation.eligible) throw new RagPgvectorRefusal(evaluation.reason, report.reportDigest);
       try {
         await appendPromotionEvidenceHistory(transaction, scope, evidence, {
           tenantId: scope.tenantId, projectId: scope.projectId,
@@ -172,7 +189,7 @@ export class IndexPromotionStore implements PromotionSearchPort {
           "state"='promoted',"reason"=EXCLUDED."reason","promotedAt"=EXCLUDED."promotedAt","demotedAt"=NULL,"updatedAt"=EXCLUDED."updatedAt"`,
       scope.tenantId, scope.projectId, report.cohortId, report.indexEpoch, canonicalPromotionJson(evidence),
       canonicalPromotionJson(evidence), report.reportDigest, raw.reason, raw.now);
-    }, { isolationLevel: 'Serializable' }));
+    }, { isolationLevel: 'ReadCommitted' }));
     return report;
   }
 
@@ -180,9 +197,9 @@ export class IndexPromotionStore implements PromotionSearchPort {
     const scope = parsePgvectorScope(scopeRaw);
     await this.execute(() => this.database.$transaction(async (transaction) => {
       await setScope(transaction, scope);
-      await transaction.$executeRawUnsafe(`SELECT pg_advisory_xact_lock(hashtext($1),0)`, scope.projectId);
+      await transaction.$executeRawUnsafe(`SELECT pg_advisory_xact_lock(hashtext($1),hashtext($2))`, scope.tenantId, scope.projectId);
       await transaction.$executeRawUnsafe(`UPDATE "BlroRagIndexPromotion" SET "state"='demoted',"reason"=$3,"demotedAt"=CURRENT_TIMESTAMP,"updatedAt"=CURRENT_TIMESTAMP WHERE "tenantId"=$1 AND "projectId"=$2 AND "state"='promoted'`, scope.tenantId, scope.projectId, reason);
-    }, { isolationLevel: 'Serializable' }));
+    }, { isolationLevel: 'ReadCommitted' }));
   }
 
   async preflightCandidate(scopeRaw: PgvectorScope, indexName: string): Promise<HnswIndexIdentity | null> {
@@ -208,6 +225,11 @@ export class IndexPromotionStore implements PromotionSearchPort {
       const activeRows = z.array(ActiveRowSchema).parse(await transaction.$queryRawUnsafe<unknown>(ACTIVE_COHORT_SQL, input.scope.tenantId, input.scope.projectId));
       const active = activeRows[0];
       if (activeRows.length !== 1 || !active) throw new RagPgvectorRefusal('RAG_PGVECTOR_ACTIVE_COHORT_AMBIGUOUS', `${activeRows.length}`);
+      const space = embeddingSpaceSchema.safeParse(active.embeddingSpace);
+      if (!space.success || !active.embeddingSpaceDigest || embeddingSpaceId(space.data) !== active.embeddingSpaceDigest
+        || embeddingSpaceId(input.embeddingSpace) !== active.embeddingSpaceDigest) {
+        throw new RagPgvectorRefusal('RAG_PGVECTOR_QUERY_EMBEDDING_SPACE_MISMATCH', active.id);
+      }
       const values = this.searchValues(input, active.id);
       const planRows = z.array(PlanRowSchema).parse(await transaction.$queryRawUnsafe<unknown>(EXPLAIN_HNSW_SQL, ...values));
       const plan = planRows.map((row) => row['QUERY PLAN']).join('\n');

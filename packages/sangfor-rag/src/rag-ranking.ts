@@ -55,7 +55,8 @@ export function rankHybrid<T extends RagDocumentChunk>(
   return candidates.map((chunk, index) => {
     const cosineScore = cosineScores[index];
     const keywordScore = keywordScores[index];
-    const score = alpha * (compatible[index] ? normalizeCosine(cosineScore) : 0) + (1 - alpha) * normalizeKeyword(keywordScore);
+    const hitAlpha = compatible[index] ? alpha : 0;
+    const score = hitAlpha * normalizeCosine(cosineScore) + (1 - hitAlpha) * normalizeKeyword(keywordScore);
     const vectorScoreUsed = compatible[index] && alpha > 0;
     const retrievalMode = vectorScoreUsed ? querySpace?.model === 'hash' ? 'hybrid-hash' : 'hybrid-semantic' : 'bm25';
     return { ...chunk, score, cosineScore, keywordScore, vectorScoreUsed, retrievalMode };

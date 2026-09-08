@@ -28,20 +28,67 @@ export const CLIENT_ACTION_SCRIPT = `    $('btn-analyze').onclick = async () => 
       $('btn-plan').disabled = false;
     };
 
+    function textValue(value, fallback) {
+      const text = typeof value === 'string' ? value.trim() : '';
+      return text || fallback;
+    }
+
+    function appendText(parent, tag, value, className) {
+      const element = document.createElement(tag);
+      if (className) element.className = className;
+      element.textContent = value;
+      parent.appendChild(element);
+      return element;
+    }
+
+    function searchMode(value) {
+      if (value === 'semantic' || value === 'hybrid-semantic') return 'semantic';
+      if (value === 'hash' || value === 'hybrid-hash') return 'hash';
+      if (value === 'bm25') return 'bm25';
+      return 'unknown';
+    }
+
+    function renderSearchMessage(target, message) {
+      target.replaceChildren();
+      appendText(target, 'p', message, 'meta');
+    }
+
+    function renderSearchCards(target, items, emptyMessage) {
+      target.replaceChildren();
+      if (!Array.isArray(items) || items.length === 0) {
+        appendText(target, 'p', emptyMessage, 'meta');
+        return;
+      }
+      const cards = document.createDocumentFragment();
+      items.forEach((item) => {
+        const card = document.createElement('article');
+        card.className = 'card';
+        appendText(card, 'h3', textValue(item.title || item.id, 'untitled'));
+        appendText(card, 'div', '제품: ' + textValue(item.product, 'unknown') +
+          ' · 버전: ' + textValue(item.version, 'unknown') +
+          ' · 섹션: ' + textValue(item.section, 'unknown') +
+          ' · 신뢰: ' + textValue(item.trustLevel, 'unknown'), 'meta');
+        appendText(card, 'div', '검색 모드: ' + searchMode(item.retrievalMode), 'meta');
+        appendText(card, 'div', '출처: ' + textValue(item.source, 'unknown'), 'meta');
+        appendText(card, 'p', textValue(item.text || item.snippet, ''), 'snippet');
+        cards.appendChild(card);
+      });
+      target.appendChild(cards);
+    }
+
     $('btn-rag').onclick = async () => {
       try {
         const hits = await api('/api/rag-search', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({
           query: $('rag-query').value.trim(),
           product: $('rag-product').value || undefined,
+          version: $('rag-version').value.trim() || undefined,
           limit: Number($('rag-limit').value) || 10
         })});
         const items = hits.items || hits.hits || hits.results || (Array.isArray(hits) ? hits : []);
-        $('rag-hits').innerHTML = (items.length ? items : []).map(c => (
-          '<article class="card"><h3>'+(c.title||c.id||'chunk')+'</h3>'+
-          '<div class="meta">'+(c.product||'')+' · '+(c.retrievalMode === 'hybrid-semantic' ? '의미·키워드 검색' : '키워드 기반 검색')+(c.score != null ? ' · score '+c.score.toFixed(3) : '')+'</div>'+
-          '<p class="snippet">'+(c.text||c.snippet||'')+'</p></article>'
-        )).join('') || '<p class="meta">결과 없음</p>';
-      } catch (e) { $('rag-hits').innerHTML = '<p class="meta">'+e.message+'</p>'; }
+        renderSearchCards($('rag-hits'), items,
+          '결과가 없습니다. 검색어, 제품 또는 버전을 바꿔 다시 검색하세요.');
+        if (hits.diagnostics?.degraded) appendText($('rag-hits'), 'p', '검색 기능 일부를 사용할 수 없어 대체 결과를 표시했습니다. 원문을 확인하세요.', 'meta');
+      } catch (e) { renderSearchMessage($('rag-hits'), '오류: ' + String(e.message || e)); }
     };
 
     $('btn-discover').onclick = async () => {
@@ -96,10 +143,8 @@ export const CLIENT_ACTION_SCRIPT = `    $('btn-analyze').onclick = async () => 
     };
 
     $('btn-knowledge').onclick = async () => {
-      const data = await api('/api/knowledge?product=' + $('kn-product').value + '&type=' + $('kn-type').value);
-      $('kn-content').innerHTML = data.items.map(c => (
-        '<article class="card"><h3>'+c.title+'</h3>'+
-        '<div class="meta">'+c.sourceType+' · '+c.product+(c.section?' · '+c.section:'')+'</div>'+
-        '<p class="snippet">'+c.text+'</p></article>'
-      )).join('') || '<p class="meta">청크 없음</p>';
+      try {
+        const data = await api('/api/knowledge?product=' + encodeURIComponent($('kn-product').value) + '&type=' + encodeURIComponent($('kn-type').value));
+        renderSearchCards($('kn-content'), data.items, '청크가 없습니다. 제품 또는 유형을 바꿔 다시 불러오세요.');
+      } catch (e) { renderSearchMessage($('kn-content'), '오류: ' + String(e.message || e)); }
     };`;

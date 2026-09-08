@@ -18,6 +18,10 @@ export { renderAdvisoryReport } from './report-markdown.js';
 export { renderAdvisoryReportDocx } from './report-docx.js';
 export type {
   Category,
+  ActionableReason,
+  AssessmentActionCode,
+  AssessmentNextAction,
+  AssessmentReasonCode,
   Citation,
   CompareOp,
   CoverageInfo,

@@ -115,8 +115,11 @@ export async function ragSearch(input: RagSearchInput): Promise<RagSearchHit[]> 
     // A provider can fail after its health check. Keep the document search explicitly lexical.
     embeddingFailure = true;
   }
-  const candidateLimit = Number(process.env.SANGFOR_MIMO_RERANK_CANDIDATES ?? 40);
   const finalLimit = input.limit ?? 8;
+  if (!Number.isInteger(finalLimit) || finalLimit < 1 || finalLimit > 100) throw new Error('RAG_LIMIT_INVALID');
+  const configuredCandidates = Number(process.env.SANGFOR_MIMO_RERANK_CANDIDATES ?? 40);
+  const candidateLimit = Math.max(finalLimit, Number.isInteger(configuredCandidates) && configuredCandidates > 0
+    ? Math.min(configuredCandidates, 100) : 40);
   const allowCustomer = process.env.SANGFOR_ALLOW_CLOUD_RAG_CUSTOMER === '1';
   const filtered = index.chunks
     .filter((chunk) => !chunk.tenantId && !chunk.projectId)
@@ -138,21 +141,28 @@ export async function ragSearch(input: RagSearchInput): Promise<RagSearchHit[]> 
   let pool = distinctSources(ranked, candidateLimit);
   const reranker = createMimoRerankFromEnv();
   if (reranker && pool.length > 1) {
+    const controller = new AbortController();
+    let timer: ReturnType<typeof setTimeout> | undefined;
     try {
-      const rerankTimeoutMs = Number(process.env.SANGFOR_MIMO_RERANK_TIMEOUT_MS ?? '5000');
+      const configuredTimeout = Number(process.env.SANGFOR_MIMO_RERANK_TIMEOUT_MS ?? '5000');
+      const rerankTimeoutMs = Number.isFinite(configuredTimeout) && configuredTimeout > 0 ? Math.min(configuredTimeout, 60_000) : 5000;
       const rankedIds = await Promise.race([
         reranker.rerank(
           normalizedQuery,
           pool.map((chunk) => ({ id: chunk.id, text: chunk.text, title: chunk.title })),
           finalLimit,
+          controller.signal,
         ),
-        new Promise<string[]>((_, reject) => setTimeout(() => reject(new Error('rerank-timeout')), rerankTimeoutMs)),
+        new Promise<string[]>((_, reject) => { timer = setTimeout(() => { controller.abort(); reject(new Error('rerank-timeout')); }, rerankTimeoutMs); }),
       ]);
-      const order = new Map(rankedIds.map((id, index) => [id, rankedIds.length - index]));
-      pool = pool
-        .filter((chunk) => order.has(chunk.id))
-        .sort((left, right) => (order.get(right.id) ?? 0) - (order.get(left.id) ?? 0))
-        .map((chunk, index) => ({ ...chunk, rerankScore: order.get(chunk.id) ?? index }));
+      const knownIds = new Set(pool.map((chunk) => chunk.id));
+      const uniqueIds = [...new Set(rankedIds)];
+      if (!uniqueIds.length || uniqueIds.some((id) => !knownIds.has(id))) throw new Error('RAG_RERANK_IDS_INVALID');
+      const order = new Map(uniqueIds.map((id, index) => [id, uniqueIds.length - index]));
+      if (uniqueIds.length < Math.min(finalLimit, pool.length)) diagnostics = { ...diagnostics, degraded: true,
+        degradedReason: [diagnostics.degradedReason, 'partial rerank; remaining retrieval order retained'].filter(Boolean).join('; ') };
+      pool = pool.sort((left, right) => (order.get(right.id) ?? 0) - (order.get(left.id) ?? 0))
+        .map((chunk) => order.has(chunk.id) ? { ...chunk, rerankScore: order.get(chunk.id) } : chunk);
       return withDiagnostics(distinctSources(pool, finalLimit), diagnostics);
     } catch (error) {
         diagnostics = {
@@ -162,6 +172,9 @@ export async function ragSearch(input: RagSearchInput): Promise<RagSearchHit[]> 
             ? 'rerank response was INDETERMINATE under its strict runtime schema'
             : 'reranker unavailable; original retrieval order retained'].filter(Boolean).join('; '),
         };
+    } finally {
+      if (timer) clearTimeout(timer);
+      controller.abort();
     }
   }
   return withDiagnostics(distinctSources(ranked, finalLimit), diagnostics);

@@ -4,18 +4,21 @@ import {
   sealIndexPromotionEvidence,
   verifyIndexPromotionEvidence,
 } from '../packages/sangfor-rag/src/index-promotion-authority.js';
-import { sealIndexPromotionReport } from '../packages/sangfor-rag/src/index-promotion-evaluator.js';
+import { indexPromotionBenchmarkProfileDigest, sealIndexPromotionReport } from '../packages/sangfor-rag/src/index-promotion-evaluator.js';
 
 const SECRET = 'rag-promotion-authority-secret-at-least-32-bytes';
 const OTHER_SECRET = 'forged-rag-promotion-secret-at-least-32-bytes';
 const report = sealIndexPromotionReport({
   schemaVersion: 'rag.index-promotion/1', tenantId: 'tenant-a', projectId: 'project-a',
   cohortId: 'cohort-a', indexEpoch: 34, corpusDigest: 'a'.repeat(64),
+  embeddingSpaceDigest: 'e'.repeat(64), benchmarkDigest: 'f'.repeat(64),
+  benchmarkProfileDigest: indexPromotionBenchmarkProfileDigest(), benchmarkQueryCount: 16, k: 5,
   exactResultDigest: 'b'.repeat(64), candidateResultDigest: 'c'.repeat(64),
   extensionName: 'vector', extensionVersion: '0.8.1',
   indexName: 'BlroRagEmbedding_embedding_hnsw_idx', indexIdentity: 'd'.repeat(64),
   measuredAt: '2026-08-31T12:00:00.000Z', maxAgeSeconds: 3600, recallAtK: 1,
   exactP95Ms: 120, candidateP95Ms: 80, recoveryRate: 1, updateRate: 1,
+  recoveryMeasured: true, updateMeasured: true,
   scopeIsolationProof: true, candidateRowCount: 2_100,
 });
 

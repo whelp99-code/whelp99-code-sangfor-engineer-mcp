@@ -85,6 +85,9 @@ export const DASHBOARD_BODY = `  <header>
         <label>검색어 *</label><input id="rag-query" placeholder="HCI HA 설정" />
         <div class="row2">
           <div><label>제품</label><select id="rag-product"><option value="">(전체)</option>${productOptions}</select></div>
+          <div><label>버전</label><input id="rag-version" placeholder="6.11" /></div>
+        </div>
+        <div class="row2">
           <div><label>결과 수</label><input id="rag-limit" type="number" value="10" min="1" max="50" /></div>
         </div>
         <button class="primary" id="btn-rag">검색</button>

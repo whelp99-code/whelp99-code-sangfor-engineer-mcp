@@ -12,6 +12,31 @@ export type Severity = 'must' | 'recommended';
 export type Verdict = 'PASS' | 'FAIL' | 'INDETERMINATE';
 export type Category = 'ok' | 'misconfiguration' | 'missing' | 'indeterminate' | 'context_dependent';
 export type ProductCode = 'HCI_SCP' | 'HCI' | 'IAG' | 'ENDPOINT_SECURE' | 'NDR' | 'CYBER_COMMAND' | 'FORTIOS' | 'CISCO_IOSXE';
+/** Stable machine-readable cause for an advisory follow-up. The existing
+ * human-readable `reason` remains the explanation shown to users. */
+export type AssessmentReasonCode =
+  | 'ASSESSMENT_TIME_MISSING' | 'ASSESSMENT_TIME_INVALID'
+  | 'FRESHNESS_POLICY_MISSING' | 'FRESHNESS_POLICY_INVALID'
+  | 'EVIDENCE_EXPIRED' | 'EVIDENCE_MISSING' | 'EVIDENCE_FUTURE'
+  | 'COLLECTION_INCOMPLETE' | 'COLLECTION_UNPROVEN'
+  | 'OBSERVED_VALUE_MISSING' | 'OBSERVED_VALUE_INCOMPATIBLE'
+  | 'SENIOR_REVIEW_REQUIRED' | 'CONFIRMED_FAIL';
+export type AssessmentActionCode =
+  | 'SET_FRESHNESS_POLICY' | 'RECOLLECT_OBSERVATION' | 'COMPLETE_COLLECTION'
+  | 'OBSERVE_REQUIRED_VALUE' | 'NORMALIZE_OBSERVED_VALUE' | 'SET_ASSESSMENT_TIME'
+  | 'REQUEST_SENIOR_REVIEW' | 'REVIEW_CONFIRMED_FAIL';
+/** Advisory only. This contract never starts collection or changes a device. */
+export interface AssessmentNextAction {
+  code: AssessmentActionCode;
+  label: string;
+  /** Present only on an aggregate EvaluationResult action. */
+  itemIds?: string[];
+}
+export interface ActionableReason {
+  code: AssessmentReasonCode;
+  /** Present only on an aggregate EvaluationResult reason. */
+  itemIds?: string[];
+}
 
 export interface Citation {
   manual: string;
@@ -70,6 +95,10 @@ export interface ItemResult {
   observedSource?: ObservedSource;
   expected?: unknown;
   reason: string;
+  /** Stable counterpart to `reason`, supplied when human follow-up is known. */
+  actionableReason?: ActionableReason;
+  /** Read-only advisory follow-up; no collection or mutation is performed. */
+  nextActions?: AssessmentNextAction[];
 }
 
 export interface CoverageInfo {
@@ -94,6 +123,10 @@ export interface EvaluationResult {
   items: ItemResult[];
   summary: EvaluationSummary;
   coverage: CoverageInfo;
+  /** De-duplicated machine-readable causes, with the affected spec item ids. */
+  actionableReasons?: ActionableReason[];
+  /** De-duplicated advisory follow-ups, with the affected spec item ids. */
+  nextActions?: AssessmentNextAction[];
   assessment?: {
     mode: 'comparison' | 'current' | 'snapshot';
     evaluatedAt: string | null;

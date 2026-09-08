@@ -70,10 +70,14 @@ describe('toPublicHit', () => {
 });
 
 describe('postRagSearch', () => {
-  it('wraps ragSearch hits in a {query, results} envelope', async () => {
+  it('wraps ragSearch hits in a public envelope with safe retrieval diagnostics', async () => {
     const response = await postRagSearch({ query: 'MTU storage', product: 'HCI' });
     expect(Array.isArray(response)).toBe(false);
-    expect(response).toEqual({ query: 'MTU storage', results: [toPublicHit(FIXTURE_HIT)] });
+    expect(response).toEqual({
+      query: 'MTU storage',
+      results: [toPublicHit(FIXTURE_HIT)],
+      diagnostics: { searchMode: 'hash', degraded: true },
+    });
   });
 });
 

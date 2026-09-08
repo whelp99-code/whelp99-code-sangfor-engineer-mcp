@@ -17,6 +17,7 @@ import {
   rawExactSearch,
 } from './support/rag-postgres-corpus.js';
 import { createHnsw } from './support/rag-promotion-postgres.js';
+import { PGVECTOR_HASH_EMBEDDING_SPACE } from '../packages/sangfor-rag/src/pgvector-types.js';
 
 const profile = process.env['SANGFOR_REQUIRE_POSTGRES_TESTS'] === '1';
 const databaseUrl = process.env['DATABASE_URL'];
@@ -33,9 +34,7 @@ const primarySourceScope = parsePgvectorScope({
 const primaryScope = fixtureScope(primarySourceScope);
 
 function denseHashVector(text: string): readonly number[] {
-  const values = hashEmbedding(text).map((value) => value + 0.01);
-  const norm = Math.sqrt(values.reduce((sum, value) => sum + value * value, 0));
-  return values.map((value) => value / norm);
+  return hashEmbedding(text);
 }
 
 suite('PostgreSQL pgvector exact and HNSW gates', () => {
@@ -67,7 +66,7 @@ suite('PostgreSQL pgvector exact and HNSW gates', () => {
     const parity: number[] = [];
     for (const query of corpus.queries) {
       const search = {
-        scope: fixtureScope(parsePgvectorScope(query.scope)), query: denseHashVector(query.text),
+        scope: fixtureScope(parsePgvectorScope(query.scope)), query: denseHashVector(query.text), embeddingSpace: PGVECTOR_HASH_EMBEDDING_SPACE,
         filters: query.filters, limit: query.limit,
       };
       const expected = expectedExact(rows, search);
@@ -80,7 +79,7 @@ suite('PostgreSQL pgvector exact and HNSW gates', () => {
     const isolationQuery = corpus.queries.find((query) => query.id === 'q-scope-isolation');
     if (!isolationQuery) throw new TypeError('RAG_SCOPE_ISOLATION_QUERY_MISSING');
     const isolated = await store.searchExact({
-      scope: primaryScope, query: denseHashVector(isolationQuery.text),
+      scope: primaryScope, query: denseHashVector(isolationQuery.text), embeddingSpace: PGVECTOR_HASH_EMBEDDING_SPACE,
       filters: isolationQuery.filters, limit: isolationQuery.limit,
     });
 
@@ -114,7 +113,7 @@ suite('PostgreSQL pgvector exact and HNSW gates', () => {
     const misses: string[] = [];
     for (const query of corpus.queries) {
       const search = {
-        scope: fixtureScope(parsePgvectorScope(query.scope)), query: denseHashVector(query.text),
+        scope: fixtureScope(parsePgvectorScope(query.scope)), query: denseHashVector(query.text), embeddingSpace: PGVECTOR_HASH_EMBEDDING_SPACE,
         filters: query.filters, limit: query.limit,
       };
       const expected = await rawExactSearch(owner, search);
@@ -129,7 +128,7 @@ suite('PostgreSQL pgvector exact and HNSW gates', () => {
       if (recovered !== exactIds.size) misses.push(`${query.id}:${JSON.stringify(exact)}:${JSON.stringify(hnsw)}`);
     }
     const plan = await store.explainHnsw({
-      scope: primaryScope, query: denseHashVector('scope_oracle'), filters: { product: 'HCI' }, limit: 1,
+      scope: primaryScope, query: denseHashVector('scope_oracle'), embeddingSpace: PGVECTOR_HASH_EMBEDDING_SPACE, filters: { product: 'HCI' }, limit: 1,
     });
 
     // Then: the promotion-quality gates use their specified corpus and thresholds unchanged.

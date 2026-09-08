@@ -11,16 +11,15 @@ import {
   parsePgvectorScope,
   parsePgvectorUpsert,
 } from '../packages/sangfor-rag/src/pgvector-schema.js';
+import { PGVECTOR_HASH_EMBEDDING_SPACE } from '../packages/sangfor-rag/src/pgvector-types.js';
 
 const EnvironmentSchema = z.object({ DATABASE_URL: z.string().url(), BLRO_OWNER_DATABASE_URL: z.string().url() }).passthrough();
 const CORPUS_PATH = 'data/evals/rag/project-completeness-v1.json';
 const scope = parsePgvectorScope({ tenantId: 'tenant-rag-pg', projectId: 'project-rag-pg', actorId: 'actor-rag-pg' });
-const cohort = parsePgvectorCohort({ id: 'cohort-rag-pg', ...scope, indexEpoch: 33, backend: 'hash', model: 'hash-v1', dimensions: 384 });
+const cohort = parsePgvectorCohort({ id: 'cohort-rag-pg', ...scope, indexEpoch: 33, backend: 'hash', model: 'hash', dimensions: 384, embeddingSpace: PGVECTOR_HASH_EMBEDDING_SPACE });
 
 function denseHashVector(text: string): readonly number[] {
-  const values = hashEmbedding(text).map((value) => value + 0.01);
-  const norm = Math.sqrt(values.reduce((sum, value) => sum + value * value, 0));
-  return values.map((value) => value / norm);
+  return hashEmbedding(text);
 }
 
 async function measure(store: PgvectorRagStore, multiplier: number): Promise<{ readonly rows: number; readonly parity: number; readonly recall: number }> {
@@ -30,13 +29,14 @@ async function measure(store: PgvectorRagStore, multiplier: number): Promise<{ r
     sourceType: entry.sourceType, trustLevel: entry.trustLevel, title: entry.title, text: entry.text,
     sourceRef: entry.filePath, contentHash: `todo32-${entry.id}`, aclActorIds: entry.aclActorIds,
     embedding: denseHashVector(entry.text),
+    embeddingSpace: PGVECTOR_HASH_EMBEDDING_SPACE,
   }));
   await store.replace({ scope, cohortId: cohort.id, chunks });
   let parity = 0;
   let exactCount = 0;
   let recovered = 0;
   for (const query of corpus.queries) {
-    const input = { scope, query: denseHashVector(query.text), filters: query.filters, limit: query.limit };
+    const input = { scope, query: denseHashVector(query.text), embeddingSpace: PGVECTOR_HASH_EMBEDDING_SPACE, filters: query.filters, limit: query.limit };
     const exact = await store.searchExact(input);
     const hnsw = await store.searchHnsw(input);
     const expected = new Set(exact.map((hit) => hit.id));
@@ -71,7 +71,7 @@ async function main(): Promise<void> {
     await store.promoteCohort(cohort);
     const one = await measure(store, 1);
     const ten = await measure(store, 10);
-    const plan = await store.explainHnsw({ scope, query: denseHashVector('oracle_hci'), filters: { product: 'HCI' }, limit: 5 });
+    const plan = await store.explainHnsw({ scope, query: denseHashVector('oracle_hci'), embeddingSpace: PGVECTOR_HASH_EMBEDDING_SPACE, filters: { product: 'HCI' }, limit: 5 });
     const corpusHash = createHash('sha256').update(readFileSync(CORPUS_PATH)).digest('hex');
     process.stdout.write(`${JSON.stringify({ one, ten, plan, corpusHash, pgvector: { tag: 'v0.8.1', commit: '778dacf20c07caf904557a88705142631818d8cb' } })}\nRAG_PGVECTOR_PASS\n`);
   } finally {
