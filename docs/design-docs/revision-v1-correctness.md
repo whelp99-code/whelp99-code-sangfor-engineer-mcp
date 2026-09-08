@@ -20,7 +20,7 @@ GitHub 실행 단위: [#77](https://github.com/whelp99-code/whelp99-code-sangfor
 | HCI 현재 판정 | MCP health는 current로 평가한다. `SANGFOR_HCI_VOLUME_MAX_AGE_SEC`가 없으면 정상으로 확정하지 않는다. 순수 요약 함수 기본은 수집 스냅샷이며 보고서에 명시한다. | HCI 수집 회귀 |
 | 임베딩 | 모델·고정 revision·차원·정규화·전처리·질의/문서 prefix가 모두 일치해야 벡터를 비교한다. 같은 차원만으로 비교하지 않는다. | `rag-embedding-space.test.ts` |
 | 대체 검색 | 미확인 공간·임베딩 장애는 BM25다. 각 hit의 `retrievalMode`와 `vectorScoreUsed`로 공개하고 UI에도 표시한다. 진단은 결과 배열별로 보존한다. | diagnostics/search-contract 회귀 |
-| 고객 및 자료 범위 | 제품·정확한 버전·sourceType·trustLevel·고객 범위·ACL을 ranking 전에 적용한다. 버전 미상은 버전 지정 검색에서 제외한다. | embedding-space 및 기존 scoped/pgvector 회귀 |
+| 고객 및 자료 범위 | 제품·정확한 버전·sourceType·trustLevel·고객 범위·ACL을 ranking 전에 적용한다. 버전 미상은 버전 지정 검색에서 제외한다. 등록되지 않은 제품명은 HCI로 추정하지 않고 RAG_PRODUCT_UNKNOWN으로 거부한다. | embedding-space 및 기존 scoped/pgvector 회귀 |
 | 문서 생명주기 | 같은 파일의 개정·메타데이터 변경은 기존 청크를 교체한다. 삭제는 파생 색인만 제거한다. 원본 자료는 삭제하지 않는다. | `rag-document-lifecycle.test.ts` |
 | 재임베딩 | 기존 청크와 출처·신뢰도·ID를 보존하면서 벡터만 새로운 후보 파일에 기록한다. 같은 경로·기존 후보 덮어쓰기를 거부한다. raw 디렉터리에서 문서를 새로 추측하지 않는다. | `rag-reembed-cli.test.ts` |
 | 검증 환경 | PG_BINDIR가 유효하면 전체 홈 탐색 없이 사용한다. UI fixture에 local authority를 명시한다. CI에 실제 Chromium과 구조 경계 검사를 추가한다. | PostgreSQL runner 회귀, 실제 Chromium UI |

@@ -3,6 +3,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { resolveEmbeddingSpace, type EmbeddingSpace } from '../packages/sangfor-rag/src/embedding-space.js';
+import { resolveRagProduct } from '../packages/sangfor-rag/src/rag-product.js';
 import { rankHybrid } from '../packages/sangfor-rag/src/rag-ranking.js';
 import { getRagSearchDiagnostics, ragSearchSync, saveRagIndex, type RagDocumentChunk } from '@sangfor/rag';
 import { embedForRole } from '../packages/sangfor-rag/src/embedding-provider.js';
@@ -20,6 +21,13 @@ function chunk(id: string, patch: Partial<RagDocumentChunk> = {}): RagDocumentCh
 }
 
 describe('RAG embedding-space identity', () => {
+  it('refuses unknown product filters instead of silently searching HCI', () => {
+    expect(() => resolveRagProduct('unregistered-vendor')).toThrow('RAG_PRODUCT_UNKNOWN');
+    expect(() => ragSearchSync({ query: 'storage', product: 'unregistered-vendor', indexPath: '/nonexistent/index.json' })).toThrow('RAG_PRODUCT_UNKNOWN');
+    expect(resolveRagProduct('NGAF')).toBe('NGFW');
+    expect(resolveRagProduct('Sangfor Cloud Platform')).toBe('HCI_SCP');
+    expect(resolveRagProduct('OTHER')).toBe('OTHER');
+  });
   it('does not compare equally sized vectors from another model', () => {
     const [hit] = rankHybrid([chunk('foreign', { embeddingModel: 'model-b' })], [1, 0, 0], 'storage', space);
     expect(hit).toMatchObject({ vectorScoreUsed: false, retrievalMode: 'bm25', cosineScore: 0 });

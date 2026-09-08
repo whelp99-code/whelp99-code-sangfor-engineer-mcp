@@ -38,7 +38,7 @@
     "curated_seed": 1
   },
   "manifestSemanticSha256": "1487a9e1c67f58bee3861192951e466bb031a451c8c5f85be227f6ea365a0c59",
-  "repositoryCensusDigest": "1add024e258de5d86237e5240e57a2e7e7ed6713ba383d8268e3e70864dcc624",
+  "repositoryCensusDigest": "6c4dc5e27bd789ce763b8e1556ccda04be25acebffd924c1866cab63a04f027f",
   "sourceOnlyRefs": [
     "m026-spec-registry:data/specs#curated-seed:v1"
   ]

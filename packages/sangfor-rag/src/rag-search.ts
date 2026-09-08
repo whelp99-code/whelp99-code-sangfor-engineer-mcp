@@ -1,6 +1,6 @@
 import type { AuthorizationResult } from '@sangfor/identity';
 import type { ProductCode } from '@sangfor/shared';
-import { normalizeProduct } from '@sangfor/shared';
+import { resolveRagProduct } from './rag-product.js';
 import { RuntimeSchemaError } from '../../shared/src/runtime-schema.js';
 import { embedForRole, getEmbeddingProvider, wasEmbeddingFallback } from './embedding-provider.js';
 import type { EmbeddingBackend } from './embedding-provider-types.js';
@@ -101,7 +101,7 @@ export function omitVectorFromHit<T extends { vector: number[] }>(hit: T): Omit<
 
 export async function ragSearch(input: RagSearchInput): Promise<RagSearchHit[]> {
   const index = loadRagIndex(input.indexPath);
-  const product = input.product ? normalizeProduct(input.product) : undefined;
+  const product = input.product ? resolveRagProduct(input.product) : undefined;
   const provider = await getEmbeddingProvider();
   const normalizedQuery = normalizeRetrievalQuery(input.query);
   let queryVector: number[] = [];
@@ -181,7 +181,7 @@ export function filterScopedRagCandidates(
 }
 
 export function ragSearchScopedSync(input: ScopedRagSearchInput): RagSearchHit[] {
-  const product = input.product ? normalizeProduct(input.product) : undefined;
+  const product = input.product ? resolveRagProduct(input.product) : undefined;
   const normalizedQuery = normalizeRetrievalQuery(input.query);
   const authorized = filterScopedRagCandidates(input.chunks, input.authorization)
     .filter((chunk) => !product || chunk.product === product)
@@ -199,7 +199,7 @@ export function ragSearchScopedSync(input: ScopedRagSearchInput): RagSearchHit[]
 
 export function ragSearchSync(input: RagSearchInput): RagSearchHit[] {
   const index = loadRagIndex(input.indexPath);
-  const product = input.product ? normalizeProduct(input.product) : undefined;
+  const product = input.product ? resolveRagProduct(input.product) : undefined;
   const normalizedQuery = normalizeRetrievalQuery(input.query);
   const queryVector = hashEmbedding(normalizedQuery);
   const filtered = index.chunks

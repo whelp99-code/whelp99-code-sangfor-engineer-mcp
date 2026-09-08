@@ -1,12 +1,13 @@
 import { statSync } from 'node:fs';
 import { basename } from 'node:path';
-import { normalizeProduct, nowId, withDirLock, writeFileAtomicSync } from '@sangfor/shared';
+import { nowId, withDirLock, writeFileAtomicSync } from '@sangfor/shared';
 import { chunkText, extractTextFromFile } from './document-extraction.js';
 import { embedForRole, getEmbeddingProvider } from './embedding-provider.js';
 import type { EmbeddingBackend } from './embedding-provider-types.js';
 import { hashEmbedding } from './hash-embedding.js';
 import { actualEmbeddingModelName, ragChunkContentHash, replaceDocumentRevisions } from './rag-ingest.js';
 import { resolveEmbeddingSpace } from './embedding-space.js';
+import { resolveRagProduct } from './rag-product.js';
 import {
   assertLocalRagAuthorityAllowed,
   DEFAULT_INDEX_PATH,
@@ -97,7 +98,7 @@ export function saveRagIndex(index: RagIndex, indexPath = DEFAULT_INDEX_PATH): v
 }
 
 export async function ingestDocument(input: IngestDocumentInput): Promise<{ documentId: string; chunkCount: number; indexPath: string; chunks: RagDocumentChunk[]; embeddingBackend: EmbeddingBackend }> {
-  const product = normalizeProduct(input.product);
+  const product = resolveRagProduct(input.product);
   const text = await extractTextFromFile(input.filePath);
   const title = input.title ?? basename(input.filePath);
   const sourceType = input.sourceType ?? 'manual';
@@ -179,7 +180,7 @@ export async function ingestDocumentsBatch(inputs: IngestDocumentInput[]): Promi
     const title = input.title ?? basename(input.filePath);
     const sourceType = input.sourceType ?? 'manual';
     const trustLevel = input.trustLevel ?? (sourceType === 'manual' ? 'official' : 'internal');
-    const product = normalizeProduct(input.product);
+    const product = resolveRagProduct(input.product);
     const textChunks = chunkText(text);
     const vectors = await embedForRole(provider, textChunks, 'document');
     const documentId = nowId('doc');
