@@ -18,6 +18,8 @@ import {
 } from '../packages/sangfor-rag/src/pgvector-schema.js';
 import { cleanupRagProjects, fixtureProjectIds } from './support/rag-postgres-corpus.js';
 import { PGVECTOR_HASH_EMBEDDING_SPACE } from '../packages/sangfor-rag/src/pgvector-types.js';
+import type { PgvectorDatabase, PgvectorSqlExecutor } from '../packages/sangfor-rag/src/pgvector-types.js';
+import { embeddingSpaceId } from '../packages/sangfor-rag/src/embedding-space.js';
 import { exercisePromotionHistory } from './support/rag-promotion-history-postgres.js';
 import { createHnsw, promotionFixture } from './support/rag-promotion-postgres.js';
 
@@ -40,6 +42,41 @@ const chunk = (id: string, text: string, aclActorIds: readonly string[] = []) =>
   trustLevel: 'official', title: id, text, sourceRef: `synthetic/${id}.md`,
   contentHash: `sha256-${id}`, aclActorIds, embedding: hashEmbedding(text), embeddingSpace: PGVECTOR_HASH_EMBEDDING_SPACE,
 });
+
+function deferred() {
+  let resolve: (() => void) | undefined;
+  const promise = new Promise<void>((ready) => { resolve = ready; });
+  return { promise, resolve: () => resolve?.() };
+}
+
+class ApplyLockObservedDatabase implements PgvectorDatabase {
+  constructor(
+    private readonly inner: PrismaClient,
+    private readonly beforeLock: () => void,
+    private readonly afterLock: () => void,
+  ) {}
+
+  $executeRawUnsafe(query: string, ...values: readonly unknown[]): Promise<number> {
+    return this.inner.$executeRawUnsafe(query, ...values);
+  }
+
+  $queryRawUnsafe<T>(query: string, ...values: readonly unknown[]): Promise<T> {
+    return this.inner.$queryRawUnsafe<T>(query, ...values);
+  }
+
+  $transaction<T>(operation: (transaction: PgvectorSqlExecutor) => Promise<T>, options?: { readonly isolationLevel?: 'ReadCommitted' | 'Serializable' }): Promise<T> {
+    return this.inner.$transaction((transaction) => operation({
+      $executeRawUnsafe: async (query, ...values) => {
+        if (!query.includes('advisory_xact_lock')) return transaction.$executeRawUnsafe(query, ...values);
+        this.beforeLock();
+        const result = await transaction.$executeRawUnsafe(query, ...values);
+        this.afterLock();
+        return result;
+      },
+      $queryRawUnsafe: (query, ...values) => transaction.$queryRawUnsafe(query, ...values),
+    }), options);
+  }
+}
 
 async function currentPromotion(promotion: IndexPromotionStore) {
   promotionNonce += 1;
@@ -106,7 +143,16 @@ suite('PostgreSQL-native pgvector RAG', () => {
 
   it('binds vectors and queries to the complete immutable embedding space', async () => {
     const changedSpace = { ...PGVECTOR_HASH_EMBEDDING_SPACE, revision: 'sha256-buckets-v2' };
+    const before = await owner.$transaction(async (transaction) => {
+      await transaction.$executeRawUnsafe(`SELECT set_config('app.project_id',$1,true)`, scope.projectId);
+      return transaction.$queryRawUnsafe<Array<{ embedding: string }>>(`
+        SELECT "embedding"::text AS "embedding" FROM "BlroRagEmbedding"
+        WHERE "tenantId"=$1 AND "projectId"=$2 AND "cohortId"=$3 AND "chunkId"='chunk-a'`,
+      scope.tenantId, scope.projectId, cohort.id);
+    });
     await expect(store.promoteCohort({ ...cohort, embeddingSpace: changedSpace }))
+      .rejects.toMatchObject({ code: 'RAG_PGVECTOR_COHORT_IDENTITY_IMMUTABLE' });
+    await expect(store.promoteCohort({ ...cohort, indexEpoch: cohort.indexEpoch + 1 }))
       .rejects.toMatchObject({ code: 'RAG_PGVECTOR_COHORT_IDENTITY_IMMUTABLE' });
     await expect(store.upsert({ ...chunk('space-mismatch', 'space mismatch'), embeddingSpace: changedSpace }))
       .rejects.toMatchObject({ code: 'RAG_PGVECTOR_EMBEDDING_SPACE_MISMATCH' });
@@ -114,6 +160,16 @@ suite('PostgreSQL-native pgvector RAG', () => {
       .rejects.toMatchObject({ code: 'RAG_PGVECTOR_QUERY_EMBEDDING_SPACE_MISMATCH' });
     await expect(store.searchExact({ scope, query: hashEmbedding('updated storage mtu oracle'), embeddingSpace: PGVECTOR_HASH_EMBEDDING_SPACE, filters: {}, limit: 1 }))
       .resolves.toEqual(expect.arrayContaining([expect.objectContaining({ id: 'chunk-a' })]));
+    const after = await owner.$transaction(async (transaction) => {
+      await transaction.$executeRawUnsafe(`SELECT set_config('app.project_id',$1,true)`, scope.projectId);
+      return transaction.$queryRawUnsafe<Array<{ revision: string; indexEpoch: number; embedding: string }>>(`
+        SELECT c."embeddingSpace"->>'revision' AS "revision",c."indexEpoch",e."embedding"::text AS "embedding"
+        FROM "BlroRagEmbeddingCohort" c JOIN "BlroRagEmbedding" e
+          ON e."tenantId"=c."tenantId" AND e."projectId"=c."projectId" AND e."cohortId"=c."id"
+        WHERE c."tenantId"=$1 AND c."projectId"=$2 AND c."id"=$3 AND e."chunkId"='chunk-a'`,
+      scope.tenantId, scope.projectId, cohort.id);
+    });
+    expect(after).toEqual([{ revision: PGVECTOR_HASH_EMBEDDING_SPACE.revision, indexEpoch: cohort.indexEpoch, embedding: before[0]?.embedding }]);
   });
 
   it('rolls back replacement atomically on a duplicate id and leaves local index bytes unchanged', async () => {
@@ -211,6 +267,42 @@ suite('PostgreSQL-native pgvector RAG', () => {
     });
     await expect(postcheck.searchCandidate(query, after)).rejects.toMatchObject({ code: 'RAG_HNSW_POSTCHECK_IDENTITY_CHANGED' });
     expect(afterQueryCalls).toBe(1);
+  });
+
+  it('re-reads current cohort after waiting for the apply lock and refuses stale evidence', async () => {
+    await store.promoteCohort(cohort);
+    const authority = new IndexPromotionStore(database, { promotionAuthority });
+    const stale = await currentPromotion(authority);
+    const holderReady = deferred();
+    const changeCohort = deferred();
+    const applyReachedLock = deferred();
+    let applyAcquiredLock = false;
+    const replacementId = 'cohort-rag-pg-replacement';
+
+    const holder = owner.$transaction(async (transaction) => {
+      await transaction.$executeRawUnsafe(`SELECT set_config('app.project_id',$1,true)`, scope.projectId);
+      await transaction.$executeRawUnsafe(`SELECT pg_advisory_xact_lock(hashtext($1),hashtext($2))`, scope.tenantId, scope.projectId);
+      holderReady.resolve();
+      await changeCohort.promise;
+      await transaction.$executeRawUnsafe(`UPDATE "BlroRagEmbeddingCohort" SET "active"=false WHERE "tenantId"=$1 AND "projectId"=$2 AND "active"=true`, scope.tenantId, scope.projectId);
+      await transaction.$executeRawUnsafe(`INSERT INTO "BlroRagEmbeddingCohort"
+        ("id","tenantId","projectId","indexEpoch","backend","model","dimensions","embeddingSpace","embeddingSpaceDigest","active")
+        VALUES ($1,$2,$3,$4,'hash','hash',384,$5::jsonb,$6,true)`, replacementId, scope.tenantId,
+      scope.projectId, cohort.indexEpoch + 1, JSON.stringify(PGVECTOR_HASH_EMBEDDING_SPACE), embeddingSpaceId(PGVECTOR_HASH_EMBEDDING_SPACE));
+    });
+    await holderReady.promise;
+
+    const observed = new IndexPromotionStore(new ApplyLockObservedDatabase(
+      database, () => applyReachedLock.resolve(), () => { applyAcquiredLock = true; },
+    ), { promotionAuthority });
+    const applying = observed.apply({ scope, evidence: stale.evidence, now: stale.now, reason: 'stale lock race' });
+    await applyReachedLock.promise;
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    expect(applyAcquiredLock).toBe(false);
+    changeCohort.resolve();
+    await holder;
+    await expect(applying).rejects.toMatchObject({ code: 'PROMOTION_COHORT_MISMATCH' });
+    expect(applyAcquiredLock).toBe(true);
   });
 
   it('returns typed unavailable for database outage and never an empty success', async () => {

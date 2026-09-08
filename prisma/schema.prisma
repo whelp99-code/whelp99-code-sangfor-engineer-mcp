@@ -947,7 +947,6 @@ model BlroRagEmbeddingCohort {
   promotionEvidence BlroRagIndexPromotionEvidence[]
 
   @@id([tenantId, projectId, id])
-  @@index([tenantId, projectId, indexEpoch, backend, model, dimensions, embeddingSpaceDigest])
   @@index([tenantId, projectId, indexEpoch])
 }
 

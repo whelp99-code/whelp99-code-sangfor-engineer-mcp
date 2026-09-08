@@ -5,6 +5,7 @@ import { CandidateSearchUnavailableError, IndexPromotionRouter } from '../packag
 import type { HnswIndexIdentity, IndexPromotionReportInput, PromotionCurrentState, PromotionSearchPort } from '../packages/sangfor-rag/src/index-promotion-types.js';
 import { parsePgvectorScope } from '../packages/sangfor-rag/src/pgvector-schema.js';
 import { hashEmbedding } from '../packages/sangfor-rag/src/hash-embedding.js';
+import { buildUnmeasuredIndexPromotionQaReport } from '../packages/sangfor-rag/src/index-promotion-qa-report.js';
 import { PGVECTOR_HASH_EMBEDDING_SPACE } from '../packages/sangfor-rag/src/pgvector-types.js';
 
 const measuredAt = '2026-08-27T12:00:00.000Z';
@@ -115,6 +116,14 @@ describe('diagnostic promotion search router', () => {
     expect(result.diagnostics.reason).toBe('PROMOTION_REPORT_INVALID');
   });
 
+  it('uses exact when a request asks for more neighbors than the report measured', async () => {
+    const search = port({ promotion: report({ k: 1 }) });
+    const result = await new IndexPromotionRouter(search).search(query, { backend: 'auto', now });
+    expect(result).toMatchObject({ backend: 'exact', diagnostics: { reason: 'PROMOTION_QUERY_LIMIT_EXCEEDS_BENCHMARK_K' } });
+    expect(search.preflightCandidate).not.toHaveBeenCalled();
+    expect(search.searchCandidate).not.toHaveBeenCalled();
+  });
+
   it('falls back visibly before dispatch when the named index is missing', async () => {
     const search = port({ preflight: false });
     const result = await new IndexPromotionRouter(search).search(query, { backend: 'auto', now });
@@ -142,6 +151,18 @@ describe('diagnostic promotion search router', () => {
     await expect(new IndexPromotionRouter(search).search(query, { backend: 'auto', now })).rejects.toBeInstanceOf(CandidateSearchUnavailableError);
     expect(search.searchExact).not.toHaveBeenCalled();
     expect(search.searchCandidate).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('index promotion QA artifact', () => {
+  it('records useful measurements but cannot be parsed or sealed as routing authority', () => {
+    const artifact = buildUnmeasuredIndexPromotionQaReport({
+      benchmarkDigest: 'a'.repeat(64), benchmarkQueryCount: 16, recallAtK: 1,
+      exactP95Ms: 12, candidateP95Ms: 8, scopeIsolationProof: true,
+      index: 'BlroRagEmbedding_embedding_hnsw_idx',
+    });
+    expect(artifact).toMatchObject({ eligibility: 'NOT_ELIGIBLE', updateMeasured: false, recoveryMeasured: false });
+    expect(() => sealIndexPromotionReport(artifact)).toThrow(/PROMOTION_REPORT_INVALID/u);
   });
 });
 

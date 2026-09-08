@@ -28,6 +28,7 @@ export class IndexPromotionRouter {
       if (error instanceof IndexPromotionReportError) return this.exact(input, error.code);
       throw error;
     }
+    if (input.limit > reportResult.k) return this.exact(input, 'PROMOTION_QUERY_LIMIT_EXCEEDS_BENCHMARK_K');
     const expectedIdentity = await this.port.preflightCandidate(input.scope, reportResult.indexName);
     if (!expectedIdentity) return this.exact(input, 'CANDIDATE_PREFLIGHT_UNAVAILABLE');
     const current = await this.port.readCurrentState(input.scope);

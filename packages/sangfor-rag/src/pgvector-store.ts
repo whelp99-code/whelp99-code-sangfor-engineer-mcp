@@ -223,6 +223,9 @@ export class PgvectorRagStore {
       await transaction.$executeRawUnsafe('SET LOCAL hnsw.ef_search=1000');
       await transaction.$executeRawUnsafe(`SET LOCAL hnsw.iterative_scan='strict_order'`);
       const active = await requireActive(transaction, input.scope);
+      if (!sameEmbeddingSpace(activeEmbeddingSpace(active), input.embeddingSpace)) {
+        throw new RagPgvectorRefusal('RAG_PGVECTOR_QUERY_EMBEDDING_SPACE_MISMATCH', active.id);
+      }
       const rows = z.array(PlanRowSchema).parse(await transaction.$queryRawUnsafe<unknown>(EXPLAIN_HNSW_SQL, ...this.searchValues(input, active.id)));
       return rows.map((row) => row['QUERY PLAN']).join('\n');
     }));

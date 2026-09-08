@@ -5,10 +5,11 @@
   "type": "object",
   "additionalProperties": false,
   "required": [
-    "schemaVersion", "tenantId", "projectId", "cohortId", "indexEpoch", "corpusDigest",
+    "schemaVersion", "tenantId", "projectId", "cohortId", "indexEpoch", "corpusDigest", "embeddingSpaceDigest",
+    "benchmarkDigest", "benchmarkProfileDigest", "benchmarkQueryCount", "k",
     "exactResultDigest", "candidateResultDigest", "extensionName", "extensionVersion", "indexName",
     "indexIdentity", "measuredAt", "maxAgeSeconds", "recallAtK", "exactP95Ms", "candidateP95Ms",
-    "recoveryRate", "updateRate", "scopeIsolationProof", "candidateRowCount", "reportDigest"
+    "recoveryRate", "updateRate", "recoveryMeasured", "updateMeasured", "scopeIsolationProof", "candidateRowCount", "reportDigest"
   ],
   "properties": {
     "schemaVersion": { "const": "rag.index-promotion/1" },
@@ -17,6 +18,11 @@
     "cohortId": { "$ref": "#/$defs/nonempty" },
     "indexEpoch": { "type": "integer", "minimum": 0 },
     "corpusDigest": { "$ref": "#/$defs/digest" },
+    "embeddingSpaceDigest": { "$ref": "#/$defs/digest" },
+    "benchmarkDigest": { "$ref": "#/$defs/digest" },
+    "benchmarkProfileDigest": { "$ref": "#/$defs/digest" },
+    "benchmarkQueryCount": { "type": "integer", "minimum": 1 },
+    "k": { "type": "integer", "minimum": 1, "maximum": 100 },
     "exactResultDigest": { "$ref": "#/$defs/digest" },
     "candidateResultDigest": { "$ref": "#/$defs/digest" },
     "extensionName": { "type": "string", "minLength": 1 },
@@ -30,6 +36,8 @@
     "candidateP95Ms": { "type": "number", "minimum": 0 },
     "recoveryRate": { "$ref": "#/$defs/rate" },
     "updateRate": { "$ref": "#/$defs/rate" },
+    "recoveryMeasured": { "const": true },
+    "updateMeasured": { "const": true },
     "scopeIsolationProof": { "type": "boolean" },
     "candidateRowCount": { "type": "integer", "minimum": 0 },
     "reportDigest": { "$ref": "#/$defs/digest" }

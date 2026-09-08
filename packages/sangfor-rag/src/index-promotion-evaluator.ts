@@ -16,6 +16,8 @@ export class IndexPromotionReportError extends Error {
 }
 
 export const INDEX_PROMOTION_POLICY = Object.freeze({
+  // The committed project-completeness benchmark contains 16 independent
+  // queries. Smaller ad-hoc samples cannot authorize production routing.
   minimumBenchmarkQueries: 16,
   minimumK: 1,
   minimumRecallAtK: 0.99,
@@ -26,8 +28,11 @@ export const INDEX_PROMOTION_POLICY = Object.freeze({
 const INDEX_PROMOTION_BENCHMARK_PROFILE = Object.freeze({
   schemaVersion: 'rag.index-promotion-benchmark-profile/1',
   metric: 'exact-result-recall-at-k',
+  minimumK: INDEX_PROMOTION_POLICY.minimumK,
   minimumBenchmarkQueries: INDEX_PROMOTION_POLICY.minimumBenchmarkQueries,
   minimumRecallAtK: INDEX_PROMOTION_POLICY.minimumRecallAtK,
+  absoluteCandidateP95Ms: INDEX_PROMOTION_POLICY.absoluteCandidateP95Ms,
+  maximumCandidateToExactP95Ratio: INDEX_PROMOTION_POLICY.maximumCandidateToExactP95Ratio,
   requireUpdateReadback: true,
   requireRecoveryReadback: true,
   requireScopeIsolation: true,

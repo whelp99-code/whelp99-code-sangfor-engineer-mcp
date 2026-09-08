@@ -1,6 +1,7 @@
 # 2차 개선안 및 개발 기록
 
 작성일: 2026-09-08. 실행 이슈: [#80](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/issues/80).
+후속 PR: [#81](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/81).
 기준: PR #78의 `069df31`, 후속 브랜치 `codex/revision-v2`. 상태: 구현·검증 진행 중.
 
 1차 개선안은 필요한 과제를 폭넓게 나열했으나 실제로 개발할 계약과 운영 인수 조건의 구분이 부족했다. 이번에는 평가의 신뢰성, 검색 근거를 확인하는 화면, 판정 불가의 해결 안내를 개발 단위로 구체화한다. 검색 엔진 채택과 운영 정상 판정은 측정·정책 근거가 있어야 한다.
@@ -19,7 +20,7 @@
 
 ## PostgreSQL 호출·운영 호환성
 
-PostgreSQL cohort에는 전체 임베딩 공간과 digest가 필요하다. 모델명과 차원만 같은 쿼리/문서는 revision·prefix·전처리 계약이 다르면 거부한다. 기존 코호트의 누락 정보를 모델명으로 추정해 채우지 않는다. 운영 적용에는 스키마 마이그레이션과 실제 artifact에 연결된 새 코호트/재색인이 필요하며, 이번 로컬 개발은 이를 운영에 적용한 것이 아니다.
+PostgreSQL cohort에는 전체 임베딩 공간과 digest가 필요하다. 모델명과 차원만 같은 쿼리/문서는 revision·prefix·전처리 계약이 다르면 거부한다. 기존 코호트의 누락 정보를 모델명으로 추정해 채우지 않는다. 같은 코호트 ID에 다른 revision/epoch를 넣는 변경은 거부한다. 구형 승격 이력은 원래 서명·해시·범위를 검증하는 감사 전용 경로로 보존하며 현재 승격에는 쓸 수 없다. 운영 적용에는 스키마 마이그레이션과 실제 artifact에 연결된 새 코호트/재색인이 필요하며, 이번 로컬 개발은 이를 운영에 적용한 것이 아니다.
 
 HNSW 품질 보고서는 임베딩 공간과 벤치마크 식별자를 포함해야 한다. 업데이트/복구를 측정하지 않은 QA는 성공으로 서명할 수 없다. 승격과 강등은 같은 scope 잠금을 사용하고 잠금 안에서 현재 상태를 다시 읽는다. 후보 품질 비교 JSON과 서명된 운영 승격 증거는 별도 계약이다.
 
@@ -49,7 +50,7 @@ HNSW 품질 보고서는 임베딩 공간과 벤치마크 식별자를 포함해
 
 ## 검증 기록
 
-중간 검증: 관련 평가 회귀 18개, 재정렬·임베딩 회귀 16개 통과(외부 서비스 1개 미실행). 첫 전체 회귀 3,174개 통과/97개 환경 의존 제외. PostgreSQL·최신성 추가 변경 이후 최종 재검증 예정.
+중간 검증 이력: 관련 평가 회귀 18개, 재정렬·임베딩 회귀 16개 통과(외부 서비스 1개 미실행). 첫 전체 회귀 3,174개 통과/97개 환경 의존 제외. PostgreSQL 추가 변경 이후 최종 재검증 예정. 스키마 변경으로 census digest 검사가 감지한 차이는 `BlroRagEmbeddingCohort`뿐이며 60개 모델·150개 저장 심볼·39개 credential 경계와 소유 목록이 유지됨을 확인하고 잠금 digest를 갱신했다.
 
 실제 원본 66,767청크와 기존 메타데이터 후보를 같은 고정 v2 21개 양성/4개 부정으로 실행했다. HitRate@5/Recall@5는 원본 0.6190, 후보 0.7143으로 이전과 같았다. 두 실행 모두 forbiddenHits=0, no-answer 오답 반환=0, 정답 원문 누락=0. 새 독립 표본이나 의미 모델 성능 실험은 아니다.
 
@@ -66,6 +67,8 @@ pnpm --silent run rag:eval:corpus CANDIDATE_INDEX data/evals/rag/revision-v1-qre
 ```
 
 비교용 baseline은 schemaVersion 2, 동일 qrels/settings/k/문항 수가 필요하다. k=5 이외에는 기존 At5 정책을 재해석하지 않고 거부한다. 판정 없는 단독 보고서는 promotionStatus=NOT_EVALUATED다. 단일 실행의 지연은 운용 SLO로 보지 않는다.
+
+최종 통합 로컬 검증(독립 리뷰 전): `pnpm test` 3,200개 통과·99개 환경 의존 제외, `pnpm run lint` 및 `pnpm run build` 통과, 실제 Chromium `pnpm run test:ui` 5개 통과. MCP smoke/inventory는 118개 도구(54 write, 8 destructive)를 확인했고 구조 경계·hygiene·오프라인 tracker가 통과했다. 초기 초안 `667e3cf` CI는 Node 22/24·필수 PostgreSQL 모두 통과했다. 후속 마이그레이션·잠금·이력 호환성 회귀를 포함한 최종 CI와 새 독립 리뷰는 아래에 갱신한다.
 
 ## 운영 전환 보류 조건
 

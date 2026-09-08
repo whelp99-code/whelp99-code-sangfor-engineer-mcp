@@ -33,7 +33,8 @@ const ActiveRowSchema = z.object({
 const PlanRowSchema = z.object({ 'QUERY PLAN': z.string() }).strict();
 const CorpusRowSchema = z.object({ id: z.string(), contentHash: z.string(), embedding: z.string() }).strict();
 const CurrentRowSchema = z.object({
-  cohortId: z.string(), indexEpoch: z.number().int(), extensionName: z.string(), extensionVersion: z.string(),
+  cohortId: z.string(), indexEpoch: z.number().int(), backend: z.string(), model: z.string(), dimensions: z.number().int(),
+  extensionName: z.string(), extensionVersion: z.string(),
   embeddingSpace: z.unknown().nullable(), embeddingSpaceDigest: z.string().nullable(),
   candidateRowCount: z.union([z.number(), z.bigint(), z.string()]).transform(Number).pipe(z.number().int().nonnegative()),
 }).strict();
@@ -127,7 +128,8 @@ export class IndexPromotionStore implements PromotionSearchPort {
       const identity = await readHnswIndexIdentity(transaction, 'BlroRagEmbedding_embedding_hnsw_idx');
       if (!identity) throw new RagPgvectorRefusal('RAG_INDEX_PROMOTION_INDEX_UNAVAILABLE', scope.projectId);
       const metadata = z.array(CurrentRowSchema).parse(await transaction.$queryRawUnsafe<unknown>(`
-        SELECT c."id" AS "cohortId",c."indexEpoch",e.extname AS "extensionName",e.extversion AS "extensionVersion",
+        SELECT c."id" AS "cohortId",c."indexEpoch",c."backend",c."model",c."dimensions",
+          e.extname AS "extensionName",e.extversion AS "extensionVersion",
           c."embeddingSpace",c."embeddingSpaceDigest",
           (SELECT count(*) FROM "BlroRagEmbedding" r WHERE r."tenantId"=$1 AND r."projectId"=$2 AND r."cohortId"=c."id") AS "candidateRowCount"
         FROM "BlroRagEmbeddingCohort" c
@@ -137,7 +139,9 @@ export class IndexPromotionStore implements PromotionSearchPort {
       const row = metadata[0];
       if (!row) throw new RagPgvectorRefusal('RAG_INDEX_PROMOTION_CURRENT_STATE_AMBIGUOUS', 'missing');
       const space = embeddingSpaceSchema.safeParse(row.embeddingSpace);
-      if (!space.success || !row.embeddingSpaceDigest || embeddingSpaceId(space.data) !== row.embeddingSpaceDigest) {
+      if (!space.success || !row.embeddingSpaceDigest || embeddingSpaceId(space.data) !== row.embeddingSpaceDigest
+        || space.data.model !== row.model || space.data.dimensions !== row.dimensions
+        || (row.backend === 'hash') !== (space.data.model === 'hash')) {
         throw new RagPgvectorRefusal('RAG_PGVECTOR_EMBEDDING_SPACE_UNVERIFIED', row.cohortId);
       }
       const corpus = z.array(CorpusRowSchema).parse(await transaction.$queryRawUnsafe<unknown>(`

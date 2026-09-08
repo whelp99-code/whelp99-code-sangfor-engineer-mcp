@@ -5,7 +5,7 @@ import { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
 import { parseBenchmarkCorpus } from '../packages/sangfor-rag/src/benchmark-schema.js';
 import { hashEmbedding } from '../packages/sangfor-rag/src/hash-embedding.js';
-import { IndexPromotionStore } from '../packages/sangfor-rag/src/index-promotion-store.js';
+import { buildUnmeasuredIndexPromotionQaReport } from '../packages/sangfor-rag/src/index-promotion-qa-report.js';
 import { PgvectorRagStore } from '../packages/sangfor-rag/src/pgvector-store.js';
 import { parsePgvectorCohort, parsePgvectorScope, parsePgvectorUpsert } from '../packages/sangfor-rag/src/pgvector-schema.js';
 import { PGVECTOR_HASH_EMBEDDING_SPACE } from '../packages/sangfor-rag/src/pgvector-types.js';
@@ -82,20 +82,15 @@ async function main(): Promise<void> {
     const exactSet = new Set(exact.ids);
     const recovered = candidate.ids.filter((id) => exactSet.has(id)).length;
     const forbidden = new Set(corpus.queries.flatMap((query) => query.forbiddenIds.map((id) => `${query.id}:${id}`)));
-    const report = {
-      schemaVersion: 'rag.index-promotion-qa/2',
-      eligibility: 'NOT_ELIGIBLE',
-      refusalReason: 'RAG_INDEX_PROMOTION_QA_UPDATE_RECOVERY_UNMEASURED',
+    const report = buildUnmeasuredIndexPromotionQaReport({
       benchmarkDigest: createHash('sha256').update(readFileSync(CORPUS_PATH)).digest('hex'),
       benchmarkQueryCount: corpus.queries.length,
       recallAtK: exact.ids.length === 0 ? 0 : recovered / exact.ids.length,
       exactP95Ms: p95(exact.durations),
       candidateP95Ms: p95(candidate.durations),
       scopeIsolationProof: candidate.ids.every((id) => !forbidden.has(id)),
-      updateMeasured: false,
-      recoveryMeasured: false,
       index: INDEX_NAME,
-    } as const;
+    });
     writeFileSync(output, `${JSON.stringify(report)}\n`, { flag: 'wx' });
     process.stdout.write(`${JSON.stringify({ report: output, ...report })}\nRAG_INDEX_PROMOTION_NOT_ELIGIBLE\n`);
     process.exitCode = 2;
