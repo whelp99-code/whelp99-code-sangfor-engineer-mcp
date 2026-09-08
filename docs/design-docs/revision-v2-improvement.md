@@ -68,7 +68,7 @@ pnpm --silent run rag:eval:corpus CANDIDATE_INDEX data/evals/rag/revision-v1-qre
 
 비교용 baseline은 schemaVersion 2, 동일 qrels/settings/k/문항 수가 필요하다. k=5 이외에는 기존 At5 정책을 재해석하지 않고 거부한다. 판정 없는 단독 보고서는 promotionStatus=NOT_EVALUATED다. 단일 실행의 지연은 운용 SLO로 보지 않는다.
 
-최종 통합 로컬 검증(독립 리뷰 전): `pnpm test` 3,200개 통과·99개 환경 의존 제외, `pnpm run lint` 및 `pnpm run build` 통과, 실제 Chromium `pnpm run test:ui` 5개 통과. MCP smoke/inventory는 118개 도구(54 write, 8 destructive)를 확인했고 구조 경계·hygiene·오프라인 tracker가 통과했다. 초기 초안 `667e3cf` CI는 Node 22/24·필수 PostgreSQL 모두 통과했다. 후속 마이그레이션·잠금·이력 호환성 회귀를 포함한 최종 CI와 새 독립 리뷰는 아래에 갱신한다.
+최종 통합 로컬 검증(독립 리뷰 전): `pnpm test` 3,200개 통과·99개 환경 의존 제외, `pnpm run lint` 및 `pnpm run build` 통과, 실제 Chromium `pnpm run test:ui` 5개 통과. MCP smoke/inventory는 118개 도구(54 write, 8 destructive)를 확인했고 구조 경계·hygiene·오프라인 tracker가 통과했다. 초기 초안 `667e3cf` CI는 Node 22/24·필수 PostgreSQL 모두 통과했다. 후속 CI `a367c5d`는 PostgreSQL 162개 중 161개가 통과했고, 가공하지 않은 해시 벡터의 HNSW 재현율 검사 1개가 실패했다. 마이그레이션·잠금·이력 검사는 통과했다. [pgvector 공식 문서](https://github.com/pgvector/pgvector#iterative-index-scans)에 따른 relaxed scan과 materialized CTE 외부 재정렬을 적용하여 늦게 탐색된 가까운 후보를 보존한다. 0.99 재현율 기준과 기존 표본은 유지하며 수정 후 CI 결과를 별도로 기록한다.
 
 ## 운영 전환 보류 조건
 

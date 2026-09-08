@@ -202,7 +202,7 @@ export class PgvectorRagStore {
         await transaction.$executeRawUnsafe('SET LOCAL enable_seqscan=off');
         await transaction.$executeRawUnsafe('SET LOCAL enable_sort=off');
         await transaction.$executeRawUnsafe('SET LOCAL hnsw.ef_search=1000');
-        await transaction.$executeRawUnsafe(`SET LOCAL hnsw.iterative_scan='strict_order'`);
+        await transaction.$executeRawUnsafe(`SET LOCAL hnsw.iterative_scan='relaxed_order'`);
       }
       const active = await requireActive(transaction, input.scope);
       if (!sameEmbeddingSpace(activeEmbeddingSpace(active), input.embeddingSpace)) {
@@ -221,7 +221,7 @@ export class PgvectorRagStore {
       await transaction.$executeRawUnsafe('SET LOCAL enable_seqscan=off');
       await transaction.$executeRawUnsafe('SET LOCAL enable_sort=off');
       await transaction.$executeRawUnsafe('SET LOCAL hnsw.ef_search=1000');
-      await transaction.$executeRawUnsafe(`SET LOCAL hnsw.iterative_scan='strict_order'`);
+      await transaction.$executeRawUnsafe(`SET LOCAL hnsw.iterative_scan='relaxed_order'`);
       const active = await requireActive(transaction, input.scope);
       if (!sameEmbeddingSpace(activeEmbeddingSpace(active), input.embeddingSpace)) {
         throw new RagPgvectorRefusal('RAG_PGVECTOR_QUERY_EMBEDDING_SPACE_MISMATCH', active.id);

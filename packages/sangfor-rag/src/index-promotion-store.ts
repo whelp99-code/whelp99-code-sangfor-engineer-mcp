@@ -225,7 +225,7 @@ export class IndexPromotionStore implements PromotionSearchPort {
       await transaction.$executeRawUnsafe('SET LOCAL enable_seqscan=off');
       await transaction.$executeRawUnsafe('SET LOCAL enable_sort=off');
       await transaction.$executeRawUnsafe('SET LOCAL hnsw.ef_search=1000');
-      await transaction.$executeRawUnsafe(`SET LOCAL hnsw.iterative_scan='strict_order'`);
+      await transaction.$executeRawUnsafe(`SET LOCAL hnsw.iterative_scan='relaxed_order'`);
       const activeRows = z.array(ActiveRowSchema).parse(await transaction.$queryRawUnsafe<unknown>(ACTIVE_COHORT_SQL, input.scope.tenantId, input.scope.projectId));
       const active = activeRows[0];
       if (activeRows.length !== 1 || !active) throw new RagPgvectorRefusal('RAG_PGVECTOR_ACTIVE_COHORT_AMBIGUOUS', `${activeRows.length}`);

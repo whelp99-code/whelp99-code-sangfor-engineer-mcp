@@ -19,6 +19,8 @@ WHERE e."tenantId"=$1 AND e."projectId"=$2 AND e."cohortId"=$4
 ORDER BY e."embedding" <=> $8::vector,c."id"
 LIMIT $10`;
 
+// Relaxed HNSW expansion retains nearer rows discovered after a distance plateau.
+// Materialize candidates and explicitly sort outside to restore strict result order.
 export const SEARCH_SQL = `
 WITH candidates AS MATERIALIZED (
   SELECT e."tenantId",e."projectId",e."chunkId",(e."embedding" <=> $8::vector) AS "distance"
@@ -36,7 +38,7 @@ SELECT c."id",c."text",c."title",c."sourceRef",candidate."distance"
 FROM candidates candidate
 JOIN "BlroRagAuthoritativeChunk" c
   ON c."tenantId"=candidate."tenantId" AND c."projectId"=candidate."projectId" AND c."id"=candidate."chunkId"
-ORDER BY candidate."distance",c."id"
+ORDER BY candidate."distance" + 0,c."id"
 LIMIT $10`;
 
 export const EXPLAIN_HNSW_SQL = `EXPLAIN (FORMAT TEXT, COSTS OFF) ${SEARCH_SQL}`;
