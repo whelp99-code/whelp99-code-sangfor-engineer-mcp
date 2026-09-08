@@ -8,6 +8,11 @@ venv="${SANGFOR_EMBEDDING_SERVER_VENV:-$repo_root/.venv-embed}"
 host="${SANGFOR_EMBEDDING_SERVER_HOST:-127.0.0.1}"
 port="${SANGFOR_EMBEDDING_SERVER_PORT:-8000}"
 
+case "$host" in
+  127.0.0.1|::1) ;;
+  *) echo "Local embedding server refuses non-loopback bind" >&2; exit 1 ;;
+esac
+
 if [[ ! -x "$venv/bin/python" ]]; then
   echo "missing venv at $venv — create it with:" >&2
   echo "  uv venv --python 3.12 $venv" >&2

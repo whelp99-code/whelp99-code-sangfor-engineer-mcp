@@ -21,3 +21,5 @@ To add a decision: copy the shape of an existing doc (Context → Decision → R
 - [2차 개선안 및 개발 기록](revision-v2-improvement.md) — #80, 평가·검색 근거·판정 후속 조치 및 권한 경로 보완.
 
 - [3차 검색 개선안 및 검증](revision-v3-retrieval-improvement.md)
+
+- [후속 의미 검색·재정렬 검증 (LightRAG 제외)](revision-v4-semantic-validation.md)

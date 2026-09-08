@@ -5,10 +5,10 @@ import { cpus } from 'node:os';
 import { performance } from 'node:perf_hooks';
 import { compareCorpusQuality, corpusQualityThresholdsSchema, corpusReportSchema } from '../packages/sangfor-rag/src/corpus-eval-gate.js';
 import { corpusEvalFixtureSchema } from '../packages/sangfor-rag/src/corpus-eval-contract.js';
-import { loadRagIndex, ragSearchSync, getRagSearchDiagnostics } from '../packages/sangfor-rag/src/index.js';
+import { loadRagIndex, ragSearch, ragSearchSync, getRagSearchDiagnostics } from '../packages/sangfor-rag/src/index.js';
 import { computeRetrievalMetrics } from '../packages/sangfor-rag/src/retrieval-eval.js';
 
-function main(): void {
+async function main(): Promise<void> {
   const [indexPath, fixturePath, baselinePath] = process.argv.slice(2);
   if (!indexPath || !fixturePath || (process.argv.length !== 4 && process.argv.length !== 5)) throw new Error('Usage: pnpm run rag:eval:corpus <index.json> <qrels.json> [baseline-report.json]');
   const fixtureBytes = readFileSync(fixturePath);
@@ -21,7 +21,15 @@ function main(): void {
   const settings = {
     hybridAlpha: process.env.SANGFOR_RAG_HYBRID_ALPHA ?? null,
     allowCustomer: process.env.SANGFOR_ALLOW_CLOUD_RAG_CUSTOMER === '1',
-    execution: 'local-sync-no-external-inference',
+    execution: process.env.SANGFOR_RAG_EVAL_ASYNC === '1' ? 'async-configured-provider' : 'local-sync-no-external-inference',
+    ...(process.env.SANGFOR_RAG_EVAL_ASYNC === '1' ? {
+      embeddingModel: process.env.SANGFOR_RAPID_MLX_EMBEDDING_MODEL ?? null,
+      embeddingRevision: process.env.SANGFOR_EMBEDDING_MODEL_REVISION ?? null,
+      localRerankerEnabled: process.env.SANGFOR_LOCAL_RERANK_ENABLED === '1',
+      localReranker: process.env.SANGFOR_LOCAL_RERANK_MODEL ?? null,
+      localRerankerRevision: process.env.SANGFOR_LOCAL_RERANK_REVISION ?? null,
+      rerankDisabled: process.env.SANGFOR_MIMO_RERANK_ENABLED === '0',
+    } : {}),
     ...(process.env.SANGFOR_RAG_FUSION ? { fusion: process.env.SANGFOR_RAG_FUSION } : {}),
   };
   const implementationSha256 = createHash('sha256');
@@ -31,22 +39,30 @@ function main(): void {
     'packages/sangfor-rag/src/retrieval-eval.ts', 'packages/sangfor-rag/src/corpus-eval-gate.ts',
     'packages/sangfor-rag/src/hash-embedding.ts', 'packages/sangfor-rag/src/embedding-space.ts',
     'packages/sangfor-rag/src/embedding-profile.ts', 'packages/sangfor-rag/src/rag-product.ts',
-    'packages/sangfor-rag/src/rag-index-store.ts'];
+    'packages/sangfor-rag/src/rag-index-store.ts', 'packages/sangfor-rag/src/embedding-provider.ts',
+    'packages/sangfor-rag/src/rapid-mlx-provider.ts', 'packages/sangfor-rag/src/openai-embeddings-client.ts',
+    'packages/sangfor-rag/src/mimo-rerank-provider.ts', 'packages/sangfor-rag/src/local-rerank-provider.ts'];
   for (const file of implementationFiles) {
     implementationSha256.update(file).update(readFileSync(new URL('../' + file, import.meta.url)));
   }
   const loadStart = performance.now();
   const index = loadRagIndex(indexPath);
   const coldLoadMs = performance.now() - loadStart;
-  const rows = [...fixture.queries, ...fixture.noAnswerQueries].map((query) => {
+  const rows: Array<{ queryId: string; product: string; language: string; latencyMs: number;
+    mode: ReturnType<typeof getRagSearchDiagnostics>['retrievalMode']; diagnostics: ReturnType<typeof getRagSearchDiagnostics>;
+    hits: Array<{ queryId: string; sourceId: string; rank: number; score: number; rerankScore?: number }>;
+    forbiddenHits: number; hardNegativeHits: number }> = [];
+  for (const query of [...fixture.queries, ...fixture.noAnswerQueries]) {
     const started = performance.now();
-    const hits = ragSearchSync({ query: query.query, product: query.product, version: query.version, limit: fixture.k, indexPath });
+    const input = { query: query.query, product: query.product, version: query.version, limit: fixture.k, indexPath };
+    const hits = process.env.SANGFOR_RAG_EVAL_ASYNC === '1' ? await ragSearch(input) : ragSearchSync(input);
     const latencyMs = performance.now() - started;
-    return { queryId: query.queryId, product: query.product, language: query.language ?? 'unknown', latencyMs, mode: getRagSearchDiagnostics(hits).retrievalMode,
-      hits: hits.map((hit, i) => ({ queryId: query.queryId, sourceId: hit.filePath, rank: i + 1, score: hit.score })),
+    rows.push({ queryId: query.queryId, product: query.product, language: query.language ?? 'unknown', latencyMs, mode: getRagSearchDiagnostics(hits).retrievalMode,
+      diagnostics: getRagSearchDiagnostics(hits),
+      hits: hits.map((hit, i) => ({ queryId: query.queryId, sourceId: hit.filePath, rank: i + 1, score: hit.score, rerankScore: hit.rerankScore })),
       forbiddenHits: hits.filter((hit) => query.forbiddenSources?.includes(hit.filePath)).length,
-      hardNegativeHits: hits.filter((hit) => query.hardNegativeSources?.includes(hit.filePath)).length };
-  });
+      hardNegativeHits: hits.filter((hit) => query.hardNegativeSources?.includes(hit.filePath)).length });
+  }
   const qrels = fixture.queries.flatMap((query) => (query.relevantSources ?? []).map((sourceId) => ({ queryId: query.queryId, sourceId, grade: 1 })));
   if (qrels.length === 0) throw new Error('RAG_EVAL_POSITIVE_QRELS_REQUIRED');
   const latencies = rows.map((row) => row.latencyMs).sort((a, b) => a - b);
@@ -71,7 +87,7 @@ function main(): void {
     missingRelevantSources, positiveQueryCount: fixture.queries.length, noAnswerQueryCount: fixture.noAnswerQueries.length,
     byProduct: bySlice('product'), byLanguage: bySlice('language'),
     node: process.version, cpu: cpus()[0]?.model ?? null, chunkCount: index.chunks.length,
-    profile: 'local sync retrieval; legacy/unpinned vectors disabled; no reranker or external inference',
+    profile: process.env.SANGFOR_RAG_EVAL_ASYNC === '1' ? 'async retrieval; actual providers and degradation recorded per query' : 'local sync retrieval; legacy/unpinned vectors disabled; no reranker or external inference',
     k: fixture.k, coldLoadMs,
     meanLatencyMs: latencies.reduce((sum, n) => sum + n, 0) / latencies.length,
     p50LatencyMs: latencies[Math.ceil(latencies.length * 0.5) - 1],
@@ -87,4 +103,4 @@ function main(): void {
   if (comparison?.decision === 'NOT_ELIGIBLE') process.exitCode = 2;
 }
 
-main();
+main().catch((error) => { console.error(error); process.exitCode = 1; });

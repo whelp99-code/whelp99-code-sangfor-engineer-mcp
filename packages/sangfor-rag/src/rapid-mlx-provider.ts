@@ -27,6 +27,7 @@ export class RapidMlxEmbeddingProvider implements EmbeddingProvider {
         baseUrl: this.baseUrl,
         apiKey: this.apiKey,
         model: this.model,
+        revision: process.env.SANGFOR_EMBEDDING_MODEL_REVISION?.trim(),
         timeoutMs: this.timeoutMs
       });
       out.push(...vectors);

@@ -6,10 +6,20 @@
 
 const TOKEN_RE = /[a-z0-9가-힣._/-]+/g;
 const STOP_WORDS = new Set('a an the is are was were be been being do does did how what where which when who why can could should would will to of for in on at by with from and or as it its this that these those i we you your my need needs please'.split(' '));
+// Technical noun inflections only: never stem CLI switches, paths, identifiers,
+// or arbitrary English words (e.g. status/chassis/analysis).
+const TECHNICAL_PLURALS = new Map([
+  ['apis', 'api'], ['routes', 'route'], ['restrictions', 'restriction'], ['snapshots', 'snapshot'],
+  ['policies', 'policy'], ['addresses', 'address'], ['statuses', 'status'], ['commands', 'command'],
+  ['versions', 'version'], ['disks', 'disk'], ['cards', 'card'], ['nodes', 'node'], ['errors', 'error'],
+  ['channels', 'channel'], ['firewalls', 'firewall'], ['tenants', 'tenant'], ['quotas', 'quota'],
+  ['adapters', 'adapter'], ['interfaces', 'interface'], ['volumes', 'volume'], ['networks', 'network'],
+  ['clusters', 'cluster'], ['backups', 'backup'], ['certificates', 'certificate'], ['permissions', 'permission'],
+]);
 const tokenCache = new WeakMap<object, { text: string; counts: Map<string, number>; length: number }>();
 
 export function tokenize(text: string): string[] {
-  return (text.toLowerCase().match(TOKEN_RE) ?? []).filter((term) => !STOP_WORDS.has(term)).map((term) => term === 'apis' ? 'api' : term);
+  return (text.toLowerCase().match(TOKEN_RE) ?? []).filter((term) => !STOP_WORDS.has(term)).map((term) => TECHNICAL_PLURALS.get(term) ?? term);
 }
 
 export interface Bm25Options {

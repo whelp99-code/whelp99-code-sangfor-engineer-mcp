@@ -104,3 +104,17 @@ export function distinctSources<T extends RagDocumentChunk>(hits: readonly T[], 
   }
   return distinct;
 }
+
+/** Retain source diversity while letting a local reranker inspect a second passage. */
+export function expandRerankPassages<T extends RagDocumentChunk>(ranked: readonly T[], seeds: readonly T[]): T[] {
+  const pool = [...seeds];
+  const counts = new Map(seeds.map((hit) => [hit.filePath, 1]));
+  const ids = new Set(seeds.map((hit) => hit.id));
+  for (const hit of ranked) {
+    if (pool.length >= 100) break;
+    const count = counts.get(hit.filePath);
+    if (count === undefined || count >= 2 || ids.has(hit.id)) continue;
+    pool.push(hit); ids.add(hit.id); counts.set(hit.filePath, count + 1);
+  }
+  return pool;
+}
