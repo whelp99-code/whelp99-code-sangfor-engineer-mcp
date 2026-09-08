@@ -18,7 +18,7 @@ export function cleanRetrievalText(text: string): string {
 
 /** A single explicit release in a manual heading; no guessing from body text. */
 export function documentVersionFromTitle(title: string): string | undefined {
-  const matches = [...title.matchAll(/\b(\d+\.\d+\.\d+(?:R\d+)?)(?=\s+-\s+)/gi)].map((match) => match[1]);
+  const matches = [...title.matchAll(/(?<![\w.])(\d+\.\d+\.\d+(?:R\d+)?)(?=\s+-\s+)/gi)].map((match) => match[1]);
   return new Set(matches).size === 1 ? matches[0] : undefined;
 }
 

@@ -1,9 +1,9 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-09-08T12:59:06.897Z",
+  "generatedAt": "2026-09-08T13:04:02.232Z",
   "indexSha256": "55107e56f6ee22845894dcc7d16eb00c5b5c3887af451dd255d1965a7000b294",
   "qrelsSha256": "f6e772f55ff326b62673002d2ada3fe437b26d42e0b66396cc4eef0a2f3af1a8",
-  "implementationSha256": "3b9fbcb7234e60cbfb062ef010ffebe189b49f9072fec023e5add9f89ae80995",
+  "implementationSha256": "f30e20846ef9aa3f2049f4d8b4b6b37640331dc70d6411e46fa43e50a750e111",
   "implementationFiles": [
     "scripts/rag-corpus-eval.ts",
     "packages/sangfor-rag/src/corpus-eval-contract.ts",
@@ -96,10 +96,10 @@
   "chunkCount": 66767,
   "profile": "local sync retrieval; legacy/unpinned vectors disabled; no reranker or external inference",
   "k": 5,
-  "coldLoadMs": 2155.365791,
-  "meanLatencyMs": 92.50419787999994,
-  "p50LatencyMs": 83.50989699999991,
-  "p95LatencyMs": 322.74325899999985,
+  "coldLoadMs": 2102.428852,
+  "meanLatencyMs": 89.79758611999999,
+  "p50LatencyMs": 78.40379799999937,
+  "p95LatencyMs": 332.40082500000017,
   "metrics": {
     "queryCount": 21,
     "hitRateAtK": 0.9523809523809523,
@@ -116,7 +116,7 @@
       "queryId": "hci-cli-6113",
       "product": "HCI",
       "language": "en",
-      "latencyMs": 322.74325899999985,
+      "latencyMs": 332.40082500000017,
       "mode": "bm25",
       "hits": [
         {
@@ -157,7 +157,7 @@
       "queryId": "scp-nbu-xbsa-key",
       "product": "HCI_SCP",
       "language": "en",
-      "latencyMs": 393.4292529999998,
+      "latencyMs": 396.6210799999999,
       "mode": "bm25",
       "hits": [
         {
@@ -198,7 +198,7 @@
       "queryId": "scp-rapid-recovery-ko",
       "product": "HCI_SCP",
       "language": "ko",
-      "latencyMs": 103.06646,
+      "latencyMs": 107.15446499999962,
       "mode": "bm25",
       "hits": [
         {
@@ -239,7 +239,7 @@
       "queryId": "ndr-3098-preupgrade",
       "product": "NDR",
       "language": "en",
-      "latencyMs": 42.42466599999989,
+      "latencyMs": 38.16511300000002,
       "mode": "bm25",
       "hits": [
         {
@@ -280,7 +280,7 @@
       "queryId": "ndr-resolved-issues",
       "product": "NDR",
       "language": "en",
-      "latencyMs": 13.210671999999704,
+      "latencyMs": 13.087579000000005,
       "mode": "bm25",
       "hits": [
         {
@@ -321,7 +321,7 @@
       "queryId": "ngfw-80107-guaranteed",
       "product": "NGFW",
       "language": "en",
-      "latencyMs": 296.670525,
+      "latencyMs": 269.6524650000001,
       "mode": "bm25",
       "hits": [
         {
@@ -362,7 +362,7 @@
       "queryId": "ngfw-80106-limited",
       "product": "NGFW",
       "language": "ko",
-      "latencyMs": 82.83902900000021,
+      "latencyMs": 74.47285600000032,
       "mode": "bm25",
       "hits": [
         {
@@ -403,7 +403,7 @@
       "queryId": "iag-vpn-bandwidth-ko",
       "product": "IAG",
       "language": "ko",
-      "latencyMs": 36.44902400000001,
+      "latencyMs": 48.53661599999987,
       "mode": "bm25",
       "hits": [
         {
@@ -444,7 +444,7 @@
       "queryId": "hci-overlay-6111",
       "product": "HCI",
       "language": "en",
-      "latencyMs": 91.28636400000005,
+      "latencyMs": 78.77235599999995,
       "mode": "bm25",
       "hits": [
         {
@@ -485,7 +485,7 @@
       "queryId": "hci-datastore",
       "product": "HCI",
       "language": "en",
-      "latencyMs": 92.63068999999996,
+      "latencyMs": 79.44519300000002,
       "mode": "bm25",
       "hits": [
         {
@@ -526,7 +526,7 @@
       "queryId": "hci-iscsi-ko",
       "product": "HCI",
       "language": "ko",
-      "latencyMs": 83.57214500000009,
+      "latencyMs": 77.48133199999984,
       "mode": "bm25",
       "hits": [
         {
@@ -567,7 +567,7 @@
       "queryId": "backup-space-case",
       "product": "HCI",
       "language": "en",
-      "latencyMs": 82.67581000000018,
+      "latencyMs": 79.87710199999992,
       "mode": "bm25",
       "hits": [
         {
@@ -608,7 +608,7 @@
       "queryId": "scc-tenant-quota",
       "product": "SCC",
       "language": "en",
-      "latencyMs": 10.716297999999824,
+      "latencyMs": 10.609780000000228,
       "mode": "bm25",
       "hits": [
         {
@@ -649,7 +649,7 @@
       "queryId": "scp-612-scheduled-backup",
       "product": "HCI_SCP",
       "language": "ko",
-      "latencyMs": 107.14790700000003,
+      "latencyMs": 107.27585499999986,
       "mode": "bm25",
       "hits": [
         {
@@ -690,7 +690,7 @@
       "queryId": "hci-system-diagnostics",
       "product": "HCI",
       "language": "en",
-      "latencyMs": 84.8942019999995,
+      "latencyMs": 81.06130499999927,
       "mode": "bm25",
       "hits": [
         {
@@ -731,7 +731,7 @@
       "queryId": "hci-raid-ko",
       "product": "HCI",
       "language": "ko",
-      "latencyMs": 83.50989699999991,
+      "latencyMs": 82.38234000000011,
       "mode": "bm25",
       "hits": [
         {
@@ -772,7 +772,7 @@
       "queryId": "hci-api-reference",
       "product": "HCI",
       "language": "en",
-      "latencyMs": 84.0742739999996,
+      "latencyMs": 78.40379799999937,
       "mode": "bm25",
       "hits": [
         {
@@ -813,7 +813,7 @@
       "queryId": "sfvddk-api",
       "product": "HCI_SCP",
       "language": "en",
-      "latencyMs": 100.76132700000016,
+      "latencyMs": 94.54721299999983,
       "mode": "bm25",
       "hits": [
         {
@@ -854,7 +854,7 @@
       "queryId": "hci-dfw-ko",
       "product": "HCI",
       "language": "ko",
-      "latencyMs": 86.1456189999999,
+      "latencyMs": 83.79894400000012,
       "mode": "bm25",
       "hits": [
         {
@@ -895,7 +895,7 @@
       "queryId": "ndr-environment-ko",
       "product": "NDR",
       "language": "ko",
-      "latencyMs": 12.873922000000675,
+      "latencyMs": 12.705281000000468,
       "mode": "bm25",
       "hits": [
         {
@@ -936,7 +936,7 @@
       "queryId": "vcenter-cert-case",
       "product": "HCI",
       "language": "en",
-      "latencyMs": 80.01265700000022,
+      "latencyMs": 76.1017380000003,
       "mode": "bm25",
       "hits": [
         {
@@ -977,7 +977,7 @@
       "queryId": "no-hci-9999",
       "product": "HCI",
       "language": "en",
-      "latencyMs": 6.95136999999977,
+      "latencyMs": 7.323166000000128,
       "mode": "bm25",
       "hits": [],
       "forbiddenHits": 0,
@@ -987,7 +987,7 @@
       "queryId": "no-ndr-9999-ko",
       "product": "NDR",
       "language": "ko",
-      "latencyMs": 4.686105999999199,
+      "latencyMs": 4.672898000000714,
       "mode": "bm25",
       "hits": [],
       "forbiddenHits": 0,
@@ -997,7 +997,7 @@
       "queryId": "no-ngfw-9999",
       "product": "OTHER",
       "language": "en",
-      "latencyMs": 5.541983000000073,
+      "latencyMs": 5.786954000000151,
       "mode": "bm25",
       "hits": [],
       "forbiddenHits": 0,
@@ -1007,7 +1007,7 @@
       "queryId": "no-scp-9999-ko",
       "product": "HCI_SCP",
       "language": "ko",
-      "latencyMs": 4.291487999999845,
+      "latencyMs": 4.6033989999996265,
       "mode": "bm25",
       "hits": [],
       "forbiddenHits": 0,

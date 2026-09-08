@@ -16,6 +16,7 @@ describe('retrieval input quality', () => {
   it('only extracts a single explicit heading release, retaining release suffixes', () => {
     expect(documentVersionFromTitle('HCI 6.11.1R1 - User Manual / Storage')).toBe('6.11.1R1');
     expect(documentVersionFromTitle('HCI 6.11.3 migration to 7.0.0')).toBeUndefined();
+    expect(documentVersionFromTitle('Other 10.6.11.3 - Guide')).toBeUndefined();
     expect(documentVersionFromTitle('HCI 6.11.3 - Guide / HCI 7.0.0 - Guide')).toBeUndefined();
   });
   it('gives a reranker a relevant contiguous passage beyond a boilerplate introduction', () => {

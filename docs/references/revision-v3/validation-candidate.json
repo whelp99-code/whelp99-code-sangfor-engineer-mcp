@@ -1,9 +1,9 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-09-08T13:00:01.066Z",
+  "generatedAt": "2026-09-08T13:04:06.749Z",
   "indexSha256": "55107e56f6ee22845894dcc7d16eb00c5b5c3887af451dd255d1965a7000b294",
   "qrelsSha256": "85dd4ed04074e3459f0dffb12de56f8002dd62526405e95b42edcab21503630a",
-  "implementationSha256": "3b9fbcb7234e60cbfb062ef010ffebe189b49f9072fec023e5add9f89ae80995",
+  "implementationSha256": "f30e20846ef9aa3f2049f4d8b4b6b37640331dc70d6411e46fa43e50a750e111",
   "implementationFiles": [
     "scripts/rag-corpus-eval.ts",
     "packages/sangfor-rag/src/corpus-eval-contract.ts",
@@ -61,10 +61,10 @@
   "chunkCount": 66767,
   "profile": "local sync retrieval; legacy/unpinned vectors disabled; no reranker or external inference",
   "k": 5,
-  "coldLoadMs": 2100.8136,
-  "meanLatencyMs": 106.268566375,
-  "p50LatencyMs": 81.05901300000005,
-  "p95LatencyMs": 319.61456799999996,
+  "coldLoadMs": 2047.256056,
+  "meanLatencyMs": 101.34753337499998,
+  "p50LatencyMs": 73.64262000000008,
+  "p95LatencyMs": 314.2925879999998,
   "metrics": {
     "queryCount": 12,
     "hitRateAtK": 0.8333333333333334,
@@ -81,7 +81,7 @@
       "queryId": "v3-validation-01",
       "product": "HCI",
       "language": "en",
-      "latencyMs": 319.61456799999996,
+      "latencyMs": 314.2925879999998,
       "mode": "bm25",
       "hits": [
         {
@@ -122,7 +122,7 @@
       "queryId": "v3-validation-02",
       "product": "HCI",
       "language": "en",
-      "latencyMs": 106.62781900000027,
+      "latencyMs": 99.85595999999987,
       "mode": "bm25",
       "hits": [
         {
@@ -163,7 +163,7 @@
       "queryId": "v3-validation-03",
       "product": "HCI",
       "language": "en",
-      "latencyMs": 84.29276299999992,
+      "latencyMs": 77.45357299999978,
       "mode": "bm25",
       "hits": [
         {
@@ -204,7 +204,7 @@
       "queryId": "v3-validation-04",
       "product": "HCI",
       "language": "en",
-      "latencyMs": 84.12615499999993,
+      "latencyMs": 77.08374400000002,
       "mode": "bm25",
       "hits": [
         {
@@ -245,7 +245,7 @@
       "queryId": "v3-validation-05",
       "product": "HCI",
       "language": "en",
-      "latencyMs": 79.06224999999995,
+      "latencyMs": 76.85677399999986,
       "mode": "bm25",
       "hits": [
         {
@@ -286,7 +286,7 @@
       "queryId": "v3-validation-06",
       "product": "HCI",
       "language": "en",
-      "latencyMs": 87.35998599999994,
+      "latencyMs": 73.64262000000008,
       "mode": "bm25",
       "hits": [
         {
@@ -327,7 +327,7 @@
       "queryId": "v3-validation-07",
       "product": "HCI",
       "language": "en",
-      "latencyMs": 85.03230300000041,
+      "latencyMs": 81.60866399999986,
       "mode": "bm25",
       "hits": [
         {
@@ -368,7 +368,7 @@
       "queryId": "v3-validation-08",
       "product": "HCI",
       "language": "en",
-      "latencyMs": 81.05901300000005,
+      "latencyMs": 70.96127200000001,
       "mode": "bm25",
       "hits": [
         {
@@ -409,7 +409,7 @@
       "queryId": "v3-validation-09",
       "product": "NGFW",
       "language": "en",
-      "latencyMs": 271.7061570000001,
+      "latencyMs": 266.8677480000001,
       "mode": "bm25",
       "hits": [
         {
@@ -450,7 +450,7 @@
       "queryId": "v3-validation-10",
       "product": "NGFW",
       "language": "en",
-      "latencyMs": 68.78143,
+      "latencyMs": 66.1891740000001,
       "mode": "bm25",
       "hits": [
         {
@@ -491,7 +491,7 @@
       "queryId": "v3-validation-11",
       "product": "NGFW",
       "language": "en",
-      "latencyMs": 70.18010499999991,
+      "latencyMs": 70.81476300000031,
       "mode": "bm25",
       "hits": [
         {
@@ -532,7 +532,7 @@
       "queryId": "v3-validation-12",
       "product": "NGFW",
       "language": "en",
-      "latencyMs": 68.68490999999995,
+      "latencyMs": 66.21057400000018,
       "mode": "bm25",
       "hits": [
         {
@@ -573,7 +573,7 @@
       "queryId": "v3-no-01",
       "product": "HCI",
       "language": "en",
-      "latencyMs": 90.95387399999981,
+      "latencyMs": 80.21284999999989,
       "mode": "bm25",
       "hits": [],
       "forbiddenHits": 0,
@@ -583,7 +583,7 @@
       "queryId": "v3-no-02",
       "product": "NGFW",
       "language": "ko",
-      "latencyMs": 63.497476000000006,
+      "latencyMs": 62.951948999999786,
       "mode": "bm25",
       "hits": [],
       "forbiddenHits": 0,
@@ -593,7 +593,7 @@
       "queryId": "v3-no-03",
       "product": "HCI",
       "language": "en",
-      "latencyMs": 73.54997400000002,
+      "latencyMs": 72.08287799999971,
       "mode": "bm25",
       "hits": [],
       "forbiddenHits": 0,
@@ -603,7 +603,7 @@
       "queryId": "v3-no-04",
       "product": "NGFW",
       "language": "en",
-      "latencyMs": 65.7682789999999,
+      "latencyMs": 64.47540300000037,
       "mode": "bm25",
       "hits": [
         {
