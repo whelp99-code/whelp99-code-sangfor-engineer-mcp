@@ -73,7 +73,8 @@ export SANGFOR_MIMO_RERANK_TIMEOUT_MS=60000
 
 The local adapter refuses remote URLs, redirects, foreign revisions, duplicate/out-of-
 range indexes and non-finite scores. Search retains its original order on inference
-failure/timeout. Invalid configuration fails closed before inference. It keeps every
-selected source, adds at most one extra passage per source (100 total maximum), ranks
-all local passages, then deduplicates to the requested final source count. Local
+failure/timeout. Invalid configuration fails closed before inference. By default it ranks one passage per selected source. The explicit experiment
+`SANGFOR_LOCAL_RERANK_PASSAGES=2` keeps every selected source, adds at most one extra
+passage per source (100 total maximum), ranks all local passages, then deduplicates
+to the requested final source count. Local
 reranking is disabled by default; it is not automatically better than lexical search.

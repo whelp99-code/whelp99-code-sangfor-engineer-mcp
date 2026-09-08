@@ -142,7 +142,7 @@ export async function ragSearch(input: RagSearchInput): Promise<RagSearchHit[]> 
   let pool = distinctSources(ranked, candidateLimit);
   const localReranker = createLocalRerankFromEnv();
   const reranker = localReranker ?? createMimoRerankFromEnv();
-  if (localReranker) pool = expandRerankPassages(ranked, pool);
+  if (localReranker && process.env.SANGFOR_LOCAL_RERANK_PASSAGES === '2') pool = expandRerankPassages(ranked, pool);
   if (reranker && pool.length > 1) {
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout> | undefined;

@@ -33,8 +33,8 @@ export class LocalRerankProvider implements RerankProvider {
   async healthCheck(): Promise<{ ok: boolean; detail?: string }> {
     try {
       const response = await fetch(`${this.baseUrl.replace(/\/$/, '')}/health`, { redirect: 'error', signal: AbortSignal.timeout(5000) });
-      const data = await response.json() as { model?: string; revision?: string };
-      return { ok: response.ok && data.model === this.model && data.revision === this.revision };
+      const data = await response.json() as { ok?: boolean; model?: string; revision?: string };
+      return { ok: response.ok && data.ok === true && data.model === this.model && data.revision === this.revision };
     } catch { return { ok: false, detail: 'local reranker unavailable' }; }
   }
 }

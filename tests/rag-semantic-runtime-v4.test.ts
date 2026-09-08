@@ -73,3 +73,13 @@ it('retains every candidate source while adding a distinct second passage within
   const seeds = Array.from({ length: 100 }, (_, i) => hit(`${i}`, `${i}.md`));
   expect(expandRerankPassages([...seeds, hit('extra', '0.md')], seeds)).toHaveLength(100);
 });
+
+it('does not turn a negative or missing health assertion into success', async () => {
+  const provider = new LocalRerankProvider('http://127.0.0.1:8005', 'expected', revision);
+  for (const ok of [false, undefined]) {
+    embeddings({ ok, model: 'expected', revision });
+    expect((await provider.healthCheck()).ok).toBe(false);
+  }
+  embeddings({ ok: true, model: 'expected', revision });
+  expect((await provider.healthCheck()).ok).toBe(true);
+});

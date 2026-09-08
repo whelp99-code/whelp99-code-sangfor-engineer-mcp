@@ -26,6 +26,7 @@ async function main(): Promise<void> {
       embeddingModel: process.env.SANGFOR_RAPID_MLX_EMBEDDING_MODEL ?? null,
       embeddingRevision: process.env.SANGFOR_EMBEDDING_MODEL_REVISION ?? null,
       localRerankerEnabled: process.env.SANGFOR_LOCAL_RERANK_ENABLED === '1',
+      localRerankerPassages: process.env.SANGFOR_LOCAL_RERANK_PASSAGES === '2' ? 2 : 1,
       localReranker: process.env.SANGFOR_LOCAL_RERANK_MODEL ?? null,
       localRerankerRevision: process.env.SANGFOR_LOCAL_RERANK_REVISION ?? null,
       rerankDisabled: process.env.SANGFOR_MIMO_RERANK_ENABLED === '0',
