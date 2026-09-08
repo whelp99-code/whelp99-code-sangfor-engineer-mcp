@@ -1,3 +1,4 @@
+import { selectRetrievalSnippet } from './retrieval-text.js';
 import type { RerankProvider } from './embedding-provider-types.js';
 import {
   isMimoViaLitellm,
@@ -18,7 +19,7 @@ export class MimoRerankProvider implements RerankProvider {
     private readonly apiKey: string,
     private readonly model: string,
     private readonly timeoutMs = 60_000,
-    private readonly maxSnippetChars = 400,
+    private readonly maxSnippetChars = 1200,
     private readonly authHeader: ChatAuthHeader = 'api-key'
   ) {}
 
@@ -40,7 +41,7 @@ export class MimoRerankProvider implements RerankProvider {
   ): Promise<string[]> {
     if (!candidates.length) return [];
     const lines = candidates.map((c, i) => {
-      const snippet = c.text.replace(/\s+/g, ' ').trim().slice(0, this.maxSnippetChars);
+      const snippet = selectRetrievalSnippet(query, c.text, this.maxSnippetChars);
       const title = c.title ?? '';
       return `${i}|${c.id}|${title}|${snippet}`;
     });
@@ -120,7 +121,7 @@ export function createMimoRerankFromEnv(): RerankProvider | undefined {
     apiKey,
     viaLitellm ? resolveLitellmChatModel() : (process.env.SANGFOR_MIMO_CHAT_MODEL ?? 'mimo-v2.5-pro'),
     Number(process.env.SANGFOR_MIMO_TIMEOUT_MS ?? 60_000),
-    400,
+    1200,
     viaLitellm ? 'authorization' : 'api-key'
   );
 }

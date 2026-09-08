@@ -19,3 +19,5 @@ To add a decision: copy the shape of an existing doc (Context → Decision → R
 - [1차 수정안: 판정·최신성·검색 정확성 인수](revision-v1-correctness.md) — #77, 실제 문서 평가와 현장 인수 구분.
 
 - [2차 개선안 및 개발 기록](revision-v2-improvement.md) — #80, 평가·검색 근거·판정 후속 조치 및 권한 경로 보완.
+
+- [3차 검색 개선안 및 검증](revision-v3-retrieval-improvement.md)

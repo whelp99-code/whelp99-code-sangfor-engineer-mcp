@@ -22,11 +22,12 @@ function main(): void {
     hybridAlpha: process.env.SANGFOR_RAG_HYBRID_ALPHA ?? null,
     allowCustomer: process.env.SANGFOR_ALLOW_CLOUD_RAG_CUSTOMER === '1',
     execution: 'local-sync-no-external-inference',
+    ...(process.env.SANGFOR_RAG_FUSION ? { fusion: process.env.SANGFOR_RAG_FUSION } : {}),
   };
   const implementationSha256 = createHash('sha256');
   const implementationFiles = ['scripts/rag-corpus-eval.ts', 'packages/sangfor-rag/src/corpus-eval-contract.ts',
     'packages/sangfor-rag/src/rag-search.ts', 'packages/sangfor-rag/src/rag-ranking.ts',
-    'packages/sangfor-rag/src/bm25.ts', 'packages/sangfor-rag/src/query-normalization.ts',
+    'packages/sangfor-rag/src/retrieval-text.ts', 'packages/sangfor-rag/src/bm25.ts', 'packages/sangfor-rag/src/query-normalization.ts',
     'packages/sangfor-rag/src/retrieval-eval.ts', 'packages/sangfor-rag/src/corpus-eval-gate.ts',
     'packages/sangfor-rag/src/hash-embedding.ts', 'packages/sangfor-rag/src/embedding-space.ts',
     'packages/sangfor-rag/src/embedding-profile.ts', 'packages/sangfor-rag/src/rag-product.ts',

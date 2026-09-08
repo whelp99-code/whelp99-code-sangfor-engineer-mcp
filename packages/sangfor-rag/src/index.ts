@@ -1,3 +1,4 @@
+import { cleanRetrievalText, documentVersionFromTitle } from './retrieval-text.js';
 import { statSync } from 'node:fs';
 import { basename } from 'node:path';
 import { nowId, withDirLock, writeFileAtomicSync } from '@sangfor/shared';
@@ -104,7 +105,7 @@ export async function ingestDocument(input: IngestDocumentInput): Promise<{ docu
   const sourceType = input.sourceType ?? 'manual';
   const trustLevel = input.trustLevel ?? (sourceType === 'manual' ? 'official' : 'internal');
   const documentId = nowId('doc');
-  const textChunks = chunkText(text);
+  const textChunks = chunkText(cleanRetrievalText(text));
   const provider = await getEmbeddingProvider();
   const vectors = await embedForRole(provider, textChunks, 'document');
   const chunks = textChunks.map((chunkTextValue, index): RagDocumentChunk => {
@@ -114,7 +115,7 @@ export async function ingestDocument(input: IngestDocumentInput): Promise<{ docu
       id: `${documentId}_chunk_${index + 1}`,
       sourceType,
       product,
-      version: input.version,
+      version: input.version ?? documentVersionFromTitle(title),
       title,
       section: `chunk-${index + 1}`,
       text: chunkTextValue,
@@ -181,14 +182,14 @@ export async function ingestDocumentsBatch(inputs: IngestDocumentInput[]): Promi
     const sourceType = input.sourceType ?? 'manual';
     const trustLevel = input.trustLevel ?? (sourceType === 'manual' ? 'official' : 'internal');
     const product = resolveRagProduct(input.product);
-    const textChunks = chunkText(text);
+    const textChunks = chunkText(cleanRetrievalText(text));
     const vectors = await embedForRole(provider, textChunks, 'document');
     const documentId = nowId('doc');
     chunks.push(...textChunks.map((chunkTextValue, index): RagDocumentChunk => ({
       id: `${documentId}_chunk_${index + 1}`,
       sourceType,
       product,
-      version: input.version,
+      version: input.version ?? documentVersionFromTitle(title),
       title,
       section: `chunk-${index + 1}`,
       text: chunkTextValue,

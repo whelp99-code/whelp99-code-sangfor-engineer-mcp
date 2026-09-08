@@ -1,0 +1,738 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-08T12:56:15.583Z",
+  "indexSha256": "1be153bf175c18d344b387148cc97ccdda8a39dcc29f6a1af3a462ba602000ce",
+  "qrelsSha256": "85dd4ed04074e3459f0dffb12de56f8002dd62526405e95b42edcab21503630a",
+  "implementationSha256": "5657af22e930d08900da929a615bde72becab48d75a0f8c1001995f3e8ce702b",
+  "implementationFiles": [
+    "scripts/rag-corpus-eval.ts",
+    "packages/sangfor-rag/src/corpus-eval-contract.ts",
+    "packages/sangfor-rag/src/rag-search.ts",
+    "packages/sangfor-rag/src/rag-ranking.ts",
+    "packages/sangfor-rag/src/bm25.ts",
+    "packages/sangfor-rag/src/query-normalization.ts",
+    "packages/sangfor-rag/src/retrieval-eval.ts",
+    "packages/sangfor-rag/src/corpus-eval-gate.ts",
+    "packages/sangfor-rag/src/hash-embedding.ts",
+    "packages/sangfor-rag/src/embedding-space.ts",
+    "packages/sangfor-rag/src/embedding-profile.ts",
+    "packages/sangfor-rag/src/rag-product.ts",
+    "packages/sangfor-rag/src/rag-index-store.ts"
+  ],
+  "settings": {
+    "hybridAlpha": null,
+    "allowCustomer": false,
+    "execution": "local-sync-no-external-inference"
+  },
+  "settingsSha256": "81f3692bbf1dcf851b5d5f1ad01cdbfabc14507204929ffeb2d0c6c7509c8b10",
+  "evaluationOnly": true,
+  "promotionStatus": "NOT_EVALUATED",
+  "missingRelevantSources": [],
+  "positiveQueryCount": 12,
+  "noAnswerQueryCount": 4,
+  "byProduct": {
+    "HCI": {
+      "queryCount": 8,
+      "hitRateAtK": 0.75,
+      "recallAtK": 0.75,
+      "mrrAtK": 0.32708333333333334,
+      "ndcgAtK": 0.43105738985992403
+    },
+    "NGFW": {
+      "queryCount": 4,
+      "hitRateAtK": 0.5,
+      "recallAtK": 0.5,
+      "mrrAtK": 0.1125,
+      "ndcgAtK": 0.20438234132698369
+    }
+  },
+  "byLanguage": {
+    "en": {
+      "queryCount": 12,
+      "hitRateAtK": 0.6666666666666666,
+      "recallAtK": 0.6666666666666666,
+      "mrrAtK": 0.2555555555555556,
+      "ndcgAtK": 0.3554990403489439
+    }
+  },
+  "node": "v24.19.0",
+  "cpu": "AMD EPYC Processor",
+  "chunkCount": 66767,
+  "profile": "local sync retrieval; legacy/unpinned vectors disabled; no reranker or external inference",
+  "k": 5,
+  "coldLoadMs": 2444.6736579999997,
+  "meanLatencyMs": 319.4342216875,
+  "p50LatencyMs": 319.5747369999999,
+  "p95LatencyMs": 362.3786920000002,
+  "metrics": {
+    "queryCount": 12,
+    "hitRateAtK": 0.6666666666666666,
+    "recallAtK": 0.6666666666666666,
+    "mrrAtK": 0.2555555555555556,
+    "ndcgAtK": 0.3554990403489439
+  },
+  "noAnswerFalsePositiveRate": 1,
+  "forbiddenHits": 0,
+  "hardNegativeQueryRate": 0,
+  "hardNegativeHits": 0,
+  "rows": [
+    {
+      "queryId": "v3-validation-01",
+      "product": "HCI",
+      "language": "en",
+      "latencyMs": 327.20631600000024,
+      "mode": "bm25",
+      "hits": [
+        {
+          "queryId": "v3-validation-01",
+          "sourceId": "data/sources/raw/support_10_1054_2643765.md",
+          "rank": 1,
+          "score": 1
+        },
+        {
+          "queryId": "v3-validation-01",
+          "sourceId": "data/sources/raw/support_10_1381_2654264.md",
+          "rank": 2,
+          "score": 0.9868241030801204
+        },
+        {
+          "queryId": "v3-validation-01",
+          "sourceId": "data/sources/raw/support_10_1229_2639807.md",
+          "rank": 3,
+          "score": 0.9857209549538791
+        },
+        {
+          "queryId": "v3-validation-01",
+          "sourceId": "data/sources/raw/support_10_1381_2654165.md",
+          "rank": 4,
+          "score": 0.9630672697186374
+        },
+        {
+          "queryId": "v3-validation-01",
+          "sourceId": "data/sources/raw/support_10_1229_2639760.md",
+          "rank": 5,
+          "score": 0.9578122574431508
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "v3-validation-02",
+      "product": "HCI",
+      "language": "en",
+      "latencyMs": 319.5747369999999,
+      "mode": "bm25",
+      "hits": [
+        {
+          "queryId": "v3-validation-02",
+          "sourceId": "data/sources/raw/support_10_1381_2654265.md",
+          "rank": 1,
+          "score": 1
+        },
+        {
+          "queryId": "v3-validation-02",
+          "sourceId": "data/sources/raw/support_10_1229_2639808.md",
+          "rank": 2,
+          "score": 1
+        },
+        {
+          "queryId": "v3-validation-02",
+          "sourceId": "data/sources/raw/support_10_1229_2639806.md",
+          "rank": 3,
+          "score": 0.8951188824942146
+        },
+        {
+          "queryId": "v3-validation-02",
+          "sourceId": "data/sources/raw/support_10_1381_2654263.md",
+          "rank": 4,
+          "score": 0.8037882611646114
+        },
+        {
+          "queryId": "v3-validation-02",
+          "sourceId": "data/sources/raw/support_10_1381_2654264.md",
+          "rank": 5,
+          "score": 0.7798402298047972
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "v3-validation-03",
+      "product": "HCI",
+      "language": "en",
+      "latencyMs": 309.4199779999999,
+      "mode": "bm25",
+      "hits": [
+        {
+          "queryId": "v3-validation-03",
+          "sourceId": "data/sources/raw/community_thread_11328.md",
+          "rank": 1,
+          "score": 1
+        },
+        {
+          "queryId": "v3-validation-03",
+          "sourceId": "data/sources/raw/community_thread_8500.md",
+          "rank": 2,
+          "score": 0.7995992274545093
+        },
+        {
+          "queryId": "v3-validation-03",
+          "sourceId": "data/sources/raw/support_10_1381_2654308.md",
+          "rank": 3,
+          "score": 0.7481172474963297
+        },
+        {
+          "queryId": "v3-validation-03",
+          "sourceId": "data/sources/raw/community_thread_9440.md",
+          "rank": 4,
+          "score": 0.741967742511326
+        },
+        {
+          "queryId": "v3-validation-03",
+          "sourceId": "data/sources/raw/community_thread_12104.md",
+          "rank": 5,
+          "score": 0.7084397291434588
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "v3-validation-04",
+      "product": "HCI",
+      "language": "en",
+      "latencyMs": 362.3786920000002,
+      "mode": "bm25",
+      "hits": [
+        {
+          "queryId": "v3-validation-04",
+          "sourceId": "data/sources/raw/community_thread_8160.md",
+          "rank": 1,
+          "score": 1
+        },
+        {
+          "queryId": "v3-validation-04",
+          "sourceId": "data/sources/raw/community_thread_8186.md",
+          "rank": 2,
+          "score": 0.9280455279550913
+        },
+        {
+          "queryId": "v3-validation-04",
+          "sourceId": "data/sources/raw/community_12051.md",
+          "rank": 3,
+          "score": 0.880528090006865
+        },
+        {
+          "queryId": "v3-validation-04",
+          "sourceId": "/Volumes/DevSpace/Playground/whelp99-code-sangfor-engineer-mcp/data/sources/raw/community_12051.md",
+          "rank": 4,
+          "score": 0.880528090006865
+        },
+        {
+          "queryId": "v3-validation-04",
+          "sourceId": "/home/jm/orca/projects/whelp99-code-sangfor-engineer-mcp/data/sources/raw/community_12051.md",
+          "rank": 5,
+          "score": 0.880528090006865
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "v3-validation-05",
+      "product": "HCI",
+      "language": "en",
+      "latencyMs": 319.61634799999956,
+      "mode": "bm25",
+      "hits": [
+        {
+          "queryId": "v3-validation-05",
+          "sourceId": "data/sources/raw/support_10_1054_2643819.md",
+          "rank": 1,
+          "score": 1
+        },
+        {
+          "queryId": "v3-validation-05",
+          "sourceId": "data/sources/raw/support_10_1229_2639882.md",
+          "rank": 2,
+          "score": 0.9577860078715827
+        },
+        {
+          "queryId": "v3-validation-05",
+          "sourceId": "data/sources/raw/support_10_1381_2654417.md",
+          "rank": 3,
+          "score": 0.9547458846582294
+        },
+        {
+          "queryId": "v3-validation-05",
+          "sourceId": "data/sources/raw/support_10_1054_2643685.md",
+          "rank": 4,
+          "score": 0.8059641993705436
+        },
+        {
+          "queryId": "v3-validation-05",
+          "sourceId": "data/sources/raw/community_thread_12150.md",
+          "rank": 5,
+          "score": 0.8001362189100649
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "v3-validation-06",
+      "product": "HCI",
+      "language": "en",
+      "latencyMs": 314.0498639999996,
+      "mode": "bm25",
+      "hits": [
+        {
+          "queryId": "v3-validation-06",
+          "sourceId": "data/sources/raw/community_thread_11340.md",
+          "rank": 1,
+          "score": 1
+        },
+        {
+          "queryId": "v3-validation-06",
+          "sourceId": "data/sources/raw/community_thread_10380.md",
+          "rank": 2,
+          "score": 0.93046402296302
+        },
+        {
+          "queryId": "v3-validation-06",
+          "sourceId": "data/sources/raw/community_thread_11573.md",
+          "rank": 3,
+          "score": 0.8978615551868963
+        },
+        {
+          "queryId": "v3-validation-06",
+          "sourceId": "data/sources/raw/support_10_1229_2639894.md",
+          "rank": 4,
+          "score": 0.7481990639717383
+        },
+        {
+          "queryId": "v3-validation-06",
+          "sourceId": "data/sources/raw/support_10_1381_2654461.md",
+          "rank": 5,
+          "score": 0.7468058715164173
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "v3-validation-07",
+      "product": "HCI",
+      "language": "en",
+      "latencyMs": 321.76760100000047,
+      "mode": "bm25",
+      "hits": [
+        {
+          "queryId": "v3-validation-07",
+          "sourceId": "data/sources/raw/community_thread_10496.md",
+          "rank": 1,
+          "score": 1
+        },
+        {
+          "queryId": "v3-validation-07",
+          "sourceId": "data/sources/raw/community_thread_12186.md",
+          "rank": 2,
+          "score": 0.91946249893771
+        },
+        {
+          "queryId": "v3-validation-07",
+          "sourceId": "data/sources/raw/community_thread_10159.md",
+          "rank": 3,
+          "score": 0.8982851251351487
+        },
+        {
+          "queryId": "v3-validation-07",
+          "sourceId": "data/sources/raw/community_thread_4423.md",
+          "rank": 4,
+          "score": 0.8745142209834541
+        },
+        {
+          "queryId": "v3-validation-07",
+          "sourceId": "data/sources/raw/support_10_1381_2662869.md",
+          "rank": 5,
+          "score": 0.8719746978314035
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "v3-validation-08",
+      "product": "HCI",
+      "language": "en",
+      "latencyMs": 316.5172359999997,
+      "mode": "bm25",
+      "hits": [
+        {
+          "queryId": "v3-validation-08",
+          "sourceId": "data/sources/raw/community_thread_7594.md",
+          "rank": 1,
+          "score": 1
+        },
+        {
+          "queryId": "v3-validation-08",
+          "sourceId": "data/sources/raw/community_thread_7960.md",
+          "rank": 2,
+          "score": 0.9928202575928606
+        },
+        {
+          "queryId": "v3-validation-08",
+          "sourceId": "data/sources/raw/community_thread_10918.md",
+          "rank": 3,
+          "score": 0.9499399972622822
+        },
+        {
+          "queryId": "v3-validation-08",
+          "sourceId": "data/sources/raw/support_10_1381_2662826.md",
+          "rank": 4,
+          "score": 0.9220160470580894
+        },
+        {
+          "queryId": "v3-validation-08",
+          "sourceId": "data/sources/raw/community_thread_11027.md",
+          "rank": 5,
+          "score": 0.8191399781203224
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "v3-validation-09",
+      "product": "NGFW",
+      "language": "en",
+      "latencyMs": 328.59245199999987,
+      "mode": "bm25",
+      "hits": [
+        {
+          "queryId": "v3-validation-09",
+          "sourceId": "data/sources/raw/support_21_1095_2653269.md",
+          "rank": 1,
+          "score": 1
+        },
+        {
+          "queryId": "v3-validation-09",
+          "sourceId": "data/sources/raw/support_21_1095_2653263.md",
+          "rank": 2,
+          "score": 0.9814457651692629
+        },
+        {
+          "queryId": "v3-validation-09",
+          "sourceId": "data/sources/raw/support_21_1090_2640212.md",
+          "rank": 3,
+          "score": 0.9115029300933973
+        },
+        {
+          "queryId": "v3-validation-09",
+          "sourceId": "data/sources/raw/support_21_1088_2639151.md",
+          "rank": 4,
+          "score": 0.9052386441273997
+        },
+        {
+          "queryId": "v3-validation-09",
+          "sourceId": "data/sources/raw/support_21_1088_2639155.md",
+          "rank": 5,
+          "score": 0.8931909690227838
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "v3-validation-10",
+      "product": "NGFW",
+      "language": "en",
+      "latencyMs": 325.53085999999985,
+      "mode": "bm25",
+      "hits": [
+        {
+          "queryId": "v3-validation-10",
+          "sourceId": "data/sources/raw/support_21_1095_2661235.md",
+          "rank": 1,
+          "score": 1
+        },
+        {
+          "queryId": "v3-validation-10",
+          "sourceId": "data/sources/raw/support_21_1090_2640341.md",
+          "rank": 2,
+          "score": 0.9066197819513598
+        },
+        {
+          "queryId": "v3-validation-10",
+          "sourceId": "data/sources/raw/support_21_1092_2631462.md",
+          "rank": 3,
+          "score": 0.9060176647296125
+        },
+        {
+          "queryId": "v3-validation-10",
+          "sourceId": "data/sources/raw/support_21_1093_2637150.md",
+          "rank": 4,
+          "score": 0.904815879337379
+        },
+        {
+          "queryId": "v3-validation-10",
+          "sourceId": "data/sources/raw/support_21_1095_2647860.md",
+          "rank": 5,
+          "score": 0.9018256230066627
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "v3-validation-11",
+      "product": "NGFW",
+      "language": "en",
+      "latencyMs": 302.1216680000007,
+      "mode": "bm25",
+      "hits": [
+        {
+          "queryId": "v3-validation-11",
+          "sourceId": "data/sources/raw/support_21_1088_2639258.md",
+          "rank": 1,
+          "score": 1
+        },
+        {
+          "queryId": "v3-validation-11",
+          "sourceId": "data/sources/raw/support_21_1092_2631687.md",
+          "rank": 2,
+          "score": 0.9091649175564666
+        },
+        {
+          "queryId": "v3-validation-11",
+          "sourceId": "data/sources/raw/support_21_1090_2640560.md",
+          "rank": 3,
+          "score": 0.9055546321446258
+        },
+        {
+          "queryId": "v3-validation-11",
+          "sourceId": "data/sources/raw/support_21_1093_2637374.md",
+          "rank": 4,
+          "score": 0.9001942846309731
+        },
+        {
+          "queryId": "v3-validation-11",
+          "sourceId": "data/sources/raw/support_21_1095_2648088.md",
+          "rank": 5,
+          "score": 0.8914042432637148
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "v3-validation-12",
+      "product": "NGFW",
+      "language": "en",
+      "latencyMs": 300.6175119999998,
+      "mode": "bm25",
+      "hits": [
+        {
+          "queryId": "v3-validation-12",
+          "sourceId": "data/sources/raw/support_21_1090_2640569.md",
+          "rank": 1,
+          "score": 1
+        },
+        {
+          "queryId": "v3-validation-12",
+          "sourceId": "data/sources/raw/support_21_1092_2631696.md",
+          "rank": 2,
+          "score": 0.9989988796855915
+        },
+        {
+          "queryId": "v3-validation-12",
+          "sourceId": "data/sources/raw/support_21_1090_2640360.md",
+          "rank": 3,
+          "score": 0.9749866641087066
+        },
+        {
+          "queryId": "v3-validation-12",
+          "sourceId": "data/sources/raw/support_21_1095_2647879.md",
+          "rank": 4,
+          "score": 0.9738409643821192
+        },
+        {
+          "queryId": "v3-validation-12",
+          "sourceId": "data/sources/raw/support_21_1093_2637169.md",
+          "rank": 5,
+          "score": 0.9738409643821192
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "v3-no-01",
+      "product": "HCI",
+      "language": "en",
+      "latencyMs": 295.5228479999996,
+      "mode": "bm25",
+      "hits": [
+        {
+          "queryId": "v3-no-01",
+          "sourceId": "data/sources/raw/community_10435.md",
+          "rank": 1,
+          "score": 0
+        },
+        {
+          "queryId": "v3-no-01",
+          "sourceId": "data/sources/raw/community_10796.md",
+          "rank": 2,
+          "score": 0
+        },
+        {
+          "queryId": "v3-no-01",
+          "sourceId": "data/sources/raw/community_10797.md",
+          "rank": 3,
+          "score": 0
+        },
+        {
+          "queryId": "v3-no-01",
+          "sourceId": "data/sources/raw/community_11106.md",
+          "rank": 4,
+          "score": 0
+        },
+        {
+          "queryId": "v3-no-01",
+          "sourceId": "data/sources/raw/community_11152.md",
+          "rank": 5,
+          "score": 0
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "v3-no-02",
+      "product": "NGFW",
+      "language": "ko",
+      "latencyMs": 298.4058789999999,
+      "mode": "bm25",
+      "hits": [
+        {
+          "queryId": "v3-no-02",
+          "sourceId": "data/sources/raw/support_21_1095_2653550.md",
+          "rank": 1,
+          "score": 0
+        },
+        {
+          "queryId": "v3-no-02",
+          "sourceId": "data/sources/raw/support_21_1095_2653551.md",
+          "rank": 2,
+          "score": 0
+        },
+        {
+          "queryId": "v3-no-02",
+          "sourceId": "data/sources/raw/support_21_1095_2653552.md",
+          "rank": 3,
+          "score": 0
+        },
+        {
+          "queryId": "v3-no-02",
+          "sourceId": "data/sources/raw/support_21_1095_2653553.md",
+          "rank": 4,
+          "score": 0
+        },
+        {
+          "queryId": "v3-no-02",
+          "sourceId": "data/sources/raw/support_21_1095_2653554.md",
+          "rank": 5,
+          "score": 0
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "v3-no-03",
+      "product": "HCI",
+      "language": "en",
+      "latencyMs": 345.553081,
+      "mode": "bm25",
+      "hits": [
+        {
+          "queryId": "v3-no-03",
+          "sourceId": "data/sources/raw/community_thread_8500.md",
+          "rank": 1,
+          "score": 1
+        },
+        {
+          "queryId": "v3-no-03",
+          "sourceId": "data/sources/raw/community_thread_10859.md",
+          "rank": 2,
+          "score": 0.9529121536026415
+        },
+        {
+          "queryId": "v3-no-03",
+          "sourceId": "data/sources/raw/community_thread_11252.md",
+          "rank": 3,
+          "score": 0.94385722006439
+        },
+        {
+          "queryId": "v3-no-03",
+          "sourceId": "data/sources/raw/community_thread_506.md",
+          "rank": 4,
+          "score": 0.9282061628843776
+        },
+        {
+          "queryId": "v3-no-03",
+          "sourceId": "data/sources/raw/community_thread_5700.md",
+          "rank": 5,
+          "score": 0.919876930898601
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "v3-no-04",
+      "product": "NGFW",
+      "language": "en",
+      "latencyMs": 324.07247499999994,
+      "mode": "bm25",
+      "hits": [
+        {
+          "queryId": "v3-no-04",
+          "sourceId": "data/sources/raw/support_21_1095_2653269.md",
+          "rank": 1,
+          "score": 1
+        },
+        {
+          "queryId": "v3-no-04",
+          "sourceId": "data/sources/raw/support_21_1093_2650700.md",
+          "rank": 2,
+          "score": 0.9997255083942154
+        },
+        {
+          "queryId": "v3-no-04",
+          "sourceId": "data/sources/raw/support_21_1092_2638169.md",
+          "rank": 3,
+          "score": 0.9997255083942154
+        },
+        {
+          "queryId": "v3-no-04",
+          "sourceId": "data/sources/raw/support_21_1095_2653263.md",
+          "rank": 4,
+          "score": 0.9996749227808358
+        },
+        {
+          "queryId": "v3-no-04",
+          "sourceId": "data/sources/raw/support_21_1095_2661246.md",
+          "rank": 5,
+          "score": 0.9937756328299914
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    }
+  ],
+  "comparison": null,
+  "baselineReportSha256": null
+}

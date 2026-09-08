@@ -10,7 +10,7 @@ import { createMimoRerankFromEnv } from './mimo-rerank-provider.js';
 import { normalizeRetrievalQuery } from './query-normalization.js';
 import { loadRagIndex } from './index.js';
 import { DEFAULT_INDEX_PATH } from './rag-index-store.js';
-import { canCompareVector, distinctSources, rankHybrid } from './rag-ranking.js';
+import { canCompareVector, distinctSources, hasRetrievalEvidence, rankHybrid } from './rag-ranking.js';
 import { embeddingSpaceId, resolveEmbeddingSpace, type EmbeddingSpace } from './embedding-space.js';
 import { actualEmbeddingModelName } from './rag-ingest.js';
 import type {
@@ -137,7 +137,7 @@ export async function ragSearch(input: RagSearchInput): Promise<RagSearchHit[]> 
     querySpace,
     queryVector,
   );
-  const ranked = rankHybrid(filtered, queryVector, normalizedQuery, querySpace).sort((left, right) => right.score - left.score);
+  const ranked = rankHybrid(filtered, queryVector, normalizedQuery, querySpace).filter(hasRetrievalEvidence).sort((left, right) => right.score - left.score);
   let pool = distinctSources(ranked, candidateLimit);
   const reranker = createMimoRerankFromEnv();
   if (reranker && pool.length > 1) {
@@ -205,7 +205,7 @@ export function ragSearchScopedSync(input: ScopedRagSearchInput): RagSearchHit[]
   input.onCandidates?.(authorized);
   const queryVector = hashEmbedding(normalizedQuery);
   const space = resolveEmbeddingSpace('hash', queryVector.length, 'hash');
-  return withDiagnostics(rankHybrid(authorized, queryVector, normalizedQuery, space)
+  return withDiagnostics(rankHybrid(authorized, queryVector, normalizedQuery, space).filter(hasRetrievalEvidence)
     .sort((left, right) => right.score - left.score)
     .slice(0, input.limit ?? 8), computeRagSearchDiagnostics({ version: 1, chunks: authorized, updatedAt: '' }, false, 'hash', queryVector.length, space, queryVector));
 }
@@ -225,7 +225,7 @@ export function ragSearchSync(input: RagSearchInput): RagSearchHit[] {
   const querySpace = resolveEmbeddingSpace('hash', queryVector.length, 'hash');
   const diagnostics = computeRagSearchDiagnostics({ ...index, chunks: filtered }, false, 'hash', queryVector.length, querySpace, queryVector);
   return withDiagnostics(distinctSources(
-    rankHybrid(filtered, queryVector, normalizedQuery, querySpace).sort((left, right) => right.score - left.score),
+    rankHybrid(filtered, queryVector, normalizedQuery, querySpace).filter(hasRetrievalEvidence).sort((left, right) => right.score - left.score),
     input.limit ?? 8,
   ), diagnostics);
 }

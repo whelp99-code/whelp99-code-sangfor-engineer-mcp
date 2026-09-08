@@ -1,4 +1,6 @@
 const BILINGUAL_DOMAIN_TERMS: ReadonlyArray<readonly [RegExp, string]> = [
+  [/\b(?:shell(?:-level)?|command[- ]line)\b/iu, 'CLI'],
+  [/\b(?:standard|ordinary)\s+datastore\b/iu, 'ordinary standard datastore'],
   [/제한\s*대역폭\s*채널/iu, 'limited bandwidth channel'],
   [/보장\s*대역폭\s*채널/iu, 'guaranteed bandwidth channel'],
   [/예약\s*백업(?:\s*정책|\s*작업)?/iu, 'scheduled backup policy'],

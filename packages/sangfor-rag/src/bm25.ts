@@ -1,14 +1,15 @@
 /**
  * BM25 lexical scoring — the keyword half of the hybrid (BM25+cosine) ranker
- * in index.ts. Tokenizer is deliberately identical to hash-embedding.ts's so
- * "keyword match" and "hashed bag-of-words cosine" reason about the same
- * token stream; only the scoring formula differs.
+ * in rag-ranking.ts. Lexical stop words and technical plural normalization
+ * apply only to BM25; they do not alter the persisted hash embedding contract.
  */
 
 const TOKEN_RE = /[a-z0-9가-힣._/-]+/g;
+const STOP_WORDS = new Set('a an the is are was were be been being do does did how what where which when who why can could should would will to of for in on at by with from and or as it its this that these those i we you your my need needs please'.split(' '));
+const tokenCache = new WeakMap<object, { text: string; counts: Map<string, number>; length: number }>();
 
 export function tokenize(text: string): string[] {
-  return text.toLowerCase().match(TOKEN_RE) ?? [];
+  return (text.toLowerCase().match(TOKEN_RE) ?? []).filter((term) => !STOP_WORDS.has(term)).map((term) => term === 'apis' ? 'api' : term);
 }
 
 export interface Bm25Options {
@@ -43,11 +44,17 @@ export function computeBm25Scores(
   let totalLength = 0;
 
   for (const doc of docs) {
-    const tokens = tokenize(doc.text);
-    docLengths.set(doc.id, tokens.length);
-    totalLength += tokens.length;
-    const counts = new Map<string, number>();
-    for (const token of tokens) counts.set(token, (counts.get(token) ?? 0) + 1);
+    let prepared = tokenCache.get(doc);
+    if (!prepared || prepared.text !== doc.text) {
+      const tokens = tokenize(doc.text);
+      const counts = new Map<string, number>();
+      for (const token of tokens) counts.set(token, (counts.get(token) ?? 0) + 1);
+      prepared = { text: doc.text, counts, length: tokens.length };
+      tokenCache.set(doc, prepared);
+    }
+    const { counts, length } = prepared;
+    docLengths.set(doc.id, length);
+    totalLength += length;
     docTermCounts.set(doc.id, counts);
     for (const term of counts.keys()) termDocFrequency.set(term, (termDocFrequency.get(term) ?? 0) + 1);
   }
