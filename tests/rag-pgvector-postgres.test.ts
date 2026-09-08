@@ -228,7 +228,7 @@ suite('PostgreSQL-native pgvector RAG', () => {
       readCurrentState: (input) => promotion.readCurrentState(input),
       preflightCandidate: (input, name) => promotion.preflightCandidate(input, name),
       searchExact: async (input) => { calls.exact += 1; return promotion.searchExact(input); },
-      searchCandidate: async (input, identity) => { calls.candidate += 1; return promotion.searchCandidate(input, identity); },
+      searchCandidate: async (input, identity, report, now) => { calls.candidate += 1; return promotion.searchCandidate(input, identity, report, now); },
     };
     try {
       await expect(new IndexPromotionRouter(observed).search(query, {
@@ -258,15 +258,35 @@ suite('PostgreSQL-native pgvector RAG', () => {
     expect(before?.relfilenode).not.toBe(after?.relfilenode);
 
     if (!after) throw new TypeError('RAG_HNSW_POSTCHECK_FIXTURE_MISSING');
+    promotionInput = await currentPromotion(promotion);
+    await promotion.apply({ scope, evidence: promotionInput.evidence, now: promotionInput.now, reason: 'postcheck test' });
     let identityProbes = 0;
     let afterQueryCalls = 0;
     const changed = { ...after, relfilenode: String(Number(after.relfilenode) + 1) };
     const postcheck = new IndexPromotionStore(database, {
+      promotionAuthority,
       candidateIdentityProbe: async () => { identityProbes += 1; return identityProbes === 1 ? after : changed; },
       afterCandidateQuery: async () => { afterQueryCalls += 1; },
     });
-    await expect(postcheck.searchCandidate(query, after)).rejects.toMatchObject({ code: 'RAG_HNSW_POSTCHECK_IDENTITY_CHANGED' });
+    await expect(postcheck.searchCandidate(query, after, promotionInput.report, promotionInput.now)).rejects.toMatchObject({ code: 'RAG_HNSW_POSTCHECK_IDENTITY_CHANGED' });
     expect(afterQueryCalls).toBe(1);
+  });
+
+  it.each(['cohort', 'corpus', 'demotion'] as const)('refuses %s changes after routing validation without returning candidate hits', async (change) => {
+    await store.promoteCohort(cohort);
+    const promotion = new IndexPromotionStore(database, { promotionAuthority });
+    const current = await currentPromotion(promotion);
+    await promotion.apply({ scope, evidence: current.evidence, now: current.now, reason: 'dispatch race regression' });
+    const query = { scope, query: hashEmbedding('oracle'), embeddingSpace: PGVECTOR_HASH_EMBEDDING_SPACE, filters: {}, limit: 1 };
+    await expect(new IndexPromotionRouter(promotion).search(query, {
+      backend: 'auto', now: current.now,
+      beforeCandidateDispatch: async () => {
+        if (change === 'cohort') await store.promoteCohort(parsePgvectorCohort({ ...cohort, id: 'dispatch-race-cohort', indexEpoch: 91 }));
+        else if (change === 'corpus') await store.upsert(chunk('dispatch-race-chunk', 'changed oracle'));
+        else await promotion.demote(scope, 'dispatch race demotion');
+      },
+    })).rejects.toBeInstanceOf(CandidateSearchUnavailableError);
+    await store.promoteCohort(cohort);
   });
 
   it('re-reads current cohort after waiting for the apply lock and refuses stale evidence', async () => {

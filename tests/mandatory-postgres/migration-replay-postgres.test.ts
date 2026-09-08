@@ -21,6 +21,7 @@ const migrations = [
   RAG_COHORT_CORRECTIVE_MIGRATION,
   'prisma/migrations/20260831010000_rag_index_promotion_evidence_append_only/migration.sql',
   RAG_EMBEDDING_SPACE_MIGRATION,
+  'prisma/migrations/20260908020000_rag_hnsw_connectivity/migration.sql',
 ] as const;
 
 const database = new PrismaClient({ datasources: { db: { url: ownerUrl } } });
@@ -40,6 +41,7 @@ async function catalogSnapshot(): Promise<readonly string[]> {
     FROM pg_class c
     WHERE c.relname IN (
       'BlroSourceRootOwner_projectId_idx',
+      'BlroRagEmbedding_embedding_hnsw_idx',
       'BlroRagEmbeddingCohort_one_active_scope_key',
       'BlroRagEmbeddingCohort_full_space_identity_key'
     )

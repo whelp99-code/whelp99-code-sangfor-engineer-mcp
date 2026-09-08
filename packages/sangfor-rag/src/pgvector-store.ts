@@ -152,6 +152,7 @@ export class PgvectorRagStore {
     const input = parsePgvectorUpsert(raw);
     await this.execute(() => this.database.$transaction(async (transaction) => {
       await setScope(transaction, input);
+      await transaction.$executeRawUnsafe(`SELECT pg_advisory_xact_lock(hashtext($1),hashtext($2))`, input.tenantId, input.projectId);
       await writeChunk(transaction, input);
     }));
   }
@@ -167,17 +168,20 @@ export class PgvectorRagStore {
     }
     await this.execute(() => this.database.$transaction(async (transaction) => {
       await setScope(transaction, scope);
+      await transaction.$executeRawUnsafe(`SELECT pg_advisory_xact_lock(hashtext($1),hashtext($2))`, scope.tenantId, scope.projectId);
       const active = await requireActive(transaction, scope);
       if (active.id !== raw.cohortId) throw new RagPgvectorRefusal('RAG_PGVECTOR_COHORT_MISMATCH', active.id);
       await transaction.$executeRawUnsafe(`DELETE FROM "BlroRagAuthoritativeChunk" WHERE "tenantId"=$1 AND "projectId"=$2`, scope.tenantId, scope.projectId);
       for (const chunk of chunks) await writeChunk(transaction, chunk);
-    }, { isolationLevel: 'Serializable' }));
+    // Bounded bulk ingestion includes HNSW maintenance; interactive query timeout is too short.
+    }, { isolationLevel: 'Serializable', timeout: 60_000 }));
   }
 
   async delete(raw: DeleteInput): Promise<void> {
     const scope = parsePgvectorScope(raw.scope);
     await this.execute(() => this.database.$transaction(async (transaction) => {
       await setScope(transaction, scope);
+      await transaction.$executeRawUnsafe(`SELECT pg_advisory_xact_lock(hashtext($1),hashtext($2))`, scope.tenantId, scope.projectId);
       await transaction.$executeRawUnsafe(`DELETE FROM "BlroRagAuthoritativeChunk" WHERE "tenantId"=$1 AND "projectId"=$2 AND "id"=$3`, scope.tenantId, scope.projectId, raw.chunkId);
     }));
   }

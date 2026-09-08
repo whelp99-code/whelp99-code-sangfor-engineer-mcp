@@ -36,7 +36,7 @@ export class IndexPromotionRouter {
     if (!evaluation.eligible) return this.exact(input, evaluation.reason);
     await options.beforeCandidateDispatch?.();
     try {
-      const hits = z.array(PgvectorHitRowSchema).parse(await this.port.searchCandidate(input, expectedIdentity));
+      const hits = z.array(PgvectorHitRowSchema).parse(await this.port.searchCandidate(input, expectedIdentity, reportResult, options.now));
       return { backend: 'hnsw', hits, diagnostics: { reason: 'PROMOTION_VALID', reportDigest: reportResult.reportDigest } };
     } catch (error) {
       throw new CandidateSearchUnavailableError('RAG_HNSW_CANDIDATE_UNAVAILABLE', { cause: error });

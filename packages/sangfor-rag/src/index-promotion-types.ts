@@ -94,5 +94,5 @@ export interface PromotionSearchPort {
   readCurrentState(scope: PgvectorScope): Promise<unknown>;
   preflightCandidate(scope: PgvectorScope, indexName: string): Promise<HnswIndexIdentity | null>;
   searchExact(input: PgvectorSearch): Promise<unknown>;
-  searchCandidate(input: PgvectorSearch, expectedIdentity: HnswIndexIdentity): Promise<unknown>;
+  searchCandidate(input: PgvectorSearch, expectedIdentity: HnswIndexIdentity, expectedReport: IndexPromotionReport, now: Date): Promise<unknown>;
 }

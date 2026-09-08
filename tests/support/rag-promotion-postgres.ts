@@ -29,5 +29,5 @@ export async function promotionFixture(input: PromotionFixtureInput) {
 }
 
 export async function createHnsw(owner: PrismaClient): Promise<void> {
-  await owner.$executeRawUnsafe(`CREATE INDEX "BlroRagEmbedding_embedding_hnsw_idx" ON "BlroRagEmbedding" USING hnsw ("embedding" vector_cosine_ops) WITH (m=16,ef_construction=1000)`);
+  await owner.$executeRawUnsafe(`CREATE INDEX "BlroRagEmbedding_embedding_hnsw_idx" ON "BlroRagEmbedding" USING hnsw ("embedding" vector_cosine_ops) WITH (m=100,ef_construction=1000)`);
 }

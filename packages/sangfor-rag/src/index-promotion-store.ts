@@ -84,33 +84,37 @@ export class IndexPromotionStore implements PromotionSearchPort {
     const scope = parsePgvectorScope(scopeRaw);
     return this.execute(() => this.database.$transaction(async (transaction) => {
       await setScope(transaction, scope);
-      const rows = z.array(PromotionRowSchema).parse(await transaction.$queryRawUnsafe<unknown>(`
-        SELECT "report","reportCanonical","reportDigest" FROM "BlroRagIndexPromotion"
-        WHERE "tenantId"=$1 AND "projectId"=$2 AND "state"='promoted'
-        ORDER BY "promotedAt" DESC`, scope.tenantId, scope.projectId));
-      if (rows.length > 1) throw new RagPgvectorRefusal('RAG_INDEX_PROMOTION_AMBIGUOUS', scope.projectId);
-      const row = rows[0];
-      if (!row) return null;
-      const authority = this.options.promotionAuthority;
-      const evidence = IndexPromotionEvidenceSchema.safeParse(row.report);
-      if (!authority || !evidence.success || row.reportCanonical !== canonicalPromotionJson(evidence.data)
-        || row.reportDigest !== evidence.data.report.reportDigest) {
+      return this.loadPromotionInTransaction(transaction, scope);
+    }));
+  }
+
+  private async loadPromotionInTransaction(transaction: PgvectorSqlExecutor, scope: PgvectorScope): Promise<unknown | null> {
+    const rows = z.array(PromotionRowSchema).parse(await transaction.$queryRawUnsafe<unknown>(`
+      SELECT "report","reportCanonical","reportDigest" FROM "BlroRagIndexPromotion"
+      WHERE "tenantId"=$1 AND "projectId"=$2 AND "state"='promoted'
+      ORDER BY "promotedAt" DESC`, scope.tenantId, scope.projectId));
+    if (rows.length > 1) throw new RagPgvectorRefusal('RAG_INDEX_PROMOTION_AMBIGUOUS', scope.projectId);
+    const row = rows[0];
+    if (!row) return null;
+    const authority = this.options.promotionAuthority;
+    const evidence = IndexPromotionEvidenceSchema.safeParse(row.report);
+    if (!authority || !evidence.success || row.reportCanonical !== canonicalPromotionJson(evidence.data)
+      || row.reportDigest !== evidence.data.report.reportDigest) {
+      return { schemaVersion: 'persisted-promotion-envelope-tampered' };
+    }
+    const verificationAuthority = {
+      tenantId: scope.tenantId, projectId: scope.projectId,
+      authorityActorId: authority.actorId, secret: authority.secret,
+    };
+    try {
+      await requirePromotionEvidenceHistory(transaction, scope, evidence.data, verificationAuthority);
+      return verifyIndexPromotionEvidence(evidence.data, verificationAuthority);
+    } catch (error) {
+      if (error instanceof IndexPromotionEvidenceError || error instanceof IndexPromotionHistoryError) {
         return { schemaVersion: 'persisted-promotion-envelope-tampered' };
       }
-      const verificationAuthority = {
-        tenantId: scope.tenantId, projectId: scope.projectId,
-        authorityActorId: authority.actorId, secret: authority.secret,
-      };
-      try {
-        await requirePromotionEvidenceHistory(transaction, scope, evidence.data, verificationAuthority);
-        return verifyIndexPromotionEvidence(evidence.data, verificationAuthority);
-      } catch (error) {
-        if (error instanceof IndexPromotionEvidenceError || error instanceof IndexPromotionHistoryError) {
-          return { schemaVersion: 'persisted-promotion-envelope-tampered' };
-        }
-        throw error;
-      }
-    }));
+      throw error;
+    }
   }
 
   async readCurrentState(scopeRaw: PgvectorScope): Promise<PromotionCurrentState> {
@@ -125,39 +129,39 @@ export class IndexPromotionStore implements PromotionSearchPort {
     transaction: PgvectorSqlExecutor,
     scope: PgvectorScope,
   ): Promise<PromotionCurrentState> {
-      const identity = await readHnswIndexIdentity(transaction, 'BlroRagEmbedding_embedding_hnsw_idx');
-      if (!identity) throw new RagPgvectorRefusal('RAG_INDEX_PROMOTION_INDEX_UNAVAILABLE', scope.projectId);
-      const metadata = z.array(CurrentRowSchema).parse(await transaction.$queryRawUnsafe<unknown>(`
-        SELECT c."id" AS "cohortId",c."indexEpoch",c."backend",c."model",c."dimensions",
-          e.extname AS "extensionName",e.extversion AS "extensionVersion",
-          c."embeddingSpace",c."embeddingSpaceDigest",
-          (SELECT count(*) FROM "BlroRagEmbedding" r WHERE r."tenantId"=$1 AND r."projectId"=$2 AND r."cohortId"=c."id") AS "candidateRowCount"
-        FROM "BlroRagEmbeddingCohort" c
-        JOIN pg_extension e ON e.extname='vector'
-        WHERE c."tenantId"=$1 AND c."projectId"=$2 AND c."active"=true`, scope.tenantId, scope.projectId));
-      if (metadata.length !== 1) throw new RagPgvectorRefusal('RAG_INDEX_PROMOTION_CURRENT_STATE_AMBIGUOUS', `${metadata.length}`);
-      const row = metadata[0];
-      if (!row) throw new RagPgvectorRefusal('RAG_INDEX_PROMOTION_CURRENT_STATE_AMBIGUOUS', 'missing');
-      const space = embeddingSpaceSchema.safeParse(row.embeddingSpace);
-      if (!space.success || !row.embeddingSpaceDigest || embeddingSpaceId(space.data) !== row.embeddingSpaceDigest
-        || space.data.model !== row.model || space.data.dimensions !== row.dimensions
-        || (row.backend === 'hash') !== (space.data.model === 'hash')) {
-        throw new RagPgvectorRefusal('RAG_PGVECTOR_EMBEDDING_SPACE_UNVERIFIED', row.cohortId);
-      }
-      const corpus = z.array(CorpusRowSchema).parse(await transaction.$queryRawUnsafe<unknown>(`
-        SELECT c."id",c."contentHash",e."embedding"::text AS "embedding"
-        FROM "BlroRagAuthoritativeChunk" c JOIN "BlroRagEmbedding" e
-          ON e."tenantId"=c."tenantId" AND e."projectId"=c."projectId" AND e."chunkId"=c."id"
-        WHERE e."tenantId"=$1 AND e."projectId"=$2 AND e."cohortId"=$3 ORDER BY c."id"`,
-      scope.tenantId, scope.projectId, row.cohortId));
-      return PromotionCurrentStateSchema.parse({
-        tenantId: scope.tenantId, projectId: scope.projectId, cohortId: row.cohortId, indexEpoch: row.indexEpoch,
-        corpusDigest: createHash('sha256').update(canonicalPromotionJson(corpus)).digest('hex'),
-        embeddingSpaceDigest: row.embeddingSpaceDigest,
-        extensionName: row.extensionName, extensionVersion: row.extensionVersion, indexName: identity.name,
-        indexIdentity: hnswIndexIdentityDigest(identity),
-        candidateRowCount: row.candidateRowCount,
-      });
+    const identity = await readHnswIndexIdentity(transaction, 'BlroRagEmbedding_embedding_hnsw_idx');
+    if (!identity) throw new RagPgvectorRefusal('RAG_INDEX_PROMOTION_INDEX_UNAVAILABLE', scope.projectId);
+    const metadata = z.array(CurrentRowSchema).parse(await transaction.$queryRawUnsafe<unknown>(`
+      SELECT c."id" AS "cohortId",c."indexEpoch",c."backend",c."model",c."dimensions",
+        e.extname AS "extensionName",e.extversion AS "extensionVersion",
+        c."embeddingSpace",c."embeddingSpaceDigest",
+        (SELECT count(*) FROM "BlroRagEmbedding" r WHERE r."tenantId"=$1 AND r."projectId"=$2 AND r."cohortId"=c."id") AS "candidateRowCount"
+      FROM "BlroRagEmbeddingCohort" c
+      JOIN pg_extension e ON e.extname='vector'
+      WHERE c."tenantId"=$1 AND c."projectId"=$2 AND c."active"=true`, scope.tenantId, scope.projectId));
+    if (metadata.length !== 1) throw new RagPgvectorRefusal('RAG_INDEX_PROMOTION_CURRENT_STATE_AMBIGUOUS', `${metadata.length}`);
+    const row = metadata[0];
+    if (!row) throw new RagPgvectorRefusal('RAG_INDEX_PROMOTION_CURRENT_STATE_AMBIGUOUS', 'missing');
+    const space = embeddingSpaceSchema.safeParse(row.embeddingSpace);
+    if (!space.success || !row.embeddingSpaceDigest || embeddingSpaceId(space.data) !== row.embeddingSpaceDigest
+      || space.data.model !== row.model || space.data.dimensions !== row.dimensions
+      || (row.backend === 'hash') !== (space.data.model === 'hash')) {
+      throw new RagPgvectorRefusal('RAG_PGVECTOR_EMBEDDING_SPACE_UNVERIFIED', row.cohortId);
+    }
+    const corpus = z.array(CorpusRowSchema).parse(await transaction.$queryRawUnsafe<unknown>(`
+      SELECT c."id",c."contentHash",e."embedding"::text AS "embedding"
+      FROM "BlroRagAuthoritativeChunk" c JOIN "BlroRagEmbedding" e
+        ON e."tenantId"=c."tenantId" AND e."projectId"=c."projectId" AND e."chunkId"=c."id"
+      WHERE e."tenantId"=$1 AND e."projectId"=$2 AND e."cohortId"=$3 ORDER BY c."id"`,
+    scope.tenantId, scope.projectId, row.cohortId));
+    return PromotionCurrentStateSchema.parse({
+      tenantId: scope.tenantId, projectId: scope.projectId, cohortId: row.cohortId, indexEpoch: row.indexEpoch,
+      corpusDigest: createHash('sha256').update(canonicalPromotionJson(corpus)).digest('hex'),
+      embeddingSpaceDigest: row.embeddingSpaceDigest,
+      extensionName: row.extensionName, extensionVersion: row.extensionVersion, indexName: identity.name,
+      indexIdentity: hnswIndexIdentityDigest(identity),
+      candidateRowCount: row.candidateRowCount,
+    });
   }
 
   async apply(raw: ApplyInput): Promise<IndexPromotionReport> {
@@ -216,9 +220,16 @@ export class IndexPromotionStore implements PromotionSearchPort {
 
   searchExact(input: PgvectorSearch): Promise<unknown> { return this.rag.searchExact(input); }
 
-  async searchCandidate(input: PgvectorSearch, expectedIdentity: HnswIndexIdentity): Promise<unknown> {
+  async searchCandidate(input: PgvectorSearch, expectedIdentity: HnswIndexIdentity, expectedReport: IndexPromotionReport, now: Date): Promise<unknown> {
     return this.execute(() => this.database.$transaction(async (transaction) => {
       await setScope(transaction, input.scope);
+      await transaction.$executeRawUnsafe(`SELECT pg_advisory_xact_lock(hashtext($1),hashtext($2))`, input.scope.tenantId, input.scope.projectId);
+      const retained = await this.loadPromotionInTransaction(transaction, input.scope);
+      if (canonicalPromotionJson(retained) !== canonicalPromotionJson(expectedReport)) {
+        throw new RagPgvectorRefusal('RAG_HNSW_PROMOTION_CHANGED', input.scope.projectId);
+      }
+      const evaluation = evaluateIndexPromotion(expectedReport, await this.readCurrentStateInTransaction(transaction, input.scope), now);
+      if (!evaluation.eligible) throw new RagPgvectorRefusal(evaluation.reason, expectedReport.reportDigest);
       if (!sameHnswIndexIdentity(await this.candidateIdentity(transaction, expectedIdentity.name), expectedIdentity)) {
         throw new RagPgvectorRefusal('RAG_HNSW_IDENTITY_CHANGED', expectedIdentity.oid);
       }

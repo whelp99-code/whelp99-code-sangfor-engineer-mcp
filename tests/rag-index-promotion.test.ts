@@ -140,7 +140,7 @@ describe('diagnostic promotion search router', () => {
     expect(result.hits.map((hit) => hit.id)).toEqual(['candidate']);
     expect(result.diagnostics.reason).toBe('PROMOTION_VALID');
     expect(barrier).toHaveBeenCalledTimes(1);
-    expect(search.searchCandidate).toHaveBeenCalledWith(query, identity);
+    expect(search.searchCandidate).toHaveBeenCalledWith(query, identity, report(), now);
   });
 
   it.each([

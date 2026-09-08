@@ -19,6 +19,7 @@ export const corpusQualityThresholdsSchema = z.object({
 const metrics = z.object({ queryCount: z.number().int().positive(), hitRateAtK: rate, recallAtK: rate, mrrAtK: rate, ndcgAtK: rate });
 export const corpusReportSchema = z.object({
   schemaVersion: z.literal(2), k: z.literal(5), qrelsSha256: z.string().regex(/^[a-f0-9]{64}$/),
+  missingRelevantSources: z.array(z.string().trim().min(1)),
   settingsSha256: z.string().regex(/^[a-f0-9]{64}$/), metrics,
   noAnswerQueryCount: z.number().int().positive(), noAnswerFalsePositiveRate: rate,
   hardNegativeQueryRate: rate, forbiddenHits: z.number().int().nonnegative(),
@@ -45,6 +46,7 @@ export function compareCorpusQuality(candidateValue: unknown, baselineValue: unk
     noAnswerAbsolute: c.noAnswerFalsePositiveRate <= t.candidateNoAnswerFalsePositiveRateAt5Max,
     noAnswerDelta: c.noAnswerFalsePositiveRate - b.noAnswerFalsePositiveRate <= t.candidateNoAnswerFalsePositiveRateAt5VsBaselineMaxDelta,
     forbiddenSources: c.forbiddenHits === 0,
+    relevantSourcesPresent: c.missingRelevantSources.length === 0 && b.missingRelevantSources.length === 0,
     meanLatency: c.meanLatencyMs / b.meanLatencyMs <= t.candidateMeanLatencyVsBaselineMaxRatio,
     p95Latency: c.p95LatencyMs / b.p95LatencyMs <= t.candidateP95LatencyVsBaselineMaxRatio,
   };
