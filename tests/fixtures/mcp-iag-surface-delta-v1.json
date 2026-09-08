@@ -82,5 +82,50 @@
       }
     }
   ],
-  "sha256": "a25ad980eb1def2774bcd8c38d693ac9d9c930cb52c235d556717fa51cc5bcfa"
+  "reviewedChanges": [
+    {
+      "name": "sangfor_evaluate_config",
+      "category": "ml",
+      "inputSchema": {
+        "properties": {
+          "docxPath": {
+            "type": "string"
+          },
+          "observed": {
+            "type": "object"
+          },
+          "product": {
+            "type": "string"
+          },
+          "spec": {
+            "type": "object"
+          },
+          "version": {
+            "type": "string"
+          },
+          "assessmentMode": {
+            "type": "string",
+            "enum": [
+              "current",
+              "snapshot",
+              "comparison"
+            ],
+            "default": "current"
+          },
+          "assessmentAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "observed"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      }
+    }
+  ],
+  "sha256": "d21630fadf9ed4d5ff02f8ff973e1e810659e805790a2da940c31092bb6f8871"
 }

@@ -52,6 +52,7 @@
     "check:embedding-providers": "tsx scripts/check-embedding-providers.ts",
     "rag:reembed": "tsx scripts/rag-reembed.ts",
     "rag:eval": "tsx scripts/rag-eval-run.ts",
+    "rag:eval:corpus": "tsx scripts/rag-corpus-eval.ts",
     "rag:profile": "tsx scripts/rag-embedding-profile.ts",
     "rag:export-shards": "tsx scripts/rag-export-shards.ts",
     "login:kb:chrome": "tsx scripts/open-kb-and-capture.ts",

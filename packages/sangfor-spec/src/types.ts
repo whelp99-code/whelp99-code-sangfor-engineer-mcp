@@ -51,6 +51,7 @@ export interface ObservedSource {
   endpoint?: string;    // e.g. 'POST /api/edrgoweb/v1/patch/statistics'
   collectedAt?: string; // ISO timestamp of capture
   collector?: string;   // e.g. 'live-xhr' | 'dom-scrape' | 'aside-snapshot'
+  collectionStatus?: 'complete' | 'partial' | 'failed';
 }
 
 /** An observed value that carries its own provenance. evaluateSpec accepts either
@@ -93,9 +94,18 @@ export interface EvaluationResult {
   items: ItemResult[];
   summary: EvaluationSummary;
   coverage: CoverageInfo;
+  assessment?: {
+    mode: 'comparison' | 'current' | 'snapshot';
+    evaluatedAt: string | null;
+    freshnessRequired: boolean;
+  };
 }
 
 export interface EvaluateOptions {
   /** Evaluation time for freshness checks. Defaults to wall clock. */
   now?: string | Date;
+  /** Legacy value-only comparisons cannot claim current health. */
+  mode?: 'comparison' | 'current' | 'snapshot';
+  /** Explicit clock tolerance; default zero, never an implicit allowance for future evidence. */
+  maxFutureSkewSec?: number;
 }

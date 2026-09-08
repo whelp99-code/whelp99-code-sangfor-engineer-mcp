@@ -88,6 +88,7 @@ export const RAG_SOURCE_REFS = [
 export const RAG_EMBEDDING_REFS = [
   "persist:packages/sangfor-rag/src/index.ts#ingestDocument",
   "persist:packages/sangfor-rag/src/index.ts#ingestDocumentsBatch",
+  "persist:packages/sangfor-rag/src/index.ts#removeRagDocument",
   "persist:packages/sangfor-rag/src/index.ts#saveRagIndex",
   "persist:packages/sangfor-rag/src/index.ts#saveRagIndexUnlocked",
   "persist:packages/sangfor-rag/src/storage.ts#saveShardedJsonlIndex",

@@ -15,3 +15,5 @@ Indexed architectural decisions for sangfor-engineer-mcp. Status: `verified` = o
 | [product-engineer-card](product-engineer-card.md) | draft | New product = thin registry-pointing card + two session roles (collector/operator); evaluate and report stay deterministic. Frozen pending #28. |
 
 To add a decision: copy the shape of an existing doc (Context → Decision → Rationale → Consequences), set a Status, and add a row here.
+
+- [1차 수정안: 판정·최신성·검색 정확성 인수](revision-v1-correctness.md) — #77, 실제 문서 평가와 현장 인수 구분.

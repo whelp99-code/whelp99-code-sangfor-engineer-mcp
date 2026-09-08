@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "sourceIndexSha256": "e6cdc89233de3edb81ec103f7bfe8782af82e31f2d55c21ef4dc28259ccfbff7",
+  "chunkCount": 66767,
+  "productCounts": {
+    "HCI": 8673,
+    "IAG": 1288,
+    "CYBER_COMMAND": 183,
+    "ENDPOINT_SECURE": 1120,
+    "NDR": 969,
+    "OTHER": 43931,
+    "HCI_SCP": 10597,
+    "HIWARE": 6
+  },
+  "versionKnownChunks": 4,
+  "verifiedEmbeddingSpaceChunks": 0,
+  "reclassification": {
+    "source": "data/sources/raw/support_case_2_34186.md",
+    "sourceSha256": "b1dc3ae4bb240e0d5f0d5cea37bd0982550e2267dcf6970c4339833dba3044aa",
+    "from": "OTHER",
+    "to": "HCI_SCP",
+    "basis": "sourceUrl product_id=45 and explicit SCP licensing title and body",
+    "chunks": 1,
+    "chunkIds": [
+      "doc_1786665240947_91c766_chunk_1"
+    ]
+  },
+  "promotion": "NOT_PROMOTED",
+  "unknownProducts": "Other families retain OTHER; no guessed versions or revisions."
+}

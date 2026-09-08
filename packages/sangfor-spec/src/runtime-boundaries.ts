@@ -37,6 +37,7 @@ const observedSourceSchema = z.object({
   endpoint: textSchema.optional(),
   collectedAt: z.string().max(128).optional(),
   collector: idSchema.optional(),
+  collectionStatus: z.enum(['complete', 'partial', 'failed']).optional(),
 }).strict();
 
 const itemResultSchema = z.object({
@@ -53,6 +54,11 @@ const itemResultSchema = z.object({
 export const evaluationResultRuntimeSchema: RuntimeCodec<EvaluationResult> = z.object({
   specId: idSchema,
   ok: z.boolean(),
+  assessment: z.object({
+    mode: z.enum(['comparison', 'current', 'snapshot']),
+    evaluatedAt: z.string().nullable(),
+    freshnessRequired: z.boolean(),
+  }).strict().optional(),
   items: z.array(itemResultSchema).max(100_000),
   summary: z.object({
     pass: z.number().int().nonnegative(),

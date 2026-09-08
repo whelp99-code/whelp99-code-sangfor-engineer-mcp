@@ -1,6 +1,7 @@
 import type { AuthorizationResult } from '@sangfor/identity';
 import type { KnowledgeChunk } from '@sangfor/shared';
 import type { EmbeddingBackend } from './embedding-provider-types.js';
+import type { EmbeddingSpace } from './embedding-space.js';
 
 export interface IngestDocumentInput {
   filePath: string;
@@ -25,6 +26,8 @@ export interface RagDocumentChunk extends KnowledgeChunk {
   embeddingBackend?: EmbeddingBackend;
   embeddingModel?: string;
   vectorDims?: number;
+  /** Missing in legacy indexes: lexical retrieval only until a verified re-embedding. */
+  embeddingSpace?: EmbeddingSpace;
 }
 
 export interface RagIndex {
@@ -51,6 +54,8 @@ export interface ScopedRagSearchInput {
   readonly chunks: readonly RagDocumentChunk[];
   readonly product?: string;
   readonly version?: string;
+  readonly sourceType?: KnowledgeChunk['sourceType'];
+  readonly trustLevel?: KnowledgeChunk['trustLevel'];
   readonly limit?: number;
   /** Test/telemetry seam invoked after ACL filtering and immediately before ranking. */
   readonly onCandidates?: (candidates: readonly RagDocumentChunk[]) => void;
@@ -61,6 +66,9 @@ export interface RagSearchHit extends RagDocumentChunk {
   score: number;
   /** Raw cosine similarity against the query vector, before hybrid normalization. */
   cosineScore: number;
+  /** A zero contribution is not a measured cosine when this is false. */
+  vectorScoreUsed: boolean;
+  retrievalMode: 'hybrid-semantic' | 'hybrid-hash' | 'bm25';
   /** Raw BM25 lexical score against the query, before hybrid normalization. */
   keywordScore: number;
   rerankScore?: number;
@@ -75,4 +83,7 @@ export interface RagSearchDiagnostics {
   embeddingModelCounts?: Record<string, number>;
   vectorDimensionMismatches?: number;
   mixedEmbeddingModels?: boolean;
+  retrievalMode?: 'hybrid-semantic' | 'hybrid-hash' | 'bm25';
+  queryEmbeddingSpaceId?: string;
+  incompatibleEmbeddingSpaces?: number;
 }

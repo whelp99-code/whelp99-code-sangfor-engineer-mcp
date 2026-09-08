@@ -37,16 +37,17 @@ const REQUIRED_BINARIES = ['psql', 'pg_dump', 'pg_restore'] as const;
  * pgserver install, then the common platform locations.
  */
 function resolvePostgresBindir(): string {
+  const usable = (candidate: string): boolean => Boolean(candidate) && REQUIRED_BINARIES.every((name) => existsSync(join(candidate, name)));
   const candidates: string[] = [];
   const override = process.env['PG_BINDIR']?.trim();
-  if (override) candidates.push(override);
+  if (override && usable(override)) return override;
   const pgConfig = spawnSync('pg_config', ['--bindir'], { encoding: 'utf8' });
-  if (pgConfig.status === 0) candidates.push(pgConfig.stdout.trim());
+  if (pgConfig.status === 0 && usable(pgConfig.stdout.trim())) return pgConfig.stdout.trim();
   candidates.push(...globSync('/tmp/pgvenv/lib/python*/site-packages/pgserver/pginstall/bin'));
   candidates.push(...globSync(`${process.env['HOME'] ?? ''}/.local/**/pgserver/pginstall/bin`));
   candidates.push(...globSync('/usr/lib/postgresql/*/bin'), '/usr/local/bin', '/usr/bin');
   for (const candidate of candidates) {
-    if (candidate && REQUIRED_BINARIES.every((name) => existsSync(join(candidate, name)))) {
+    if (usable(candidate)) {
       return candidate;
     }
   }

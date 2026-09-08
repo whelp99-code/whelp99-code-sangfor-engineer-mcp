@@ -19,6 +19,8 @@ const FIXTURE_HIT: RagSearchHit = {
   vectorDims: 384,
   score: 0.87,
   cosineScore: 0.87,
+  vectorScoreUsed: true,
+  retrievalMode: 'hybrid-hash',
   keywordScore: 0.5,
   rerankScore: 0.91
 };
@@ -56,6 +58,7 @@ describe('toPublicHit', () => {
       trustLevel: FIXTURE_HIT.trustLevel,
       score: FIXTURE_HIT.score,
       rerankScore: FIXTURE_HIT.rerankScore,
+      retrievalMode: FIXTURE_HIT.retrievalMode,
       source: FIXTURE_HIT.filePath
     });
     expect(pub).not.toHaveProperty('vector');

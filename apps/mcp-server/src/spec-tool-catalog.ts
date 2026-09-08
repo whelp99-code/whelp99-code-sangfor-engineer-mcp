@@ -6,11 +6,15 @@ import type { ToolCatalogEntry } from './mcp-contracts.js';
 export const specToolCatalog: readonly ToolCatalogEntry[] = [
   ["sangfor_evaluate_config", {
     description: 'Advisory (read-only) config check: compare an observed product config against an IntendedSpec (from manuals) and split findings into misconfiguration / missing / indeterminate / ok. Never mutates a device. INDETERMINATE never counts as pass; MUST items without a source citation stay indeterminate. Returns the evaluation and a Korean advisory report; pass docxPath to also write a .docx.',
-    inputSchema: { type: 'object', properties: { product: { type: 'string' }, version: { type: 'string' }, observed: { type: 'object', description: 'observed config key→value map (from screenshot/backup/human)' }, spec: { type: 'object', description: 'optional inline IntendedSpec; if omitted, loaded by product+version' }, docxPath: { type: 'string', description: 'optional path to also write the report as a .docx' } }, required: ['observed'] },
-    handler: (args: { product?: string; version?: string; observed: Record<string, unknown>; spec?: IntendedSpec; docxPath?: string }) => {
+    inputSchema: { type: 'object', properties: { product: { type: 'string' }, version: { type: 'string' }, observed: { type: 'object', description: 'observed key→value or {value,source:{collectedAt,collectionStatus}} map; current assessment requires complete collection and a spec item maxAgeSec policy' }, assessmentMode: { type: 'string', enum: ['current', 'snapshot', 'comparison'], default: 'current' }, assessmentAt: { type: 'string', description: 'required ISO assessment timestamp for snapshot mode only' }, spec: { type: 'object', description: 'optional inline IntendedSpec; if omitted, loaded by product+version' }, docxPath: { type: 'string', description: 'optional path to also write the report as a .docx' } }, required: ['observed'] },
+    handler: (args: { product?: string; version?: string; observed: Record<string, unknown>; spec?: IntendedSpec; docxPath?: string; assessmentMode?: 'current' | 'snapshot' | 'comparison'; assessmentAt?: string }) => {
+      const mode = args.assessmentMode ?? 'current';
+      if (!['current', 'snapshot', 'comparison'].includes(mode)) throw new Error('INVALID_ASSESSMENT_MODE');
+      if (mode === 'snapshot' && (!args.assessmentAt || !Number.isFinite(Date.parse(args.assessmentAt)))) throw new Error('SNAPSHOT_ASSESSMENT_TIME_REQUIRED');
+      if (mode !== 'snapshot' && args.assessmentAt !== undefined) throw new Error('ASSESSMENT_TIME_ONLY_FOR_SNAPSHOT');
       const spec = args.spec ?? (args.product && args.version ? loadSpec(args.product, args.version) : null);
       if (!spec) return { error: `No IntendedSpec found for ${args.product ?? '?'} ${args.version ?? '?'}. Provide an inline spec or seed data/specs/. Coverage: ${JSON.stringify(listSpecCoverage())}` };
-      const result = evaluateSpec(spec, args.observed ?? {});
+      const result = evaluateSpec(spec, args.observed ?? {}, { mode, ...(mode === 'snapshot' ? { now: args.assessmentAt } : {}) });
       const report = renderAdvisoryReport(spec, result);
       const docx = args.docxPath ? renderAdvisoryReportDocx(spec, result, args.docxPath) : undefined;
       return { result, report, ...(docx ? { docx } : {}) };

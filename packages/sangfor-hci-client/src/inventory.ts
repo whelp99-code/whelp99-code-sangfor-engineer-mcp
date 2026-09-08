@@ -1,5 +1,5 @@
-import type { HciClient } from './client.js';
-import { listVolumes, type HciVolume } from './volumes.js';
+import type { HciClient, HciServiceType } from './client.js';
+import { parseVolume, type HciVolume } from './volumes.js';
 import {
   hciRestProvenance,
   type HciCollectionOptions,
@@ -14,6 +14,13 @@ export interface HciInventoryProvenance {
   images: HciFactProvenance;
 }
 
+export interface HciSurfaceCollection {
+  status: 'complete' | 'partial' | 'failed' | 'unknown';
+  reason?: string;
+}
+
+export type HciInventoryCollection = Record<keyof HciInventoryProvenance, HciSurfaceCollection>;
+
 export interface HciInventory {
   volumes: HciVolume[];
   servers: unknown[];
@@ -23,49 +30,71 @@ export interface HciInventory {
   /** Single collection timestamp shared by every surface envelope of this run. */
   collectedAt: string;
   provenance: HciInventoryProvenance;
+  /** Completeness is independent of provenance: an attempted request is not a successful observation. */
+  collection: HciInventoryCollection;
 }
 
-/** Time one surface read; the caller decides what an error means for the surface. */
-async function timed<T>(read: () => Promise<T>): Promise<{ value: T; latencyMs: number }> {
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+async function readSurface<T>(
+  client: Pick<HciClient, 'request'>,
+  service: HciServiceType,
+  path: string,
+  key: string,
+  parse: (raw: unknown) => T,
+): Promise<{ value: T[]; latencyMs: number; collection: HciSurfaceCollection }> {
   const started = performance.now();
-  const value = await read();
-  return { value, latencyMs: performance.now() - started };
+  const result = (value: T[], collection: HciSurfaceCollection) => ({ value, collection, latencyMs: performance.now() - started });
+  try {
+    const response = await client.request(service, path);
+    if (response.status !== 200) return result([], { status: 'failed', reason: `HTTP_${response.status}` });
+    const payload = response.json;
+    if (!isRecord(payload) || !Array.isArray(payload[key])) {
+      return result([], { status: 'failed', reason: 'INVALID_COLLECTION_PAYLOAD' });
+    }
+    const value = payload[key].map(parse);
+    const links = payload[`${key}_links`] ?? payload.links;
+    const hasNext = Boolean(payload.next)
+      || (Array.isArray(links) && links.some((link) => isRecord(link) && link.rel === 'next'));
+    return result(value, hasNext
+      ? { status: 'partial', reason: 'UNREAD_PAGE' }
+      : { status: 'complete' });
+  } catch {
+    // Transport/parser errors may contain credentials or response bodies. Persist only a stable code.
+    return result([], { status: 'failed', reason: 'COLLECTION_REQUEST_OR_PARSE_FAILED' });
+  }
 }
 
 export async function collectInventory(
-  client: HciClient,
+  client: Pick<HciClient, 'request'>,
   opts: HciCollectionOptions = {},
 ): Promise<HciInventory> {
   const collectedAt = opts.collectedAt ?? new Date().toISOString();
   const envelope = (endpoint: string, latencyMs: number): HciFactProvenance =>
     hciRestProvenance(endpoint, { latencyMs, collectedAt }, { ...opts, collectedAt });
 
-  let volumes: HciVolume[] = [];
-  let volumeServiceAvailable = true;
-  const volumeRead = await timed(async () => {
-    try {
-      return await listVolumes(client);
-    } catch {
-      volumeServiceAvailable = false;
-      return [] as HciVolume[];
-    }
-  });
-  volumes = volumeRead.value;
-
-  const serverRead = await timed(() => client
-    .request('compute', '/servers')
-    .then((r) => (r.status === 200 && Array.isArray((r.json as any)?.servers) ? (r.json as any).servers as unknown[] : []), () => [] as unknown[]));
-  const imageRead = await timed(() => client
-    .request('image', '/v2/images')
-    .then((r) => (r.status === 200 && Array.isArray((r.json as any)?.images) ? (r.json as any).images as unknown[] : []), () => [] as unknown[]));
+  const record = (raw: unknown) => {
+    if (!isRecord(raw)) throw new Error('invalid inventory record');
+    return raw;
+  };
+  const volumeRead = await readSurface(client, 'volume', '/volumes/detail', 'volumes', parseVolume);
+  const serverRead = await readSurface(client, 'compute', '/servers', 'servers', record);
+  const imageRead = await readSurface(client, 'image', '/v2/images', 'images', record);
 
   return {
-    volumes,
+    volumes: volumeRead.value,
     servers: serverRead.value,
     images: imageRead.value,
-    volumeServiceAvailable,
+    volumeServiceAvailable: volumeRead.collection.status !== 'failed',
     readOnly: true,
     collectedAt,
+    collection: {
+      volumes: volumeRead.collection,
+      servers: serverRead.collection,
+      images: imageRead.collection,
+    },
     provenance: {
       volumes: envelope('GET /volumes/detail', volumeRead.latencyMs),
       servers: envelope('GET /servers', serverRead.latencyMs),

@@ -40,6 +40,18 @@ jobs:
       - name: Build
         run: pnpm run build
 
+      - name: Structural safety boundaries
+        run: |
+          pnpm run check:browser-boundary
+          pnpm run check:data-scope-boundary
+          pnpm run check:hygiene
+
+      - name: Install matching Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Browser UI
+        run: pnpm run test:ui
+
       - name: MCP smoke
         run: pnpm run smoke:mcp
 

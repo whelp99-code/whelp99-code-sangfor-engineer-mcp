@@ -2,6 +2,7 @@ import { z } from 'zod';
 import type { RuntimeCodec } from '../../shared/src/runtime-schema.js';
 import type { RagDocumentChunk } from './rag-types.js';
 import type { ShardedJsonlManifest } from './storage.js';
+import { embeddingSpaceSchema } from './embedding-space.js';
 
 const idSchema = z.string().min(1).max(512);
 const textSchema = z.string().max(16 * 1024 * 1024);
@@ -30,6 +31,7 @@ const chunkFields = {
   embeddingBackend: embeddingBackendSchema.optional(),
   embeddingModel: z.string().max(512).optional(),
   vectorDims: z.number().int().positive().max(16_384).optional(),
+  embeddingSpace: embeddingSpaceSchema.optional(),
 };
 
 export const ragDocumentChunkRuntimeSchema: RuntimeCodec<RagDocumentChunk> = z.object({

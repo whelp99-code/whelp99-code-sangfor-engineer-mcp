@@ -10,7 +10,9 @@ import { createMimoRerankFromEnv } from './mimo-rerank-provider.js';
 import { normalizeRetrievalQuery } from './query-normalization.js';
 import { loadRagIndex } from './index.js';
 import { DEFAULT_INDEX_PATH } from './rag-index-store.js';
-import { distinctSources, rankHybrid } from './rag-ranking.js';
+import { canCompareVector, distinctSources, rankHybrid } from './rag-ranking.js';
+import { embeddingSpaceId, resolveEmbeddingSpace, type EmbeddingSpace } from './embedding-space.js';
+import { actualEmbeddingModelName } from './rag-ingest.js';
 import type {
   RagDocumentChunk,
   RagIndex,
@@ -21,9 +23,18 @@ import type {
 } from './rag-types.js';
 
 let lastRagSearchDiagnostics: RagSearchDiagnostics = { degraded: false };
+const resultDiagnostics = new WeakMap<readonly RagSearchHit[], RagSearchDiagnostics>();
 
-export function getRagSearchDiagnostics(): RagSearchDiagnostics {
-  return lastRagSearchDiagnostics;
+export function getRagSearchDiagnostics(hits?: readonly RagSearchHit[]): RagSearchDiagnostics {
+  return hits ? resultDiagnostics.get(hits) ?? { degraded: true, degradedReason: 'diagnostics unavailable for this result' } : lastRagSearchDiagnostics;
+}
+
+function withDiagnostics(hits: RagSearchHit[], diagnostics: RagSearchDiagnostics): RagSearchHit[] {
+  const actual = { ...diagnostics, retrievalMode: hits.some((hit) => hit.retrievalMode === 'hybrid-semantic')
+    ? 'hybrid-semantic' as const : hits.some((hit) => hit.retrievalMode === 'hybrid-hash') ? 'hybrid-hash' as const : 'bm25' as const };
+  resultDiagnostics.set(hits, actual);
+  lastRagSearchDiagnostics = actual;
+  return hits;
 }
 
 function countBy<T extends string | number>(items: readonly T[]): Record<string, number> {
@@ -39,6 +50,8 @@ function computeRagSearchDiagnostics(
   queryWasHashFallback: boolean,
   queryBackend?: EmbeddingBackend,
   queryVectorDims?: number,
+  querySpace?: EmbeddingSpace,
+  queryVector: number[] = [],
 ): RagSearchDiagnostics {
   const reasons: string[] = [];
   const semanticChunks = index.chunks.filter((chunk) => (chunk.embeddingBackend ?? 'hash') !== 'hash').length;
@@ -50,6 +63,9 @@ function computeRagSearchDiagnostics(
     ? index.chunks.filter((chunk) => chunk.vector.length !== queryVectorDims).length
     : 0;
   const mixedEmbeddingModels = Object.keys(embeddingModelCounts).length > 1;
+  const incompatibleEmbeddingSpaces = index.chunks.filter((chunk) => !canCompareVector(chunk, queryVector, querySpace)).length;
+  if (incompatibleEmbeddingSpaces > 0) reasons.push(`${incompatibleEmbeddingSpaces} chunks have no matching verified embedding space; their vector scores are disabled`);
+  if (!querySpace) reasons.push('query embedding space is unavailable or unpinned; using BM25');
   if (index.chunks.length > 0 && semanticChunks === 0) {
     reasons.push('RAG index is hash-only (no semantic embeddings ingested) — ranking is lexical/hashed, not semantic');
   }
@@ -70,6 +86,10 @@ function computeRagSearchDiagnostics(
     embeddingModelCounts,
     vectorDimensionMismatches,
     mixedEmbeddingModels,
+    incompatibleEmbeddingSpaces,
+    queryEmbeddingSpaceId: querySpace ? embeddingSpaceId(querySpace) : undefined,
+    retrievalMode: querySpace && incompatibleEmbeddingSpaces < index.chunks.length
+      ? querySpace.model === 'hash' ? 'hybrid-hash' as const : 'hybrid-semantic' as const : 'bm25' as const,
   };
   return reasons.length > 0 ? { ...diagnostics, degradedReason: reasons.join('; ') } : diagnostics;
 }
@@ -84,24 +104,37 @@ export async function ragSearch(input: RagSearchInput): Promise<RagSearchHit[]> 
   const product = input.product ? normalizeProduct(input.product) : undefined;
   const provider = await getEmbeddingProvider();
   const normalizedQuery = normalizeRetrievalQuery(input.query);
-  const [queryVector] = await embedForRole(provider, [normalizedQuery], 'query');
+  let queryVector: number[] = [];
+  let querySpace: EmbeddingSpace | undefined;
+  let embeddingFailure = false;
+  try {
+    [queryVector] = await embedForRole(provider, [normalizedQuery], 'query');
+    querySpace = wasEmbeddingFallback() ? undefined
+      : resolveEmbeddingSpace(actualEmbeddingModelName(provider), queryVector.length, provider.name);
+  } catch {
+    // A provider can fail after its health check. Keep the document search explicitly lexical.
+    embeddingFailure = true;
+  }
   const candidateLimit = Number(process.env.SANGFOR_MIMO_RERANK_CANDIDATES ?? 40);
   const finalLimit = input.limit ?? 8;
   const allowCustomer = process.env.SANGFOR_ALLOW_CLOUD_RAG_CUSTOMER === '1';
   const filtered = index.chunks
+    .filter((chunk) => !chunk.tenantId && !chunk.projectId)
     .filter((chunk) => !product || chunk.product === product)
-    .filter((chunk) => !input.version || !chunk.version || chunk.version === input.version)
+    .filter((chunk) => !input.version || chunk.version === input.version)
     .filter((chunk) => !input.sourceType || chunk.sourceType === input.sourceType)
     .filter((chunk) => !input.trustLevel || chunk.trustLevel === input.trustLevel)
     .filter((chunk) => allowCustomer || chunk.trustLevel !== 'customer');
 
-  lastRagSearchDiagnostics = computeRagSearchDiagnostics(
-    index,
-    wasEmbeddingFallback(),
+  let diagnostics = computeRagSearchDiagnostics(
+    { ...index, chunks: filtered },
+    wasEmbeddingFallback() || embeddingFailure,
     provider.name,
     queryVector.length,
+    querySpace,
+    queryVector,
   );
-  const ranked = rankHybrid(filtered, queryVector, normalizedQuery).sort((left, right) => right.score - left.score);
+  const ranked = rankHybrid(filtered, queryVector, normalizedQuery, querySpace).sort((left, right) => right.score - left.score);
   let pool = distinctSources(ranked, candidateLimit);
   const reranker = createMimoRerankFromEnv();
   if (reranker && pool.length > 1) {
@@ -120,18 +153,18 @@ export async function ragSearch(input: RagSearchInput): Promise<RagSearchHit[]> 
         .filter((chunk) => order.has(chunk.id))
         .sort((left, right) => (order.get(right.id) ?? 0) - (order.get(left.id) ?? 0))
         .map((chunk, index) => ({ ...chunk, rerankScore: order.get(chunk.id) ?? index }));
-      return distinctSources(pool, finalLimit);
+      return withDiagnostics(distinctSources(pool, finalLimit), diagnostics);
     } catch (error) {
-      if (error instanceof RuntimeSchemaError) {
-        lastRagSearchDiagnostics = {
-          ...lastRagSearchDiagnostics,
+        diagnostics = {
+          ...diagnostics,
           degraded: true,
-          degradedReason: 'rerank response was INDETERMINATE under its strict runtime schema',
+          degradedReason: [diagnostics.degradedReason, error instanceof RuntimeSchemaError
+            ? 'rerank response was INDETERMINATE under its strict runtime schema'
+            : 'reranker unavailable; original retrieval order retained'].filter(Boolean).join('; '),
         };
-      }
     }
   }
-  return distinctSources(ranked, finalLimit);
+  return withDiagnostics(distinctSources(ranked, finalLimit), diagnostics);
 }
 
 export function filterScopedRagCandidates(
@@ -152,11 +185,16 @@ export function ragSearchScopedSync(input: ScopedRagSearchInput): RagSearchHit[]
   const normalizedQuery = normalizeRetrievalQuery(input.query);
   const authorized = filterScopedRagCandidates(input.chunks, input.authorization)
     .filter((chunk) => !product || chunk.product === product)
-    .filter((chunk) => !input.version || !chunk.version || chunk.version === input.version);
+    .filter((chunk) => !input.version || chunk.version === input.version)
+    .filter((chunk) => !input.sourceType || chunk.sourceType === input.sourceType)
+    .filter((chunk) => !input.trustLevel || chunk.trustLevel === input.trustLevel)
+    .filter((chunk) => process.env.SANGFOR_ALLOW_CLOUD_RAG_CUSTOMER === '1' || chunk.trustLevel !== 'customer');
   input.onCandidates?.(authorized);
-  return rankHybrid(authorized, hashEmbedding(normalizedQuery), normalizedQuery)
+  const queryVector = hashEmbedding(normalizedQuery);
+  const space = resolveEmbeddingSpace('hash', queryVector.length, 'hash');
+  return withDiagnostics(rankHybrid(authorized, queryVector, normalizedQuery, space)
     .sort((left, right) => right.score - left.score)
-    .slice(0, input.limit ?? 8);
+    .slice(0, input.limit ?? 8), computeRagSearchDiagnostics({ version: 1, chunks: authorized, updatedAt: '' }, false, 'hash', queryVector.length, space, queryVector));
 }
 
 export function ragSearchSync(input: RagSearchInput): RagSearchHit[] {
@@ -165,15 +203,18 @@ export function ragSearchSync(input: RagSearchInput): RagSearchHit[] {
   const normalizedQuery = normalizeRetrievalQuery(input.query);
   const queryVector = hashEmbedding(normalizedQuery);
   const filtered = index.chunks
+    .filter((chunk) => !chunk.tenantId && !chunk.projectId)
     .filter((chunk) => !product || chunk.product === product)
-    .filter((chunk) => !input.version || !chunk.version || chunk.version === input.version)
+    .filter((chunk) => !input.version || chunk.version === input.version)
     .filter((chunk) => !input.sourceType || chunk.sourceType === input.sourceType)
     .filter((chunk) => !input.trustLevel || chunk.trustLevel === input.trustLevel)
     .filter((chunk) => process.env.SANGFOR_ALLOW_CLOUD_RAG_CUSTOMER === '1' || chunk.trustLevel !== 'customer');
-  return distinctSources(
-    rankHybrid(filtered, queryVector, normalizedQuery).sort((left, right) => right.score - left.score),
+  const querySpace = resolveEmbeddingSpace('hash', queryVector.length, 'hash');
+  const diagnostics = computeRagSearchDiagnostics({ ...index, chunks: filtered }, false, 'hash', queryVector.length, querySpace, queryVector);
+  return withDiagnostics(distinctSources(
+    rankHybrid(filtered, queryVector, normalizedQuery, querySpace).sort((left, right) => right.score - left.score),
     input.limit ?? 8,
-  );
+  ), diagnostics);
 }
 
 export function exportRagIndexSummary(indexPath = DEFAULT_INDEX_PATH): Record<string, unknown> {
