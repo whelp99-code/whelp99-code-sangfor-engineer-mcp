@@ -55,10 +55,18 @@ describe('planJmEndpointInstall', () => {
     expect(plan.steps.every((step) => step.readOnly === true)).toBe(true);
   });
 
-  it('refuses an unsupported node runtime instead of planning an install', () => {
-    const plan = planJmEndpointInstall({ host: { ...linuxHost, nodeMajor: 18 }, env: {} });
+  it.each([18, 20, 21])('refuses node %i, below the shipped floor, instead of planning an install', (nodeMajor) => {
+    const plan = planJmEndpointInstall({ host: { ...linuxHost, nodeMajor }, env: {} });
     expect(plan.supported).toBe(false);
     expect(plan.reasons).toContain('NODE_VERSION_UNSUPPORTED');
+  });
+
+  it.each([22, 24])('plans an install on the supported node major %i', (nodeMajor) => {
+    const plan = planJmEndpointInstall({
+      host: { ...linuxHost, nodeMajor },
+      env: { SANGFOR_CHROMIUM_PATH: '/opt/chromium/chrome' },
+    });
+    expect(plan.reasons).not.toContain('NODE_VERSION_UNSUPPORTED');
   });
 
   it('flags a headless-server host so the operator knows a login profile needs a display', () => {

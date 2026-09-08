@@ -42,7 +42,7 @@ export function createLocalJmExecutionPort(
   options: LocalJmExecutionOptions,
 ): BrowserExecutionPort {
   return {
-    async execute(rawRequest) {
+    async execute(rawRequest, context) {
       const parsed = browserExecutionRequestSchema.safeParse(rawRequest);
       if (!parsed.success) {
         return refused(
@@ -85,44 +85,58 @@ export function createLocalJmExecutionPort(
         };
       }
 
+      if (context?.signal.aborted) {
+        await options.driver.closeSession(session);
+        return refused(request.requestId, 'EXECUTION_ABORTED', 'Browser execution was aborted before dispatch.');
+      }
+      let abortCleanup: Promise<void> | undefined;
+      const releaseBrowser = () => {
+        abortCleanup ??= options.driver.closeSession(session);
+      };
+      context?.signal.addEventListener('abort', releaseBrowser, { once: true });
       try {
-        const result = browserExecutionResultSchema.parse(
-          await options.driver.execute(session, request),
-        );
-        if (result.requestId !== request.requestId) {
-          return refused(
-            request.requestId,
-            'RESULT_REQUEST_MISMATCH',
-            `Driver returned result for ${result.requestId}.`,
+        try {
+          const result = browserExecutionResultSchema.parse(
+            await options.driver.execute(session, request),
           );
-        }
-        if (result.status === 'PASS' && !isAuthoritativePass(result)) {
+          if (result.requestId !== request.requestId) {
+            return refused(
+              request.requestId,
+              'RESULT_REQUEST_MISMATCH',
+              `Driver returned result for ${result.requestId}.`,
+            );
+          }
+          if (result.status === 'PASS' && !isAuthoritativePass(result)) {
+            return {
+              ...result,
+              status: 'INDETERMINATE',
+              error: result.error ?? {
+                code: 'READ_BACK_INDETERMINATE',
+                message: 'PASS requires an explicit PASS read-back.',
+              },
+            };
+          }
+          return result;
+        } catch (error) {
+          const mutationAttempted = mayHaveMutated(request);
           return {
-            ...result,
-            status: 'INDETERMINATE',
-            error: result.error ?? {
-              code: 'READ_BACK_INDETERMINATE',
-              message: 'PASS requires an explicit PASS read-back.',
+            schemaVersion: 'browser-execution-result.v1',
+            requestId: request.requestId,
+            status: mutationAttempted ? 'INDETERMINATE' : 'FAIL',
+            mutationAttempted,
+            ...(mutationAttempted ? { readBack: { status: 'INDETERMINATE' as const } } : {}),
+            evidence: [],
+            error: {
+              code: mutationAttempted
+                ? 'JM_BROWSER_MUTATION_INDETERMINATE'
+                : 'JM_BROWSER_DRIVER_FAILED',
+              message: error instanceof Error ? error.message : String(error),
             },
           };
         }
-        return result;
-      } catch (error) {
-        const mutationAttempted = mayHaveMutated(request);
-        return {
-          schemaVersion: 'browser-execution-result.v1',
-          requestId: request.requestId,
-          status: mutationAttempted ? 'INDETERMINATE' : 'FAIL',
-          mutationAttempted,
-          ...(mutationAttempted ? { readBack: { status: 'INDETERMINATE' as const } } : {}),
-          evidence: [],
-          error: {
-            code: mutationAttempted
-              ? 'JM_BROWSER_MUTATION_INDETERMINATE'
-              : 'JM_BROWSER_DRIVER_FAILED',
-            message: error instanceof Error ? error.message : String(error),
-          },
-        };
+      } finally {
+        context?.signal.removeEventListener('abort', releaseBrowser);
+        await abortCleanup;
       }
     },
   };

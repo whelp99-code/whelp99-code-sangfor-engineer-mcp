@@ -10,10 +10,11 @@ import {
   discoverProductConsole,
   dryRunProductChange,
   generateExcelBasedChangePlan,
-  generateProductChangePlan
-  , importExcelRequirementList,
+  generateProductChangePlan,
+  importExcelRequirementList,
   mapRequirementsToProducts,
-  normalizeAutomationProduct
+  normalizeAutomationProduct,
+  verifyProductChange,
 } from '../packages/sangfor-product-adapters/src/index.js';
 
 describe('Product automation adapters', () => {
@@ -93,6 +94,42 @@ describe('Product automation adapters', () => {
     const result = await applyApprovedProductChange({ plan });
     expect(result.ok).toBe(false);
     expect(result.approvalRequired).toBe(true);
+  });
+
+  it('Given product verification has pending observations, When checks are evaluated, Then no pending check or aggregate is reported as PASS', () => {
+    const plan = generateProductChangePlan({
+      product: 'IAG',
+      requirements: ['Allow one reviewed URL exception'],
+    });
+
+    const result = verifyProductChange({ plan });
+
+    expect(result.ok).toBe(false);
+    expect(result.aggregate).toBe('INDETERMINATE');
+    expect(result.checks.every((check) => check.status === 'INDETERMINATE')).toBe(true);
+  });
+
+  it('Given an explicit failed observation, When checks are evaluated, Then the check and aggregate are FAIL', () => {
+    const plan = generateProductChangePlan({ product: 'IAG', requirements: ['Allow one reviewed URL exception'] });
+    const taskId = plan.tasks[0]?.id;
+    if (taskId === undefined) throw new TypeError('PRODUCT_CHANGE_TASK_MISSING');
+
+    const result = verifyProductChange({ plan, observed: { [taskId]: { status: 'FAIL' } } });
+
+    expect(result.ok).toBe(false);
+    expect(result.aggregate).toBe('FAIL');
+    expect(result.checks[0]?.status).toBe('FAIL');
+  });
+
+  it('Given every observation explicitly passes, When checks are evaluated, Then the aggregate alone is PASS', () => {
+    const plan = generateProductChangePlan({ product: 'IAG', requirements: ['Allow one reviewed URL exception'] });
+    const observed = Object.fromEntries(plan.tasks.map(({ id }) => [id, { status: 'PASS' }]));
+
+    const result = verifyProductChange({ plan, observed });
+
+    expect(result.ok).toBe(true);
+    expect(result.aggregate).toBe('PASS');
+    expect(result.checks.every(({ status }) => status === 'PASS')).toBe(true);
   });
 
   it('imports ITAC Excel rows and normalizes prioritized requirements', () => {

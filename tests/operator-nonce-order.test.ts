@@ -28,7 +28,8 @@ function approval(action: ConsoleAction, nonce: string): LiveExecutionApproval {
     rollbackPlanId: 'RBK-NONCE',
     nonce,
     expiresAt: new Date(Date.now() + 60_000).toISOString(),
-  };
+
+  authorityEpoch: 0,};
   return {
     ...fields,
     approvalToken: signApprovalToken(SECRET, action, fields),
@@ -156,9 +157,10 @@ describe('operator nonce ordering', () => {
       executionPort: passingPort(),
     })).rejects.toThrow(/outside the session origin/);
 
-    expect(consumeApprovalNonce({
+    expect(await consumeApprovalNonce({
       nonce: signed.nonce,
       expiresAt: signed.expiresAt,
-    })).toMatchObject({ ok: true });
+
+    authorityEpoch: 0,})).toMatchObject({ ok: true });
   });
 });

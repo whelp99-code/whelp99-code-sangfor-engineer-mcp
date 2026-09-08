@@ -11,17 +11,31 @@
  */
 
 import http from "node:http";
-import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
-import { createInterface } from "node:readline";
-import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
+import { ZodError } from 'zod';
 import { resolveBindHost, checkAuth, assertBindSafety, isLoopback } from "../../../packages/shared/src/index.js";
-import { authorizeToolCall } from "./tool-guard.js";
+import {
+  MAX_REQUEST_BODY_BYTES,
+  RequestBodyTooLargeError,
+  readCappedRequestBody,
+} from "../../../packages/shared/src/runtime-body-cap.js";
+import { authorizeToolCall } from "../../../packages/sangfor-operator/src/tool-authorization.js";
 import type { SignedApproval } from "../../../packages/sangfor-operator/src/approval.js";
+import { RuntimeSchemaError } from "../../../packages/shared/src/runtime-schema.js";
+import {
+  decodeHttpBridgeMcpRequestBody,
+  decodeHttpBridgeToolCallParams,
+  decodeHttpBridgeToolsCallBody,
+  decodeHttpBridgeToolsListResult,
+  parseBoundaryHttpBridgeRequestBodyV1,
+  type HttpBridgeRequestBody,
+} from "./runtime-boundaries.js";
+import {
+  defaultMcpRequest,
+  killDefaultMcpChild,
+  type McpRequestFn,
+} from "./mcp-child-transport.js";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const REPO_ROOT = join(__dirname, "..", "..", "..");
-const MCP_ENTRY = join(REPO_ROOT, "apps/mcp-server/src/index.ts");
+export type { JsonRpcResponse, McpRequestFn } from "./mcp-child-transport.js";
 
 const PORT = Number(process.env.PORT ?? process.env.WHELP99_HTTP_BRIDGE_PORT ?? 3600);
 const BIND_HOST = resolveBindHost();
@@ -29,107 +43,9 @@ const API_TOKEN = process.env.SANGFOR_API_TOKEN;
 const REMOTE_BIND = !isLoopback(BIND_HOST);
 const ALLOW_REMOTE_WRITE = process.env.SANGFOR_ALLOW_REMOTE_WRITE === "true";
 
-export type JsonRpcResponse = {
-  jsonrpc: string;
-  id?: string | number | null;
-  result?: unknown;
-  error?: { code: number; message: string };
-};
-
-export type McpRequestFn = (method: string, params?: unknown) => Promise<JsonRpcResponse>;
-
-// ── default stdio child transport (production) ──────────────────────────────
-// A single lazily-spawned child serves every request for the life of the
-// process; requests are matched to responses by numeric id via `pending`.
-let mcpChild: ChildProcessWithoutNullStreams | null = null;
-let requestId = 0;
-const pending = new Map<
-  number,
-  { resolve: (v: JsonRpcResponse) => void; reject: (e: Error) => void }
->();
-
-function startMcpChild(): ChildProcessWithoutNullStreams {
-  const child = spawn("pnpm", ["exec", "tsx", MCP_ENTRY], {
-    cwd: REPO_ROOT,
-    stdio: ["pipe", "pipe", "pipe"],
-    env: { ...process.env },
-  });
-
-  const rl = createInterface({ input: child.stdout });
-  rl.on("line", (line) => {
-    if (!line.trim()) return;
-    try {
-      const msg = JSON.parse(line) as JsonRpcResponse;
-      if (msg.id !== undefined && pending.has(Number(msg.id))) {
-        const handler = pending.get(Number(msg.id))!;
-        pending.delete(Number(msg.id));
-        handler.resolve(msg);
-      }
-    } catch {
-      // ignore non-json stderr noise routed to stdout
-    }
-  });
-
-  child.stderr.on("data", (chunk) => {
-    process.stderr.write(`[mcp] ${chunk}`);
-  });
-
-  child.on("exit", (code) => {
-    process.stderr.write(`[mcp] exited with code ${code}\n`);
-    mcpChild = null;
-    for (const [, handler] of pending) {
-      handler.reject(new Error("MCP child process exited"));
-    }
-    pending.clear();
-  });
-
-  return child;
-}
-
-async function defaultMcpRequest(method: string, params?: unknown): Promise<JsonRpcResponse> {
-  if (!mcpChild) {
-    mcpChild = startMcpChild();
-    await defaultMcpRequest("initialize", {
-      protocolVersion: "2025-06-18",
-      capabilities: {},
-      clientInfo: { name: "http-bridge", version: "0.1.0" },
-    });
-  }
-
-  const id = ++requestId;
-  const payload = JSON.stringify({ jsonrpc: "2.0", id, method, params });
-
-  return new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => {
-      pending.delete(id);
-      reject(new Error(`MCP request timeout: ${method}`));
-    }, 30_000);
-
-    pending.set(id, {
-      resolve: (msg) => {
-        clearTimeout(timeout);
-        resolve(msg);
-      },
-      reject: (err) => {
-        clearTimeout(timeout);
-        reject(err);
-      },
-    });
-
-    mcpChild!.stdin.write(`${payload}\n`);
-  });
-}
-
-function killDefaultMcpChild(): void {
-  mcpChild?.kill();
-}
-
-async function readJsonBody(req: http.IncomingMessage): Promise<Record<string, unknown>> {
-  const chunks: Buffer[] = [];
-  for await (const chunk of req) chunks.push(chunk as Buffer);
-  const raw = Buffer.concat(chunks).toString("utf8");
-  if (!raw.trim()) return {};
-  return JSON.parse(raw) as Record<string, unknown>;
+async function readJsonBody(req: http.IncomingMessage): Promise<HttpBridgeRequestBody> {
+  const raw = await readCappedRequestBody(req, MAX_REQUEST_BODY_BYTES);
+  return parseBoundaryHttpBridgeRequestBodyV1(raw.trim() ? raw : '{}');
 }
 
 function json(res: http.ServerResponse, data: unknown, status = 200) {
@@ -142,7 +58,7 @@ function json(res: http.ServerResponse, data: unknown, status = 200) {
 // Mcp-Session-Id). Only these methods are proxied through; anything else
 // gets a JSON-RPC -32601, mirroring how mcp-server's own handle() already
 // rejects methods outside this exact set. tools/call additionally has to
-// clear authorizeToolCall — the SAME gate /tools/call uses — before it is
+// clear @sangfor/operator's authorizeToolCall — the SAME gate /tools/call uses — before it is
 // forwarded; see docs/adapters/remote-http.md for the documented limits.
 // SECURITY ASSUMPTION: resources/* and prompts/* pass with token auth only
 // because mcp-server serves exclusively static curated metadata there (agent
@@ -209,18 +125,15 @@ export function createBridgeServer(deps: BridgeServerDeps = {}): http.Server {
         if (list.error) {
           return json(res, { error: list.error.message, tools: [] }, 502);
         }
-        const tools =
-          (list.result as { tools?: unknown[] })?.tools ?? [];
+        const { tools } = decodeHttpBridgeToolsListResult(list.result);
         return json(res, { tools });
       }
 
       if (req.method === "POST" && url.pathname === "/tools/call") {
-        const body = await readJsonBody(req);
-        const name = typeof body.name === "string" ? body.name : "";
+        const body = decodeHttpBridgeToolsCallBody(await readJsonBody(req));
+        const name = body.name ?? "";
         const args = body.arguments ?? body.args ?? {};
-        const approval = body.approval && typeof body.approval === "object"
-          ? (body.approval as SignedApproval)
-          : undefined;
+        const approval: SignedApproval | undefined = body.approval;
 
         if (!name) {
           return json(res, { error: "name is required" }, 400);
@@ -253,25 +166,23 @@ export function createBridgeServer(deps: BridgeServerDeps = {}): http.Server {
           return json(res, { error: "Method not allowed; POST /mcp only (stateless, no SSE)" }, 405);
         }
 
-        const body = await readJsonBody(req);
-        const rpcId = (body as { id?: string | number | null }).id ?? null;
-        const method = typeof body.method === "string" ? body.method : "";
+        const body = decodeHttpBridgeMcpRequestBody(await readJsonBody(req));
+        const rpcId = body.id ?? null;
+        const method = body.method;
 
         if (!MCP_HTTP_ALLOWED_METHODS.has(method)) {
           return json(res, { jsonrpc: "2.0", id: rpcId, error: { code: -32601, message: `Method not found: ${method}` } });
         }
 
         if (method === "tools/call") {
-          const params = (body.params ?? {}) as { name?: unknown; arguments?: unknown; approval?: unknown };
+          const params = decodeHttpBridgeToolCallParams(body.params ?? {});
           const name = typeof params.name === "string" ? params.name : "";
           if (!name) {
             return json(res, { jsonrpc: "2.0", id: rpcId, error: { code: -32602, message: "Invalid params: name is required" } });
           }
-          const approval = params.approval && typeof params.approval === "object"
-            ? (params.approval as SignedApproval)
-            : undefined;
+          const approval: SignedApproval | undefined = params.approval;
 
-          // SAME gate as /tools/call — see authorizeToolCall in tool-guard.ts.
+          // SAME gate as /tools/call — see authorizeToolCall in @sangfor/operator.
           // Do not duplicate or weaken this logic; call the shared function.
           const enforceWhitelist = process.env.WHELP99_ENFORCE_SAFE_TOOLS !== "false";
           const list = await mcpRequest("tools/list");
@@ -304,6 +215,12 @@ export function createBridgeServer(deps: BridgeServerDeps = {}): http.Server {
 
       return json(res, { error: "Not found" }, 404);
     } catch (error) {
+      if (error instanceof RequestBodyTooLargeError) {
+        return json(res, { error: 'request body too large' }, 413);
+      }
+      if (error instanceof ZodError || (error instanceof RuntimeSchemaError && error.policy === 'deny')) {
+        return json(res, { error: 'invalid JSON request body' }, 400);
+      }
       return json(
         res,
         { error: error instanceof Error ? error.message : String(error) },

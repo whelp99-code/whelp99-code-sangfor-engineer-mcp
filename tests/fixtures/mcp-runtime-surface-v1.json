@@ -1,0 +1,4357 @@
+{
+  "initialize": {
+    "capabilities": {
+      "prompts": {
+        "listChanged": false
+      },
+      "resources": {
+        "listChanged": false
+      },
+      "tools": {
+        "listChanged": false
+      }
+    },
+    "protocolVersion": "2025-06-18",
+    "serverInfo": {
+      "name": "sangfor-engineer-mcp",
+      "version": "0.1.0"
+    }
+  },
+  "promptGet": {
+    "messages": [
+      {
+        "content": {
+          "text": "Troubleshoot: VPN tunnel flapping. Follow this order:\n1. Call sangfor_rag_search to collect grounded evidence (manuals, KB, prior lessons) relevant to the symptom. Do not skip this — root causes must be grounded, not guessed.\n2. From the retrieved evidence, form one or more hypotheses about the likely cause.\n3. Call sangfor_suggest_rca with the symptom (and product, if known) to get ranked root-cause candidates and concrete check steps, and compare them against your hypotheses.\n4. If you reach an evaluable observed config, call sangfor_evaluate_config to confirm/refute a hypothesis, then sangfor_generate_evidence_report to record findings.",
+          "type": "text"
+        },
+        "role": "user"
+      }
+    ]
+  },
+  "prompts": {
+    "prompts": [
+      {
+        "arguments": [
+          {
+            "description": "Target product/vendor, e.g. SANGFOR HCI_SCP, FORTIOS, CISCO_IOSXE",
+            "name": "product",
+            "required": false
+          }
+        ],
+        "description": "Advisory health-check workflow for a Sangfor/FortiOS/Cisco device: discover the server, run the right advisor tool, evaluate against spec, then collect evidence.",
+        "name": "sangfor-health-check"
+      },
+      {
+        "arguments": [
+          {
+            "description": "Free-text customer requirements to plan for",
+            "name": "requirements",
+            "required": false
+          }
+        ],
+        "description": "Turn customer requirements into a config plan with risk classification and a validation plan, without touching a device.",
+        "name": "sangfor-config-plan"
+      },
+      {
+        "arguments": [
+          {
+            "description": "Observed symptom to investigate",
+            "name": "symptom",
+            "required": false
+          }
+        ],
+        "description": "Evidence-first troubleshooting workflow: gather grounded evidence before proposing root causes.",
+        "name": "sangfor-troubleshoot"
+      }
+    ]
+  },
+  "qa": {
+    "generatedFiles": [],
+    "secretValuesAbsent": true,
+    "stderr": [
+      "sangfor-engineer-mcp stdio server started"
+    ]
+  },
+  "representative": {
+    "dryRun": {
+      "content": [
+        {
+          "text": "{\"id\":\"<generated-id>\",\"product\":\"HCI_SCP\",\"ok\":true,\"mutationPerformed\":false,\"stoppedBefore\":[\"Save\",\"Apply\",\"Delete\",\"Commit\",\"Response Action\"],\"webuiRoutePreview\":[{\"taskId\":\"task_1\",\"menuPath\":[\"Reliability\",\"HA/DRS\"],\"checks\":[\"Navigate to menu\",\"Confirm current values\",\"Populate draft values if safe\",\"Stop before mutation button\"]}],\"apiRequestPreview\":[{\"taskId\":\"task_1\",\"endpoint\":\"GET /janus/20180725/tasks/{task_id}\",\"method\":\"GET\",\"execute\":false},{\"taskId\":\"task_1\",\"endpoint\":\"PUT /openstack/compute/v2/servers/{id}/metadata\",\"method\":\"PUT\",\"execute\":false}],\"approvalRequiredTasks\":[\"task_1\"],\"manualReviewRows\":[],\"sessionRequired\":false,\"sessionAttached\":false,\"dryRunFailures\":[]}",
+          "type": "text"
+        }
+      ],
+      "isError": false,
+      "structuredContent": {
+        "apiRequestPreview": [
+          {
+            "endpoint": "GET /janus/20180725/tasks/{task_id}",
+            "execute": false,
+            "method": "GET",
+            "taskId": "task_1"
+          },
+          {
+            "endpoint": "PUT /openstack/compute/v2/servers/{id}/metadata",
+            "execute": false,
+            "method": "PUT",
+            "taskId": "task_1"
+          }
+        ],
+        "approvalRequiredTasks": [
+          "task_1"
+        ],
+        "dryRunFailures": [],
+        "id": "<generated-id>",
+        "manualReviewRows": [],
+        "mutationPerformed": false,
+        "ok": true,
+        "product": "HCI_SCP",
+        "sessionAttached": false,
+        "sessionRequired": false,
+        "stoppedBefore": [
+          "Save",
+          "Apply",
+          "Delete",
+          "Commit",
+          "Response Action"
+        ],
+        "webuiRoutePreview": [
+          {
+            "checks": [
+              "Navigate to menu",
+              "Confirm current values",
+              "Populate draft values if safe",
+              "Stop before mutation button"
+            ],
+            "menuPath": [
+              "Reliability",
+              "HA/DRS"
+            ],
+            "taskId": "task_1"
+          }
+        ]
+      }
+    },
+    "malformedArgs": {
+      "content": [
+        {
+          "text": "{\"error\":\"Manual section not found: undefined\"}",
+          "type": "text"
+        }
+      ],
+      "isError": false,
+      "structuredContent": {
+        "error": "Manual section not found: undefined"
+      }
+    },
+    "products": {
+      "content": [
+        {
+          "text": "{\"products\":[{\"code\":\"HCI_SCP\",\"name\":\"Sangfor HCI/SCP\",\"priority\":1,\"aliases\":[\"HCI/SCP\",\"SCP\",\"Sangfor Cloud Platform\",\"Sangfor SCP\",\"aCloud\",\"HCI SCP\"],\"mvpScope\":[\"API-first config collection\",\"resource pool and VM planning\",\"HA/DRS planning\",\"license and alert validation\"]},{\"code\":\"HCI\",\"name\":\"Sangfor HCI\",\"priority\":5,\"aliases\":[\"HCI\",\"aSV\",\"Sangfor HCI\",\"Hyper-Converged Infrastructure\"],\"mvpScope\":[\"cluster deployment\",\"network precheck\",\"storage precheck\",\"VM migration planning\",\"DR PoC planning\"]},{\"code\":\"NGFW\",\"name\":\"Sangfor NGFW\",\"priority\":7,\"aliases\":[\"NGFW\",\"NGAF\",\"Athena NGFW\",\"Next-Generation Firewall\"],\"mvpScope\":[\"firewall policy planning\",\"bandwidth management\",\"VPN planning\",\"security validation\"]},{\"code\":\"SCC\",\"name\":\"Sangfor Data Center Cloud\",\"priority\":8,\"aliases\":[\"SCC\",\"Sangfor Data Center Cloud\",\"Data Center Cloud\"],\"mvpScope\":[\"tenant operations\",\"quota planning\",\"cloud resource validation\"]},{\"code\":\"IAG\",\"name\":\"Sangfor IAG\",\"priority\":2,\"aliases\":[\"IAG\",\"Internet Access Gateway\",\"IAM\",\"access gateway\"],\"mvpScope\":[\"user/group policy planning\",\"internet access control\",\"authentication integration\",\"audit log validation\"]},{\"code\":\"ENDPOINT_SECURE\",\"name\":\"Sangfor Endpoint Secure\",\"priority\":3,\"aliases\":[\"Endpoint Secure\",\"Endpoint Security\",\"EPP\",\"EDR\",\"aSEC\"],\"mvpScope\":[\"agent deployment plan\",\"EPP/EDR policy plan\",\"exception policy\",\"update and rollout validation\"]},{\"code\":\"NDR\",\"name\":\"Sangfor NDR / Cyber Command\",\"priority\":4,\"aliases\":[\"NDR\",\"Athena NDR\",\"Cyber Command\",\"Sangfor Cyber Command\",\"security operations\",\"SOC\"],\"mvpScope\":[\"event source onboarding\",\"incident and alert validation\",\"SOAR/playbook planning\",\"third-party API integration readiness\"]},{\"code\":\"CYBER_COMMAND\",\"name\":\"Sangfor Cyber Command\",\"priority\":6,\"aliases\":[\"Cyber Command legacy\",\"Sangfor Cyber Command legacy\"],\"mvpScope\":[\"event collection planning\",\"alert policy planning\",\"dashboard/report validation\",\"integration readiness\"]},{\"code\":\"HIWARE\",\"name\":\"HIWARE Privileged Access Management\",\"priority\":9,\"aliases\":[\"HIWARE\",\"HIWARE PSM\",\"HIWARE 6\",\"HIWARE PAM\",\"PSM for System\"],\"mvpScope\":[\"privileged access policy review\",\"OTP readiness\",\"session audit review\",\"approval workflow validation\"]},{\"code\":\"OTHER\",\"name\":\"Other Sangfor Product\",\"priority\":99,\"aliases\":[\"OTHER\"],\"mvpScope\":[\"source-preserving knowledge retrieval\"]}]}",
+          "type": "text"
+        }
+      ],
+      "isError": false,
+      "structuredContent": {
+        "products": [
+          {
+            "aliases": [
+              "HCI/SCP",
+              "SCP",
+              "Sangfor Cloud Platform",
+              "Sangfor SCP",
+              "aCloud",
+              "HCI SCP"
+            ],
+            "code": "HCI_SCP",
+            "mvpScope": [
+              "API-first config collection",
+              "resource pool and VM planning",
+              "HA/DRS planning",
+              "license and alert validation"
+            ],
+            "name": "Sangfor HCI/SCP",
+            "priority": 1
+          },
+          {
+            "aliases": [
+              "HCI",
+              "aSV",
+              "Sangfor HCI",
+              "Hyper-Converged Infrastructure"
+            ],
+            "code": "HCI",
+            "mvpScope": [
+              "cluster deployment",
+              "network precheck",
+              "storage precheck",
+              "VM migration planning",
+              "DR PoC planning"
+            ],
+            "name": "Sangfor HCI",
+            "priority": 5
+          },
+          {
+            "aliases": [
+              "NGFW",
+              "NGAF",
+              "Athena NGFW",
+              "Next-Generation Firewall"
+            ],
+            "code": "NGFW",
+            "mvpScope": [
+              "firewall policy planning",
+              "bandwidth management",
+              "VPN planning",
+              "security validation"
+            ],
+            "name": "Sangfor NGFW",
+            "priority": 7
+          },
+          {
+            "aliases": [
+              "SCC",
+              "Sangfor Data Center Cloud",
+              "Data Center Cloud"
+            ],
+            "code": "SCC",
+            "mvpScope": [
+              "tenant operations",
+              "quota planning",
+              "cloud resource validation"
+            ],
+            "name": "Sangfor Data Center Cloud",
+            "priority": 8
+          },
+          {
+            "aliases": [
+              "IAG",
+              "Internet Access Gateway",
+              "IAM",
+              "access gateway"
+            ],
+            "code": "IAG",
+            "mvpScope": [
+              "user/group policy planning",
+              "internet access control",
+              "authentication integration",
+              "audit log validation"
+            ],
+            "name": "Sangfor IAG",
+            "priority": 2
+          },
+          {
+            "aliases": [
+              "Endpoint Secure",
+              "Endpoint Security",
+              "EPP",
+              "EDR",
+              "aSEC"
+            ],
+            "code": "ENDPOINT_SECURE",
+            "mvpScope": [
+              "agent deployment plan",
+              "EPP/EDR policy plan",
+              "exception policy",
+              "update and rollout validation"
+            ],
+            "name": "Sangfor Endpoint Secure",
+            "priority": 3
+          },
+          {
+            "aliases": [
+              "NDR",
+              "Athena NDR",
+              "Cyber Command",
+              "Sangfor Cyber Command",
+              "security operations",
+              "SOC"
+            ],
+            "code": "NDR",
+            "mvpScope": [
+              "event source onboarding",
+              "incident and alert validation",
+              "SOAR/playbook planning",
+              "third-party API integration readiness"
+            ],
+            "name": "Sangfor NDR / Cyber Command",
+            "priority": 4
+          },
+          {
+            "aliases": [
+              "Cyber Command legacy",
+              "Sangfor Cyber Command legacy"
+            ],
+            "code": "CYBER_COMMAND",
+            "mvpScope": [
+              "event collection planning",
+              "alert policy planning",
+              "dashboard/report validation",
+              "integration readiness"
+            ],
+            "name": "Sangfor Cyber Command",
+            "priority": 6
+          },
+          {
+            "aliases": [
+              "HIWARE",
+              "HIWARE PSM",
+              "HIWARE 6",
+              "HIWARE PAM",
+              "PSM for System"
+            ],
+            "code": "HIWARE",
+            "mvpScope": [
+              "privileged access policy review",
+              "OTP readiness",
+              "session audit review",
+              "approval workflow validation"
+            ],
+            "name": "HIWARE Privileged Access Management",
+            "priority": 9
+          },
+          {
+            "aliases": [
+              "OTHER"
+            ],
+            "code": "OTHER",
+            "mvpScope": [
+              "source-preserving knowledge retrieval"
+            ],
+            "name": "Other Sangfor Product",
+            "priority": 99
+          }
+        ]
+      }
+    },
+    "resourceRead": {
+      "contents": [
+        {
+          "mimeType": "application/json",
+          "text": "{\n  \"default\": \"dry-run / read-only\",\n  \"liveWriteRequires\": [\n    \"SANGFOR_ALLOW_REAL_EXECUTION\",\n    \"signed action-bound single-use approval\"\n  ],\n  \"productionAlsoRequires\": [\n    \"SANGFOR_ALLOW_PRODUCTION_EXECUTION\"\n  ],\n  \"indeterminateIsNeverPass\": true,\n  \"irreversibleActsStayHuman\": true\n}",
+          "uri": "sangfor://safety/posture"
+        }
+      ]
+    },
+    "scopedRag": {
+      "content": [
+        {
+          "text": "{\"count\":0,\"hits\":[]}",
+          "type": "text"
+        }
+      ],
+      "isError": false,
+      "structuredContent": {
+        "count": 0,
+        "hits": []
+      }
+    },
+    "secretLikeArgs": {
+      "content": [
+        {
+          "text": "{\"products\":[{\"code\":\"HCI_SCP\",\"name\":\"Sangfor HCI/SCP\",\"priority\":1,\"aliases\":[\"HCI/SCP\",\"SCP\",\"Sangfor Cloud Platform\",\"Sangfor SCP\",\"aCloud\",\"HCI SCP\"],\"mvpScope\":[\"API-first config collection\",\"resource pool and VM planning\",\"HA/DRS planning\",\"license and alert validation\"]},{\"code\":\"HCI\",\"name\":\"Sangfor HCI\",\"priority\":5,\"aliases\":[\"HCI\",\"aSV\",\"Sangfor HCI\",\"Hyper-Converged Infrastructure\"],\"mvpScope\":[\"cluster deployment\",\"network precheck\",\"storage precheck\",\"VM migration planning\",\"DR PoC planning\"]},{\"code\":\"NGFW\",\"name\":\"Sangfor NGFW\",\"priority\":7,\"aliases\":[\"NGFW\",\"NGAF\",\"Athena NGFW\",\"Next-Generation Firewall\"],\"mvpScope\":[\"firewall policy planning\",\"bandwidth management\",\"VPN planning\",\"security validation\"]},{\"code\":\"SCC\",\"name\":\"Sangfor Data Center Cloud\",\"priority\":8,\"aliases\":[\"SCC\",\"Sangfor Data Center Cloud\",\"Data Center Cloud\"],\"mvpScope\":[\"tenant operations\",\"quota planning\",\"cloud resource validation\"]},{\"code\":\"IAG\",\"name\":\"Sangfor IAG\",\"priority\":2,\"aliases\":[\"IAG\",\"Internet Access Gateway\",\"IAM\",\"access gateway\"],\"mvpScope\":[\"user/group policy planning\",\"internet access control\",\"authentication integration\",\"audit log validation\"]},{\"code\":\"ENDPOINT_SECURE\",\"name\":\"Sangfor Endpoint Secure\",\"priority\":3,\"aliases\":[\"Endpoint Secure\",\"Endpoint Security\",\"EPP\",\"EDR\",\"aSEC\"],\"mvpScope\":[\"agent deployment plan\",\"EPP/EDR policy plan\",\"exception policy\",\"update and rollout validation\"]},{\"code\":\"NDR\",\"name\":\"Sangfor NDR / Cyber Command\",\"priority\":4,\"aliases\":[\"NDR\",\"Athena NDR\",\"Cyber Command\",\"Sangfor Cyber Command\",\"security operations\",\"SOC\"],\"mvpScope\":[\"event source onboarding\",\"incident and alert validation\",\"SOAR/playbook planning\",\"third-party API integration readiness\"]},{\"code\":\"CYBER_COMMAND\",\"name\":\"Sangfor Cyber Command\",\"priority\":6,\"aliases\":[\"Cyber Command legacy\",\"Sangfor Cyber Command legacy\"],\"mvpScope\":[\"event collection planning\",\"alert policy planning\",\"dashboard/report validation\",\"integration readiness\"]},{\"code\":\"HIWARE\",\"name\":\"HIWARE Privileged Access Management\",\"priority\":9,\"aliases\":[\"HIWARE\",\"HIWARE PSM\",\"HIWARE 6\",\"HIWARE PAM\",\"PSM for System\"],\"mvpScope\":[\"privileged access policy review\",\"OTP readiness\",\"session audit review\",\"approval workflow validation\"]},{\"code\":\"OTHER\",\"name\":\"Other Sangfor Product\",\"priority\":99,\"aliases\":[\"OTHER\"],\"mvpScope\":[\"source-preserving knowledge retrieval\"]}]}",
+          "type": "text"
+        }
+      ],
+      "isError": false,
+      "structuredContent": {
+        "products": [
+          {
+            "aliases": [
+              "HCI/SCP",
+              "SCP",
+              "Sangfor Cloud Platform",
+              "Sangfor SCP",
+              "aCloud",
+              "HCI SCP"
+            ],
+            "code": "HCI_SCP",
+            "mvpScope": [
+              "API-first config collection",
+              "resource pool and VM planning",
+              "HA/DRS planning",
+              "license and alert validation"
+            ],
+            "name": "Sangfor HCI/SCP",
+            "priority": 1
+          },
+          {
+            "aliases": [
+              "HCI",
+              "aSV",
+              "Sangfor HCI",
+              "Hyper-Converged Infrastructure"
+            ],
+            "code": "HCI",
+            "mvpScope": [
+              "cluster deployment",
+              "network precheck",
+              "storage precheck",
+              "VM migration planning",
+              "DR PoC planning"
+            ],
+            "name": "Sangfor HCI",
+            "priority": 5
+          },
+          {
+            "aliases": [
+              "NGFW",
+              "NGAF",
+              "Athena NGFW",
+              "Next-Generation Firewall"
+            ],
+            "code": "NGFW",
+            "mvpScope": [
+              "firewall policy planning",
+              "bandwidth management",
+              "VPN planning",
+              "security validation"
+            ],
+            "name": "Sangfor NGFW",
+            "priority": 7
+          },
+          {
+            "aliases": [
+              "SCC",
+              "Sangfor Data Center Cloud",
+              "Data Center Cloud"
+            ],
+            "code": "SCC",
+            "mvpScope": [
+              "tenant operations",
+              "quota planning",
+              "cloud resource validation"
+            ],
+            "name": "Sangfor Data Center Cloud",
+            "priority": 8
+          },
+          {
+            "aliases": [
+              "IAG",
+              "Internet Access Gateway",
+              "IAM",
+              "access gateway"
+            ],
+            "code": "IAG",
+            "mvpScope": [
+              "user/group policy planning",
+              "internet access control",
+              "authentication integration",
+              "audit log validation"
+            ],
+            "name": "Sangfor IAG",
+            "priority": 2
+          },
+          {
+            "aliases": [
+              "Endpoint Secure",
+              "Endpoint Security",
+              "EPP",
+              "EDR",
+              "aSEC"
+            ],
+            "code": "ENDPOINT_SECURE",
+            "mvpScope": [
+              "agent deployment plan",
+              "EPP/EDR policy plan",
+              "exception policy",
+              "update and rollout validation"
+            ],
+            "name": "Sangfor Endpoint Secure",
+            "priority": 3
+          },
+          {
+            "aliases": [
+              "NDR",
+              "Athena NDR",
+              "Cyber Command",
+              "Sangfor Cyber Command",
+              "security operations",
+              "SOC"
+            ],
+            "code": "NDR",
+            "mvpScope": [
+              "event source onboarding",
+              "incident and alert validation",
+              "SOAR/playbook planning",
+              "third-party API integration readiness"
+            ],
+            "name": "Sangfor NDR / Cyber Command",
+            "priority": 4
+          },
+          {
+            "aliases": [
+              "Cyber Command legacy",
+              "Sangfor Cyber Command legacy"
+            ],
+            "code": "CYBER_COMMAND",
+            "mvpScope": [
+              "event collection planning",
+              "alert policy planning",
+              "dashboard/report validation",
+              "integration readiness"
+            ],
+            "name": "Sangfor Cyber Command",
+            "priority": 6
+          },
+          {
+            "aliases": [
+              "HIWARE",
+              "HIWARE PSM",
+              "HIWARE 6",
+              "HIWARE PAM",
+              "PSM for System"
+            ],
+            "code": "HIWARE",
+            "mvpScope": [
+              "privileged access policy review",
+              "OTP readiness",
+              "session audit review",
+              "approval workflow validation"
+            ],
+            "name": "HIWARE Privileged Access Management",
+            "priority": 9
+          },
+          {
+            "aliases": [
+              "OTHER"
+            ],
+            "code": "OTHER",
+            "mvpScope": [
+              "source-preserving knowledge retrieval"
+            ],
+            "name": "Other Sangfor Product",
+            "priority": 99
+          }
+        ]
+      }
+    },
+    "unknownTool": {
+      "content": [
+        {
+          "text": "Unknown tool: sangfor_does_not_exist",
+          "type": "text"
+        }
+      ],
+      "isError": true
+    }
+  },
+  "resources": {
+    "resources": [
+      {
+        "description": "Recommended first calls and standard tool groups for agent self-onboarding.",
+        "mimeType": "application/json",
+        "name": "Agent manifest",
+        "uri": "sangfor://agent-manifest"
+      },
+      {
+        "description": "Tool categories, supported vendors/products, and execution posture.",
+        "mimeType": "application/json",
+        "name": "Server capabilities",
+        "uri": "sangfor://capabilities"
+      },
+      {
+        "description": "Read-only-by-default execution model and the gates a live write must clear.",
+        "mimeType": "application/json",
+        "name": "Safety posture",
+        "uri": "sangfor://safety/posture"
+      }
+    ]
+  },
+  "schemaVersion": "mcp-runtime-surface.v1",
+  "sha256": "009bbd66366710134b779f2c72e253e2510eec5319818047e1dd7d910a9ce4f0",
+  "tools": [
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": true,
+        "title": "Read-only self-assessment advisor for Cisco IOS-XE routers/s"
+      },
+      "category": "advisory",
+      "description": "Read-only self-assessment advisor for Cisco IOS-XE routers/switches (interfaces, routing, ACLs). RESTCONF GET only; never mutates the device.",
+      "inputSchema": {
+        "properties": {
+          "host": {
+            "description": "Cisco device IP or hostname (or a full base URL for testing, e.g. http://127.0.0.1:9999)",
+            "type": "string"
+          },
+          "password": {
+            "description": "Admin password",
+            "type": "string"
+          },
+          "specVersion": {
+            "default": "17.0.0",
+            "description": "Spec version (e.g., 17.0.0)",
+            "type": "string"
+          },
+          "username": {
+            "description": "Admin username",
+            "type": "string"
+          }
+        },
+        "required": [
+          "host",
+          "username",
+          "password"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_advisor_cisco_iosxe"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": true,
+        "title": "Advanced read-only Cisco IOS-XE advisor"
+      },
+      "category": "advisory",
+      "description": "Advanced read-only Cisco IOS-XE advisor: system health (per-core CPU average, memory usage, interface down count, VRF count) plus policy audit (zone-pair policy count, ACL rule count, SNORT signature version/inspection status). RESTCONF GET only across 7 endpoints; never mutates the device.",
+      "inputSchema": {
+        "properties": {
+          "host": {
+            "description": "Cisco device IP or hostname (or a full base URL for testing, e.g. http://127.0.0.1:9999)",
+            "type": "string"
+          },
+          "password": {
+            "description": "Admin password",
+            "type": "string"
+          },
+          "specVersion": {
+            "default": "17.0.0",
+            "description": "Spec version (e.g., 17.0.0)",
+            "type": "string"
+          },
+          "username": {
+            "description": "Admin username",
+            "type": "string"
+          }
+        },
+        "required": [
+          "host",
+          "username",
+          "password"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_advisor_cisco_iosxe_advanced"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": true,
+        "title": "Read-only self-assessment advisor for FortiOS firewalls (pol"
+      },
+      "category": "advisory",
+      "description": "Read-only self-assessment advisor for FortiOS firewalls (policies, interfaces, routing). HTTP GET only against the REST API; never mutates the device.",
+      "inputSchema": {
+        "properties": {
+          "host": {
+            "description": "FortiOS device IP or hostname (or a full base URL for testing, e.g. http://127.0.0.1:9999)",
+            "type": "string"
+          },
+          "password": {
+            "description": "Admin password",
+            "type": "string"
+          },
+          "specVersion": {
+            "default": "8.0.0",
+            "description": "Spec version (e.g., 8.0.0)",
+            "type": "string"
+          },
+          "username": {
+            "description": "Admin username",
+            "type": "string"
+          }
+        },
+        "required": [
+          "host",
+          "username",
+          "password"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_advisor_fortios"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": true,
+        "title": "Advanced read-only FortiOS advisor"
+      },
+      "category": "advisory",
+      "description": "Advanced read-only FortiOS advisor: system health (CPU/memory/disk usage, ASIC/NPU load, HA mode and primary-unit status) plus policy audit (syntax validity, duplicate policies, IPS signature version). HTTP GET only across 5 endpoints; never mutates the device.",
+      "inputSchema": {
+        "properties": {
+          "host": {
+            "description": "FortiOS device IP or hostname (or a full base URL for testing, e.g. http://127.0.0.1:9999)",
+            "type": "string"
+          },
+          "password": {
+            "description": "Admin password",
+            "type": "string"
+          },
+          "specVersion": {
+            "default": "8.0.0",
+            "description": "Spec version (e.g., 8.0.0)",
+            "type": "string"
+          },
+          "username": {
+            "description": "Admin username",
+            "type": "string"
+          }
+        },
+        "required": [
+          "host",
+          "username",
+          "password"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_advisor_fortios_advanced"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": true,
+        "title": "Agent self-onboarding manifest"
+      },
+      "category": "advisory",
+      "description": "Agent self-onboarding manifest: recommended first calls, standard tool groups, tool exposure profile, and the read-only-by-default safety posture. Call this first to discover the server. Read-only; never mutates.",
+      "inputSchema": {
+        "properties": {},
+        "type": "object"
+      },
+      "name": "sangfor_agent_manifest"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": true,
+        "title": "Break customer requirement strings into product-specific con"
+      },
+      "category": "advisory",
+      "description": "Break customer requirement strings into product-specific configuration tasks with menu paths, API candidates, risk and approval gates.",
+      "inputSchema": {
+        "properties": {
+          "currentConfig": {
+            "type": "object"
+          },
+          "environment": {
+            "type": "string"
+          },
+          "product": {
+            "type": "string"
+          },
+          "requirements": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "targetUrl": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "requirements"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_analyze_customer_requirements"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": true,
+        "title": "Analyze customer project input and return product, project t"
+      },
+      "category": "advisory",
+      "description": "Analyze customer project input and return product, project type, risk, missing inputs and knowledge queries.",
+      "inputSchema": {
+        "properties": {
+          "customerName": {
+            "type": "string"
+          },
+          "environment": {
+            "type": "object"
+          },
+          "product": {
+            "type": "string"
+          },
+          "projectType": {
+            "type": "string"
+          },
+          "requirements": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "version": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "customerName"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_analyze_project"
+    },
+    {
+      "annotations": {
+        "destructiveHint": true,
+        "readOnlyHint": false,
+        "title": "Deprecated write surface"
+      },
+      "category": "admin",
+      "description": "Deprecated write surface: typed-refuses every real apply. Use a verified product-specific orchestrator; dry-run planning remains available separately.",
+      "inputSchema": {
+        "properties": {
+          "approval": {
+            "type": "object"
+          },
+          "environment": {
+            "type": "string"
+          },
+          "plan": {
+            "type": "object"
+          },
+          "sessionId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "plan"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_apply_approved_product_change"
+    },
+    {
+      "annotations": {
+        "destructiveHint": true,
+        "readOnlyHint": false,
+        "title": "Apply an approved wiki update proposal to a GitHub Wiki git"
+      },
+      "category": "admin",
+      "description": "Apply an approved wiki update proposal to a GitHub Wiki git repository. Uses git CLI and provided repoUrl/localPath. Gated by explicit human approval: applies only proposals that passed review; pending proposals are blocked.",
+      "inputSchema": {
+        "properties": {
+          "localPath": {
+            "type": "string"
+          },
+          "proposalId": {
+            "type": "string"
+          },
+          "repoUrl": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "proposalId",
+          "repoUrl"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_apply_github_wiki_update"
+    },
+    {
+      "annotations": {
+        "destructiveHint": true,
+        "readOnlyHint": false,
+        "title": "Apply an approved wiki update proposal to an Obsidian vault"
+      },
+      "category": "admin",
+      "description": "Apply an approved wiki update proposal to an Obsidian vault path. Gated by explicit human approval: applies only proposals that passed review; pending proposals are blocked.",
+      "inputSchema": {
+        "properties": {
+          "proposalId": {
+            "type": "string"
+          },
+          "vaultPath": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "proposalId",
+          "vaultPath"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_apply_obsidian_wiki_update"
+    },
+    {
+      "annotations": {
+        "destructiveHint": true,
+        "readOnlyHint": false,
+        "title": "Apply an approved wiki update proposal"
+      },
+      "category": "admin",
+      "description": "Apply an approved wiki update proposal. Blocks pending proposals. Gated by explicit human approval: applies only proposals that passed review; pending proposals are blocked.",
+      "inputSchema": {
+        "properties": {
+          "proposalId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "proposalId"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_apply_wiki_update"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": false,
+        "title": "Approve or reject a wiki update proposal"
+      },
+      "category": "wiki",
+      "description": "Approve or reject a wiki update proposal. Requires explicit reviewer token to confirm the approve/reject decision.",
+      "inputSchema": {
+        "properties": {
+          "decision": {
+            "type": "string"
+          },
+          "proposalId": {
+            "type": "string"
+          },
+          "reviewer": {
+            "type": "string"
+          },
+          "token": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "proposalId",
+          "decision"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_approve_wiki_update"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": false,
+        "title": "WRITE"
+      },
+      "category": "collect",
+      "description": "WRITE: attach to one exact loopback CDP page owned by the observer profile registry.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "cdpPort": {
+            "maximum": 65535,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "expectedOrigin": {
+            "type": "string"
+          },
+          "firmwareTruthId": {
+            "type": "string"
+          },
+          "product": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "product",
+          "expectedOrigin",
+          "cdpPort",
+          "firmwareTruthId"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_attach_observation_session"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": true,
+        "title": "Read-only"
+      },
+      "category": "advisory",
+      "description": "Read-only: list checklist items for one audit framework, optionally filtered by group/product/priority/owner. Sorted by itemId. Optional cursor/limit page the result; omit both for the full filtered list (default, backward-compatible).",
+      "inputSchema": {
+        "properties": {
+          "cursor": {
+            "type": "string"
+          },
+          "frameworkId": {
+            "description": "Framework id from sangfor_audit_frameworks, e.g. \"hyundai-supplier-2026\".",
+            "type": "string"
+          },
+          "group": {
+            "description": "Filter to one audit group.",
+            "enum": [
+              "G1",
+              "G2",
+              "G3",
+              "G4",
+              "G5",
+              "G6",
+              "G7"
+            ],
+            "type": "string"
+          },
+          "limit": {
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "owner": {
+            "description": "Filter to one owning role.",
+            "enum": [
+              "customer",
+              "engineer",
+              "vendor"
+            ],
+            "type": "string"
+          },
+          "priority": {
+            "description": "Filter to one priority.",
+            "enum": [
+              "P1",
+              "P2",
+              "P3"
+            ],
+            "type": "string"
+          },
+          "product": {
+            "description": "Filter to items whose products include this @sangfor/shared ProductCode.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "frameworkId"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_audit_checklist"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": true,
+        "title": "Read-only"
+      },
+      "category": "advisory",
+      "description": "Read-only: list registered customer audit-checklist frameworks (e.g. a customer's security-audit master table promoted to data) — frameworkId, title, version, and item count. Use with sangfor_audit_checklist / sangfor_audit_gap_report.",
+      "inputSchema": {
+        "properties": {},
+        "type": "object"
+      },
+      "name": "sangfor_audit_frameworks"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": true,
+        "title": "Read-only"
+      },
+      "category": "report",
+      "description": "Read-only: build a gap report for an audit framework from observations you supply — {itemId, status: met|partial|gap|unknown, observed?, evidenceRefs?}. Every item in the framework is included even with no matching observation (reported as status \"unknown\" / verdict \"미확인\" — missing coverage is never hidden). missingEvidence is requiredEvidence in full when evidenceRefs is empty/omitted, and empty when any evidenceRefs are supplied (not a substring match). Returns per-item verdict (O/△/X/미확인) plus a summary {total, met, partial, gap, unknown, observedRatio (how much of the framework has been inspected), metRatio (how much of it passes)}.",
+      "inputSchema": {
+        "properties": {
+          "frameworkId": {
+            "description": "Framework id from sangfor_audit_frameworks.",
+            "type": "string"
+          },
+          "observations": {
+            "items": {
+              "properties": {
+                "evidenceRefs": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "itemId": {
+                  "type": "string"
+                },
+                "observed": {
+                  "type": "string"
+                },
+                "status": {
+                  "enum": [
+                    "met",
+                    "partial",
+                    "gap",
+                    "unknown"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "itemId",
+                "status"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "frameworkId",
+          "observations"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_audit_gap_report"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": false,
+        "title": "Writes a local file (not a device change)"
+      },
+      "category": "report",
+      "description": "Writes a local file (not a device change): assembles a customer-submission .docx evidence package via officecli (cover page, a summary table with per-verdict counts, one section per checklist item with its evidence images embedded, and — when captureRunId is given — a \"증적 무결성\" section reporting AuditLedger chain + per-file hash verification). observed/verdict text is used exactly as supplied, never summarized or inferred; items with no evidence file are marked \"(증적 파일 없음)\" (naming the expected files when any were claimed but none found) rather than silently skipped. items is shaped to accept sangfor_audit_gap_report output nearly as-is — see @sangfor/evidence gapReportItemsToEvidenceItems for the field mapping (evidenceRefs -> evidenceFiles). Auto-validates the result via officecli and returns it under validation. Defaults outputPath to the engagement-scoped evidence root under packages/<dateStamp>/. Refuses to overwrite an existing file at outputPath (OFFICE_FILE_EXISTS) unless overwrite:true is passed — a customer submission is never silently replaced.",
+      "inputSchema": {
+        "properties": {
+          "captureRunId": {
+            "description": "Optional sangfor_console_capture_evidence runId — adds a \"증적 무결성\" section verifying the AuditLedger chain and per-file hashes for that run.",
+            "type": "string"
+          },
+          "customer": {
+            "description": "Customer name, shown on the cover page.",
+            "type": "string"
+          },
+          "dateStamp": {
+            "description": "Collection/authoring date, e.g. \"20260806\". Also used in the default outputPath.",
+            "type": "string"
+          },
+          "frameworkId": {
+            "description": "Optional audit framework id, shown on the cover page.",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "properties": {
+                "evidenceFiles": {
+                  "description": "Local file paths of evidence images for this item. Missing/nonexistent files are reported honestly rather than embedded.",
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "itemId": {
+                  "type": "string"
+                },
+                "observed": {
+                  "description": "Measured/observed text. Omit or pass \"미확인\" when not confirmed — never inferred.",
+                  "type": "string"
+                },
+                "reqIds": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "status": {
+                  "description": "Observation status, e.g. met/partial/gap/unknown — used exactly as supplied.",
+                  "type": "string"
+                },
+                "topic": {
+                  "type": "string"
+                },
+                "verdict": {
+                  "description": "Verdict text, e.g. O/△/X/미확인 — used exactly as supplied, not reinterpreted.",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "itemId",
+                "topic",
+                "reqIds",
+                "status",
+                "verdict"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "outputPath": {
+            "description": "Optional output path. Defaults under the engagement-scoped evidence root at packages/<dateStamp>/.",
+            "type": "string"
+          },
+          "overwrite": {
+            "description": "Default false. When outputPath already exists, the call is refused with OFFICE_FILE_EXISTS unless this is true — protects a customer submission from being silently replaced.",
+            "type": "boolean"
+          },
+          "title": {
+            "description": "Document title, e.g. \"ITAC 보안 필수사항 점검 증적 패키지\".",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "customer",
+          "dateStamp",
+          "items"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_build_evidence_package"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": true,
+        "title": "Discovery"
+      },
+      "category": "advisory",
+      "description": "Discovery: server capabilities — tool categories and counts, supported vendors/products, execution posture, and which write paths are gated. Read-only; never mutates.",
+      "inputSchema": {
+        "properties": {},
+        "type": "object"
+      },
+      "name": "sangfor_capabilities"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": true,
+        "title": "Report capability safety_class and maturity from physically"
+      },
+      "category": "advisory",
+      "description": "Report capability safety_class and maturity from physically separated safety/competency files. Default is human_only; autoAllowed is true only for explicit auto_allowed entries, and fieldVerifiedAutoAllowed additionally requires maturity=field_verified.",
+      "inputSchema": {
+        "properties": {
+          "capabilityId": {
+            "type": "string"
+          },
+          "product": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "sangfor_capability_safety"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": false,
+        "title": "Capture screenshots from Sangfor product consoles (EPP, IAG,"
+      },
+      "category": "collect",
+      "description": "Capture screenshots from Sangfor product consoles (EPP, IAG, CC) via Chrome CDP. Connects to the product console, logs in, navigates menus, and saves screenshots.",
+      "inputSchema": {
+        "properties": {
+          "cdpPort": {
+            "description": "Optional loopback Chrome CDP port",
+            "type": "number"
+          },
+          "dryRun": {
+            "description": "Dry-run mode: skip Chrome and just list planned screenshots",
+            "type": "boolean"
+          },
+          "headless": {
+            "description": "Run Chrome in headless mode",
+            "type": "boolean"
+          },
+          "outputDir": {
+            "description": "Output directory for screenshots",
+            "type": "string"
+          },
+          "password": {
+            "description": "Login password",
+            "type": "string"
+          },
+          "product": {
+            "description": "Product to capture screenshots from",
+            "enum": [
+              "EPP",
+              "IAG",
+              "CC"
+            ],
+            "type": "string"
+          },
+          "targetUrl": {
+            "description": "Override target URL",
+            "type": "string"
+          },
+          "username": {
+            "description": "Login username",
+            "type": "string"
+          }
+        },
+        "required": [
+          "product"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_capture_screenshots"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": true,
+        "title": "Upgrade advisory"
+      },
+      "category": "advisory",
+      "description": "Upgrade advisory: check a device version against the collected Version Requirements (min/recommended) and return meetsMin/atRecommended + cited advice. Returns null-style error for unknown devices (no fabricated compatibility claim). No args → list known requirements.",
+      "inputSchema": {
+        "properties": {
+          "currentVersion": {
+            "type": "string"
+          },
+          "device": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "sangfor_check_version"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": true,
+        "title": "Read-only"
+      },
+      "category": "advisory",
+      "description": "Read-only: latest (or span) semantic config diff for a device from the local Config Chronicle (content-addressed snapshot DAG, issue #23). Returns head hash, parent link and the write-time diff; unknown device → error, never a fabricated diff.",
+      "inputSchema": {
+        "properties": {
+          "deviceId": {
+            "type": "string"
+          },
+          "dir": {
+            "type": "string"
+          },
+          "fromHash": {
+            "type": "string"
+          },
+          "toHash": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "deviceId"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_chronicle_diff"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": true,
+        "title": "Advisory"
+      },
+      "category": "collect",
+      "description": "Advisory: map a captured device XHR pool file (from scripts/device-collect.ts) into a provenance-carrying ConfigState, evaluate it against the IntendedSpec, and render the Korean advisory report. Read-only; live capture is NOT performed here (VPN + interactive session required — see docs/DEVICE_DIAGNOSIS_RUNBOOK.md).",
+      "inputSchema": {
+        "properties": {
+          "docxPath": {
+            "type": "string"
+          },
+          "live": {
+            "type": "boolean"
+          },
+          "poolPath": {
+            "type": "string"
+          },
+          "product": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "product",
+          "version",
+          "poolPath"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_collect_device_config"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": false,
+        "title": "WRITE"
+      },
+      "category": "collect",
+      "description": "WRITE: collect requested facts through an exact learning strategy and return complete/partial/conflict/unavailable observations.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "allowCanary": {
+            "default": false,
+            "type": "boolean"
+          },
+          "context": {
+            "additionalProperties": false,
+            "properties": {
+              "deviceScope": {
+                "type": "string"
+              },
+              "environment": {
+                "enum": [
+                  "lab",
+                  "poc",
+                  "customer",
+                  "production"
+                ],
+                "type": "string"
+              },
+              "productVariant": {
+                "type": "string"
+              },
+              "registryDigest": {
+                "type": "string"
+              },
+              "versionTruthRecord": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "registryDigest",
+              "versionTruthRecord"
+            ],
+            "type": "object"
+          },
+          "factIds": {
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "methodResults": {
+            "items": {
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "scope": {
+            "additionalProperties": false,
+            "properties": {
+              "capability": {
+                "type": "string"
+              },
+              "fact": {
+                "type": "string"
+              },
+              "firmwareVersion": {
+                "type": "string"
+              },
+              "product": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "product",
+              "firmwareVersion"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "scope",
+          "context",
+          "factIds"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_collect_facts"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": true,
+        "title": "Collect or plan read-only collection of current product conf"
+      },
+      "category": "collect",
+      "description": "Collect or plan read-only collection of current product configuration. Uses API-first for HCI/SCP, WebUI-first for IAG/Endpoint Secure, hybrid for NDR.",
+      "inputSchema": {
+        "properties": {
+          "environment": {
+            "type": "string"
+          },
+          "preferApi": {
+            "type": "boolean"
+          },
+          "product": {
+            "type": "string"
+          },
+          "targetUrl": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "sangfor_collect_product_config"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": false,
+        "title": "Read-only console evidence capture"
+      },
+      "category": "collect",
+      "description": "Read-only console evidence capture: attaches to a Chrome you already have open on the product console (via a trusted SANGFOR_JM_CDP_PROFILES_JSON port/origin binding; never launches a browser) and screenshots the listed menus/URLs as named audit evidence (REQ##_product_menu_Before_YYYYMMDD.png), hash-chained into the AuditLedger. reads console screens only; never changes device configuration. Chrome must already be running with --remote-debugging-port=<cdpPort> (default 9222). Omit outputDir to use the engagement-scoped default data/evidence/captures/<YYYYMMDD>/.",
+      "inputSchema": {
+        "properties": {
+          "captures": {
+            "items": {
+              "properties": {
+                "menuLabel": {
+                  "description": "Human label for the console screen; used in the filename.",
+                  "type": "string"
+                },
+                "menuPath": {
+                  "description": "Optional menu/submenu text-click path (read-only navigation only — no form submission).",
+                  "items": {
+                    "properties": {
+                      "menu": {
+                        "type": "string"
+                      },
+                      "submenu": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "menu"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "reqId": {
+                  "description": "ITAC requirement id, e.g. \"01\" — becomes REQ01 in the filename.",
+                  "type": "string"
+                },
+                "url": {
+                  "description": "Optional URL to navigate to before capture.",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "reqId",
+                "menuLabel"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "cdpPort": {
+            "description": "Chrome remote-debugging port to attach to. Default 9222.",
+            "type": "number"
+          },
+          "dateStamp": {
+            "description": "Override the YYYYMMDD stamp used in filenames and the default outputDir. Default: today.",
+            "type": "string"
+          },
+          "deviceId": {
+            "description": "Which appliance these captures came from, e.g. iag-hq-01. Separates two devices of the same product within one customer engagement: adds a <deviceId> folder under the date and a device token to each filename. Omit when unknown.",
+            "type": "string"
+          },
+          "engagementId": {
+            "description": "Optional engagement id recorded in the ledger payload.",
+            "type": "string"
+          },
+          "outputDir": {
+            "description": "Output directory for PNGs. Omit for the engagement-scoped default.",
+            "type": "string"
+          },
+          "product": {
+            "description": "Product code, e.g. ENDPOINT_SECURE, IAG, CYBER_COMMAND, HCI_SCP (see sangfor_products). Aliases like EPP/CC are also accepted.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "product",
+          "captures"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_console_capture_evidence"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": false,
+        "title": "Create planner regression eval case from feedback"
+      },
+      "category": "ml",
+      "description": "Create planner regression eval case from feedback. Local-only evals-store write; requires explicit product, name and requiredText, and never touches a device.",
+      "inputSchema": {
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "product": {
+            "type": "string"
+          },
+          "requiredText": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "product",
+          "name",
+          "requiredText"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_create_eval_case_from_feedback"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": false,
+        "title": "Create JSONL fine-tuning dataset from reviewed Sangfor examp"
+      },
+      "category": "ml",
+      "description": "Create JSONL fine-tuning dataset from reviewed Sangfor examples. Blocks secrets during validation step. Local-only dataset write; requires explicit examples and blocks secrets during validation.",
+      "inputSchema": {
+        "properties": {
+          "examples": {
+            "type": "array"
+          },
+          "outputPath": {
+            "type": "string"
+          },
+          "product": {
+            "type": "string"
+          },
+          "taskType": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "product",
+          "taskType",
+          "examples"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_create_finetune_dataset"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": false,
+        "title": "Create a reviewed fine-tuning job manifest"
+      },
+      "category": "ml",
+      "description": "Create a reviewed fine-tuning job manifest. Does not submit automatically. Local-only manifest write; does not submit — running a job requires explicit external action.",
+      "inputSchema": {
+        "properties": {
+          "baseModel": {
+            "type": "string"
+          },
+          "datasetPath": {
+            "type": "string"
+          },
+          "product": {
+            "type": "string"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "taskType": {
+            "type": "string"
+          },
+          "validationDatasetPath": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "datasetPath",
+          "product",
+          "taskType"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_create_finetune_job_spec"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": true,
+        "title": "Discover product console strategy, login/API likelihood, men"
+      },
+      "category": "knowledge",
+      "description": "Discover product console strategy, login/API likelihood, menu routes and product capabilities for HCI/SCP, IAG, Endpoint Secure or NDR.",
+      "inputSchema": {
+        "properties": {
+          "environment": {
+            "type": "string"
+          },
+          "preferApi": {
+            "type": "boolean"
+          },
+          "product": {
+            "type": "string"
+          },
+          "targetUrl": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "sangfor_discover_product_console"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": true,
+        "title": "Read-only"
+      },
+      "category": "advisory",
+      "description": "Read-only: unapproved-drift findings for a device — chronicle diffs joined against caller-supplied change approvals (dependency-injected; this tool never writes). A diff whose capture time falls inside an approval window produces no finding.",
+      "inputSchema": {
+        "properties": {
+          "approvals": {
+            "items": {
+              "properties": {
+                "approvedAt": {
+                  "type": "string"
+                },
+                "changeTicketId": {
+                  "type": "string"
+                },
+                "deviceId": {
+                  "type": "string"
+                },
+                "windowEndAt": {
+                  "type": "string"
+                },
+                "windowStartAt": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "changeTicketId",
+                "deviceId",
+                "approvedAt"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "deviceId": {
+            "type": "string"
+          },
+          "dir": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "deviceId"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_drift_findings"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": true,
+        "title": "Dry-run a product change plan"
+      },
+      "category": "advisory",
+      "description": "Dry-run a product change plan. WebUI route preview stops before Save/Apply/Delete; API changes produce request previews only.",
+      "inputSchema": {
+        "properties": {
+          "plan": {
+            "type": "object"
+          },
+          "sessionId": {
+            "type": "string"
+          },
+          "targetUrl": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "plan"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_dry_run_product_change"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": true,
+        "title": "Read-only"
+      },
+      "category": "advisory",
+      "description": "Read-only: whether a customer-engagement data scope is active (SANGFOR_ENGAGEMENT_ID) and which data roots it isolates — the run ledger, search-gap feedback file, and saved session reports. Inactive (the default) means every deployment shares the same unscoped repo data roots. An invalid SANGFOR_ENGAGEMENT_ID throws rather than silently falling back.",
+      "inputSchema": {
+        "properties": {},
+        "type": "object"
+      },
+      "name": "sangfor_engagement_scope"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": true,
+        "title": "Advisory (read-only) config check"
+      },
+      "category": "ml",
+      "description": "Advisory (read-only) config check: compare an observed product config against an IntendedSpec (from manuals) and split findings into misconfiguration / missing / indeterminate / ok. Never mutates a device. INDETERMINATE never counts as pass; MUST items without a source citation stay indeterminate. Returns the evaluation and a Korean advisory report; pass docxPath to also write a .docx.",
+      "inputSchema": {
+        "properties": {
+          "docxPath": {
+            "description": "optional path to also write the report as a .docx",
+            "type": "string"
+          },
+          "observed": {
+            "description": "observed config key→value map (from screenshot/backup/human)",
+            "type": "object"
+          },
+          "product": {
+            "type": "string"
+          },
+          "spec": {
+            "description": "optional inline IntendedSpec; if omitted, loaded by product+version",
+            "type": "object"
+          },
+          "version": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "observed"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_evaluate_config"
+    },
+    {
+      "annotations": {
+        "destructiveHint": true,
+        "readOnlyHint": false,
+        "title": "Execute or dry-run a console action"
+      },
+      "category": "admin",
+      "description": "Execute or dry-run a console action. MVP blocks high-risk non-dry-run operations.",
+      "inputSchema": {
+        "properties": {
+          "action": {
+            "type": "object"
+          },
+          "sessionId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sessionId",
+          "action"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_execute_console_action"
+    },
+    {
+      "annotations": {
+        "destructiveHint": true,
+        "readOnlyHint": false,
+        "title": "Execute a real Playwright console action"
+      },
+      "category": "admin",
+      "description": "Execute a real Playwright console action. Requires SANGFOR_ALLOW_REAL_EXECUTION and approval fields for non-dry-run.",
+      "inputSchema": {
+        "properties": {
+          "action": {
+            "type": "object"
+          },
+          "approval": {
+            "type": "object"
+          },
+          "sessionId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sessionId",
+          "action"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_execute_console_action_live"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": false,
+        "title": "Extract a lesson learned from feedback"
+      },
+      "category": "ml",
+      "description": "Extract a lesson learned from feedback.",
+      "inputSchema": {
+        "properties": {
+          "feedbackId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "feedbackId"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_extract_lesson"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": true,
+        "title": "Honest \"field-engineer replacement rate\" from the WorkAtom t"
+      },
+      "category": "knowledge",
+      "description": "Honest \"field-engineer replacement rate\" from the WorkAtom taxonomy: counts ONLY automatable AND field_verified atoms whose covering tool is ADVERTISED by the active tool profile and whose evidence is a real confined artifact. Human-only atoms never count. Any unverifiable claim refuses the whole report (ok=false + typed violations) instead of returning a quietly wrong rate. groundedToolCount reports how many advertised tools the grounding used. Optional cursor/limit page the atoms list; omit both for the full list.",
+      "inputSchema": {
+        "properties": {
+          "cursor": {
+            "type": "string"
+          },
+          "limit": {
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "name": "sangfor_field_engineer_coverage"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": false,
+        "title": "Generate complete guide set"
+      },
+      "category": "report",
+      "description": "Generate complete guide set: setting guide (docx + pptx), operations guide (docx + pptx), and optionally capture screenshots. Uses the ITAC Excel as input.",
+      "inputSchema": {
+        "properties": {
+          "captureScreenshots": {
+            "description": "Also capture product console screenshots",
+            "type": "boolean"
+          },
+          "filePath": {
+            "description": "Path to the ITAC Excel (.xlsx) file",
+            "type": "string"
+          },
+          "outputDir": {
+            "description": "Output directory for all guides",
+            "type": "string"
+          },
+          "screenshotDir": {
+            "description": "Directory containing product screenshots (default: outputs/final_images)",
+            "type": "string"
+          },
+          "screenshotProducts": {
+            "description": "Products to capture screenshots for (EPP, IAG, CC)",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "filePath"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_generate_all_guides"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": false,
+        "title": "Generate a comprehensive Word ("
+      },
+      "category": "report",
+      "description": "Generate a comprehensive Word (.docx) operations guide covering detailed daily/weekly/monthly procedures, incident response, backup/recovery, security policy management, performance monitoring, and troubleshooting FAQ.",
+      "inputSchema": {
+        "properties": {
+          "outputPath": {
+            "description": "Optional output path for the .docx file",
+            "type": "string"
+          },
+          "screenshotDir": {
+            "description": "Optional directory containing product screenshots (outputs/final_images)",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "sangfor_generate_comprehensive_operations_guide_docx"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": false,
+        "title": "Generate a comprehensive Word ("
+      },
+      "category": "report",
+      "description": "Generate a comprehensive Word (.docx) customer setting guide with detailed setup procedures, product-specific configuration, operational steps, security policies, backup/recovery, and troubleshooting. Much more detailed than the basic setting guide.",
+      "inputSchema": {
+        "properties": {
+          "filePath": {
+            "description": "Path to the ITAC Excel (.xlsx) file",
+            "type": "string"
+          },
+          "outputPath": {
+            "description": "Optional output path for the .docx file",
+            "type": "string"
+          },
+          "screenshotDir": {
+            "description": "Optional directory containing product screenshots (outputs/final_images)",
+            "type": "string"
+          }
+        },
+        "required": [
+          "filePath"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_generate_comprehensive_setting_guide_docx"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": false,
+        "title": "Generate a configuration plan with precheck, steps, rollback"
+      },
+      "category": "report",
+      "description": "Generate a configuration plan with precheck, steps, rollback, validation and approval gates.",
+      "inputSchema": {
+        "properties": {
+          "customerName": {
+            "type": "string"
+          },
+          "environment": {
+            "type": "object"
+          },
+          "product": {
+            "type": "string"
+          },
+          "projectType": {
+            "type": "string"
+          },
+          "requirements": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "version": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "customerName",
+          "product"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_generate_config_plan"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": false,
+        "title": "Generate Markdown evidence report for a plan"
+      },
+      "category": "report",
+      "description": "Generate Markdown evidence report for a plan.",
+      "inputSchema": {
+        "properties": {
+          "format": {
+            "type": "string"
+          },
+          "plan": {
+            "type": "object"
+          },
+          "planId": {
+            "type": "string"
+          },
+          "verification": {
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "name": "sangfor_generate_evidence_report"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": false,
+        "title": "Generate a multi-product dry-run change plan from an ITAC-st"
+      },
+      "category": "report",
+      "description": "Generate a multi-product dry-run change plan from an ITAC-style Excel checklist. Actual mutation remains blocked.",
+      "inputSchema": {
+        "properties": {
+          "filePath": {
+            "type": "string"
+          },
+          "prioritizeOnly": {
+            "type": "boolean"
+          },
+          "rows": {
+            "items": {
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "sheetName": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "sangfor_generate_excel_based_change_plan"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": false,
+        "title": "Generate a Word ("
+      },
+      "category": "report",
+      "description": "Generate a Word (.docx) operations guide for Sangfor products covering daily monitoring, weekly/monthly inspection, incident response, and security policy management.",
+      "inputSchema": {
+        "properties": {
+          "outputPath": {
+            "description": "Optional output path for the .docx file",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "sangfor_generate_operations_guide_docx"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": false,
+        "title": "Generate a PowerPoint ("
+      },
+      "category": "report",
+      "description": "Generate a PowerPoint (.pptx) operations guide for Sangfor products covering daily monitoring, weekly/monthly procedures, incident response, and security policies.",
+      "inputSchema": {
+        "properties": {
+          "outputPath": {
+            "description": "Optional output path for the .pptx file",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "sangfor_generate_operations_guide_pptx"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": false,
+        "title": "Generate product change plan with menu path, API endpoint ca"
+      },
+      "category": "report",
+      "description": "Generate product change plan with menu path, API endpoint candidates, current/target planning context, impact/risk, rollback and validation.",
+      "inputSchema": {
+        "properties": {
+          "currentConfig": {
+            "type": "object"
+          },
+          "environment": {
+            "type": "string"
+          },
+          "product": {
+            "type": "string"
+          },
+          "requirements": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "targetUrl": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "requirements"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_generate_product_change_plan"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": false,
+        "title": "Generate a Word ("
+      },
+      "category": "report",
+      "description": "Generate a Word (.docx) customer setting guide from an ITAC-style Excel checklist. Produces a formatted document with product tables, manual evidence section, dry-run procedure, and customer action items.",
+      "inputSchema": {
+        "properties": {
+          "filePath": {
+            "description": "Path to the ITAC Excel (.xlsx) file",
+            "type": "string"
+          },
+          "outputPath": {
+            "description": "Optional output path for the .docx file",
+            "type": "string"
+          }
+        },
+        "required": [
+          "filePath"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_generate_setting_guide_docx"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": false,
+        "title": "Generate a PowerPoint ("
+      },
+      "category": "report",
+      "description": "Generate a PowerPoint (.pptx) customer setting guide from an ITAC-style Excel checklist. Produces a formatted presentation with product-specific slides, tables, charts, and dry-run procedures.",
+      "inputSchema": {
+        "properties": {
+          "filePath": {
+            "description": "Path to the ITAC Excel (.xlsx) file",
+            "type": "string"
+          },
+          "outputPath": {
+            "description": "Optional output path for the .pptx file",
+            "type": "string"
+          },
+          "screenshotDir": {
+            "description": "Optional directory containing product screenshots",
+            "type": "string"
+          }
+        },
+        "required": [
+          "filePath"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_generate_setting_guide_pptx"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": true,
+        "title": "Get one manual section by chunk id"
+      },
+      "category": "knowledge",
+      "description": "Get one manual section by chunk id.",
+      "inputSchema": {
+        "properties": {
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_get_manual_section"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": false,
+        "title": "WRITE"
+      },
+      "category": "hci",
+      "description": "WRITE: apply a planned create-volume through the state machine (idempotent POST -> read-back verify -> succeed or HALT). Requires explicit signed approval (action-bound, single-use nonce). On a non-loopback (real device) target it is additionally gated by SANGFOR_ALLOW_REAL_EXECUTION and an auto_allowed safety class (volume_create stays human_only until the M4 real-device promotion). Over the HTTP bridge it additionally needs a bridge-level bridge.tool-call approval.",
+      "inputSchema": {
+        "properties": {
+          "approval": {
+            "type": "object"
+          },
+          "clientToken": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "identityBaseUrl": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "sizeGb": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "name",
+          "sizeGb",
+          "clientToken",
+          "approval"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_hci_apply_create_volume"
+    },
+    {
+      "annotations": {
+        "destructiveHint": true,
+        "readOnlyHint": false,
+        "title": "DESTRUCTIVE"
+      },
+      "category": "admin",
+      "description": "DESTRUCTIVE: delete a volume (the reverse op of create). Requires a SignedApproval bound to the exact volumeId. Over the HTTP bridge it additionally needs a bridge-level bridge.tool-call approval, and on a non-loopback (real) device it is refused until volume_delete is promoted out of human_only. Gated by SANGFOR_ALLOW_REAL_EXECUTION and requires explicit signed approval bound to the exact volumeId.",
+      "inputSchema": {
+        "properties": {
+          "approval": {
+            "type": "object"
+          },
+          "identityBaseUrl": {
+            "type": "string"
+          },
+          "volumeId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "volumeId",
+          "approval"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_hci_delete_volume"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": true,
+        "title": "Read-only HCI/SCP operations health report (volume status di"
+      },
+      "category": "hci",
+      "description": "Read-only HCI/SCP operations health report (volume status distribution, error volumes, findings) rendered as a Korean advisory. Never mutates. Auth contract: verified_on_10.80.1.104_2026-07-02.",
+      "inputSchema": {
+        "properties": {
+          "identityBaseUrl": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          },
+          "tenantName": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "sangfor_hci_health_report"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": true,
+        "title": "Read-only HCI/SCP inventory over the OpenAPI surface (volume"
+      },
+      "category": "hci",
+      "description": "Read-only HCI/SCP inventory over the OpenAPI surface (volumes/servers/images). Auth contract: verified_on_10.80.1.104_2026-07-02.",
+      "inputSchema": {
+        "properties": {
+          "identityBaseUrl": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          },
+          "tenantName": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "sangfor_hci_inventory"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": true,
+        "title": "Plan (no mutation)"
+      },
+      "category": "hci",
+      "description": "Plan (no mutation): validate a create-volume intent, mint the idempotency clientToken, and describe the SignedApproval required to apply. No device mutation here; applying requires explicit user intent via the separate hci_apply_create_volume (signed, single-use approval).",
+      "inputSchema": {
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "identityBaseUrl": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "sizeGb": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "name",
+          "sizeGb"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_hci_plan_create_volume"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": true,
+        "title": "Read-only read-back verification of a volume against an expe"
+      },
+      "category": "hci",
+      "description": "Read-only read-back verification of a volume against an expectation (PASS/FAIL/INDETERMINATE; INDETERMINATE never passes).",
+      "inputSchema": {
+        "properties": {
+          "identityBaseUrl": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "sizeGb": {
+            "type": "number"
+          },
+          "volumeId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "sizeGb"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_hci_verify_volume"
+    },
+    {
+      "annotations": {
+        "destructiveHint": true,
+        "readOnlyHint": false,
+        "title": "Apply one ordinary-authority, narrow reversible IAG internet"
+      },
+      "category": "admin",
+      "description": "Apply one ordinary-authority, narrow reversible IAG internet-policy exception and report success only after independent read-back.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "actionPath": {
+            "type": "string"
+          },
+          "approvalEnvelopePath": {
+            "type": "string"
+          },
+          "configPath": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "actionPath",
+          "configPath",
+          "approvalEnvelopePath"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_iag_exception_apply"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": true,
+        "title": "Read-only preflight for one narrow IAG internet-policy excep"
+      },
+      "category": "advisory",
+      "description": "Read-only preflight for one narrow IAG internet-policy exception through the verified orchestrator. Accepts file references only and never dispatches.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "actionPath": {
+            "type": "string"
+          },
+          "configPath": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "actionPath",
+          "configPath"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_iag_exception_dry_run"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": true,
+        "title": "Read-only authenticated lookup of a verified IAG orchestrato"
+      },
+      "category": "advisory",
+      "description": "Read-only authenticated lookup of a verified IAG orchestrator run. Never dispatches, retries, repairs, or consumes approval.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "configPath": {
+            "type": "string"
+          },
+          "runId": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "configPath",
+          "runId"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_iag_exception_status"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": false,
+        "title": "Import an ITAC-style Excel checklist and normalize rows into"
+      },
+      "category": "report",
+      "description": "Import an ITAC-style Excel checklist and normalize rows into configuration requirements, evidence needs, target controls, gaps and priority.",
+      "inputSchema": {
+        "properties": {
+          "filePath": {
+            "type": "string"
+          },
+          "prioritizeOnly": {
+            "type": "boolean"
+          },
+          "sheetName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "filePath"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_import_excel_requirement_list"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": false,
+        "title": "Parse PDF/HTML/Markdown/TXT document, chunk it, create local"
+      },
+      "category": "advisory",
+      "description": "Parse PDF/HTML/Markdown/TXT document, chunk it, create local vector index, and store searchable RAG chunks.",
+      "inputSchema": {
+        "properties": {
+          "filePath": {
+            "type": "string"
+          },
+          "indexPath": {
+            "type": "string"
+          },
+          "product": {
+            "type": "string"
+          },
+          "sourceType": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "trustLevel": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "filePath",
+          "product"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_ingest_document"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": true,
+        "title": "Standard integration guide (AD/LDAP, RADIUS, SIEM/syslog)"
+      },
+      "category": "report",
+      "description": "Standard integration guide (AD/LDAP, RADIUS, SIEM/syslog): cited prerequisites → steps → validation → pitfalls for the human to follow. Unknown integration type returns an error (no fabrication). No type → list supported types.",
+      "inputSchema": {
+        "properties": {
+          "product": {
+            "type": "string"
+          },
+          "type": {
+            "description": "LDAP/AD, RADIUS, or SIEM/syslog",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "sangfor_integration_guide"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": false,
+        "title": "Cancel an operator session"
+      },
+      "category": "collect",
+      "description": "Cancel an operator session.",
+      "inputSchema": {
+        "properties": {
+          "sessionId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sessionId"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_kill_session"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": false,
+        "title": "Collect Sangfor KB catalog, Community threads, ingest demo d"
+      },
+      "category": "advisory",
+      "description": "Collect Sangfor KB catalog, Community threads, ingest demo docs, update local RAG index and fine-tune JSONL. Uses .env / SANGFOR_ONE_ACCESS_TOKEN when present.",
+      "inputSchema": {
+        "properties": {
+          "communityMaxThreadsPerForum": {
+            "description": "Per forum; omit for all threads on listing page",
+            "type": "number"
+          },
+          "includeDemoDocs": {
+            "type": "boolean"
+          },
+          "knowledgeMaxArticles": {
+            "description": "KB catalog cap; omit for full catalog",
+            "type": "number"
+          },
+          "ragIndexPath": {
+            "type": "string"
+          },
+          "rawDir": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "sangfor_learn_sources"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": true,
+        "title": "List source-cited structured knowledge cards used by the int"
+      },
+      "category": "advisory",
+      "description": "List source-cited structured knowledge cards used by the internal wiki/card retrieval layer.",
+      "inputSchema": {
+        "properties": {},
+        "type": "object"
+      },
+      "name": "sangfor_list_knowledge_cards"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": true,
+        "title": "List local learning strategy revisions with exact filters an"
+      },
+      "category": "advisory",
+      "description": "List local learning strategy revisions with exact filters and cursor pagination.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "cursor": {
+            "type": "string"
+          },
+          "firmwareVersion": {
+            "type": "string"
+          },
+          "limit": {
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "product": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "draft",
+              "researched",
+              "lab_verified",
+              "device_verified",
+              "strategy_field_verified",
+              "stale",
+              "deprecated"
+            ],
+            "type": "string"
+          },
+          "strategyId": {
+            "type": "string"
+          },
+          "vendor": {
+            "enum": [
+              "SANGFOR",
+              "FORTINET",
+              "CISCO"
+            ],
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "sangfor_list_learning_strategies"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": true,
+        "title": "List which product/version IntendedSpecs exist (advisory cov"
+      },
+      "category": "knowledge",
+      "description": "List which product/version IntendedSpecs exist (advisory coverage) so callers know what config checks are available. Optional cursor/limit page the list; omit both for the full list (default, backward-compatible).",
+      "inputSchema": {
+        "properties": {
+          "cursor": {
+            "type": "string"
+          },
+          "limit": {
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "name": "sangfor_list_spec_coverage"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": true,
+        "title": "Read-only"
+      },
+      "category": "advisory",
+      "description": "Read-only: loop-graph runtime status — the declared pipeline graph summary (data/graph/pipeline.json), per-edge cursors and pending event counts, human-approval gate nodes, and the most recent loop-ledger entries. The loop engine itself only runs read/collect/eval work; gate nodes are never auto-executed. Design: docs/plans/designs/001-loop-graph-runtime.md.",
+      "inputSchema": {
+        "properties": {
+          "tail": {
+            "description": "How many recent ledger entries to include (default 20).",
+            "maximum": 200,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "name": "sangfor_loop_status"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": false,
+        "title": "WRITE"
+      },
+      "category": "advisory",
+      "description": "WRITE: start or stop a passive observation capture; stop promotes one encrypted capture-bundle.v1.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "enum": [
+              "start",
+              "stop"
+            ],
+            "type": "string"
+          },
+          "captureId": {
+            "type": "string"
+          },
+          "durationMs": {
+            "maximum": 30000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "firmwareVersion": {
+            "type": "string"
+          },
+          "sessionHandle": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "action"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_manage_learning_capture"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": true,
+        "title": "Map normalized Excel checklist rows to HCI/SCP, IAG, Endpoin"
+      },
+      "category": "advisory",
+      "description": "Map normalized Excel checklist rows to HCI/SCP, IAG, Endpoint Secure, NDR, or external/manual handling.",
+      "inputSchema": {
+        "properties": {
+          "rows": {
+            "items": {
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "rows"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_map_requirements_to_products"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": false,
+        "title": "Write (tower-local)"
+      },
+      "category": "playbook",
+      "description": "Write (tower-local): append a new draft revision to an existing playbook (the revise loop). Needs human approval before it becomes the active revision. Becoming active requires explicit human approval in the tower UI.",
+      "inputSchema": {
+        "properties": {
+          "authoredBy": {
+            "type": "string"
+          },
+          "blocks": {
+            "items": {
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "note": {
+            "type": "string"
+          },
+          "playbookId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "playbookId",
+          "authoredBy",
+          "blocks"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_playbook_add_revision"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": true,
+        "title": "Read-only"
+      },
+      "category": "playbook",
+      "description": "Read-only: list the Control Tower agent task queue (assemble/revise/analyze requests raised from the UI). Poll this to pick up work.",
+      "inputSchema": {
+        "properties": {
+          "status": {
+            "default": "open",
+            "enum": [
+              "open",
+              "done",
+              "cancelled"
+            ],
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "sangfor_playbook_agent_tasks"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": false,
+        "title": "Write (tower-local)"
+      },
+      "category": "playbook",
+      "description": "Write (tower-local): close an agent task as done, recording what was produced (playbookId/rev/analysisId/note).",
+      "inputSchema": {
+        "properties": {
+          "result": {
+            "description": "{playbookId?,rev?,analysisId?,note?}",
+            "type": "object"
+          },
+          "taskId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "taskId"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_playbook_close_agent_task"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": false,
+        "title": "Write (tower-local)"
+      },
+      "category": "playbook",
+      "description": "Write (tower-local): create a playbook as revision 1 in draft. Blocks are tool blocks (toolId/args/deviceId) plus at most one report block; args may use {{blocks.<id>.result.<path>}} templates. A human must approve the revision in the tower UI before it can run. Running it requires explicit human approval in the tower UI.",
+      "inputSchema": {
+        "properties": {
+          "authoredBy": {
+            "type": "string"
+          },
+          "blocks": {
+            "description": "[{id,type:\"tool\"|\"report\",title?,toolId?,args?,deviceId?}]",
+            "items": {
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "goal": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "goal",
+          "authoredBy",
+          "blocks"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_playbook_create"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": false,
+        "title": "Write"
+      },
+      "category": "playbook",
+      "description": "Write: run the approved revision of a playbook block by block. Read-only blocks run immediately; the first write/destructive block stops the run as pending_approval in the tower queue (no device mutation without a separate human approval).",
+      "inputSchema": {
+        "properties": {
+          "playbookId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "playbookId"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_playbook_execute"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": true,
+        "title": "Read-only"
+      },
+      "category": "playbook",
+      "description": "Read-only: get one playbook with all revisions and blocks.",
+      "inputSchema": {
+        "properties": {
+          "playbookId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "playbookId"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_playbook_get"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": true,
+        "title": "Read-only"
+      },
+      "category": "playbook",
+      "description": "Read-only: list Control Tower playbooks with their active revision and last run status.",
+      "inputSchema": {
+        "properties": {},
+        "type": "object"
+      },
+      "name": "sangfor_playbook_list"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": true,
+        "title": "Read-only"
+      },
+      "category": "playbook",
+      "description": "Read-only: get a playbook run — derived status, per-block run ids and submitted analyses.",
+      "inputSchema": {
+        "properties": {
+          "playbookRunId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "playbookRunId"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_playbook_run_status"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": false,
+        "title": "Write (tower-local)"
+      },
+      "category": "playbook",
+      "description": "Write (tower-local): submit an append-only AI analysis for a playbook run — observations with evidence run ids plus follow-up proposals. The human accepts or dismisses each item in the UI.",
+      "inputSchema": {
+        "properties": {
+          "authoredBy": {
+            "type": "string"
+          },
+          "improvements": {
+            "description": "[{observation,recommendation,evidenceRunId?}]",
+            "items": {
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "playbookId": {
+            "type": "string"
+          },
+          "playbookRunId": {
+            "type": "string"
+          },
+          "proposals": {
+            "description": "[{action,rationale,linkedPlaybookId?}]",
+            "items": {
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "summary": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "playbookRunId",
+          "playbookId",
+          "summary",
+          "authoredBy"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_playbook_submit_analysis"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": false,
+        "title": "PM safety"
+      },
+      "category": "pm",
+      "description": "PM safety: acquire an exclusive device lock for an engagement before any device work. Blocks if another engagement holds it (prevents cross-engagement changes on a shared lab device).",
+      "inputSchema": {
+        "properties": {
+          "deviceId": {
+            "type": "string"
+          },
+          "engagementId": {
+            "type": "string"
+          },
+          "holder": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "deviceId",
+          "engagementId",
+          "holder"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_pm_acquire_device"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": false,
+        "title": "PM"
+      },
+      "category": "pm",
+      "description": "PM: add a work item to an engagement. Local PM-ledger write; requires explicit engagementId, recorded as a hash-chained audit event.",
+      "inputSchema": {
+        "properties": {
+          "assignee": {
+            "type": "string"
+          },
+          "deviceId": {
+            "type": "string"
+          },
+          "engagementId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "engagementId",
+          "title"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_pm_add_work_item"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": false,
+        "title": "PM"
+      },
+      "category": "pm",
+      "description": "PM: create an engagement (customer project). Local PM-ledger write; requires explicit user intent (customer and product), recorded as a hash-chained audit event.",
+      "inputSchema": {
+        "properties": {
+          "customer": {
+            "type": "string"
+          },
+          "product": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer",
+          "product"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_pm_create_engagement"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": true,
+        "title": "PM (read-only)"
+      },
+      "category": "pm",
+      "description": "PM (read-only): the tamper-evident event timeline for an engagement + chain integrity status. Unknown engagement errors (no fake empty timeline). Optional cursor/limit page the event timeline; omit both for the full timeline (default, backward-compatible).",
+      "inputSchema": {
+        "properties": {
+          "cursor": {
+            "type": "string"
+          },
+          "engagementId": {
+            "type": "string"
+          },
+          "limit": {
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "engagementId"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_pm_events"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": false,
+        "title": "PM safety"
+      },
+      "category": "pm",
+      "description": "PM safety: release a device lock held by an engagement (records a device_released audit event). Returns false if the engagement does not hold the lock.",
+      "inputSchema": {
+        "properties": {
+          "deviceId": {
+            "type": "string"
+          },
+          "engagementId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "deviceId",
+          "engagementId"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_pm_release_device"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": true,
+        "title": "PM (read-only)"
+      },
+      "category": "pm",
+      "description": "PM (read-only): a citable Korean progress report derived ONLY from recorded events (rollup %, work items, event timeline, audit-chain-broken banner if tampered). No unrecorded-progress guessing.",
+      "inputSchema": {
+        "properties": {
+          "engagementId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "engagementId"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_pm_report"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": true,
+        "title": "PM"
+      },
+      "category": "pm",
+      "description": "PM: status rollup for an engagement + current device occupancy (who holds which device).",
+      "inputSchema": {
+        "properties": {
+          "engagementId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "engagementId"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_pm_status"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": true,
+        "title": "List supported Sangfor products in current priority order"
+      },
+      "category": "advisory",
+      "description": "List supported Sangfor products in current priority order.",
+      "inputSchema": {
+        "properties": {},
+        "type": "object"
+      },
+      "name": "sangfor_products"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": false,
+        "title": "WRITE"
+      },
+      "category": "advisory",
+      "description": "WRITE: promote an immutable revision through a signed, action-bound, single-use lifecycle approval.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "approvalPayload": {
+            "additionalProperties": false,
+            "properties": {
+              "authorityEpoch": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "contentHash": {
+                "type": "string"
+              },
+              "entityId": {
+                "type": "string"
+              },
+              "entityType": {
+                "type": "string"
+              },
+              "evidenceDigest": {
+                "type": "string"
+              },
+              "evidenceFile": {
+                "type": "string"
+              },
+              "expiresAt": {
+                "type": "string"
+              },
+              "fromState": {
+                "type": "string"
+              },
+              "nonce": {
+                "type": "string"
+              },
+              "revisionId": {
+                "type": "string"
+              },
+              "toState": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "entityType",
+              "entityId",
+              "revisionId",
+              "contentHash",
+              "fromState",
+              "toState",
+              "evidenceFile",
+              "evidenceDigest",
+              "nonce",
+              "expiresAt",
+              "authorityEpoch"
+            ],
+            "type": "object"
+          },
+          "approvalToken": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "evidenceDigest": {
+            "type": "string"
+          },
+          "evidenceFile": {
+            "type": "string"
+          },
+          "evidenceRoot": {
+            "type": "string"
+          },
+          "revisionId": {
+            "type": "string"
+          },
+          "strategyId": {
+            "type": "string"
+          },
+          "toState": {
+            "enum": [
+              "researched",
+              "lab_verified",
+              "device_verified",
+              "strategy_field_verified",
+              "stale",
+              "deprecated"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "strategyId",
+          "revisionId",
+          "toState",
+          "approvalPayload",
+          "approvalToken",
+          "evidenceRoot"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_promote_learning_strategy"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": false,
+        "title": "Create a wiki update proposal from a lesson"
+      },
+      "category": "wiki",
+      "description": "Create a wiki update proposal from a lesson. Does not directly modify wiki. Creates a pending_review proposal only; applying it requires explicit human approval (reviewer token). Requires explicit reviewer consent before any wiki change.",
+      "inputSchema": {
+        "properties": {
+          "lessonBody": {
+            "type": "string"
+          },
+          "lessonTitle": {
+            "type": "string"
+          },
+          "targetPage": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "lessonTitle",
+          "lessonBody"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_propose_wiki_update"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": true,
+        "title": "Return summary of the real local RAG index"
+      },
+      "category": "knowledge",
+      "description": "Return summary of the real local RAG index.",
+      "inputSchema": {
+        "properties": {
+          "indexPath": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "sangfor_rag_index_summary"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": true,
+        "title": "Search real ingested local RAG index by product/version/quer"
+      },
+      "category": "knowledge",
+      "description": "Search real ingested local RAG index by product/version/query. Supports privacy_mode (summary|structured|raw) to limit returned detail. Hit embedding vectors are omitted by default — pass include_vectors:true to get them back.",
+      "inputSchema": {
+        "properties": {
+          "include_vectors": {
+            "description": "Include each hit's raw embedding vector. Default false — vectors are large and rarely needed by callers.",
+            "type": "boolean"
+          },
+          "indexPath": {
+            "type": "string"
+          },
+          "limit": {
+            "type": "number"
+          },
+          "privacy_mode": {
+            "description": "Privacy/verbosity mode: summary (concise), structured (default object), raw (full detail). Honored by read tools to limit returned detail.",
+            "enum": [
+              "summary",
+              "structured",
+              "raw"
+            ],
+            "type": "string"
+          },
+          "product": {
+            "type": "string"
+          },
+          "query": {
+            "type": "string"
+          },
+          "sourceType": {
+            "enum": [
+              "manual",
+              "wiki",
+              "lesson",
+              "pattern"
+            ],
+            "type": "string"
+          },
+          "trustLevel": {
+            "enum": [
+              "official",
+              "internal",
+              "draft",
+              "needs_review",
+              "customer"
+            ],
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_rag_search"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": true,
+        "title": "Read current mock console state for a session"
+      },
+      "category": "collect",
+      "description": "Read current mock console state for a session.",
+      "inputSchema": {
+        "properties": {
+          "sessionId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sessionId"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_read_console_state"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": true,
+        "title": "Read live Sangfor Web Console state using Playwright"
+      },
+      "category": "collect",
+      "description": "Read live Sangfor Web Console state using Playwright. Requires targetUrl session. Read-only snapshot.",
+      "inputSchema": {
+        "properties": {
+          "sessionId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sessionId"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_read_live_console_state"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": true,
+        "title": "Advisory sizing tier (small/medium/large/xlarge) from the pr"
+      },
+      "category": "advisory",
+      "description": "Advisory sizing tier (small/medium/large/xlarge) from the primary scale driver (IAG=users, EPP=endpoints, HCI=vmCount, CC=eps, NGFW=Mbps). Never invents an exact model/BOM — defers to official Sizing Guide + SE validation.",
+      "inputSchema": {
+        "properties": {
+          "concurrentUsers": {
+            "type": "number"
+          },
+          "endpoints": {
+            "type": "number"
+          },
+          "eventsPerSecond": {
+            "type": "number"
+          },
+          "product": {
+            "type": "string"
+          },
+          "throughputMbps": {
+            "type": "number"
+          },
+          "vmCount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "product"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_recommend_sizing"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": true,
+        "title": "Read-only"
+      },
+      "category": "report",
+      "description": "Read-only: verify the hash-chained EngineerReport ledger in a directory — detects edited verdicts, deleted records, and unparseable lines. Reports the honest chain state; it never repairs anything.",
+      "inputSchema": {
+        "properties": {
+          "dir": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "sangfor_report_chain_verify"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": false,
+        "title": "Classify text/action risk and return approval decision"
+      },
+      "category": "advisory",
+      "description": "Classify text/action risk and return approval decision.",
+      "inputSchema": {
+        "properties": {
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_request_approval"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": false,
+        "title": "WRITE"
+      },
+      "category": "knowledge",
+      "description": "WRITE: create an immutable draft from supplied official citation and optional capture evidence.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "captureEvidenceFile": {
+            "type": "string"
+          },
+          "methods": {
+            "items": {
+              "enum": [
+                "LM-01",
+                "LM-02",
+                "LM-03",
+                "LM-04",
+                "LM-05",
+                "LM-06",
+                "LM-07",
+                "LM-08"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "officialCitation": {
+            "type": "string"
+          },
+          "pageVerified": {
+            "type": "boolean"
+          },
+          "productVariant": {
+            "type": "string"
+          },
+          "registryDigest": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "scope": {
+            "additionalProperties": false,
+            "properties": {
+              "capability": {
+                "type": "string"
+              },
+              "fact": {
+                "type": "string"
+              },
+              "firmwareVersion": {
+                "type": "string"
+              },
+              "product": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "product",
+              "firmwareVersion"
+            ],
+            "type": "object"
+          },
+          "strategyId": {
+            "type": "string"
+          },
+          "vendor": {
+            "enum": [
+              "SANGFOR",
+              "FORTINET",
+              "CISCO"
+            ],
+            "type": "string"
+          },
+          "versionTruthRecord": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "strategyId",
+          "vendor",
+          "scope",
+          "registryDigest",
+          "versionTruthRecord",
+          "officialCitation",
+          "pageVerified"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_research_learning_strategy"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": true,
+        "title": "Resolve one exact eligible learning strategy; returns honest"
+      },
+      "category": "advisory",
+      "description": "Resolve one exact eligible learning strategy; returns honest miss, canary, drift, or ambiguity reasons.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "context": {
+            "additionalProperties": false,
+            "properties": {
+              "deviceScope": {
+                "type": "string"
+              },
+              "environment": {
+                "enum": [
+                  "lab",
+                  "poc",
+                  "customer",
+                  "production"
+                ],
+                "type": "string"
+              },
+              "productVariant": {
+                "type": "string"
+              },
+              "registryDigest": {
+                "type": "string"
+              },
+              "versionTruthRecord": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "registryDigest",
+              "versionTruthRecord"
+            ],
+            "type": "object"
+          },
+          "scope": {
+            "additionalProperties": false,
+            "properties": {
+              "capability": {
+                "type": "string"
+              },
+              "fact": {
+                "type": "string"
+              },
+              "firmwareVersion": {
+                "type": "string"
+              },
+              "product": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "product",
+              "firmwareVersion"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "scope",
+          "context"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_resolve_learning_strategy"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": false,
+        "title": "Run built-in planner evals against a generated config plan"
+      },
+      "category": "ml",
+      "description": "Run built-in planner evals against a generated config plan.",
+      "inputSchema": {
+        "properties": {
+          "plan": {
+            "type": "object"
+          },
+          "planId": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "sangfor_run_planner_eval"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": true,
+        "title": "Read-only self-test"
+      },
+      "category": "advisory",
+      "description": "Read-only self-test: proves the fail-closed safety gates actually refuse an unapproved action — the operator real-execution gate (verified in a clean-env child process, no device/network contact), the http-bridge destructive-tool guard, a forged HMAC approval-signature rejection, and single-use nonce replay rejection. allPass means every EXECUTED check passed; a check only falls back to outcome:\"skipped\" (never counted toward allPass) if its subprocess could not be run at all (spawn failure/timeout) — skippedCount reports how many that applies to.",
+      "inputSchema": {
+        "properties": {},
+        "type": "object"
+      },
+      "name": "sangfor_safety_selftest"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": true,
+        "title": "Read-only advisory"
+      },
+      "category": "advisory",
+      "description": "Read-only advisory: compute a device acquisition-quality tier (bronze/silver/gold with dwell hysteresis) from caller-supplied metrics and thresholds, plus which autonomy capabilities that tier permits (auto-close and cross-device specs are gold-only, fail-closed).",
+      "inputSchema": {
+        "properties": {
+          "metrics": {
+            "type": "object"
+          },
+          "previous": {
+            "type": "object"
+          },
+          "thresholds": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "metrics",
+          "thresholds"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_scorecard_tier"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": true,
+        "title": "Read-only"
+      },
+      "category": "knowledge",
+      "description": "Read-only: list recorded search gaps — sangfor_rag_search calls that returned 0 hits or a top score below SANGFOR_RAG_WEAK_THRESHOLD (default 0.15). Feeds what to ingest/author next. Optional cursor/limit page the list; omit both for the full list (default, backward-compatible). Disable capture entirely with SANGFOR_SEARCH_GAP_CAPTURE=0.",
+      "inputSchema": {
+        "properties": {
+          "cursor": {
+            "type": "string"
+          },
+          "limit": {
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "name": "sangfor_search_gaps"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": true,
+        "title": "Search Sangfor manual/guide chunks by product, version and q"
+      },
+      "category": "knowledge",
+      "description": "Search Sangfor manual/guide chunks by product, version and query. Supports privacy_mode (summary|structured|raw).",
+      "inputSchema": {
+        "properties": {
+          "limit": {
+            "type": "number"
+          },
+          "privacy_mode": {
+            "description": "Privacy/verbosity mode: summary (concise), structured (default object), raw (full detail). Honored by read tools to limit returned detail.",
+            "enum": [
+              "summary",
+              "structured",
+              "raw"
+            ],
+            "type": "string"
+          },
+          "product": {
+            "type": "string"
+          },
+          "query": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "product"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_search_manuals"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": true,
+        "title": "Search internal wiki chunks by product, version and query"
+      },
+      "category": "wiki",
+      "description": "Search internal wiki chunks by product, version and query. Supports privacy_mode (summary|structured|raw).",
+      "inputSchema": {
+        "properties": {
+          "limit": {
+            "type": "number"
+          },
+          "privacy_mode": {
+            "description": "Privacy/verbosity mode: summary (concise), structured (default object), raw (full detail). Honored by read tools to limit returned detail.",
+            "enum": [
+              "summary",
+              "structured",
+              "raw"
+            ],
+            "type": "string"
+          },
+          "product": {
+            "type": "string"
+          },
+          "query": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "product"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_search_wiki"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": false,
+        "title": "One-click session/change-run work report"
+      },
+      "category": "report",
+      "description": "One-click session/change-run work report: overview, step timeline, read-back/verification results, hash-chain integrity (via AuditLedger.verify), and related evidence files, built from the data/evidence change-run ledger. Omit runId to list available change-run ids (read-only). Pass save:true to also write the Markdown report under data/evidence/reports/<runId>.md.",
+      "inputSchema": {
+        "properties": {
+          "format": {
+            "description": "Default markdown.",
+            "enum": [
+              "markdown",
+              "json"
+            ],
+            "type": "string"
+          },
+          "runId": {
+            "description": "Change-run id (ledger file basename under data/evidence/change-runs/). Omit to list available ids.",
+            "type": "string"
+          },
+          "save": {
+            "description": "Also write the Markdown report to data/evidence/reports/<runId>.md. Default false.",
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      },
+      "name": "sangfor_session_report"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": true,
+        "title": "Read-only"
+      },
+      "category": "advisory",
+      "description": "Read-only: point-in-time query over local Config Chronicle chains — \"which devices satisfy <key op value> (optionally as of a past timestamp)\". Devices without an eligible snapshot are reported under noData, never matched; an empty chronicle dir is an error, never an empty fabricated answer.",
+      "inputSchema": {
+        "properties": {
+          "asOf": {
+            "type": "string"
+          },
+          "dir": {
+            "type": "string"
+          },
+          "where": {
+            "properties": {
+              "key": {
+                "type": "string"
+              },
+              "op": {
+                "enum": [
+                  "eq",
+                  "neq",
+                  "lt",
+                  "gte",
+                  "exists"
+                ],
+                "type": "string"
+              },
+              "value": {}
+            },
+            "required": [
+              "key",
+              "op"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "where"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_snapshot_query"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": false,
+        "title": "Start a mock/lab/poc/customer operator session"
+      },
+      "category": "collect",
+      "description": "Start a mock/lab/poc/customer operator session. MVP defaults to mock.",
+      "inputSchema": {
+        "properties": {
+          "browser": {
+            "properties": {
+              "cdpEndpoint": {
+                "type": "string"
+              },
+              "useLocalBrowser": {
+                "type": "boolean"
+              }
+            },
+            "type": "object"
+          },
+          "mode": {
+            "type": "string"
+          },
+          "product": {
+            "type": "string"
+          },
+          "targetUrl": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "product"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_start_operator_session"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": true,
+        "title": "Check PostgreSQL persistence (Prisma) when DATABASE_URL is c"
+      },
+      "category": "knowledge",
+      "description": "Check PostgreSQL persistence (Prisma) when DATABASE_URL is configured.",
+      "inputSchema": {
+        "properties": {},
+        "type": "object"
+      },
+      "name": "sangfor_store_health"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": false,
+        "title": "Submit feedback linked to a product/plan/session"
+      },
+      "category": "ml",
+      "description": "Submit feedback linked to a product/plan/session.",
+      "inputSchema": {
+        "properties": {
+          "feedbackText": {
+            "type": "string"
+          },
+          "feedbackType": {
+            "type": "string"
+          },
+          "product": {
+            "type": "string"
+          },
+          "severity": {
+            "type": "string"
+          },
+          "sourceRole": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "product",
+          "feedbackType",
+          "severity",
+          "feedbackText",
+          "sourceRole"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_submit_feedback"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": true,
+        "title": "Suggest ranked root-cause candidates + concrete check steps"
+      },
+      "category": "advisory",
+      "description": "Suggest ranked root-cause candidates + concrete check steps for a symptom (read-only advisory). Grounded in product manuals; returns empty (no fabrication) for unrelated symptoms.",
+      "inputSchema": {
+        "properties": {
+          "product": {
+            "type": "string"
+          },
+          "symptom": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "symptom"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_suggest_rca"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": false,
+        "title": "Create or update a source-cited structured knowledge card"
+      },
+      "category": "advisory",
+      "description": "Create or update a source-cited structured knowledge card. Requires at least one citation; does not write to devices.",
+      "inputSchema": {
+        "properties": {
+          "card": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "card"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_upsert_knowledge_card"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": true,
+        "title": "Validate that a generated plan has precheck, steps, rollback"
+      },
+      "category": "advisory",
+      "description": "Validate that a generated plan has precheck, steps, rollback, validation and references.",
+      "inputSchema": {
+        "properties": {
+          "plan": {
+            "type": "object"
+          },
+          "planId": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "sangfor_validate_config_plan"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": true,
+        "title": "Validate JSONL fine-tuning dataset for structure and obvious"
+      },
+      "category": "ml",
+      "description": "Validate JSONL fine-tuning dataset for structure and obvious sensitive data.",
+      "inputSchema": {
+        "properties": {
+          "path": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_validate_finetune_dataset"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": false,
+        "title": "WRITE"
+      },
+      "category": "advisory",
+      "description": "WRITE: validate exact revision evidence and report eligible next states without promotion.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "evidenceDigest": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "evidenceFile": {
+            "type": "string"
+          },
+          "revisionId": {
+            "type": "string"
+          },
+          "strategyId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "strategyId",
+          "revisionId"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_validate_learning_strategy"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": true,
+        "title": "Read-only"
+      },
+      "category": "advisory",
+      "description": "Read-only: validate a .docx/.xlsx/.pptx against the OpenXML schema via officecli, for a pre-submission sanity check before handing a generated document to a customer. Returns {valid, errorCount, errors, note?} plus officecli availability — valid:null (not false) when officecli is not installed on this host, so a missing officecli is never mistaken for a broken document.",
+      "inputSchema": {
+        "properties": {
+          "filePath": {
+            "description": "Path to the .docx/.xlsx/.pptx file to validate.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "filePath"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_validate_office_document"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": true,
+        "title": "Read-only"
+      },
+      "category": "advisory",
+      "description": "Read-only: verify a sangfor_console_capture_evidence run — the AuditLedger hash-chain integrity (chainOk) AND, per captured file, whether its current on-disk sha256 still matches the hash recorded at capture time (tamper detection).",
+      "inputSchema": {
+        "properties": {
+          "runId": {
+            "description": "runId returned by sangfor_console_capture_evidence.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "runId"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_verify_capture_ledger"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": true,
+        "title": "Verify a product change with read-only API/WebUI re-collecti"
+      },
+      "category": "advisory",
+      "description": "Verify a product change with read-only API/WebUI re-collection checklist and evidence expectations.",
+      "inputSchema": {
+        "properties": {
+          "observed": {
+            "type": "object"
+          },
+          "plan": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "plan"
+        ],
+        "type": "object"
+      },
+      "name": "sangfor_verify_product_change"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": true,
+        "title": "Verify plan/result"
+      },
+      "category": "advisory",
+      "description": "Verify plan/result. MVP returns manual validation checklist.",
+      "inputSchema": {
+        "properties": {
+          "observed": {
+            "type": "object"
+          },
+          "plan": {
+            "type": "object"
+          },
+          "planId": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "sangfor_verify_result"
+    }
+  ]
+}

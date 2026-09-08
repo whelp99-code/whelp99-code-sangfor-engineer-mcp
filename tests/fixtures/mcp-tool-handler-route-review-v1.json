@@ -1,0 +1,121 @@
+{
+  "schemaVersion": "mcp-tool-handler-route-review.v1",
+  "baselineCommit": "eb60873ad96e69ebecfa995ac96c61c888ee6cbd",
+  "baselineRouteCount": 115,
+  "finalRouteCount": 118,
+  "reviewedHandlerChanges": [
+    {
+      "toolName": "sangfor_apply_approved_product_change",
+      "handlerAstSha256": "0b8807dc248bcdea2ea0a7e79c1d6dfca6fbd2dd7375bd3144f0b4dea8c6dc47",
+      "catalogSource": "apps/mcp-server/src/product-mutation-tool-catalog.ts"
+    },
+    {
+      "toolName": "sangfor_apply_github_wiki_update",
+      "handlerAstSha256": "469bc88f6dd8645fbaf20b57d2f339dbfb4169e2d35435a40cde8b5158131066",
+      "catalogSource": "apps/mcp-server/src/feedback-tool-catalog.ts"
+    },
+    {
+      "toolName": "sangfor_apply_obsidian_wiki_update",
+      "handlerAstSha256": "2bdeab388dd90a2859cfe79738ca17bdd0b55be06292acc1ca89a7b44e01b132",
+      "catalogSource": "apps/mcp-server/src/feedback-tool-catalog.ts"
+    },
+    {
+      "toolName": "sangfor_apply_wiki_update",
+      "handlerAstSha256": "51052af5a1db2f28d296c090710c5990e8fe78a7d69bd076d32f649aa9d1e0b4",
+      "catalogSource": "apps/mcp-server/src/feedback-tool-catalog.ts"
+    },
+    {
+      "toolName": "sangfor_approve_wiki_update",
+      "handlerAstSha256": "458364df39fc445113f1813ff1b159724ed99ec82707cd36ca23a7c3e0b1a649",
+      "catalogSource": "apps/mcp-server/src/feedback-tool-catalog.ts"
+    },
+    {
+      "toolName": "sangfor_collect_facts",
+      "handlerAstSha256": "d20173795e079e350bc5cf84648076b5490d0402481822773f80992033fdcb39",
+      "catalogSource": "apps/mcp-server/src/learning-tool-catalog.ts"
+    },
+    {
+      "toolName": "sangfor_create_eval_case_from_feedback",
+      "handlerAstSha256": "a95ceef00ed86f02100e786e5b1619d99a8a15d41e791ed14dea4f04653a95dd",
+      "catalogSource": "apps/mcp-server/src/feedback-tool-catalog.ts"
+    },
+    {
+      "toolName": "sangfor_extract_lesson",
+      "handlerAstSha256": "3ea6d2ff4c217898d3839210a7477736051b32e5c636280b21ef98bc22291a62",
+      "catalogSource": "apps/mcp-server/src/feedback-tool-catalog.ts"
+    },
+    {
+      "toolName": "sangfor_field_engineer_coverage",
+      "handlerAstSha256": "e719477c5cf32ba2814f26597635807d8cff01ebe886c26491669bfe54841afe",
+      "catalogSource": "apps/mcp-server/src/inventory-analysis-tool-catalog.ts"
+    },
+    {
+      "toolName": "sangfor_hci_apply_create_volume",
+      "handlerAstSha256": "120d7d9c92873bd8a2320cadf0197ed7151c36dbdabe9c547469fd5affabc5f3",
+      "catalogSource": "apps/mcp-server/src/hci-mutation-tool-catalog.ts"
+    },
+    {
+      "toolName": "sangfor_hci_delete_volume",
+      "handlerAstSha256": "d4b816039f829a542b3394f4811970774a81cd305bb4b741b267f61df0b35a22",
+      "catalogSource": "apps/mcp-server/src/hci-mutation-tool-catalog.ts"
+    },
+    {
+      "toolName": "sangfor_list_learning_strategies",
+      "handlerAstSha256": "039187842c06a5e7c1004f58d8e41efe6e22177de1deecac58d20883064e6334",
+      "catalogSource": "apps/mcp-server/src/learning-tool-catalog.ts"
+    },
+    {
+      "toolName": "sangfor_promote_learning_strategy",
+      "handlerAstSha256": "58c183f8305eed17935b2719f232edff57b3c02c3eeba234e7bd42784d1ee2bf",
+      "catalogSource": "apps/mcp-server/src/learning-tool-catalog.ts"
+    },
+    {
+      "toolName": "sangfor_propose_wiki_update",
+      "handlerAstSha256": "00f229186e8aeaace586bb7cbd9a0378a0c00d7491f78bbc77a95e6b7073e28d",
+      "catalogSource": "apps/mcp-server/src/feedback-tool-catalog.ts"
+    },
+    {
+      "toolName": "sangfor_research_learning_strategy",
+      "handlerAstSha256": "e5bc4c90c97916b6b96bdb5acfd22fbc2d9a1d94d00ca9581b199f3adab03417",
+      "catalogSource": "apps/mcp-server/src/learning-tool-catalog.ts"
+    },
+    {
+      "toolName": "sangfor_resolve_learning_strategy",
+      "handlerAstSha256": "a6c8e382dbdc4999274614f8c5637c4aa53e03b89715a520e2773214ed7b7b4d",
+      "catalogSource": "apps/mcp-server/src/learning-tool-catalog.ts"
+    },
+    {
+      "toolName": "sangfor_submit_feedback",
+      "handlerAstSha256": "3a37e0b7fa4108084c09c6e0014632a781e84804458bf3fb7b162cc1eb001156",
+      "catalogSource": "apps/mcp-server/src/feedback-tool-catalog.ts"
+    },
+    {
+      "toolName": "sangfor_upsert_knowledge_card",
+      "handlerAstSha256": "8c4d4e2eddc37ff1e3ef2fc81b59463db09705a309a359b8a7ef5f861138182c",
+      "catalogSource": "apps/mcp-server/src/knowledge-tool-catalog.ts"
+    },
+    {
+      "toolName": "sangfor_validate_learning_strategy",
+      "handlerAstSha256": "32ae22d6ab4fb4dac43c5698fe9d45bee0c85df2e77cc3ef8bcaa64a7de90fd8",
+      "catalogSource": "apps/mcp-server/src/learning-tool-catalog.ts"
+    }
+  ],
+  "approvedAdditions": [
+    {
+      "toolName": "sangfor_iag_exception_apply",
+      "handlerAstSha256": "1778a1a5ccee5dd9a7cee4e7ac96b30fd1e1a9c849edfc786e0859b4641db90f",
+      "catalogSource": "apps/mcp-server/src/iag-orchestrator-tools.ts"
+    },
+    {
+      "toolName": "sangfor_iag_exception_dry_run",
+      "handlerAstSha256": "6403495e14ea9f2f42657297a4deb7a453fc409bdabc98300454d67eaee11d77",
+      "catalogSource": "apps/mcp-server/src/iag-orchestrator-tools.ts"
+    },
+    {
+      "toolName": "sangfor_iag_exception_status",
+      "handlerAstSha256": "f1846edb4dff16a41be0cc7eaedd67d7e10481553511e1986b55437fa0af8119",
+      "catalogSource": "apps/mcp-server/src/iag-orchestrator-tools.ts"
+    }
+  ],
+  "sha256": "67837408a9776d946e8e5bc11cca17c8371c341d88c044e224a73e5c90368e1f"
+}

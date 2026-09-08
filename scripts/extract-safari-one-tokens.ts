@@ -13,6 +13,7 @@ import {
   resolveKbTokenFromOne,
   verifyOneSession
 } from '../packages/sangfor-collector/src/index.js';
+import { parseBoundarySafariItemTableV1 } from './lib/kb-runtime-boundaries.js';
 
 const SAFARI_WEBKIT_DEFAULT = join(
   process.env.HOME ?? '',
@@ -44,7 +45,7 @@ function readItemTable(dbPath: string): Record<string, string> {
     `sqlite3 -json ${JSON.stringify(dbPath)} "SELECT key, hex(value) AS value_hex FROM ItemTable;"`,
     { encoding: 'utf8', maxBuffer: 20_000_000
   });
-  const parsed = JSON.parse(out.trim() || '[]') as Array<{ key: string; value_hex: string }>;
+  const parsed = parseBoundarySafariItemTableV1(out.trim() || '[]');
   const rows: Record<string, string> = {};
   for (const row of parsed) rows[row.key] = decodeWebKitLocalStorageValue(row.value_hex);
   return rows;

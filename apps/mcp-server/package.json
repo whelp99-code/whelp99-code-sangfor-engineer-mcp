@@ -1,1 +1,1 @@
-{"name":"mcp-server","type":"module","main":"src/index.ts"}
+{"name":"mcp-server","type":"module","main":"src/index.ts","dependencies":{"ajv":"^8.20.0"}}

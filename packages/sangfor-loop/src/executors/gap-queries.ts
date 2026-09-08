@@ -1,6 +1,10 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { resolveEngagementScopedData, resolveRepoData, writeFileAtomicSync } from '../../../shared/src/index.js';
+import {
+  parseBoundaryLoopGapEventV1,
+  parseBoundaryLoopGapQueriesV1,
+} from '../runtime-boundaries.js';
 
 // P1 — turn captured search gaps into a deduplicated collection queue.
 // Reads new SearchGapEvent JSONL lines (delivered by the tick engine) and
@@ -17,12 +21,14 @@ export const GAP_QUERIES_WATCH = () =>
   ?? join(resolveEngagementScopedData('data/feedback', 'SANGFOR_FEEDBACK_ROOT'), 'search-gaps.jsonl');
 export const GAP_QUERIES_OUT = () => resolveRepoData('data/sources/gap-queries.json', 'SANGFOR_GAP_QUERIES_PATH');
 
-interface GapEventLine {
+export interface GapEventLine {
   id?: string;
   ts?: string;
-  query?: string;
+  query: string;
   product?: string;
-  reason?: string;
+  hitCount: number;
+  topScore?: number;
+  reason: 'no_hits' | 'low_score';
 }
 
 export interface GapQueryEntry {
@@ -32,7 +38,7 @@ export interface GapQueryEntry {
   lastSeen: string;
 }
 
-interface GapQueriesFile { version: 1; updatedAt: string; queries: GapQueryEntry[] }
+export interface GapQueriesFile { version: 1; updatedAt: string; queries: GapQueryEntry[] }
 
 const normalizeQuery = (query: string): string => query.trim().toLowerCase().replace(/\s+/g, ' ');
 
@@ -43,23 +49,11 @@ export function runGapQueriesExecutor(input: { newLines?: string[]; outPath?: st
   if (existsSync(outPath)) {
     // Fail closed on corruption: silently restarting from empty would both lose
     // accumulated counts and duplicate nothing visibly — the quiet kind of loss.
-    try {
-      existing = JSON.parse(readFileSync(outPath, 'utf8')) as GapQueriesFile;
-    } catch {
-      throw new Error(`GAP_QUERIES_CORRUPT: ${outPath}`);
-    }
+    existing = parseBoundaryLoopGapQueriesV1(readFileSync(outPath, 'utf8'));
   }
   const byQuery = new Map(existing.queries.map((q) => [q.query, q]));
-  let skipped = 0;
   for (const line of newLines) {
-    let event: GapEventLine;
-    try {
-      event = JSON.parse(line) as GapEventLine;
-    } catch {
-      skipped += 1;
-      continue;
-    }
-    if (typeof event.query !== 'string' || event.query.trim() === '') { skipped += 1; continue; }
+    const event = parseBoundaryLoopGapEventV1(line);
     const query = normalizeQuery(event.query);
     const entry = byQuery.get(query) ?? { query, count: 0, products: [], lastSeen: '' };
     entry.count += 1;
@@ -73,5 +67,5 @@ export function runGapQueriesExecutor(input: { newLines?: string[]; outPath?: st
     queries: [...byQuery.values()].sort((a, b) => b.count - a.count || a.query.localeCompare(b.query)),
   };
   writeFileAtomicSync(outPath, JSON.stringify(payload, null, 2));
-  return { detail: `${payload.queries.length} queries, ${newLines.length - skipped} merged, ${skipped} skipped` };
+  return { detail: `${payload.queries.length} queries, ${newLines.length} merged, 0 skipped` };
 }

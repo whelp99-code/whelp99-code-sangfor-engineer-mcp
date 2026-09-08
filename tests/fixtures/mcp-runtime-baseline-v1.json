@@ -1,0 +1,3553 @@
+{
+  "schemaVersion": "mcp-runtime-baseline.v1",
+  "source": {
+    "ref": "origin/main",
+    "commit": "eb60873ad96e69ebecfa995ac96c61c888ee6cbd"
+  },
+  "toolCount": 115,
+  "initialize": {
+    "capabilities": {
+      "prompts": {
+        "listChanged": false
+      },
+      "resources": {
+        "listChanged": false
+      },
+      "tools": {
+        "listChanged": false
+      }
+    },
+    "protocolVersion": "2025-06-18",
+    "serverInfo": {
+      "name": "sangfor-engineer-mcp",
+      "version": "0.1.0"
+    }
+  },
+  "tools": [
+    {
+      "name": "sangfor_advisor_cisco_iosxe",
+      "category": "advisory",
+      "inputSchema": {
+        "properties": {
+          "host": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          },
+          "specVersion": {
+            "default": "17.0.0",
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "host",
+          "username",
+          "password"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_advisor_cisco_iosxe_advanced",
+      "category": "advisory",
+      "inputSchema": {
+        "properties": {
+          "host": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          },
+          "specVersion": {
+            "default": "17.0.0",
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "host",
+          "username",
+          "password"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_advisor_fortios",
+      "category": "advisory",
+      "inputSchema": {
+        "properties": {
+          "host": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          },
+          "specVersion": {
+            "default": "8.0.0",
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "host",
+          "username",
+          "password"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_advisor_fortios_advanced",
+      "category": "advisory",
+      "inputSchema": {
+        "properties": {
+          "host": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          },
+          "specVersion": {
+            "default": "8.0.0",
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "host",
+          "username",
+          "password"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_agent_manifest",
+      "category": "advisory",
+      "inputSchema": {
+        "properties": {},
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_analyze_customer_requirements",
+      "category": "advisory",
+      "inputSchema": {
+        "properties": {
+          "currentConfig": {
+            "type": "object"
+          },
+          "environment": {
+            "type": "string"
+          },
+          "product": {
+            "type": "string"
+          },
+          "requirements": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "targetUrl": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "requirements"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_analyze_project",
+      "category": "advisory",
+      "inputSchema": {
+        "properties": {
+          "customerName": {
+            "type": "string"
+          },
+          "environment": {
+            "type": "object"
+          },
+          "product": {
+            "type": "string"
+          },
+          "projectType": {
+            "type": "string"
+          },
+          "requirements": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "version": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "customerName"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_apply_approved_product_change",
+      "category": "admin",
+      "inputSchema": {
+        "properties": {
+          "approval": {
+            "type": "object"
+          },
+          "environment": {
+            "type": "string"
+          },
+          "plan": {
+            "type": "object"
+          },
+          "sessionId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "plan"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true
+      }
+    },
+    {
+      "name": "sangfor_apply_github_wiki_update",
+      "category": "admin",
+      "inputSchema": {
+        "properties": {
+          "localPath": {
+            "type": "string"
+          },
+          "proposalId": {
+            "type": "string"
+          },
+          "repoUrl": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "proposalId",
+          "repoUrl"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true
+      }
+    },
+    {
+      "name": "sangfor_apply_obsidian_wiki_update",
+      "category": "admin",
+      "inputSchema": {
+        "properties": {
+          "proposalId": {
+            "type": "string"
+          },
+          "vaultPath": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "proposalId",
+          "vaultPath"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true
+      }
+    },
+    {
+      "name": "sangfor_apply_wiki_update",
+      "category": "admin",
+      "inputSchema": {
+        "properties": {
+          "proposalId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "proposalId"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true
+      }
+    },
+    {
+      "name": "sangfor_approve_wiki_update",
+      "category": "wiki",
+      "inputSchema": {
+        "properties": {
+          "decision": {
+            "type": "string"
+          },
+          "proposalId": {
+            "type": "string"
+          },
+          "reviewer": {
+            "type": "string"
+          },
+          "token": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "proposalId",
+          "decision"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_attach_observation_session",
+      "category": "collect",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "cdpPort": {
+            "maximum": 65535,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "expectedOrigin": {
+            "type": "string"
+          },
+          "firmwareTruthId": {
+            "type": "string"
+          },
+          "product": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "product",
+          "expectedOrigin",
+          "cdpPort",
+          "firmwareTruthId"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_audit_checklist",
+      "category": "advisory",
+      "inputSchema": {
+        "properties": {
+          "cursor": {
+            "type": "string"
+          },
+          "frameworkId": {
+            "type": "string"
+          },
+          "group": {
+            "enum": [
+              "G1",
+              "G2",
+              "G3",
+              "G4",
+              "G5",
+              "G6",
+              "G7"
+            ],
+            "type": "string"
+          },
+          "limit": {
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "owner": {
+            "enum": [
+              "customer",
+              "engineer",
+              "vendor"
+            ],
+            "type": "string"
+          },
+          "priority": {
+            "enum": [
+              "P1",
+              "P2",
+              "P3"
+            ],
+            "type": "string"
+          },
+          "product": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "frameworkId"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_audit_frameworks",
+      "category": "advisory",
+      "inputSchema": {
+        "properties": {},
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_audit_gap_report",
+      "category": "report",
+      "inputSchema": {
+        "properties": {
+          "frameworkId": {
+            "type": "string"
+          },
+          "observations": {
+            "items": {
+              "properties": {
+                "evidenceRefs": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "itemId": {
+                  "type": "string"
+                },
+                "observed": {
+                  "type": "string"
+                },
+                "status": {
+                  "enum": [
+                    "met",
+                    "partial",
+                    "gap",
+                    "unknown"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "itemId",
+                "status"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "frameworkId",
+          "observations"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_build_evidence_package",
+      "category": "report",
+      "inputSchema": {
+        "properties": {
+          "captureRunId": {
+            "type": "string"
+          },
+          "customer": {
+            "type": "string"
+          },
+          "dateStamp": {
+            "type": "string"
+          },
+          "frameworkId": {
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "properties": {
+                "evidenceFiles": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "itemId": {
+                  "type": "string"
+                },
+                "observed": {
+                  "type": "string"
+                },
+                "reqIds": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "topic": {
+                  "type": "string"
+                },
+                "verdict": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "itemId",
+                "topic",
+                "reqIds",
+                "status",
+                "verdict"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "outputPath": {
+            "type": "string"
+          },
+          "overwrite": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "title",
+          "customer",
+          "dateStamp",
+          "items"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_capabilities",
+      "category": "advisory",
+      "inputSchema": {
+        "properties": {},
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_capability_safety",
+      "category": "advisory",
+      "inputSchema": {
+        "properties": {
+          "capabilityId": {
+            "type": "string"
+          },
+          "product": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_capture_screenshots",
+      "category": "collect",
+      "inputSchema": {
+        "properties": {
+          "cdpPort": {
+            "type": "number"
+          },
+          "dryRun": {
+            "type": "boolean"
+          },
+          "headless": {
+            "type": "boolean"
+          },
+          "outputDir": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          },
+          "product": {
+            "enum": [
+              "EPP",
+              "IAG",
+              "CC"
+            ],
+            "type": "string"
+          },
+          "targetUrl": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "product"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_check_version",
+      "category": "advisory",
+      "inputSchema": {
+        "properties": {
+          "currentVersion": {
+            "type": "string"
+          },
+          "device": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_chronicle_diff",
+      "category": "advisory",
+      "inputSchema": {
+        "properties": {
+          "deviceId": {
+            "type": "string"
+          },
+          "dir": {
+            "type": "string"
+          },
+          "fromHash": {
+            "type": "string"
+          },
+          "toHash": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "deviceId"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_collect_device_config",
+      "category": "collect",
+      "inputSchema": {
+        "properties": {
+          "docxPath": {
+            "type": "string"
+          },
+          "live": {
+            "type": "boolean"
+          },
+          "poolPath": {
+            "type": "string"
+          },
+          "product": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "product",
+          "version",
+          "poolPath"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_collect_facts",
+      "category": "collect",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "allowCanary": {
+            "default": false,
+            "type": "boolean"
+          },
+          "context": {
+            "additionalProperties": false,
+            "properties": {
+              "deviceScope": {
+                "type": "string"
+              },
+              "environment": {
+                "enum": [
+                  "lab",
+                  "poc",
+                  "customer",
+                  "production"
+                ],
+                "type": "string"
+              },
+              "productVariant": {
+                "type": "string"
+              },
+              "registryDigest": {
+                "type": "string"
+              },
+              "versionTruthRecord": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "registryDigest",
+              "versionTruthRecord"
+            ],
+            "type": "object"
+          },
+          "factIds": {
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "methodResults": {
+            "items": {
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "scope": {
+            "additionalProperties": false,
+            "properties": {
+              "capability": {
+                "type": "string"
+              },
+              "fact": {
+                "type": "string"
+              },
+              "firmwareVersion": {
+                "type": "string"
+              },
+              "product": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "product",
+              "firmwareVersion"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "scope",
+          "context",
+          "factIds"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_collect_product_config",
+      "category": "collect",
+      "inputSchema": {
+        "properties": {
+          "environment": {
+            "type": "string"
+          },
+          "preferApi": {
+            "type": "boolean"
+          },
+          "product": {
+            "type": "string"
+          },
+          "targetUrl": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_console_capture_evidence",
+      "category": "collect",
+      "inputSchema": {
+        "properties": {
+          "captures": {
+            "items": {
+              "properties": {
+                "menuLabel": {
+                  "type": "string"
+                },
+                "menuPath": {
+                  "items": {
+                    "properties": {
+                      "menu": {
+                        "type": "string"
+                      },
+                      "submenu": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "menu"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "reqId": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "reqId",
+                "menuLabel"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "cdpPort": {
+            "type": "number"
+          },
+          "dateStamp": {
+            "type": "string"
+          },
+          "deviceId": {
+            "type": "string"
+          },
+          "engagementId": {
+            "type": "string"
+          },
+          "outputDir": {
+            "type": "string"
+          },
+          "product": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "product",
+          "captures"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_create_eval_case_from_feedback",
+      "category": "ml",
+      "inputSchema": {
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "product": {
+            "type": "string"
+          },
+          "requiredText": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "product",
+          "name",
+          "requiredText"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_create_finetune_dataset",
+      "category": "ml",
+      "inputSchema": {
+        "properties": {
+          "examples": {
+            "type": "array"
+          },
+          "outputPath": {
+            "type": "string"
+          },
+          "product": {
+            "type": "string"
+          },
+          "taskType": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "product",
+          "taskType",
+          "examples"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_create_finetune_job_spec",
+      "category": "ml",
+      "inputSchema": {
+        "properties": {
+          "baseModel": {
+            "type": "string"
+          },
+          "datasetPath": {
+            "type": "string"
+          },
+          "product": {
+            "type": "string"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "taskType": {
+            "type": "string"
+          },
+          "validationDatasetPath": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "datasetPath",
+          "product",
+          "taskType"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_discover_product_console",
+      "category": "knowledge",
+      "inputSchema": {
+        "properties": {
+          "environment": {
+            "type": "string"
+          },
+          "preferApi": {
+            "type": "boolean"
+          },
+          "product": {
+            "type": "string"
+          },
+          "targetUrl": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_drift_findings",
+      "category": "advisory",
+      "inputSchema": {
+        "properties": {
+          "approvals": {
+            "items": {
+              "properties": {
+                "approvedAt": {
+                  "type": "string"
+                },
+                "changeTicketId": {
+                  "type": "string"
+                },
+                "deviceId": {
+                  "type": "string"
+                },
+                "windowEndAt": {
+                  "type": "string"
+                },
+                "windowStartAt": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "changeTicketId",
+                "deviceId",
+                "approvedAt"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "deviceId": {
+            "type": "string"
+          },
+          "dir": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "deviceId"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_dry_run_product_change",
+      "category": "advisory",
+      "inputSchema": {
+        "properties": {
+          "plan": {
+            "type": "object"
+          },
+          "sessionId": {
+            "type": "string"
+          },
+          "targetUrl": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "plan"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_engagement_scope",
+      "category": "advisory",
+      "inputSchema": {
+        "properties": {},
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_evaluate_config",
+      "category": "ml",
+      "inputSchema": {
+        "properties": {
+          "docxPath": {
+            "type": "string"
+          },
+          "observed": {
+            "type": "object"
+          },
+          "product": {
+            "type": "string"
+          },
+          "spec": {
+            "type": "object"
+          },
+          "version": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "observed"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_execute_console_action",
+      "category": "admin",
+      "inputSchema": {
+        "properties": {
+          "action": {
+            "type": "object"
+          },
+          "sessionId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sessionId",
+          "action"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true
+      }
+    },
+    {
+      "name": "sangfor_execute_console_action_live",
+      "category": "admin",
+      "inputSchema": {
+        "properties": {
+          "action": {
+            "type": "object"
+          },
+          "approval": {
+            "type": "object"
+          },
+          "sessionId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sessionId",
+          "action"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true
+      }
+    },
+    {
+      "name": "sangfor_extract_lesson",
+      "category": "ml",
+      "inputSchema": {
+        "properties": {
+          "feedbackId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "feedbackId"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_field_engineer_coverage",
+      "category": "knowledge",
+      "inputSchema": {
+        "properties": {
+          "cursor": {
+            "type": "string"
+          },
+          "limit": {
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_generate_all_guides",
+      "category": "report",
+      "inputSchema": {
+        "properties": {
+          "captureScreenshots": {
+            "type": "boolean"
+          },
+          "filePath": {
+            "type": "string"
+          },
+          "outputDir": {
+            "type": "string"
+          },
+          "screenshotDir": {
+            "type": "string"
+          },
+          "screenshotProducts": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "filePath"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_generate_comprehensive_operations_guide_docx",
+      "category": "report",
+      "inputSchema": {
+        "properties": {
+          "outputPath": {
+            "type": "string"
+          },
+          "screenshotDir": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_generate_comprehensive_setting_guide_docx",
+      "category": "report",
+      "inputSchema": {
+        "properties": {
+          "filePath": {
+            "type": "string"
+          },
+          "outputPath": {
+            "type": "string"
+          },
+          "screenshotDir": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "filePath"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_generate_config_plan",
+      "category": "report",
+      "inputSchema": {
+        "properties": {
+          "customerName": {
+            "type": "string"
+          },
+          "environment": {
+            "type": "object"
+          },
+          "product": {
+            "type": "string"
+          },
+          "projectType": {
+            "type": "string"
+          },
+          "requirements": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "version": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "customerName",
+          "product"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_generate_evidence_report",
+      "category": "report",
+      "inputSchema": {
+        "properties": {
+          "format": {
+            "type": "string"
+          },
+          "plan": {
+            "type": "object"
+          },
+          "planId": {
+            "type": "string"
+          },
+          "verification": {
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_generate_excel_based_change_plan",
+      "category": "report",
+      "inputSchema": {
+        "properties": {
+          "filePath": {
+            "type": "string"
+          },
+          "prioritizeOnly": {
+            "type": "boolean"
+          },
+          "rows": {
+            "items": {
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "sheetName": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_generate_operations_guide_docx",
+      "category": "report",
+      "inputSchema": {
+        "properties": {
+          "outputPath": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_generate_operations_guide_pptx",
+      "category": "report",
+      "inputSchema": {
+        "properties": {
+          "outputPath": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_generate_product_change_plan",
+      "category": "report",
+      "inputSchema": {
+        "properties": {
+          "currentConfig": {
+            "type": "object"
+          },
+          "environment": {
+            "type": "string"
+          },
+          "product": {
+            "type": "string"
+          },
+          "requirements": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "targetUrl": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "requirements"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_generate_setting_guide_docx",
+      "category": "report",
+      "inputSchema": {
+        "properties": {
+          "filePath": {
+            "type": "string"
+          },
+          "outputPath": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "filePath"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_generate_setting_guide_pptx",
+      "category": "report",
+      "inputSchema": {
+        "properties": {
+          "filePath": {
+            "type": "string"
+          },
+          "outputPath": {
+            "type": "string"
+          },
+          "screenshotDir": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "filePath"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_get_manual_section",
+      "category": "knowledge",
+      "inputSchema": {
+        "properties": {
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_hci_apply_create_volume",
+      "category": "hci",
+      "inputSchema": {
+        "properties": {
+          "approval": {
+            "type": "object"
+          },
+          "clientToken": {
+            "type": "string"
+          },
+          "identityBaseUrl": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "sizeGb": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "name",
+          "sizeGb",
+          "clientToken",
+          "approval"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_hci_delete_volume",
+      "category": "admin",
+      "inputSchema": {
+        "properties": {
+          "approval": {
+            "type": "object"
+          },
+          "identityBaseUrl": {
+            "type": "string"
+          },
+          "volumeId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "volumeId",
+          "approval"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true
+      }
+    },
+    {
+      "name": "sangfor_hci_health_report",
+      "category": "hci",
+      "inputSchema": {
+        "properties": {
+          "identityBaseUrl": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          },
+          "tenantName": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_hci_inventory",
+      "category": "hci",
+      "inputSchema": {
+        "properties": {
+          "identityBaseUrl": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          },
+          "tenantName": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_hci_plan_create_volume",
+      "category": "hci",
+      "inputSchema": {
+        "properties": {
+          "identityBaseUrl": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "sizeGb": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "name",
+          "sizeGb"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_hci_verify_volume",
+      "category": "hci",
+      "inputSchema": {
+        "properties": {
+          "identityBaseUrl": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "sizeGb": {
+            "type": "number"
+          },
+          "volumeId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "sizeGb"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_import_excel_requirement_list",
+      "category": "report",
+      "inputSchema": {
+        "properties": {
+          "filePath": {
+            "type": "string"
+          },
+          "prioritizeOnly": {
+            "type": "boolean"
+          },
+          "sheetName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "filePath"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_ingest_document",
+      "category": "advisory",
+      "inputSchema": {
+        "properties": {
+          "filePath": {
+            "type": "string"
+          },
+          "indexPath": {
+            "type": "string"
+          },
+          "product": {
+            "type": "string"
+          },
+          "sourceType": {
+            "type": "string"
+          },
+          "trustLevel": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "filePath",
+          "product"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_integration_guide",
+      "category": "report",
+      "inputSchema": {
+        "properties": {
+          "product": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_kill_session",
+      "category": "collect",
+      "inputSchema": {
+        "properties": {
+          "sessionId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sessionId"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_learn_sources",
+      "category": "advisory",
+      "inputSchema": {
+        "properties": {
+          "communityMaxThreadsPerForum": {
+            "type": "number"
+          },
+          "includeDemoDocs": {
+            "type": "boolean"
+          },
+          "knowledgeMaxArticles": {
+            "type": "number"
+          },
+          "ragIndexPath": {
+            "type": "string"
+          },
+          "rawDir": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_list_knowledge_cards",
+      "category": "advisory",
+      "inputSchema": {
+        "properties": {},
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_list_learning_strategies",
+      "category": "advisory",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "cursor": {
+            "type": "string"
+          },
+          "firmwareVersion": {
+            "type": "string"
+          },
+          "limit": {
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "product": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "draft",
+              "researched",
+              "lab_verified",
+              "device_verified",
+              "strategy_field_verified",
+              "stale",
+              "deprecated"
+            ],
+            "type": "string"
+          },
+          "strategyId": {
+            "type": "string"
+          },
+          "vendor": {
+            "enum": [
+              "SANGFOR",
+              "FORTINET",
+              "CISCO"
+            ],
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_list_spec_coverage",
+      "category": "knowledge",
+      "inputSchema": {
+        "properties": {
+          "cursor": {
+            "type": "string"
+          },
+          "limit": {
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_loop_status",
+      "category": "advisory",
+      "inputSchema": {
+        "properties": {
+          "tail": {
+            "maximum": 200,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_manage_learning_capture",
+      "category": "advisory",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "enum": [
+              "start",
+              "stop"
+            ],
+            "type": "string"
+          },
+          "captureId": {
+            "type": "string"
+          },
+          "durationMs": {
+            "maximum": 30000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "firmwareVersion": {
+            "type": "string"
+          },
+          "sessionHandle": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "action"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_map_requirements_to_products",
+      "category": "advisory",
+      "inputSchema": {
+        "properties": {
+          "rows": {
+            "items": {
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "rows"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_playbook_add_revision",
+      "category": "playbook",
+      "inputSchema": {
+        "properties": {
+          "authoredBy": {
+            "type": "string"
+          },
+          "blocks": {
+            "items": {
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "note": {
+            "type": "string"
+          },
+          "playbookId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "playbookId",
+          "authoredBy",
+          "blocks"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_playbook_agent_tasks",
+      "category": "playbook",
+      "inputSchema": {
+        "properties": {
+          "status": {
+            "default": "open",
+            "enum": [
+              "open",
+              "done",
+              "cancelled"
+            ],
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_playbook_close_agent_task",
+      "category": "playbook",
+      "inputSchema": {
+        "properties": {
+          "result": {
+            "type": "object"
+          },
+          "taskId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "taskId"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_playbook_create",
+      "category": "playbook",
+      "inputSchema": {
+        "properties": {
+          "authoredBy": {
+            "type": "string"
+          },
+          "blocks": {
+            "items": {
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "goal": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "goal",
+          "authoredBy",
+          "blocks"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_playbook_execute",
+      "category": "playbook",
+      "inputSchema": {
+        "properties": {
+          "playbookId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "playbookId"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_playbook_get",
+      "category": "playbook",
+      "inputSchema": {
+        "properties": {
+          "playbookId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "playbookId"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_playbook_list",
+      "category": "playbook",
+      "inputSchema": {
+        "properties": {},
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_playbook_run_status",
+      "category": "playbook",
+      "inputSchema": {
+        "properties": {
+          "playbookRunId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "playbookRunId"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_playbook_submit_analysis",
+      "category": "playbook",
+      "inputSchema": {
+        "properties": {
+          "authoredBy": {
+            "type": "string"
+          },
+          "improvements": {
+            "items": {
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "playbookId": {
+            "type": "string"
+          },
+          "playbookRunId": {
+            "type": "string"
+          },
+          "proposals": {
+            "items": {
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "summary": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "playbookRunId",
+          "playbookId",
+          "summary",
+          "authoredBy"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_pm_acquire_device",
+      "category": "pm",
+      "inputSchema": {
+        "properties": {
+          "deviceId": {
+            "type": "string"
+          },
+          "engagementId": {
+            "type": "string"
+          },
+          "holder": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "deviceId",
+          "engagementId",
+          "holder"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_pm_add_work_item",
+      "category": "pm",
+      "inputSchema": {
+        "properties": {
+          "assignee": {
+            "type": "string"
+          },
+          "deviceId": {
+            "type": "string"
+          },
+          "engagementId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "engagementId",
+          "title"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_pm_create_engagement",
+      "category": "pm",
+      "inputSchema": {
+        "properties": {
+          "customer": {
+            "type": "string"
+          },
+          "product": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer",
+          "product"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_pm_events",
+      "category": "pm",
+      "inputSchema": {
+        "properties": {
+          "cursor": {
+            "type": "string"
+          },
+          "engagementId": {
+            "type": "string"
+          },
+          "limit": {
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "engagementId"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_pm_release_device",
+      "category": "pm",
+      "inputSchema": {
+        "properties": {
+          "deviceId": {
+            "type": "string"
+          },
+          "engagementId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "deviceId",
+          "engagementId"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_pm_report",
+      "category": "pm",
+      "inputSchema": {
+        "properties": {
+          "engagementId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "engagementId"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_pm_status",
+      "category": "pm",
+      "inputSchema": {
+        "properties": {
+          "engagementId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "engagementId"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_products",
+      "category": "advisory",
+      "inputSchema": {
+        "properties": {},
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_promote_learning_strategy",
+      "category": "advisory",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "approvalPayload": {
+            "additionalProperties": false,
+            "properties": {
+              "contentHash": {
+                "type": "string"
+              },
+              "entityId": {
+                "type": "string"
+              },
+              "entityType": {
+                "type": "string"
+              },
+              "evidenceDigest": {
+                "type": "string"
+              },
+              "evidenceFile": {
+                "type": "string"
+              },
+              "expiresAt": {
+                "type": "string"
+              },
+              "fromState": {
+                "type": "string"
+              },
+              "nonce": {
+                "type": "string"
+              },
+              "revisionId": {
+                "type": "string"
+              },
+              "toState": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "entityType",
+              "entityId",
+              "revisionId",
+              "contentHash",
+              "fromState",
+              "toState",
+              "evidenceFile",
+              "evidenceDigest",
+              "nonce",
+              "expiresAt"
+            ],
+            "type": "object"
+          },
+          "approvalToken": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "evidenceDigest": {
+            "type": "string"
+          },
+          "evidenceFile": {
+            "type": "string"
+          },
+          "evidenceRoot": {
+            "type": "string"
+          },
+          "revisionId": {
+            "type": "string"
+          },
+          "strategyId": {
+            "type": "string"
+          },
+          "toState": {
+            "enum": [
+              "researched",
+              "lab_verified",
+              "device_verified",
+              "strategy_field_verified",
+              "stale",
+              "deprecated"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "strategyId",
+          "revisionId",
+          "toState",
+          "approvalPayload",
+          "approvalToken",
+          "evidenceRoot"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_propose_wiki_update",
+      "category": "wiki",
+      "inputSchema": {
+        "properties": {
+          "lessonBody": {
+            "type": "string"
+          },
+          "lessonTitle": {
+            "type": "string"
+          },
+          "targetPage": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "lessonTitle",
+          "lessonBody"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_rag_index_summary",
+      "category": "knowledge",
+      "inputSchema": {
+        "properties": {
+          "indexPath": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_rag_search",
+      "category": "knowledge",
+      "inputSchema": {
+        "properties": {
+          "include_vectors": {
+            "type": "boolean"
+          },
+          "indexPath": {
+            "type": "string"
+          },
+          "limit": {
+            "type": "number"
+          },
+          "privacy_mode": {
+            "enum": [
+              "summary",
+              "structured",
+              "raw"
+            ],
+            "type": "string"
+          },
+          "product": {
+            "type": "string"
+          },
+          "query": {
+            "type": "string"
+          },
+          "sourceType": {
+            "enum": [
+              "manual",
+              "wiki",
+              "lesson",
+              "pattern"
+            ],
+            "type": "string"
+          },
+          "trustLevel": {
+            "enum": [
+              "official",
+              "internal",
+              "draft",
+              "needs_review",
+              "customer"
+            ],
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_read_console_state",
+      "category": "collect",
+      "inputSchema": {
+        "properties": {
+          "sessionId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sessionId"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_read_live_console_state",
+      "category": "collect",
+      "inputSchema": {
+        "properties": {
+          "sessionId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sessionId"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_recommend_sizing",
+      "category": "advisory",
+      "inputSchema": {
+        "properties": {
+          "concurrentUsers": {
+            "type": "number"
+          },
+          "endpoints": {
+            "type": "number"
+          },
+          "eventsPerSecond": {
+            "type": "number"
+          },
+          "product": {
+            "type": "string"
+          },
+          "throughputMbps": {
+            "type": "number"
+          },
+          "vmCount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "product"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_report_chain_verify",
+      "category": "report",
+      "inputSchema": {
+        "properties": {
+          "dir": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_request_approval",
+      "category": "advisory",
+      "inputSchema": {
+        "properties": {
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_research_learning_strategy",
+      "category": "knowledge",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "captureEvidenceFile": {
+            "type": "string"
+          },
+          "methods": {
+            "items": {
+              "enum": [
+                "LM-01",
+                "LM-02",
+                "LM-03",
+                "LM-04",
+                "LM-05",
+                "LM-06",
+                "LM-07",
+                "LM-08"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "officialCitation": {
+            "type": "string"
+          },
+          "pageVerified": {
+            "type": "boolean"
+          },
+          "productVariant": {
+            "type": "string"
+          },
+          "registryDigest": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "scope": {
+            "additionalProperties": false,
+            "properties": {
+              "capability": {
+                "type": "string"
+              },
+              "fact": {
+                "type": "string"
+              },
+              "firmwareVersion": {
+                "type": "string"
+              },
+              "product": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "product",
+              "firmwareVersion"
+            ],
+            "type": "object"
+          },
+          "strategyId": {
+            "type": "string"
+          },
+          "vendor": {
+            "enum": [
+              "SANGFOR",
+              "FORTINET",
+              "CISCO"
+            ],
+            "type": "string"
+          },
+          "versionTruthRecord": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "strategyId",
+          "vendor",
+          "scope",
+          "registryDigest",
+          "versionTruthRecord",
+          "officialCitation",
+          "pageVerified"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_resolve_learning_strategy",
+      "category": "advisory",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "context": {
+            "additionalProperties": false,
+            "properties": {
+              "deviceScope": {
+                "type": "string"
+              },
+              "environment": {
+                "enum": [
+                  "lab",
+                  "poc",
+                  "customer",
+                  "production"
+                ],
+                "type": "string"
+              },
+              "productVariant": {
+                "type": "string"
+              },
+              "registryDigest": {
+                "type": "string"
+              },
+              "versionTruthRecord": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "registryDigest",
+              "versionTruthRecord"
+            ],
+            "type": "object"
+          },
+          "scope": {
+            "additionalProperties": false,
+            "properties": {
+              "capability": {
+                "type": "string"
+              },
+              "fact": {
+                "type": "string"
+              },
+              "firmwareVersion": {
+                "type": "string"
+              },
+              "product": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "product",
+              "firmwareVersion"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "scope",
+          "context"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_run_planner_eval",
+      "category": "ml",
+      "inputSchema": {
+        "properties": {
+          "plan": {
+            "type": "object"
+          },
+          "planId": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_safety_selftest",
+      "category": "advisory",
+      "inputSchema": {
+        "properties": {},
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_scorecard_tier",
+      "category": "advisory",
+      "inputSchema": {
+        "properties": {
+          "metrics": {
+            "type": "object"
+          },
+          "previous": {
+            "type": "object"
+          },
+          "thresholds": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "metrics",
+          "thresholds"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_search_gaps",
+      "category": "knowledge",
+      "inputSchema": {
+        "properties": {
+          "cursor": {
+            "type": "string"
+          },
+          "limit": {
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_search_manuals",
+      "category": "knowledge",
+      "inputSchema": {
+        "properties": {
+          "limit": {
+            "type": "number"
+          },
+          "privacy_mode": {
+            "enum": [
+              "summary",
+              "structured",
+              "raw"
+            ],
+            "type": "string"
+          },
+          "product": {
+            "type": "string"
+          },
+          "query": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "product"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_search_wiki",
+      "category": "wiki",
+      "inputSchema": {
+        "properties": {
+          "limit": {
+            "type": "number"
+          },
+          "privacy_mode": {
+            "enum": [
+              "summary",
+              "structured",
+              "raw"
+            ],
+            "type": "string"
+          },
+          "product": {
+            "type": "string"
+          },
+          "query": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "product"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_session_report",
+      "category": "report",
+      "inputSchema": {
+        "properties": {
+          "format": {
+            "enum": [
+              "markdown",
+              "json"
+            ],
+            "type": "string"
+          },
+          "runId": {
+            "type": "string"
+          },
+          "save": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_snapshot_query",
+      "category": "advisory",
+      "inputSchema": {
+        "properties": {
+          "asOf": {
+            "type": "string"
+          },
+          "dir": {
+            "type": "string"
+          },
+          "where": {
+            "properties": {
+              "key": {
+                "type": "string"
+              },
+              "op": {
+                "enum": [
+                  "eq",
+                  "neq",
+                  "lt",
+                  "gte",
+                  "exists"
+                ],
+                "type": "string"
+              },
+              "value": {}
+            },
+            "required": [
+              "key",
+              "op"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "where"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_start_operator_session",
+      "category": "collect",
+      "inputSchema": {
+        "properties": {
+          "browser": {
+            "properties": {
+              "cdpEndpoint": {
+                "type": "string"
+              },
+              "useLocalBrowser": {
+                "type": "boolean"
+              }
+            },
+            "type": "object"
+          },
+          "mode": {
+            "type": "string"
+          },
+          "product": {
+            "type": "string"
+          },
+          "targetUrl": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "product"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_store_health",
+      "category": "knowledge",
+      "inputSchema": {
+        "properties": {},
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_submit_feedback",
+      "category": "ml",
+      "inputSchema": {
+        "properties": {
+          "feedbackText": {
+            "type": "string"
+          },
+          "feedbackType": {
+            "type": "string"
+          },
+          "product": {
+            "type": "string"
+          },
+          "severity": {
+            "type": "string"
+          },
+          "sourceRole": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "product",
+          "feedbackType",
+          "severity",
+          "feedbackText",
+          "sourceRole"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_suggest_rca",
+      "category": "advisory",
+      "inputSchema": {
+        "properties": {
+          "product": {
+            "type": "string"
+          },
+          "symptom": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "symptom"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_upsert_knowledge_card",
+      "category": "advisory",
+      "inputSchema": {
+        "properties": {
+          "card": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "card"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_validate_config_plan",
+      "category": "advisory",
+      "inputSchema": {
+        "properties": {
+          "plan": {
+            "type": "object"
+          },
+          "planId": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_validate_finetune_dataset",
+      "category": "ml",
+      "inputSchema": {
+        "properties": {
+          "path": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_validate_learning_strategy",
+      "category": "advisory",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "evidenceDigest": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "evidenceFile": {
+            "type": "string"
+          },
+          "revisionId": {
+            "type": "string"
+          },
+          "strategyId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "strategyId",
+          "revisionId"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_validate_office_document",
+      "category": "advisory",
+      "inputSchema": {
+        "properties": {
+          "filePath": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "filePath"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_verify_capture_ledger",
+      "category": "advisory",
+      "inputSchema": {
+        "properties": {
+          "runId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "runId"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_verify_product_change",
+      "category": "advisory",
+      "inputSchema": {
+        "properties": {
+          "observed": {
+            "type": "object"
+          },
+          "plan": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "plan"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_verify_result",
+      "category": "advisory",
+      "inputSchema": {
+        "properties": {
+          "observed": {
+            "type": "object"
+          },
+          "plan": {
+            "type": "object"
+          },
+          "planId": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      }
+    }
+  ],
+  "resources": [
+    {
+      "uri": "sangfor://agent-manifest",
+      "mimeType": "application/json"
+    },
+    {
+      "uri": "sangfor://capabilities",
+      "mimeType": "application/json"
+    },
+    {
+      "uri": "sangfor://safety/posture",
+      "mimeType": "application/json"
+    }
+  ],
+  "prompts": [
+    {
+      "name": "sangfor-health-check",
+      "arguments": [
+        {
+          "name": "product",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "sangfor-config-plan",
+      "arguments": [
+        {
+          "name": "requirements",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "sangfor-troubleshoot",
+      "arguments": [
+        {
+          "name": "symptom",
+          "required": false
+        }
+      ]
+    }
+  ],
+  "representative": {
+    "products": [
+      {
+        "code": "HCI_SCP",
+        "priority": 1
+      },
+      {
+        "code": "HCI",
+        "priority": 5
+      },
+      {
+        "code": "NGFW",
+        "priority": 7
+      },
+      {
+        "code": "SCC",
+        "priority": 8
+      },
+      {
+        "code": "IAG",
+        "priority": 2
+      },
+      {
+        "code": "ENDPOINT_SECURE",
+        "priority": 3
+      },
+      {
+        "code": "NDR",
+        "priority": 4
+      },
+      {
+        "code": "CYBER_COMMAND",
+        "priority": 6
+      },
+      {
+        "code": "HIWARE",
+        "priority": 9
+      },
+      {
+        "code": "OTHER",
+        "priority": 99
+      }
+    ],
+    "scopedRag": {
+      "count": 0,
+      "hits": []
+    },
+    "dryRun": {
+      "apiRequestPreview": [
+        {
+          "endpoint": "GET /janus/20180725/tasks/{task_id}",
+          "execute": false,
+          "method": "GET",
+          "taskId": "task_1"
+        },
+        {
+          "endpoint": "PUT /openstack/compute/v2/servers/{id}/metadata",
+          "execute": false,
+          "method": "PUT",
+          "taskId": "task_1"
+        }
+      ],
+      "approvalRequiredTasks": [
+        "task_1"
+      ],
+      "dryRunFailures": [],
+      "id": "<generated-id>",
+      "manualReviewRows": [],
+      "mutationPerformed": false,
+      "ok": true,
+      "product": "HCI_SCP",
+      "sessionAttached": false,
+      "sessionRequired": false,
+      "stoppedBefore": [
+        "Save",
+        "Apply",
+        "Delete",
+        "Commit",
+        "Response Action"
+      ],
+      "webuiRoutePreview": [
+        {
+          "checks": [
+            "Navigate to menu",
+            "Confirm current values",
+            "Populate draft values if safe",
+            "Stop before mutation button"
+          ],
+          "menuPath": [
+            "Reliability",
+            "HA/DRS"
+          ],
+          "taskId": "task_1"
+        }
+      ]
+    },
+    "resourceRead": {
+      "default": "dry-run / read-only",
+      "liveWriteRequires": [
+        "SANGFOR_ALLOW_REAL_EXECUTION",
+        "signed action-bound single-use approval"
+      ],
+      "productionAlsoRequires": [
+        "SANGFOR_ALLOW_PRODUCTION_EXECUTION"
+      ],
+      "indeterminateIsNeverPass": true,
+      "irreversibleActsStayHuman": true
+    }
+  },
+  "sha256": "2461aa46b93e08144ed74300324830d92c317a9e07435bbb440a723e05f409cd"
+}

@@ -20,7 +20,7 @@ Review standards for sangfor-engineer-mcp. This is a security-critical codebase 
 9. **Docs** — if behavior, ports, env vars, or gates changed, the relevant `docs/*` and `AGENTS.md` are updated (no drift). (Minor–Major.)
 
 ## Extra scrutiny zones (review slowly)
-`@sangfor/operator` (approval, nonce, execution gate) · `@sangfor/hci-client` (apply-machine, read-back, audit-ledger) · `apps/http-bridge/tool-guard.ts` · `@sangfor/shared` bind-safety · anything touching `SANGFOR_ALLOW_*` env vars or `maskSecrets`.
+`@sangfor/operator` (approval, nonce, execution gate) · `@sangfor/hci-client` (apply-machine, read-back, audit-ledger) · `packages/sangfor-operator/src/tool-authorization.ts` · `@sangfor/shared` bind-safety · anything touching `SANGFOR_ALLOW_*` env vars or `maskSecrets`.
 
 ## Anti-patterns to flag
 - A gate turned into a warning/log instead of a throw.

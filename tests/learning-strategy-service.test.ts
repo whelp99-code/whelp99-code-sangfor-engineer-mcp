@@ -20,9 +20,9 @@ function service(): LearningStrategyService {
 }
 
 describe('LearningStrategyService', () => {
-  it('persists a researched draft and lists it through exact filters', () => {
+  it('persists a researched draft and lists it through exact filters', async () => {
     const subject = service();
-    const created = subject.research({
+    const created = await subject.research({
       strategyId: 'endpoint-version', vendor: 'SANGFOR',
       scope: { product: 'ENDPOINT_SECURE', firmwareVersion: '6.0.4', fact: 'version' },
       registryDigest: 'a'.repeat(64), versionTruthRecord: 'truth-604',
@@ -33,9 +33,9 @@ describe('LearningStrategyService', () => {
     expect(subject.list({ product: 'ENDPOINT_SECURE', firmwareVersion: '6.0.4' }).items).toHaveLength(1);
   });
 
-  it('fails closed on registry drift and never returns a near product match', () => {
+  it('fails closed on registry drift and never returns a near product match', async () => {
     const subject = service();
-    subject.research({
+    await subject.research({
       strategyId: 'endpoint-version', vendor: 'SANGFOR',
       scope: { product: 'ENDPOINT_SECURE', firmwareVersion: '6.0.4' },
       registryDigest: 'a'.repeat(64), versionTruthRecord: 'truth-604',
@@ -59,7 +59,7 @@ describe('LearningStrategyService', () => {
     )).toThrow('SECRET_FIELD_FORBIDDEN');
   });
 
-  it('promotes a signed exact revision atomically and rejects approval target substitution', () => {
+  it('promotes a signed exact revision atomically and rejects approval target substitution', async () => {
     const storeRoot = mkdtempSync(join(tmpdir(), 'strategy-promote-store-'));
     const evidenceRoot = mkdtempSync(join(tmpdir(), 'strategy-promote-evidence-'));
     roots.push(storeRoot, evidenceRoot);
@@ -67,7 +67,7 @@ describe('LearningStrategyService', () => {
     const evidence = '{"verified":true}\n';
     mkdirSync(evidenceRoot, { recursive: true });
     writeFileSync(join(evidenceRoot, 'approval.json'), evidence, { mode: 0o600 });
-    const created = subject.research({
+    const created = await subject.research({
       strategyId: 'endpoint-promote', vendor: 'SANGFOR',
       scope: { product: 'ENDPOINT_SECURE', firmwareVersion: '6.0.4' },
       registryDigest: 'a'.repeat(64), versionTruthRecord: 'truth-604',
@@ -84,12 +84,12 @@ describe('LearningStrategyService', () => {
       nonce: 'a'.repeat(64), expiresAt: new Date(Date.now() + 60_000).toISOString(),
     };
     const substituted = { ...basePayload, toState: 'deprecated', nonce: 'b'.repeat(64) };
-    expect(() => subject.promote({
+    await expect(async () => await subject.promote({
       strategyId: 'endpoint-promote', revisionId: created.revision.revisionId, toState: 'researched',
       approvalPayload: substituted, approvalToken: signLearningApproval(substituted), evidenceRoot,
       evidenceFile: 'approval.json', evidenceDigest: basePayload.evidenceDigest,
-    })).toThrow('APPROVAL_BINDING_MISMATCH');
-    const result = subject.promote({
+    })).rejects.toThrow('APPROVAL_BINDING_MISMATCH');
+    const result = await subject.promote({
       strategyId: 'endpoint-promote', revisionId: created.revision.revisionId, toState: 'researched',
       approvalPayload: basePayload, approvalToken: signLearningApproval(basePayload), evidenceRoot,
       evidenceFile: 'approval.json', evidenceDigest: basePayload.evidenceDigest,

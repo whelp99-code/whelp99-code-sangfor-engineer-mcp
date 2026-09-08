@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "atoms": [
+    {
+      "id": "op_daily_health",
+      "product": "HCI_SCP",
+      "phase": "operate",
+      "title": "Grounded daily health fixture",
+      "automatability": "auto",
+      "coveredBy": "sangfor_evaluate_config",
+      "maturity": "tested_mock",
+      "capabilityRef": {
+        "product": "HCI_SCP",
+        "capabilityId": "resource_inventory"
+      }
+    },
+    {
+      "id": "pm_signoff",
+      "product": "HCI_SCP",
+      "phase": "handover",
+      "title": "Human-only sign-off fixture",
+      "automatability": "human",
+      "humanReason": "Human accountability",
+      "coveredBy": "sangfor_evaluate_config",
+      "maturity": "planned",
+      "capabilityRef": {
+        "product": "HCI_SCP",
+        "capabilityId": "resource_inventory"
+      }
+    }
+  ]
+}

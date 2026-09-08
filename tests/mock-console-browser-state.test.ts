@@ -43,4 +43,35 @@ describe('mock console browser write/read-back seam', () => {
     const restored = await fetch(`${baseUrl}/api/v1/mock-config`).then((response) => response.json()) as { name: string };
     expect(restored.name).toBe(initial.name);
   });
+
+  it('persists one IAG lab exception through the HTTP/UI state and supports explicit restoration', async () => {
+    server = createMockConsoleServer();
+    await new Promise<void>((resolve) => server?.listen(0, '127.0.0.1', resolve));
+    const address = server.address();
+    if (!address || typeof address === 'string') throw new TypeError('Mock console did not bind TCP.');
+    const baseUrl = `http://127.0.0.1:${address.port}`;
+    const exception = { kind: 'URL_DOMAIN_EXCEPTION', value: 'qa.example.invalid', effect: 'ALLOW' } as const;
+
+    const before = await fetch(`${baseUrl}/api/v1/iag/internet-policy`).then((response) => response.json());
+    const add = await fetch(`${baseUrl}/api/v1/iag/internet-policy/exception`, {
+      method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(exception),
+    });
+    const after = await fetch(`${baseUrl}/api/v1/iag/internet-policy`).then((response) => response.json());
+    const pageAfter = await fetch(`${baseUrl}/iag`).then((response) => response.text());
+
+    expect(before).toMatchObject({
+      status: 'READY', entries: [],
+      scope: { origin: baseUrl, policyTaskId: 'task-mock-iag' },
+    });
+    expect(add.status).toBe(200);
+    expect(after).toMatchObject({ status: 'READY', entries: [{ kind: 'URL_DOMAIN_EXCEPTION_PRESENT', value: exception.value, effect: 'ALLOW' }] });
+    expect(pageAfter).toContain('qa.example.invalid');
+
+    const restore = await fetch(`${baseUrl}/api/v1/iag/internet-policy/exception`, {
+      method: 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify(exception),
+    });
+    const restored = await fetch(`${baseUrl}/api/v1/iag/internet-policy`).then((response) => response.json());
+    expect(restore.status).toBe(204);
+    expect(restored).toEqual(before);
+  });
 });

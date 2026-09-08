@@ -7,6 +7,8 @@ on:
     branches: [main]
 
 jobs:
+  # BLRO 런타임 레인. 업그레이드 순서가 BLRO 우선이므로 이 잡이 먼저 통과해야
+  # JM(Node 24) 레인이 시작된다. 권한 있는 계약 버전은 BLRO가 정한다.
   verify:
     runs-on: ubuntu-latest
     steps:
@@ -43,3 +45,131 @@ jobs:
 
       - name: MCP scorecard
         run: pnpm run check:mcp-scorecard
+
+      # 도구 개수는 문서가 아니라 살아있는 서버가 정한다. 이 단계는 tools/list를
+      # 읽어 주석/쓰기 집합 불변식을 검사하며, 어떤 개수도 하드코딩하지 않는다.
+      - name: MCP inventory truth
+        run: pnpm run check:mcp-inventory-truth
+
+      # 오프라인 픽스처는 토큰 없이도 규칙 자체가 살아있음을 증명한다.
+      - name: Tracker truth (offline fixture)
+        run: pnpm run check:tracker-truth:offline
+
+      # 실제 GitHub 그래프 검증은 읽기 전용이며, 토큰이 있는 원본 저장소에서만 돈다.
+      - name: Tracker truth (live graph)
+        if: github.event_name == 'push' && github.repository == 'whelp99-code/whelp99-code-sangfor-engineer-mcp'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: pnpm run check:tracker-truth
+
+  postgres-authority:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        # PostgreSQL 16 with the pinned pgvector 0.8.1 extension files provisioned.
+        image: pgvector/pgvector:0.8.1-pg16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      PGPASSWORD: postgres
+      DATABASE_URL: postgresql://blro_app:blro_app_ci@127.0.0.1:5432/blro
+      BLRO_OWNER_DATABASE_URL: postgresql://blro_owner:blro_owner_ci@127.0.0.1:5432/blro
+      # The runner DERIVES the credential-bearing backup and scratch-admin URLs
+      # from the owner URL, so only the role password needs to be supplied here.
+      # Without them the backup/restore suites would self-skip and the profile
+      # would silently lose 17 tests.
+      BLRO_BACKUP_PASSWORD: blro_backup_ci
+      # The runner resolves its own PostgreSQL client bindir; CI names it
+      # explicitly so the profile never depends on an ambient PATH.
+      PG_BINDIR: /usr/lib/postgresql/16/bin
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.node-version-blro'
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Assert PostgreSQL 16 pgvector 0.8.1 is provisioned
+        run: |
+          test "$(psql -h 127.0.0.1 -U postgres -d postgres -Atc "SELECT default_version FROM pg_available_extensions WHERE name='vector'")" = "0.8.1"
+      - name: Create non-bypass owner and runtime roles
+        run: |
+          psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE ROLE blro_owner LOGIN PASSWORD 'blro_owner_ci' NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE;
+          CREATE ROLE blro_app LOGIN PASSWORD 'blro_app_ci' NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE;
+          -- RLS is FORCEd, so it filters the owner too and pg_dump as blro_owner aborts.
+          -- The backup reader is SELECT-only with BYPASSRLS and no write grant anywhere.
+          CREATE ROLE blro_backup LOGIN PASSWORD 'blro_backup_ci' BYPASSRLS NOSUPERUSER NOCREATEDB NOCREATEROLE;
+          CREATE DATABASE blro OWNER blro_owner;
+          SQL
+          psql -h 127.0.0.1 -U postgres -d blro -v ON_ERROR_STOP=1 <<'SQL'
+          -- pgvector is not a trusted extension. Cluster provisioning installs it;
+          -- the owner migration still declares and version-checks it idempotently.
+          CREATE EXTENSION IF NOT EXISTS vector;
+          GRANT CONNECT ON DATABASE blro TO blro_app;
+          GRANT USAGE ON SCHEMA public TO blro_app;
+          ALTER DEFAULT PRIVILEGES FOR ROLE blro_owner IN SCHEMA public
+            GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO blro_app;
+          GRANT CONNECT ON DATABASE blro TO blro_backup;
+          GRANT USAGE ON SCHEMA public TO blro_backup;
+          GRANT SELECT ON ALL TABLES IN SCHEMA public TO blro_backup;
+          ALTER DEFAULT PRIVILEGES FOR ROLE blro_owner IN SCHEMA public
+            GRANT SELECT ON TABLES TO blro_backup;
+          SQL
+      - name: Provision the PostgreSQL client binaries the runner requires
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-16
+          test -x "$PG_BINDIR/psql" && test -x "$PG_BINDIR/pg_dump" && test -x "$PG_BINDIR/pg_restore"
+      - name: Prove the backup reader cannot write and the runtime role has no BYPASSRLS
+        run: |
+          psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 -Atc \
+            "SELECT rolname||':'||rolsuper||':'||rolbypassrls FROM pg_roles
+             WHERE rolname IN ('blro_app','blro_owner','blro_backup') ORDER BY rolname"
+      - name: Mandatory PostgreSQL authority profile
+        run: pnpm run test:postgres:mandatory
+
+  # JM 엔드포인트 레인. `needs: verify`가 "BLRO 먼저, JM 나중" 순서를 CI에서
+  # 강제한다. JM이 앞서 통과하는 배치는 존재할 수 없다.
+  verify-jm-endpoint:
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm run db:generate
+
+      - name: Lint
+        run: pnpm run lint
+
+      - name: Test
+        run: pnpm test
+
+      # 브라우저 실행파일이 없는 러너에서도 계약 협상 자체는 증명된다.
+      # jm:endpoint:doctor는 호스트 환경 프로브이므로 이 레인의 게이트가 아니다.
+      - name: Build
+        run: pnpm run build

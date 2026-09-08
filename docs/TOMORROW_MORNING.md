@@ -34,7 +34,7 @@ pnpm run dev:mcp
 클라이언트 없이 정상 동작만 확인하려면:
 
 ```bash
-pnpm run smoke:mcp     # 확인된 결과: smoke-mcp-tools: ok (108 tools)
+pnpm run smoke:mcp     # 확인된 결과: smoke-mcp-tools: ok (118 tools)
 ```
 
 ### 문서 만들기 (제일 많이 쓰실 기능)
@@ -181,7 +181,7 @@ ss -ltn | grep 3400 || echo "포트 3400 정리됨"
 | Phase 4 — 원격 JM↔BLRO 통신, 등록(enrollment), 인증서 발급/폐기 | 미착수 | **원격 BLRO 서버가 존재하지 않습니다.** 인증서를 발급할 CA도, 통신할 상대 서버도 없습니다. 코드만 쓰면 "짰지만 한 번도 검증 못 한 보안 코드"가 됩니다 |
 | Phase 5 — 프로젝트별 운영 전환(cutover) | 미착수 | 전환할 대상(운영 BLRO)이 없습니다 |
 | Phase 6 — 알림, 분기별 복구 훈련 | 미착수 | 감시할 배포 환경이 없습니다 |
-| 감사체인·레지스트리·실행이력·증적·RAG의 Postgres 이전 | 미착수 | 실데이터가 들어있고 108개 도구 전부에 닿습니다. 반쯤 옮긴 상태가 제일 위험합니다 |
+| 감사체인·레지스트리·실행이력·증적·RAG의 Postgres 이전 | 미착수 | 실데이터가 들어있고 118개 도구 전부에 닿습니다. 반쯤 옮긴 상태가 제일 위험합니다 |
 | 문서 스키마 검증기(officecli) | 미설치 | 위 3번 참고. 진짜 도구의 출처를 모릅니다 |
 | 복제본 2대에서의 nonce 동작 | 미검증 | 개발용 단일 노드에서만 확인했습니다 |
 
@@ -240,7 +240,7 @@ pnpm test                          # 확인된 결과: 1131 passed / 23 skipped
 pnpm run check:browser-boundary    # BLRO_READY_BROWSER_BOUNDARY_PASS
 pnpm run check:data-scope-boundary # BLRO_DATA_SCOPE_BOUNDARY_PASS
 pnpm run check:hygiene             # check-source-hygiene: ok
-pnpm run smoke:mcp                 # smoke-mcp-tools: ok (108 tools)
+pnpm run smoke:mcp                 # smoke-mcp-tools: ok (118 tools)
 ```
 
 건너뛴 23개 테스트는 **정상**입니다. 검증기(officecli)나 데이터베이스가 없어서 조용히 통과시키는 대신 정직하게 건너뛴 것입니다.

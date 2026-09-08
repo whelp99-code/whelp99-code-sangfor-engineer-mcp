@@ -3,11 +3,14 @@
   "type": "module",
   "main": "src/index.ts",
   "dependencies": {
-    "@sangfor/browser-contracts": "workspace:*",
     "@sangfor/approval": "workspace:*",
+    "@sangfor/browser-contracts": "workspace:*",
+    "@sangfor/competency": "workspace:*",
     "@sangfor/learning-strategy": "workspace:*",
     "@sangfor/office": "workspace:*",
     "@sangfor/operator": "workspace:*",
-    "@sangfor/shared": "workspace:*"
+    "@sangfor/shared": "workspace:*",
+    "tldts": "7.4.11",
+    "zod": "^3.25.76"
   }
 }

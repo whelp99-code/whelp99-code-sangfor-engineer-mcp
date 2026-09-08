@@ -216,8 +216,16 @@ export type BrowserExecutionRequest = z.infer<typeof browserExecutionRequestSche
 export type BrowserExecutionResult = z.infer<typeof browserExecutionResultSchema>;
 export type BrowserOperationStatus = z.infer<typeof browserOperationStatusSchema>;
 
+export interface BrowserExecutionContext {
+  readonly signal: AbortSignal;
+  readonly deadline: string;
+}
+
 export interface BrowserExecutionPort {
-  execute(request: BrowserExecutionRequest): Promise<BrowserExecutionResult>;
+  execute(
+    request: BrowserExecutionRequest,
+    context?: BrowserExecutionContext,
+  ): Promise<BrowserExecutionResult>;
 }
 
 export function isAuthoritativePass(result: BrowserExecutionResult): boolean {

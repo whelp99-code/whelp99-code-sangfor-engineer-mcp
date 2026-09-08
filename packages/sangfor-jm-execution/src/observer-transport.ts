@@ -1,16 +1,14 @@
+import { isJsonRecord } from '../../shared/src/runtime-json-inspection.js';
 import type {
   CdpBrowserSnapshot,
   CdpPageTarget,
   ObserverTransport,
   StructuralCapture,
 } from '../../sangfor-observer/src/index.js';
+import { classifyCdpFrame, type CdpEventFrame, type CdpFrame } from './cdp-frame.js';
 
-interface CdpMessage {
-  id?: number;
-  method?: string;
-  params?: Record<string, unknown>;
-  result?: unknown;
-  error?: { message?: string };
+function assertNever(value: never): never {
+  throw new TypeError(`Unhandled CDP delivery: ${JSON.stringify(value)}`);
 }
 
 class CdpSocket {
@@ -19,24 +17,54 @@ class CdpSocket {
     resolve: (value: unknown) => void;
     reject: (error: Error) => void;
   }>();
-  private readonly listeners = new Set<(message: CdpMessage) => void>();
+  private readonly listeners = new Set<(frame: CdpEventFrame) => void>();
 
   private constructor(private readonly socket: WebSocket) {
     socket.addEventListener('message', (event) => {
-      const message = JSON.parse(String(event.data)) as CdpMessage;
-      if (message.id !== undefined) {
-        const pending = this.pending.get(message.id);
-        if (!pending) return;
-        this.pending.delete(message.id);
-        if (message.error) {
-          pending.reject(new Error(message.error.message ?? 'CDP command failed.'));
-        } else {
-          pending.resolve(message.result);
-        }
+      const delivery = classifyCdpFrame(String(event.data));
+      switch (delivery.kind) {
+        case 'indeterminate':
+          this.rejectAllPending(delivery.error);
+          return;
+        case 'frame':
+          this.deliver(delivery.frame);
+          return;
+        default:
+          assertNever(delivery);
+      }
+    });
+  }
+
+  private rejectAllPending(error: Error): void {
+    for (const pending of this.pending.values()) pending.reject(error);
+    this.pending.clear();
+  }
+
+  private deliver(frame: CdpFrame): void {
+    switch (frame.kind) {
+      case 'result': {
+        this.takePending(frame.id)?.resolve(frame.value);
         return;
       }
-      for (const listener of this.listeners) listener(message);
-    });
+      case 'error': {
+        this.takePending(frame.id)?.reject(
+          new Error(`CDP_COMMAND_FAILED: ${frame.message} (code ${String(frame.code)})`),
+        );
+        return;
+      }
+      case 'event': {
+        for (const listener of this.listeners) listener(frame);
+        return;
+      }
+      default:
+        assertNever(frame);
+    }
+  }
+
+  private takePending(id: number): { resolve: (value: unknown) => void; reject: (error: Error) => void } | undefined {
+    const pending = this.pending.get(id);
+    this.pending.delete(id);
+    return pending;
   }
 
   static async connect(url: string): Promise<CdpSocket> {
@@ -66,7 +94,7 @@ class CdpSocket {
     });
   }
 
-  onEvent(listener: (message: CdpMessage) => void): () => void {
+  onEvent(listener: (frame: CdpEventFrame) => void): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
   }
@@ -152,21 +180,24 @@ export class HttpCdpObserverTransport implements ObserverTransport {
     const socket = await CdpSocket.connect(target.webSocketDebuggerUrl);
     const network: StructuralCapture['network'] = [];
     let storageMutationCount = 0;
-    const off = socket.onEvent((message) => {
-      if (message.method?.startsWith('DOMStorage.domStorage')) storageMutationCount += 1;
-      if (message.method !== 'Network.responseReceived') return;
-      const params = message.params ?? {};
-      const response = params.response as Record<string, unknown> | undefined;
-      if (!response || typeof response.url !== 'string') return;
+    const off = socket.onEvent((frame) => {
+      if (frame.method.startsWith('DOMStorage.domStorage')) storageMutationCount += 1;
+      if (frame.method !== 'Network.responseReceived') return;
+      const response = frame.params['response'];
+      if (!isJsonRecord(response)) return;
+      const responseUrl = response['url'];
+      const status = response['status'];
+      const resourceType = frame.params['type'];
+      if (typeof responseUrl !== 'string') return;
       try {
-        const url = new URL(response.url);
+        const url = new URL(responseUrl);
         if (!['http:', 'https:'].includes(url.protocol)) return;
         network.push({
           method: 'RESPONSE',
           origin: url.origin,
           path: url.pathname,
-          resourceType: typeof params.type === 'string' ? params.type : 'Other',
-          ...(typeof response.status === 'number' ? { status: response.status } : {}),
+          resourceType: typeof resourceType === 'string' ? resourceType : 'Other',
+          ...(typeof status === 'number' ? { status } : {}),
         });
       } catch {
         return;

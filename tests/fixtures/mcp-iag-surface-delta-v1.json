@@ -1,0 +1,86 @@
+{
+  "schemaVersion": "mcp-iag-surface-delta.v1",
+  "baselineCommit": "eb60873ad96e69ebecfa995ac96c61c888ee6cbd",
+  "baselineToolCount": 115,
+  "finalToolCount": 118,
+  "approvedAdditions": [
+    {
+      "name": "sangfor_iag_exception_apply",
+      "category": "admin",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "actionPath": {
+            "type": "string"
+          },
+          "approvalEnvelopePath": {
+            "type": "string"
+          },
+          "configPath": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "actionPath",
+          "configPath",
+          "approvalEnvelopePath"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true
+      }
+    },
+    {
+      "name": "sangfor_iag_exception_dry_run",
+      "category": "advisory",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "actionPath": {
+            "type": "string"
+          },
+          "configPath": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "actionPath",
+          "configPath"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      }
+    },
+    {
+      "name": "sangfor_iag_exception_status",
+      "category": "advisory",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "configPath": {
+            "type": "string"
+          },
+          "runId": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "configPath",
+          "runId"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      }
+    }
+  ],
+  "sha256": "a25ad980eb1def2774bcd8c38d693ac9d9c930cb52c235d556717fa51cc5bcfa"
+}

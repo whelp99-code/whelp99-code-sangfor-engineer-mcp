@@ -23,7 +23,7 @@
 | # | 항목 | 산출물 |
 |---|------|--------|
 | 1 | 실행이력 저장소 | 신규 패키지 `packages/sangfor-runs` (`@sangfor/runs`) |
-| 2 | 승인 통과 경로 | `apps/http-bridge/src/tool-guard.ts` + `server.ts` 확장 |
+| 2 | 승인 통과 경로 | `packages/sangfor-operator/src/tool-authorization.ts` + `server.ts` 확장 |
 | 3 | 컨트롤타워 앱 | 신규 앱 `apps/control-tower` (포트 3700) |
 | 4 | 벤더/장비 레지스트리 | `data/registry/vendors.json` + `data/registry/devices.json` + 로더 모듈 |
 | 5 | 일괄 자문 sweep | 수동 1클릭 (장비 × 벤더 advisorTools) |
@@ -75,7 +75,7 @@
   → **파싱은 `structuredContent`를 우선 사용**, 없으면 `content[0].text`를 JSON.parse.
 - MCP child: `spawn('pnpm', ['exec','tsx', 'apps/mcp-server/src/index.ts'])`, JSON-RPC 메서드 `initialize` / `tools/list` / `tools/call`, 요청당 30초 타임아웃.
 
-### 4.2 tool-guard 현행 로직 (`apps/http-bridge/src/tool-guard.ts`)
+### 4.2 tool-guard 현행 로직 (`packages/sangfor-operator/src/tool-authorization.ts`)
 
 ```ts
 export function authorizeToolCall(params: {
@@ -243,7 +243,7 @@ export class RunStore {
 
 ### 5.2 http-bridge 확장 — 승인 통과 경로
 
-**변경 파일:** `apps/http-bridge/src/tool-guard.ts`, `apps/http-bridge/src/server.ts`
+**변경 파일:** `packages/sangfor-operator/src/tool-authorization.ts`, `apps/http-bridge/src/server.ts`
 
 **tool-guard 확장 (시그니처):**
 

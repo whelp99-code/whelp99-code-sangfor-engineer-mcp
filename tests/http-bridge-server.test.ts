@@ -7,11 +7,12 @@ import http from 'node:http';
 process.env.BRIDGE_NO_SERVE = '1';
 
 type JsonRpcResponse = {
-  jsonrpc: string;
-  id?: string | number | null;
-  result?: unknown;
-  error?: { code: number; message: string };
-};
+  readonly jsonrpc: string;
+  readonly id?: string | number | null;
+} & (
+  | { readonly result: unknown; readonly error?: never }
+  | { readonly result?: never; readonly error: { readonly code: number; readonly message: string } }
+);
 type McpRequestFn = (method: string, params?: unknown) => Promise<JsonRpcResponse>;
 let createBridgeServer: (deps?: {
   mcpRequest?: McpRequestFn;
@@ -168,6 +169,29 @@ describe('createBridgeServer — C2: POST /mcp', () => {
     const base = await listen(server);
     const res = await fetch(`${base}/mcp`, { method: 'DELETE' });
     expect(res.status).toBe(405);
+  });
+
+  it.each([
+    ['a parseable non-object body', ['customer-token-must-not-echo']],
+    ['a request whose method has the wrong type', { jsonrpc: '2.0', id: 9, method: 7 }],
+  ])('%s is denied before any MCP call', async (_case, requestBody) => {
+    // Given
+    let calls = 0;
+    const mcpRequest: McpRequestFn = async () => {
+      calls += 1;
+      return { jsonrpc: '2.0', id: 1, result: {} };
+    };
+    const server = createBridgeServer({ mcpRequest });
+    servers.push(server);
+    const base = await listen(server);
+
+    // When
+    const response = await postJson(base, '/mcp', requestBody);
+
+    // Then
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: 'invalid JSON request body' });
+    expect(calls).toBe(0);
   });
 
   it('an unapproved destructive tools/call is refused with the same 403 authorizeToolCall produces on /tools/call', async () => {

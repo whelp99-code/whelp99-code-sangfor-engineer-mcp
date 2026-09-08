@@ -31,3 +31,26 @@ export {
   defaultNonceStorePath,
 } from './nonce-store.js';
 export type { NonceConsumeResult } from './nonce-store.js';
+export {
+  authorizeToolCall,
+  BRIDGE_APPROVAL_ACTION_TYPE,
+  findToolAnnotations,
+  isToolAllowedByAnnotations,
+} from './tool-authorization.js';
+export type { ToolAuthDecision } from './tool-authorization.js';
+export { authorizeHciMutation } from './hci-authorization.js';
+export type { HciMutationAuthorizationInput } from './hci-authorization.js';
+export { authorizeIagEvidenceBootstrap } from './iag-evidence-bootstrap.js';
+export type { IagBootstrapAuthorizationInput } from './iag-evidence-bootstrap.js';
+export {
+  consumeIagMutationNonce,
+  signIagMutationApproval,
+  verifyIagMutationAuthorization,
+} from './iag-mutation-authorization.js';
+export type {
+  IagAuthorizationClass,
+  IagAuthorizationResult,
+  IagAuthorizationScope,
+  IagMutationApproval,
+  IagMutationApprovalFields,
+} from './iag-mutation-authorization.js';

@@ -126,13 +126,21 @@ describe('evaluateJmEndpointPreflight', () => {
     expect(report.ready).toBe(true);
   });
 
-  it('refuses an unsupported Node runtime', () => {
+  it.each([18, 20, 21])('refuses node %i, below the shipped floor', (nodeMajor) => {
     const report = evaluateJmEndpointPreflight({
       env: baseEnv(),
-      probes: { ...okProbes, nodeMajor: () => 18 },
+      probes: { ...okProbes, nodeMajor: () => nodeMajor },
     });
     expect(report.reasons).toContain('NODE_VERSION_UNSUPPORTED');
     expect(report.ready).toBe(false);
+  });
+
+  it.each([22, 24])('accepts the supported node major %i', (nodeMajor) => {
+    const report = evaluateJmEndpointPreflight({
+      env: baseEnv(),
+      probes: { ...okProbes, nodeMajor: () => nodeMajor },
+    });
+    expect(report.reasons).not.toContain('NODE_VERSION_UNSUPPORTED');
   });
 
   it('never masks a secret value into the report', () => {

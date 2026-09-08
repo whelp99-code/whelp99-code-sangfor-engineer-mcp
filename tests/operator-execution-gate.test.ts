@@ -30,7 +30,8 @@ function validApproval(action: ApprovalActionRef): LiveExecutionApproval {
     rollbackPlanId: 'RBK-9',
     nonce: 'n-1',
     expiresAt: new Date(Date.now() + 60_000).toISOString(),
-  };
+
+  authorityEpoch: 0,};
   return { ...base, approvalToken: signApprovalToken(SECRET, action, base) };
 }
 

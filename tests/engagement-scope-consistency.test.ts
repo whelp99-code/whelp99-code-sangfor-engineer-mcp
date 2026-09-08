@@ -1,3 +1,4 @@
+import { testFileLocalWriteAuthority, testLocalWriteAuthority } from './helpers/local-write-authority.js';
 import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -48,7 +49,7 @@ afterEach(() => {
 });
 
 describe('engagement scope consistency', () => {
-  it('feedback: package store writes inside the partition the server reads', () => {
+  it('feedback: package store writes inside the partition the server reads', async () => {
     process.env.SANGFOR_FEEDBACK_ROOT = join(root, 'feedback');
     process.env.SANGFOR_ENGAGEMENT_ID = ENGAGEMENT;
 
@@ -56,13 +57,13 @@ describe('engagement scope consistency', () => {
     const serverFacing = resolveEngagementScopedData('data/feedback', 'SANGFOR_FEEDBACK_ROOT');
     expect(serverFacing).toContain(ENGAGEMENT);
 
-    const written = submitFeedback({
+    const written = await submitFeedback({
       product: 'HCI',
       feedbackType: 'accuracy',
       severity: 'low',
       feedbackText: 'scope consistency probe',
       sourceRole: 'engineer',
-    });
+    }, testLocalWriteAuthority('feedback_lessons'));
     expect(written.id).toBeTruthy();
 
     expect(
@@ -87,7 +88,7 @@ describe('engagement scope consistency', () => {
     process.env.SANGFOR_EVIDENCE_ROOT = join(root, 'evidence');
 
     expect(
-      new AuditLedger().pathFor('run-1'),
+      new AuditLedger({ authority: testLocalWriteAuthority('audit') }).pathFor('run-1'),
       'audit ledger wrote outside the engagement partition',
     ).toContain(ENGAGEMENT);
   });

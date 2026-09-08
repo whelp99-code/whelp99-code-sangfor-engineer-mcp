@@ -1,3 +1,4 @@
+import { testFileLocalWriteAuthority, testLocalWriteAuthority } from './helpers/local-write-authority.js';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { AddressInfo } from 'node:net';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
@@ -65,7 +66,8 @@ const approvalFor = (type: 'hci.create-volume' | 'hci.delete-volume', target: st
   const b = {
     approvedBy: 'e2e', changeTicketId: 'CHG-e2e', rollbackPlanId: 'RB-e2e',
     nonce: `e2e-${nonceCounter}`, expiresAt: new Date(Date.now() + 5 * 60_000).toISOString(),
-  };
+
+  authorityEpoch: 0,};
   return { ...b, approvalToken: signApprovalToken(SECRET, { type, target }, b) };
 };
 
@@ -102,7 +104,7 @@ describe('M1 vertical slice — plan → apply → verify → restore, hands-off
     expect(inv.volumes.filter((v: any) => v.name === 'e2e-vol')).toHaveLength(1);
 
     // Exit (2)+(5): the documented 202-silent-noop must HALT, never PASS
-    const halt = await applyCreateVolume(mkClient(), { name: 'e2e-ghost', sizeGb: 9, clientToken: 'ct-e2e-ghost' }, new AuditLedger(), { ...fast, extraCreateHeaders: { 'x-mock-scenario': 'quota-silent-noop' } });
+    const halt = await applyCreateVolume(mkClient(), { name: 'e2e-ghost', sizeGb: 9, clientToken: 'ct-e2e-ghost' }, new AuditLedger({ authority: testLocalWriteAuthority('audit') }), { ...fast, extraCreateHeaders: { 'x-mock-scenario': 'quota-silent-noop' } });
     expect(halt.finalState).toBe('FAILED_HALT');
     expect(halt.readBack?.verdict).toBe('FAIL');
 
@@ -119,7 +121,7 @@ describe('M1 vertical slice — plan → apply → verify → restore, hands-off
     expect(gone).toBe(true);
 
     // Exit (4): the apply run is on a keyed, tamper-evident ledger, and no secret leaked
-    const ledger = new AuditLedger({ secret: LEDGER_SECRET });
+    const ledger = new AuditLedger({ secret: LEDGER_SECRET , authority: testLocalWriteAuthority('audit')});
     expect(ledger.verify(applied.runId)).toEqual({ ok: true, keyed: true });
     expect(readFileSync(applied.ledger as string, 'utf8')).not.toContain('mock-password');
   });

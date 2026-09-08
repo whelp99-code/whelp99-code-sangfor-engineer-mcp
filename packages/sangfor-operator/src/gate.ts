@@ -40,6 +40,7 @@ export async function consumeRealExecutionApprovalNonce(
   const consumed = await consumeApprovalNonceAsync({
     nonce: approval.nonce,
     expiresAt: approval.expiresAt,
+    authorityEpoch: approval.authorityEpoch,
   });
   if (!consumed.ok) throw new Error(`Live execution approval rejected: ${consumed.reason}.`);
 }

@@ -12,7 +12,7 @@
  *   a deliberate, human, per-window action documented in the runbook.
  */
 
-const MINIMUM_NODE_MAJOR = 20;
+const MINIMUM_NODE_MAJOR = 22;
 
 function step(input) {
   return {

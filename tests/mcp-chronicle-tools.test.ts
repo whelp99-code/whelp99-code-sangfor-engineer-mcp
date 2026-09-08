@@ -1,3 +1,4 @@
+import { testLocalWriteAuthority } from './helpers/local-write-authority.js';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -16,8 +17,8 @@ beforeAll(async () => {
   getToolHandler = mcp.getToolHandler as typeof getToolHandler;
   listTools = mcp.listTools as typeof listTools;
   dir = mkdtempSync(join(tmpdir(), 'mcp-chronicle-'));
-  recordSnapshot({ deviceId: 'fw-01', observed: { 'ntp.enabled': true }, capturedAt: '2026-08-18T10:00:00.000Z', dir });
-  recordSnapshot({ deviceId: 'fw-01', observed: { 'ntp.enabled': false }, capturedAt: '2026-08-18T11:00:00.000Z', dir });
+  await recordSnapshot({ deviceId: 'fw-01', observed: { 'ntp.enabled': true }, capturedAt: '2026-08-18T10:00:00.000Z', dir , authority: testLocalWriteAuthority('config_chronicle_state', dir)});
+  await recordSnapshot({ deviceId: 'fw-01', observed: { 'ntp.enabled': false }, capturedAt: '2026-08-18T11:00:00.000Z', dir , authority: testLocalWriteAuthority('config_chronicle_state', dir)});
 });
 
 afterAll(() => {

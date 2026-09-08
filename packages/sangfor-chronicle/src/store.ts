@@ -11,8 +11,9 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
-import { writeFileAtomicSync, withDirLock } from '@sangfor/shared';
+import { expectedLocalWriteScope, requireLocalWriteAuthority, writeFileAtomicSync, withDirLock, type LocalWriteAuthority } from '@sangfor/shared';
 import { canonicalize, parseCanonical, semanticDiff, type SemanticChange } from './diff.js';
+import { parseBoundaryChronicleChainV1 } from './runtime-boundaries.js';
 
 export interface ChronicleSnapshot {
   hash: string;
@@ -41,6 +42,7 @@ export interface RecordSnapshotInput {
   ephemeralKeys?: readonly string[];
   capturedAt: string;
   dir: string;
+  authority: LocalWriteAuthority;
 }
 
 export interface RecordSnapshotResult {
@@ -68,7 +70,7 @@ function chainPath(deviceId: string, dir: string): string {
 function readChain(deviceId: string, dir: string): ChronicleChain {
   const path = chainPath(deviceId, dir);
   if (!existsSync(path)) return { deviceId, snapshots: [] };
-  return JSON.parse(readFileSync(path, 'utf8')) as ChronicleChain;
+  return parseBoundaryChronicleChainV1(readFileSync(path, 'utf8'));
 }
 
 /**
@@ -76,14 +78,17 @@ function readChain(deviceId: string, dir: string): ChronicleChain {
  * differs from the current head. Read-modify-write runs under a per-device
  * directory lock and the chain file is replaced atomically.
  */
-export function recordSnapshot(input: RecordSnapshotInput): RecordSnapshotResult {
+export async function recordSnapshot(input: RecordSnapshotInput): Promise<RecordSnapshotResult> {
   const { deviceId, observed, capturedAt, dir } = input;
   assertDeviceId(deviceId);
   const ephemeralKeys = [...new Set(input.ephemeralKeys ?? [])].sort();
   const canonical = canonicalize(observed, ephemeralKeys);
   const hash = createHash('sha256').update(canonical).digest('hex');
 
-  return withDirLock(join(dir, `${deviceId}.lock`), () => {
+  const authority = requireLocalWriteAuthority(input.authority, expectedLocalWriteScope(
+    input.authority, input.authority?.projectId ?? '', 'config_chronicle_state', dir,
+  ));
+  return authority.fence.write(authority, { operation: 'chronicle.record-snapshot', targetPaths: [chainPath(deviceId, dir)] }, () => withDirLock(join(dir, `${deviceId}.lock`), () => {
     const chain = readChain(deviceId, dir);
     const head = chain.snapshots.at(-1);
     if (head && head.hash === hash) {
@@ -107,7 +112,7 @@ export function recordSnapshot(input: RecordSnapshotInput): RecordSnapshotResult
     };
     writeFileAtomicSync(chainPath(deviceId, dir), `${JSON.stringify(next, null, 2)}\n`);
     return { created: true, hash, parentHash: snapshot.parentHash, snapshot };
-  });
+  }));
 }
 
 /** The device's newest snapshot, or undefined when it has no chain yet. */

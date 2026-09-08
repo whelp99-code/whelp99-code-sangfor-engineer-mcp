@@ -1,3 +1,4 @@
+import { testFileLocalWriteAuthority, testLocalWriteAuthority } from './helpers/local-write-authority.js';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -52,17 +53,17 @@ describe('buildChangeRunReport', () => {
     expect(markdown).toContain('Found: no');
   });
 
-  it('builds overview, step timeline, verification and chain integrity from a keyed ledger', () => {
+  it('builds overview, step timeline, verification and chain integrity from a keyed ledger', async () => {
     // Set the SAME env var buildChangeRunReport's internal verify() will read,
     // rather than a per-instance secret that only the append side would see.
     process.env.SANGFOR_CHANGE_LEDGER_SECRET = 'test-secret';
-    const ledger = new AuditLedger({ dir: join(root, 'change-runs') });
+    const ledger = new AuditLedger({ dir: join(root, 'change-runs') , authority: testLocalWriteAuthority('audit', join(root, 'change-runs'))});
     const runId = 'hci_apply_test_run';
-    ledger.append(runId, 'state', { at: '2026-08-01T00:00:00.000Z', state: 'PENDING', detail: "create-volume 'e2e-vol' (5GB)" });
-    ledger.append(runId, 'state', { at: '2026-08-01T00:00:01.000Z', state: 'APPLYING', detail: 'POST /volumes' });
-    ledger.append(runId, 'request', { op: 'create-volume', name: 'e2e-vol', sizeGb: 5, clientToken: '***' });
-    ledger.append(runId, 'response', { status: 202, volume: { id: 'vol-1', name: 'e2e-vol' } });
-    ledger.append(runId, 'verdict', { verdict: 'PASS', volumeId: 'vol-1' });
+    await ledger.append(runId, 'state', { at: '2026-08-01T00:00:00.000Z', state: 'PENDING', detail: "create-volume 'e2e-vol' (5GB)" });
+    await ledger.append(runId, 'state', { at: '2026-08-01T00:00:01.000Z', state: 'APPLYING', detail: 'POST /volumes' });
+    await ledger.append(runId, 'request', { op: 'create-volume', name: 'e2e-vol', sizeGb: 5, clientToken: '***' });
+    await ledger.append(runId, 'response', { status: 202, volume: { id: 'vol-1', name: 'e2e-vol' } });
+    await ledger.append(runId, 'verdict', { verdict: 'PASS', volumeId: 'vol-1' });
 
     const { markdown, json } = buildChangeRunReport({ runId, ledgerRoot: root });
 
@@ -84,19 +85,19 @@ describe('buildChangeRunReport', () => {
     expect(markdown).toContain('keyed: true');
   });
 
-  it('reports an unkeyed chain honestly', () => {
-    const ledger = new AuditLedger({ dir: join(root, 'change-runs') }); // no secret
-    ledger.append('run_unkeyed', 'state', { state: 'PENDING' });
+  it('reports an unkeyed chain honestly', async () => {
+    const ledger = new AuditLedger({ dir: join(root, 'change-runs') , authority: testLocalWriteAuthority('audit', join(root, 'change-runs'))}); // no secret
+    await ledger.append('run_unkeyed', 'state', { state: 'PENDING' });
     const { json, markdown } = buildChangeRunReport({ runId: 'run_unkeyed', ledgerRoot: root });
     expect(json.chain.keyed).toBe(false);
     expect(markdown).toContain('unkeyed chain');
   });
 
-  it('detects a broken chain (tampered payload)', () => {
-    const ledger = new AuditLedger({ dir: join(root, 'change-runs') }); // unkeyed — matches the isolated env above
+  it('detects a broken chain (tampered payload)', async () => {
+    const ledger = new AuditLedger({ dir: join(root, 'change-runs') , authority: testLocalWriteAuthority('audit', join(root, 'change-runs'))}); // unkeyed — matches the isolated env above
     const runId = 'run_tampered';
-    ledger.append(runId, 'state', { a: 1 });
-    ledger.append(runId, 'state', { b: 2 });
+    await ledger.append(runId, 'state', { a: 1 });
+    await ledger.append(runId, 'state', { b: 2 });
     const path = ledger.pathFor(runId);
     const lines = readFileSync(path, 'utf8').trim().split('\n');
     const doctored = JSON.parse(lines[0]);
@@ -140,10 +141,10 @@ describe('buildChangeRunReport', () => {
     expect(rendered).toContain('***');
   });
 
-  it('lists screenshot/evidence files whose name references the runId, ignoring unrelated files', () => {
-    const ledger = new AuditLedger({ dir: join(root, 'change-runs') });
+  it('lists screenshot/evidence files whose name references the runId, ignoring unrelated files', async () => {
+    const ledger = new AuditLedger({ dir: join(root, 'change-runs') , authority: testLocalWriteAuthority('audit', join(root, 'change-runs'))});
     const runId = 'run_with_shots';
-    ledger.append(runId, 'state', { state: 'PENDING' });
+    await ledger.append(runId, 'state', { state: 'PENDING' });
     const sessionDir = join(root, 'session_abc');
     mkdirSync(sessionDir, { recursive: true });
     const shotPath = join(sessionDir, `before-${runId}-1.png`);
@@ -155,9 +156,9 @@ describe('buildChangeRunReport', () => {
     expect(json.screenshots).not.toContain(join(sessionDir, 'unrelated.png'));
   });
 
-  it('never writes to disk (pure function)', () => {
-    const ledger = new AuditLedger({ dir: join(root, 'change-runs') });
-    ledger.append('run_pure', 'state', { state: 'PENDING' });
+  it('never writes to disk (pure function)', async () => {
+    const ledger = new AuditLedger({ dir: join(root, 'change-runs') , authority: testLocalWriteAuthority('audit', join(root, 'change-runs'))});
+    await ledger.append('run_pure', 'state', { state: 'PENDING' });
     const before = readdirSync(root, { recursive: true } as any);
     buildChangeRunReport({ runId: 'run_pure', ledgerRoot: root });
     const after = readdirSync(root, { recursive: true } as any);
@@ -174,10 +175,10 @@ describe('listChangeRunIds', () => {
     expect(listChangeRunIds(root)).toEqual([]);
   });
 
-  it('lists sorted ids from ledger files, excluding non-jsonl files', () => {
-    const ledger = new AuditLedger({ dir: join(root, 'change-runs'), secret: 's' });
-    ledger.append('run_b', 'state', { state: 'PENDING' });
-    ledger.append('run_a', 'state', { state: 'PENDING' });
+  it('lists sorted ids from ledger files, excluding non-jsonl files', async () => {
+    const ledger = new AuditLedger({ dir: join(root, 'change-runs'), secret: 's' , authority: testLocalWriteAuthority('audit', join(root, 'change-runs'))});
+    await ledger.append('run_b', 'state', { state: 'PENDING' });
+    await ledger.append('run_a', 'state', { state: 'PENDING' });
     writeFileSync(join(root, 'change-runs', 'run_b.jsonl.lock'), 'x');
     expect(listChangeRunIds(root)).toEqual(['run_a', 'run_b']);
   });

@@ -1,5 +1,7 @@
 import { createHash, createHmac } from 'node:crypto';
 import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { resolveProductionLocalWriteAuthority, resolveEngagementScopedData } from '../../shared/src/index.js';
 import { AuditLedger } from '../../sangfor-hci-client/src/index.js';
 import { sha256File } from './console-evidence-paths.js';
 import type {
@@ -69,7 +71,11 @@ export function verifyCaptureLedger(
   runId: string,
   deps: { ledger?: AuditLedger; secret?: string } = {},
 ): VerifyCaptureLedgerResult {
-  const ledger = deps.ledger ?? new AuditLedger();
+  const ledgerRoot = join(resolveEngagementScopedData('data/evidence'), 'change-runs');
+  const ledger = deps.ledger ?? new AuditLedger({ authority: resolveProductionLocalWriteAuthority({
+    tenantId: 'local-primary', projectId: process.env.SANGFOR_ENGAGEMENT_ID ?? 'local-primary', actorId: 'screenshot-verifier',
+    aggregate: 'audit', sourceRoot: ledgerRoot,
+  }) });
   const secret = deps.secret ?? process.env.SANGFOR_CHANGE_LEDGER_SECRET;
   const lines = readLedgerLines(ledger, runId);
   const chainOk = verifyChainFromLines(lines, secret);

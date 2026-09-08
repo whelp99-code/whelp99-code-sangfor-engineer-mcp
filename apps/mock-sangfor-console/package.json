@@ -1,1 +1,8 @@
-{"name":"mock-sangfor-console","type":"module","main":"src/server.ts"}
+{
+  "name": "mock-sangfor-console",
+  "type": "module",
+  "main": "src/server.ts",
+  "dependencies": {
+    "zod": "^3.25.76"
+  }
+}

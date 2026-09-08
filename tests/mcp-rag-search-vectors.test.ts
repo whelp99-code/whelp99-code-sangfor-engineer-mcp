@@ -82,8 +82,9 @@ describe('sangfor_rag_search — vector omission by default (C3)', () => {
   it('advertises include_vectors in the tool inputSchema', async () => {
     const mcp = await import('../apps/mcp-server/src/index.js');
     const tool = mcp.listTools().find((t) => t.name === 'sangfor_rag_search')!;
-    expect(tool.inputSchema.properties.include_vectors).toBeDefined();
-    expect(tool.inputSchema.properties.include_vectors.type).toBe('boolean');
+    expect(tool.inputSchema).toMatchObject({
+      properties: { include_vectors: { type: 'boolean' } },
+    });
   });
 
   it('rejects invalid trust-level filters instead of recording a false search gap', async () => {

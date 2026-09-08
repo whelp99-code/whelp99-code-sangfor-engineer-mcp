@@ -1,3 +1,4 @@
+import { testFileLocalWriteAuthority, testLocalWriteAuthority } from './helpers/local-write-authority.js';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -16,9 +17,9 @@ beforeAll(async () => {
   getToolHandler = mcp.getToolHandler as typeof getToolHandler;
   listTools = mcp.listTools as typeof listTools;
   chronicleDir = mkdtempSync(join(tmpdir(), 'mcp-obs-'));
-  recordSnapshot({ deviceId: 'hci-01', observed: { firmware: '6.9.0', mtu: 9000 }, capturedAt: '2026-08-10T00:00:00.000Z', dir: chronicleDir });
-  recordSnapshot({ deviceId: 'hci-01', observed: { firmware: '6.11.3', mtu: 9000 }, capturedAt: '2026-08-15T00:00:00.000Z', dir: chronicleDir });
-  recordSnapshot({ deviceId: 'hci-02', observed: { firmware: '6.8.0', mtu: 1500 }, capturedAt: '2026-08-14T00:00:00.000Z', dir: chronicleDir });
+  await recordSnapshot({ deviceId: 'hci-01', observed: { firmware: '6.9.0', mtu: 9000 }, capturedAt: '2026-08-10T00:00:00.000Z', dir: chronicleDir , authority: testLocalWriteAuthority('config_chronicle_state', chronicleDir)});
+  await recordSnapshot({ deviceId: 'hci-01', observed: { firmware: '6.11.3', mtu: 9000 }, capturedAt: '2026-08-15T00:00:00.000Z', dir: chronicleDir , authority: testLocalWriteAuthority('config_chronicle_state', chronicleDir)});
+  await recordSnapshot({ deviceId: 'hci-02', observed: { firmware: '6.8.0', mtu: 1500 }, capturedAt: '2026-08-14T00:00:00.000Z', dir: chronicleDir , authority: testLocalWriteAuthority('config_chronicle_state', chronicleDir)});
 });
 
 afterAll(() => {

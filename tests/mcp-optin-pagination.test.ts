@@ -1,4 +1,7 @@
-import { beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 // Importing the MCP server module must NOT start the stdio readline loop.
 process.env.MCP_NO_SERVE = '1';
@@ -43,6 +46,55 @@ describe('sangfor_list_spec_coverage — opt-in cursor pagination (C4)', () => {
 });
 
 describe('sangfor_field_engineer_coverage — opt-in cursor pagination over atoms (C4)', () => {
+  // Pagination is the behavior under test, so the catalog must be one that
+  // actually validates: the committed catalog carries a known evidence defect
+  // and (correctly) refuses to produce a report at all, which would test the
+  // fail-closed path instead of the cursor contract.
+  const fixtureRoots: string[] = [];
+  let previousCatalogRoot: string | undefined;
+  let previousOutputRoot: string | undefined;
+
+  beforeAll(() => {
+    const catalogRoot = mkdtempSync(join(tmpdir(), 'mcp-paging-catalog-'));
+    const outputRoot = mkdtempSync(join(tmpdir(), 'mcp-paging-output-'));
+    fixtureRoots.push(catalogRoot, outputRoot);
+    writeFileSync(join(outputRoot, 'capture.md'), '# real capture\n');
+    // The policy ships beside the atoms, exactly as data/competency does, so the
+    // one field_verified claim in this fixture binds to a declared capability.
+    writeFileSync(join(catalogRoot, 'capability-maturity.json'), JSON.stringify({
+      version: 1,
+      entries: [{ product: 'EPP', capabilityId: 'cap.health', maturity: 'field_verified' }],
+    }));
+    writeFileSync(join(catalogRoot, 'work-atoms.json'), JSON.stringify({
+      version: 1,
+      atoms: Array.from({ length: 20 }, (_unused, index) => ({
+        id: `atom_${String(index).padStart(2, '0')}`,
+        product: 'EPP',
+        phase: 'operate',
+        title: `atom ${index}`,
+        automatability: index % 5 === 0 ? 'human' : 'auto',
+        ...(index % 5 === 0 ? { humanReason: 'physical' } : {}),
+        coveredBy: index % 5 === 0 ? null : 'sangfor_evaluate_config',
+        maturity: index === 1 ? 'field_verified' : 'planned',
+        evidence: index === 1 ? 'capture.md' : null,
+        ...(index === 1 ? { capabilityRef: { product: 'EPP', capabilityId: 'cap.health' } } : {}),
+      })),
+    }));
+
+    previousCatalogRoot = process.env.SANGFOR_COMPETENCY_ROOT;
+    previousOutputRoot = process.env.SANGFOR_OUTPUT_ROOT;
+    process.env.SANGFOR_COMPETENCY_ROOT = catalogRoot;
+    process.env.SANGFOR_OUTPUT_ROOT = outputRoot;
+  });
+
+  afterAll(() => {
+    if (previousCatalogRoot === undefined) delete process.env.SANGFOR_COMPETENCY_ROOT;
+    else process.env.SANGFOR_COMPETENCY_ROOT = previousCatalogRoot;
+    if (previousOutputRoot === undefined) delete process.env.SANGFOR_OUTPUT_ROOT;
+    else process.env.SANGFOR_OUTPUT_ROOT = previousOutputRoot;
+    for (const root of fixtureRoots.splice(0)) rmSync(root, { recursive: true, force: true });
+  });
+
   it('with neither cursor nor limit, returns the full atoms array unchanged (backward-compat)', () => {
     const handler = getToolHandler('sangfor_field_engineer_coverage')!;
     const result: any = handler({});

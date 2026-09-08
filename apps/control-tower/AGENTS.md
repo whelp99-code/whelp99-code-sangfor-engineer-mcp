@@ -6,6 +6,7 @@
 
 ## Constraints
 - Entry: `src/server.ts` (thin router + shared-secret gate on `/api/*` via `checkAuth`, `assertBindSafety` fail-closed). All logic is in `createApi(opts)` in `src/api.ts`; `ApiError(status, message)` carries HTTP status.
+- BLRO enrollment routes live only in `src/authority-enrollment-routes.ts`: readiness first, mandatory configured bearer token, actual loopback peer socket, and the narrow `AuthorityRuntimePort.enrollments()` accessor. No Prisma, raw SQL, legacy API fallback, or non-loopback enrollment mutation belongs in the app.
 - Talks to `http-bridge` (`:3600`, `CONTROL_TOWER_BRIDGE_URL`) and `mock-console` (`:3400`) **over HTTP**, not by import (`src/bridge-client.ts`).
 - File-backed stores under `resolveRepoData`: `RunStore` → `data/runs/*.jsonl`; `Registry` → `data/registry/{vendors.json(seed),devices.json(gitignored)}`; `PlaybookStore` → `data/registry/playbooks.json`; `AgentTaskStore` → `data/registry/agent-tasks.json`; reports → `outputs/playbooks/<id>.md`.
 

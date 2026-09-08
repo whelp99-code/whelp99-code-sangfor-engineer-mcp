@@ -1,3 +1,4 @@
+import { testLocalWriteAuthority } from './helpers/local-write-authority.js';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
@@ -145,10 +146,10 @@ describe('@sangfor/scorecard — query over a real chronicle store', () => {
   beforeEach(() => { dir = mkdtempSync(join(tmpdir(), 'scorecard-query-')); });
   afterEach(() => { rmSync(dir, { recursive: true, force: true }); });
 
-  it('answers "HCI below 6.11 whose MTU is not 9000" over chronicle chains at a point in time', () => {
-    recordSnapshot({ deviceId: 'hci-1', observed: { firmware: '6.8.0', mtu: 1500 }, capturedAt: '2026-08-01T00:00:00.000Z', dir });
-    recordSnapshot({ deviceId: 'hci-1', observed: { firmware: '6.8.0', mtu: 9000 }, capturedAt: '2026-08-07T00:00:00.000Z', dir });
-    recordSnapshot({ deviceId: 'hci-2', observed: { firmware: '6.12.0', mtu: 1500 }, capturedAt: '2026-08-01T00:00:00.000Z', dir });
+  it('answers "HCI below 6.11 whose MTU is not 9000" over chronicle chains at a point in time', async () => {
+    await recordSnapshot({ deviceId: 'hci-1', observed: { firmware: '6.8.0', mtu: 1500 }, capturedAt: '2026-08-01T00:00:00.000Z', dir , authority: testLocalWriteAuthority('config_chronicle_state', dir)});
+    await recordSnapshot({ deviceId: 'hci-1', observed: { firmware: '6.8.0', mtu: 9000 }, capturedAt: '2026-08-07T00:00:00.000Z', dir , authority: testLocalWriteAuthority('config_chronicle_state', dir)});
+    await recordSnapshot({ deviceId: 'hci-2', observed: { firmware: '6.12.0', mtu: 1500 }, capturedAt: '2026-08-01T00:00:00.000Z', dir , authority: testLocalWriteAuthority('config_chronicle_state', dir)});
 
     const built: QueryChains = {
       'hci-1': listSnapshots('hci-1', dir),

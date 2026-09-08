@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { resolveEngagementScopedData, resolveRepoData } from '../../../shared/src/index.js';
+import { parseBoundaryLoopLearnQueueV1 } from '../runtime-boundaries.js';
 
 /**
  * P1b — close the gap→collect edge.
@@ -51,16 +52,7 @@ export interface LearnSourcesResult {
 
 function readGapQueries(path: string): GapQueryEntry[] {
   if (!existsSync(path)) return [];
-  try {
-    const parsed = JSON.parse(readFileSync(path, 'utf8')) as { queries?: unknown };
-    if (!Array.isArray(parsed.queries)) return [];
-    return parsed.queries.filter(
-      (q): q is GapQueryEntry => typeof (q as GapQueryEntry)?.query === 'string',
-    );
-  } catch {
-    // A corrupt queue must not silently look like "nothing to do".
-    return [];
-  }
+  return parseBoundaryLoopLearnQueueV1(readFileSync(path, 'utf8')).queries;
 }
 
 /** The KB half of collection needs a logged-in browser on CDP; report honestly. */

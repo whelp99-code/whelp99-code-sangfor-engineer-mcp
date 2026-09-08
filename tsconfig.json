@@ -29,6 +29,9 @@
       "@sangfor/jm-execution": [
         "packages/sangfor-jm-execution/src/index.ts"
       ],
+      "@sangfor/jm-agent": [
+        "packages/sangfor-jm-agent/src/index.ts"
+      ],
       "@sangfor/hci-client": [
         "packages/sangfor-hci-client/src/index.ts"
       ],

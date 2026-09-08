@@ -1,10 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import { existsSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { buildOperationsGuideDocx } from '../packages/sangfor-product-adapters/src/docx-builder.js';
 
 describe('buildOperationsGuideDocx', () => {
   it('generates a valid docx file', async () => {
-    const outPath = '/tmp/test-ops-guide-verify.docx';
+    const outPath = join(tmpdir(), 'test-ops-guide-verify.docx');
     if (existsSync(outPath)) rmSync(outPath);
     const result = await buildOperationsGuideDocx({ outputPath: outPath });
     expect(result.docxPath).toBe(outPath);

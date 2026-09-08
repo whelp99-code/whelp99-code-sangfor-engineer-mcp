@@ -1,9 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { signApprovalToken, type SignedApproval } from '../../../packages/sangfor-operator/src/approval.js';
-
-// apps/http-bridge/src/tool-guard.ts의 BRIDGE_APPROVAL_ACTION_TYPE과 같은 값.
-// 앱 간 직접 import를 피하려고 문자열을 복제한다 — 호환성은 T-INT-1이 실제 guard로 고정.
-export const BRIDGE_APPROVAL_ACTION_TYPE = 'bridge.tool-call';
+import { BRIDGE_APPROVAL_ACTION_TYPE } from '../../../packages/sangfor-operator/src/tool-authorization.js';
 
 export interface MintInput {
   secret: string;
@@ -12,6 +9,7 @@ export interface MintInput {
   approvedBy: string;
   changeTicketId: string;
   rollbackPlanId: string;
+  authorityEpoch: number;
   ttlSec?: number;
   now?: Date;
 }
@@ -22,6 +20,7 @@ export function mintApproval(input: MintInput): SignedApproval {
     approvedBy: input.approvedBy,
     changeTicketId: input.changeTicketId,
     rollbackPlanId: input.rollbackPlanId,
+    authorityEpoch: input.authorityEpoch,
     nonce: randomBytes(12).toString('hex'),
     expiresAt: new Date(now.getTime() + (input.ttlSec ?? 120) * 1000).toISOString(),
   };

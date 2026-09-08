@@ -72,7 +72,7 @@
 | G1 | **실행기 미부착** — 모든 게이트 통과 후에도 mutation 0 | `packages/sangfor-product-adapters/src/index.ts:624` — `reason: 'Execution gate passed. Real executor is not attached in this package yet; no mutation was performed.'` |
 | G2 | **HCI/SCP HTTP 클라이언트 0** — `apiCatalogStatus:'ready'`는 문자열 카탈로그뿐 | 같은 파일 `HCI_SCP_ENDPOINTS`(187-195): `POST /janus/v2/public-key`, `GET /openstack/volume/v2/volumes` 등 문자열만. janus/keystone 구현 파일 0개 |
 | G3 | **R1: 승인 nonce 재사용** — 만료창 내 동일 (action,nonce,expiresAt) 재사용 가능 | `packages/sangfor-operator/src/approval.ts:13-15` 주석으로 정직하게 문서화됨 |
-| G4 | **R3: 원격 write 정책 미명문화** — `WHELP99_ENFORCE_SAFE_TOOLS=false` + 공개 바인드 + 토큰이면 원격 write 호출 가능 | `apps/http-bridge/src/tool-guard.ts:44-61` (destructive는 항상 차단, write는 토글에만 의존) |
+| G4 | **R3: 원격 write 정책 미명문화** — `WHELP99_ENFORCE_SAFE_TOOLS=false` + 공개 바인드 + 토큰이면 원격 write 호출 가능 | `packages/sangfor-operator/src/tool-authorization.ts:44-61` (destructive는 항상 차단, write는 토글에만 의존) |
 | G5 | dry-run이 `navigate/scroll/wait`를 실제 수행(비파괴지만 무제한 URL) | `packages/sangfor-operator/src/index.ts:452` 부근 — dry-run 단락은 click/type/select만 가드 |
 | G6 | 문서 드리프트 — 폐기된 `SANGFOR_OPERATOR_APPROVAL_TOKEN`이 여전히 표기 | `docs/INCLUDED_HIGH_RISK_SCOPE.md` "Non-negotiable controls" §3 |
 | G7 | ConfigState 수집이 스크립트 산개(라이브러리·MCP 도구 미통합) | `scripts/epp-diagnose.ts`(34줄, /tmp 하드코딩), `scripts/device-collect.ts` |
@@ -333,7 +333,7 @@ export { FileNonceStore, consumeApprovalNonce, defaultNonceStorePath } from './n
 ### Task 2: 원격 write 정책 명문화 + 코드화 (redteam R3 봉인)
 
 **Files:**
-- Modify: `apps/http-bridge/src/tool-guard.ts` (`authorizeToolCall` 확장)
+- Modify: `packages/sangfor-operator/src/tool-authorization.ts` (`authorizeToolCall` 확장)
 - Modify: `apps/http-bridge/src/server.ts:167-176` (파라미터 전달)
 - Modify: `packages/shared/src/index.ts` (loopback 판정 함수 export — 이미 내부에 있으면 export만)
 - Modify: `.env.example`, `docs/INCLUDED_HIGH_RISK_SCOPE.md`

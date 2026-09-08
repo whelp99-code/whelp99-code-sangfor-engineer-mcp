@@ -58,21 +58,24 @@ describe('BLRO Phase 3 authority', () => {
     });
   });
 
-  it('names every superseded JM-local authority and exactly one BLRO writer', () => {
-    expect(AUTHORITY_MIGRATIONS.map((entry) => entry.aggregate).sort()).toEqual([
-      'approval',
-      'approval_nonce',
-      'audit_chain',
-      'device_registry',
-      'evidence_manifest',
-      'rag_document_chunk',
-      'run_step',
-    ]);
+  it('classifies every persistent product aggregate and its migration boundary', () => {
+    const aggregates = new Set(AUTHORITY_MIGRATIONS.map((entry) => entry.aggregate));
+    for (const required of [
+      'tenant_identity', 'project_installation_identity', 'registry_services', 'runs_steps',
+      'approvals_nonces', 'audit', 'evidence', 'rag_source_chunks', 'rag_embeddings_local_index', 'pm_tasks',
+      'feedback_lessons', 'evals', 'wiki_proposals', 'learning_strategy_lifecycle',
+      'firmware_version_evidence', 'config_chronicle_state', 'capability_evidence_promotion',
+    ]) expect(aggregates.has(required)).toBe(true);
     for (const migration of AUTHORITY_MIGRATIONS) {
-      expect(migration.supersededLocalStore.length).toBeGreaterThan(0);
-      expect(migration.authoritativeWriter.length).toBeGreaterThan(0);
-      expect(migration.jmTreatment).toMatch(/derived|temporary|disposable|none/i);
+      expect(migration.sources.length).toBeGreaterThan(0);
+      for (const source of migration.sources) {
+        expect(source.path.length).toBeGreaterThan(0);
+        expect(source.symbol.length).toBeGreaterThan(0);
+      }
+      expect(migration.secretPolicy.length).toBeGreaterThan(0);
     }
+    const credentials = AUTHORITY_MIGRATIONS.find((entry) => entry.aggregate === 'browser_credentials_private_keys');
+    expect(credentials).toMatchObject({ classification: 'credential_local', target: { kind: 'excluded' }, secretPolicy: 'forbid' });
   });
 
   it('removes out-of-project chunks before ranking sees the candidate set', () => {

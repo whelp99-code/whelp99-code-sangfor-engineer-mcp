@@ -1,3 +1,4 @@
+import { testFileLocalWriteAuthority, testLocalWriteAuthority } from './helpers/local-write-authority.js';
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
@@ -41,10 +42,10 @@ describe('sangfor_session_report (W4 C1)', () => {
     expect(tool!.annotations.destructiveHint).toBe(false);
   });
 
-  it('with no runId, returns only the list of available change-run ids (read-only discovery)', () => {
-    const ledger = new AuditLedger({ dir: join(root, 'change-runs') });
-    ledger.append('run_x', 'state', { state: 'PENDING' });
-    ledger.append('run_a', 'state', { state: 'PENDING' });
+  it('with no runId, returns only the list of available change-run ids (read-only discovery)', async () => {
+    const ledger = new AuditLedger({ dir: join(root, 'change-runs') , authority: testLocalWriteAuthority('audit', join(root, 'change-runs'))});
+    await ledger.append('run_x', 'state', { state: 'PENDING' });
+    await ledger.append('run_a', 'state', { state: 'PENDING' });
     const handler = getToolHandler('sangfor_session_report')!;
     const result: any = handler({});
     expect(result.availableRunIds).toEqual(['run_a', 'run_x']);
@@ -57,11 +58,11 @@ describe('sangfor_session_report (W4 C1)', () => {
     expect(result.error).toMatch(/INVALID_RUN_ID/);
   });
 
-  it('returns a Markdown report for a known runId by default', () => {
-    const ledger = new AuditLedger({ dir: join(root, 'change-runs') });
+  it('returns a Markdown report for a known runId by default', async () => {
+    const ledger = new AuditLedger({ dir: join(root, 'change-runs') , authority: testLocalWriteAuthority('audit', join(root, 'change-runs'))});
     const runId = 'run_report_md';
-    ledger.append(runId, 'state', { state: 'PENDING', detail: 'create-volume test' });
-    ledger.append(runId, 'response', { status: 202 });
+    await ledger.append(runId, 'state', { state: 'PENDING', detail: 'create-volume test' });
+    await ledger.append(runId, 'response', { status: 202 });
 
     const handler = getToolHandler('sangfor_session_report')!;
     const result: any = handler({ runId });
@@ -71,10 +72,10 @@ describe('sangfor_session_report (W4 C1)', () => {
     expect(result.savedPath).toBeUndefined();
   });
 
-  it('returns structured JSON when format:"json" is requested', () => {
-    const ledger = new AuditLedger({ dir: join(root, 'change-runs') });
+  it('returns structured JSON when format:"json" is requested', async () => {
+    const ledger = new AuditLedger({ dir: join(root, 'change-runs') , authority: testLocalWriteAuthority('audit', join(root, 'change-runs'))});
     const runId = 'run_report_json';
-    ledger.append(runId, 'state', { state: 'PENDING' });
+    await ledger.append(runId, 'state', { state: 'PENDING' });
 
     const handler = getToolHandler('sangfor_session_report')!;
     const result: any = handler({ runId, format: 'json' });
@@ -83,10 +84,10 @@ describe('sangfor_session_report (W4 C1)', () => {
     expect(result.report.chain).toEqual({ ok: true, keyed: false });
   });
 
-  it('with save:true, atomically writes the Markdown report under data/evidence/reports/<runId>.md and returns the path', () => {
-    const ledger = new AuditLedger({ dir: join(root, 'change-runs') });
+  it('with save:true, atomically writes the Markdown report under data/evidence/reports/<runId>.md and returns the path', async () => {
+    const ledger = new AuditLedger({ dir: join(root, 'change-runs') , authority: testLocalWriteAuthority('audit', join(root, 'change-runs'))});
     const runId = 'run_report_save';
-    ledger.append(runId, 'state', { state: 'PENDING' });
+    await ledger.append(runId, 'state', { state: 'PENDING' });
 
     const handler = getToolHandler('sangfor_session_report')!;
     const result: any = handler({ runId, save: true });

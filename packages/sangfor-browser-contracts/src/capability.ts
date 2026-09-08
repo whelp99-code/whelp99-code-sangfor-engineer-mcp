@@ -10,11 +10,25 @@ import { z } from 'zod';
 import {
   browserExecutionRequestSchema,
   type BrowserExecutionRequest,
-  type JsonValue,
 } from './browser-execution.js';
 import { jobEnvelopeSchema, type JobEnvelope } from './job-envelope.js';
 
 export const JOB_CAPABILITY_VERSION = 'browser-job-capability.v1' as const;
+export const JOB_CAPABILITY_ERROR_CODES = {
+  ACTION_MISMATCH: 'CAPABILITY_ACTION_MISMATCH',
+  EXPIRED: 'CAPABILITY_EXPIRED',
+  EXPIRY_INVALID: 'CAPABILITY_EXPIRY_INVALID',
+  FORMAT_INVALID: 'CAPABILITY_FORMAT_INVALID',
+  IDENTITY_MISMATCH: 'CAPABILITY_IDENTITY_MISMATCH',
+  NOT_YET_VALID: 'CAPABILITY_NOT_YET_VALID',
+  REPLAYED: 'CAPABILITY_REPLAYED',
+  SCOPE_MISMATCH: 'CAPABILITY_SCOPE_MISMATCH',
+  SIGNATURE_INVALID: 'CAPABILITY_SIGNATURE_INVALID',
+  SIGNING_KEY_INVALID: 'CAPABILITY_SIGNING_KEY_INVALID',
+  VERIFY_KEY_INVALID: 'CAPABILITY_VERIFY_KEY_INVALID',
+} as const;
+export type JobCapabilityErrorCode =
+  (typeof JOB_CAPABILITY_ERROR_CODES)[keyof typeof JOB_CAPABILITY_ERROR_CODES];
 
 const idSchema = z.string().trim().min(1).max(200)
   .regex(/^[A-Za-z0-9][A-Za-z0-9._:@-]*$/u)
@@ -23,6 +37,7 @@ const capabilityClaimSchema = z.object({
   version: z.literal(JOB_CAPABILITY_VERSION),
   tenantId: idSchema,
   projectId: idSchema,
+  authorityEpoch: z.number().int().nonnegative(),
   runId: idSchema,
   stepId: idSchema,
   jobId: idSchema,
@@ -37,14 +52,13 @@ const capabilityClaimSchema = z.object({
 
 export type JobCapabilityClaim = z.infer<typeof capabilityClaimSchema>;
 export type CapabilityKey = KeyObject | string | Buffer;
-
 export interface CapabilityNonceStore {
   consume(jti: string, expiresAt: string): Promise<boolean>;
 }
-
 export interface MintJobCapabilityInput {
   readonly tenantId: string;
   readonly projectId: string;
+  readonly authorityEpoch: number;
   readonly runId: string;
   readonly stepId: string;
   readonly jobId: string;
@@ -56,81 +70,93 @@ export interface MintJobCapabilityInput {
   readonly jti: string;
   readonly privateKey: CapabilityKey;
 }
-
 export interface VerifyJobCapabilityInput {
   readonly envelope: JobEnvelope;
-  readonly installationId: string;
-  readonly clientIdentityId: string;
   readonly publicKey: CapabilityKey;
-  readonly nonceStore: CapabilityNonceStore;
   readonly now?: Date;
 }
-
-function canonical(value: JsonValue): string {
-  if (value === null || typeof value !== 'object') return JSON.stringify(value);
-  if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`;
-  return `{${Object.keys(value).sort().map((key) => (
-    `${JSON.stringify(key)}:${canonical(value[key] as JsonValue)}`
-  )).join(',')}}`;
+export interface VerifyAndConsumeJobCapabilityInput extends VerifyJobCapabilityInput {
+  readonly installationId: string;
+  readonly clientIdentityId: string;
+  readonly nonceStore: CapabilityNonceStore;
 }
 
-function requestHash(request: BrowserExecutionRequest): string {
-  return createHash('sha256')
-    .update(canonical(request as unknown as JsonValue))
-    .digest('hex');
+export class JobCapabilityError extends Error {
+  override readonly name = 'JobCapabilityError';
+  constructor(readonly code: JobCapabilityErrorCode, options?: ErrorOptions) {
+    super(code, options);
+  }
+}
+
+function canonical(value: unknown): string {
+  if (value === null || typeof value === 'boolean' || typeof value === 'number' || typeof value === 'string') {
+    return JSON.stringify(value);
+  }
+  if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`;
+  if (typeof value !== 'object') throw new JobCapabilityError(JOB_CAPABILITY_ERROR_CODES.FORMAT_INVALID);
+  return `{${Object.entries(value).sort(([left], [right]) => left.localeCompare(right))
+    .map(([key, child]) => `${JSON.stringify(key)}:${canonical(child)}`).join(',')}}`;
+}
+
+export function browserExecutionRequestDigest(request: BrowserExecutionRequest): string {
+  const parsed = browserExecutionRequestSchema.parse(request);
+  return createHash('sha256').update(canonical(parsed)).digest('hex');
 }
 
 function encode(value: string): string {
   return Buffer.from(value, 'utf8').toString('base64url');
 }
 
-function decode(value: string): string {
-  try {
-    return Buffer.from(value, 'base64url').toString('utf8');
-  } catch {
-    throw new Error('CAPABILITY_FORMAT_INVALID');
-  }
-}
-
 function privateKeyObject(key: CapabilityKey): KeyObject {
-  const object = key instanceof KeyObject ? key : createPrivateKey(key);
-  if (object.asymmetricKeyType !== 'ed25519') {
-    throw new Error('CAPABILITY_SIGNING_KEY_INVALID');
+  try {
+    const object = key instanceof KeyObject ? key : createPrivateKey(key);
+    if (object.asymmetricKeyType !== 'ed25519') throw new TypeError('Ed25519 key required.');
+    return object;
+  } catch (error) {
+    if (error instanceof Error) {
+      throw new JobCapabilityError(JOB_CAPABILITY_ERROR_CODES.SIGNING_KEY_INVALID, { cause: error });
+    }
+    throw error;
   }
-  return object;
 }
 
 function publicKeyObject(key: CapabilityKey): KeyObject {
-  const object = key instanceof KeyObject
-    ? (key.type === 'private' ? createPublicKey(key) : key)
-    : createPublicKey(key);
-  if (object.asymmetricKeyType !== 'ed25519') {
-    throw new Error('CAPABILITY_VERIFY_KEY_INVALID');
+  try {
+    const object = key instanceof KeyObject
+      ? (key.type === 'private' ? createPublicKey(key) : key)
+      : createPublicKey(key);
+    if (object.asymmetricKeyType !== 'ed25519') throw new TypeError('Ed25519 key required.');
+    return object;
+  } catch (error) {
+    if (error instanceof Error) {
+      throw new JobCapabilityError(JOB_CAPABILITY_ERROR_CODES.VERIFY_KEY_INVALID, { cause: error });
+    }
+    throw error;
   }
-  return object;
 }
 
 export function mintJobCapability(input: MintJobCapabilityInput): string {
   const request = browserExecutionRequestSchema.parse(input.request);
   if (input.expiresAt.getTime() <= input.issuedAt.getTime()) {
-    throw new Error('CAPABILITY_EXPIRY_INVALID');
+    throw new JobCapabilityError(JOB_CAPABILITY_ERROR_CODES.EXPIRY_INVALID);
   }
   const claim = capabilityClaimSchema.parse({
     version: JOB_CAPABILITY_VERSION,
     tenantId: input.tenantId,
     projectId: input.projectId,
+    authorityEpoch: input.authorityEpoch,
     runId: input.runId,
     stepId: input.stepId,
     jobId: input.jobId,
     clientIdentityId: input.clientIdentityId,
     installationId: input.installationId,
     origin: request.origin,
-    requestHash: requestHash(request),
+    requestHash: browserExecutionRequestDigest(request),
     issuedAt: input.issuedAt.toISOString(),
     expiresAt: input.expiresAt.toISOString(),
     jti: input.jti,
   });
-  const payload = encode(canonical(claim as unknown as JsonValue));
+  const payload = encode(canonical(claim));
   const signature = sign(
     null,
     Buffer.from(payload, 'utf8'),
@@ -139,59 +165,58 @@ export function mintJobCapability(input: MintJobCapabilityInput): string {
   return `${payload}.${signature}`;
 }
 
-export async function verifyAndConsumeJobCapability(
-  input: VerifyJobCapabilityInput,
-): Promise<JobCapabilityClaim> {
+export function verifyJobCapability(input: VerifyJobCapabilityInput): JobCapabilityClaim {
   const envelope = jobEnvelopeSchema.parse(input.envelope);
-  const [payload, suppliedSignature, extra] = envelope.capability.split('.');
-  if (!payload || !suppliedSignature || extra) {
-    throw new Error('CAPABILITY_FORMAT_INVALID');
+  const parts = envelope.capability.split('.');
+  const payload = parts[0];
+  const suppliedSignature = parts[1];
+  if (parts.length !== 2 || !payload || !suppliedSignature) {
+    throw new JobCapabilityError(JOB_CAPABILITY_ERROR_CODES.FORMAT_INVALID);
   }
-  let signature: Buffer;
-  try {
-    signature = Buffer.from(suppliedSignature, 'base64url');
-  } catch {
-    throw new Error('CAPABILITY_FORMAT_INVALID');
-  }
-  if (!verify(
+  const valid = verify(
     null,
     Buffer.from(payload, 'utf8'),
     publicKeyObject(input.publicKey),
-    signature,
-  )) {
-    throw new Error('CAPABILITY_SIGNATURE_INVALID');
-  }
+    Buffer.from(suppliedSignature, 'base64url'),
+  );
+  if (!valid) throw new JobCapabilityError(JOB_CAPABILITY_ERROR_CODES.SIGNATURE_INVALID);
   let decoded: unknown;
   try {
-    decoded = JSON.parse(decode(payload));
-  } catch {
-    throw new Error('CAPABILITY_FORMAT_INVALID');
+    decoded = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+  } catch (error) {
+    if (error instanceof Error) {
+      throw new JobCapabilityError(JOB_CAPABILITY_ERROR_CODES.FORMAT_INVALID, { cause: error });
+    }
+    throw error;
   }
-  const claim = capabilityClaimSchema.parse(decoded);
+  const parsedClaim = capabilityClaimSchema.safeParse(decoded);
+  if (!parsedClaim.success) {
+    throw new JobCapabilityError(JOB_CAPABILITY_ERROR_CODES.FORMAT_INVALID, { cause: parsedClaim.error });
+  }
+  const claim = parsedClaim.data;
   const now = (input.now ?? new Date()).getTime();
-  if (Date.parse(claim.expiresAt) <= now) throw new Error('CAPABILITY_EXPIRED');
-  if (Date.parse(claim.issuedAt) > now) throw new Error('CAPABILITY_NOT_YET_VALID');
-  if (
-    claim.tenantId !== envelope.tenantId
-    || claim.projectId !== envelope.projectId
-    || claim.runId !== envelope.runId
-    || claim.stepId !== envelope.stepId
-    || claim.jobId !== envelope.jobId
-  ) {
-    throw new Error('CAPABILITY_SCOPE_MISMATCH');
+  if (Date.parse(claim.expiresAt) <= now) throw new JobCapabilityError(JOB_CAPABILITY_ERROR_CODES.EXPIRED);
+  if (Date.parse(claim.issuedAt) > now) throw new JobCapabilityError(JOB_CAPABILITY_ERROR_CODES.NOT_YET_VALID);
+  if (claim.tenantId !== envelope.tenantId || claim.projectId !== envelope.projectId
+    || claim.runId !== envelope.runId || claim.stepId !== envelope.stepId || claim.jobId !== envelope.jobId) {
+    throw new JobCapabilityError(JOB_CAPABILITY_ERROR_CODES.SCOPE_MISMATCH);
   }
-  if (
-    claim.installationId !== input.installationId
-    || claim.clientIdentityId !== input.clientIdentityId
-  ) {
-    throw new Error('CAPABILITY_IDENTITY_MISMATCH');
+  if (claim.origin !== envelope.request.origin
+    || claim.requestHash !== browserExecutionRequestDigest(envelope.request)) {
+    throw new JobCapabilityError(JOB_CAPABILITY_ERROR_CODES.ACTION_MISMATCH);
   }
-  const request = browserExecutionRequestSchema.parse(envelope.request);
-  if (claim.requestHash !== requestHash(request)) {
-    throw new Error('CAPABILITY_ACTION_MISMATCH');
+  return claim;
+}
+
+export async function verifyAndConsumeJobCapability(
+  input: VerifyAndConsumeJobCapabilityInput,
+): Promise<JobCapabilityClaim> {
+  const claim = verifyJobCapability(input);
+  if (claim.installationId !== input.installationId || claim.clientIdentityId !== input.clientIdentityId) {
+    throw new JobCapabilityError(JOB_CAPABILITY_ERROR_CODES.IDENTITY_MISMATCH);
   }
   if (!await input.nonceStore.consume(claim.jti, claim.expiresAt)) {
-    throw new Error('CAPABILITY_REPLAYED');
+    throw new JobCapabilityError(JOB_CAPABILITY_ERROR_CODES.REPLAYED);
   }
   return claim;
 }

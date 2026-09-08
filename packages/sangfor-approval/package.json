@@ -4,6 +4,7 @@
   "type": "module",
   "main": "src/index.ts",
   "dependencies": {
+    "@prisma/client": "^6.19.3",
     "@sangfor/shared": "workspace:*"
   }
 }

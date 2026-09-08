@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "product": "HCI_SCP",
+      "capabilityId": "resource_inventory",
+      "maturity": "tested_mock",
+      "evidence": "tests/fixtures/capability-evidence/valid-manifest.json"
+    }
+  ]
+}

@@ -1,3 +1,4 @@
+import { testFileLocalWriteAuthority, testLocalWriteAuthority } from './helpers/local-write-authority.js';
 import { describe, expect, it, beforeEach, afterEach } from 'vitest';
 import { mkdtempSync as mkdtempLl, rmSync as rmLl } from 'node:fs';
 import { tmpdir as tmpdirLl } from 'node:os';
@@ -54,17 +55,17 @@ describe('Sangfor Engineer MCP MVP', () => {
     expect(result.message ?? '').not.toMatch(/^Executed/);
   });
 
-  it('blocks wiki apply before approval', () => {
-    const p = proposeWikiUpdate({ lessonTitle: 'Test lesson', lessonBody: 'Body' });
-    expect(() => applyWikiUpdate(p.id)).toThrow();
+  it('blocks wiki apply before approval', async () => {
+    const p = await proposeWikiUpdate({ lessonTitle: 'Test lesson', lessonBody: 'Body' }, testLocalWriteAuthority('wiki_proposals'));
+    await expect(async () => await applyWikiUpdate(p.id, testLocalWriteAuthority('wiki_proposals'))).rejects.toThrow();
     process.env.SANGFOR_WIKI_APPROVAL_SECRET = 'test-wiki-secret';
-    approveWikiUpdate(p.id, 'approved', { token: mintWikiApproval(p.id) });
-    expect(applyWikiUpdate(p.id).status).toBe('applied');
+    await approveWikiUpdate(p.id, 'approved', { token: mintWikiApproval(p.id) }, testLocalWriteAuthority('wiki_proposals'));
+    expect((await applyWikiUpdate(p.id, testLocalWriteAuthority('wiki_proposals'))).status).toBe('applied');
   });
 
-  it('converts feedback to lesson', () => {
-    const feedback = submitFeedback({ product: 'HCI', feedbackType: 'missing_precheck', severity: 'medium', feedbackText: 'MTU precheck missing', sourceRole: 'engineer' });
-    const lesson = extractLesson(feedback.id);
+  it('converts feedback to lesson', async () => {
+    const feedback = await submitFeedback({ product: 'HCI', feedbackType: 'missing_precheck', severity: 'medium', feedbackText: 'MTU precheck missing', sourceRole: 'engineer' }, testLocalWriteAuthority('feedback_lessons'));
+    const lesson = await extractLesson(feedback.id, testLocalWriteAuthority('feedback_lessons'));
     expect(lesson.feedbackId).toBe(feedback.id);
   });
 });
@@ -90,10 +91,14 @@ describe('Included real integration surfaces', () => {
 
   it('writes approved proposal to an Obsidian vault path', async () => {
     const vaultPath = mkdtempSync(join(tmpdir(), 'obsidian-'));
-    const p = proposeWikiUpdate({ lessonTitle: 'HCI rollback lesson', lessonBody: 'Always keep rollback window.', targetPage: 'Sangfor/HCI/Lessons.md', adapter: 'obsidian' });
+    const p = await proposeWikiUpdate({ lessonTitle: 'HCI rollback lesson', lessonBody: 'Always keep rollback window.', targetPage: 'Sangfor/HCI/Lessons.md', adapter: 'obsidian' }, testLocalWriteAuthority('wiki_proposals'));
     process.env.SANGFOR_WIKI_APPROVAL_SECRET = 'test-wiki-secret';
-    approveWikiUpdate(p.id, 'approved', { token: mintWikiApproval(p.id) });
-    await applyObsidianWikiUpdate({ proposalId: p.id, vaultPath });
+    await approveWikiUpdate(p.id, 'approved', { token: mintWikiApproval(p.id) }, testLocalWriteAuthority('wiki_proposals'));
+    await applyObsidianWikiUpdate({
+      proposalId: p.id, vaultPath,
+      proposalAuthority: testLocalWriteAuthority('wiki_proposals'),
+      adapterAuthority: testLocalWriteAuthority('wiki_proposals', vaultPath),
+    });
     const notePath = join(vaultPath, 'Sangfor/HCI/Lessons.md');
     expect(existsSync(notePath)).toBe(true);
     expect(readFileSync(notePath, 'utf8')).toContain('HCI rollback lesson');

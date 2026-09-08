@@ -3,11 +3,20 @@ import { dirname, join } from 'node:path';
 import {
   LearningStrategyService,
   signLearningApproval,
-  type LearningApprovalPayload,
 } from '@sangfor/learning-strategy';
 import { syncLearningMirrorToPrisma } from '@sangfor/store';
 import { StrategyStoreManager } from '@sangfor/learning-strategy';
-import { resolveRepoData } from '@sangfor/shared';
+import { resolveProductionLocalWriteAuthority, resolveRepoData } from '@sangfor/shared';
+import type { RuntimeCodec } from '../packages/shared/src/runtime-schema.js';
+import {
+  learningApprovalPayloadRuntimeSchema,
+  promoteStrategyRequestRuntimeSchema,
+  researchStrategyRequestRuntimeSchema,
+  resolverContextRuntimeSchema,
+  strategyScopeRuntimeSchema,
+  validateStrategyRequestRuntimeSchema,
+} from '../packages/sangfor-learning-strategy/src/runtime-boundary-codecs.js';
+import { parseBoundaryStrategyCliInputV1 } from './lib/strategy-runtime-boundary.js';
 
 /** Public CLI contract for PR-011.  Keep the numeric values stable. */
 export const STRATEGY_EXIT = Object.freeze({ success: 0, input: 2, precondition: 3, security: 4, store: 5, capture: 6, partial: 7 });
@@ -48,12 +57,24 @@ function optional(args: Args, key: string): string | undefined {
   return value;
 }
 
-function jsonFile<T>(path: string): T {
-  try { return JSON.parse(readFileSync(path, 'utf8')) as T; } catch { throw new Error(`INPUT: cannot read valid JSON from ${path}.`); }
+function jsonFile<T>(path: string, codec: RuntimeCodec<T>): T {
+  try {
+    return parseBoundaryStrategyCliInputV1(readFileSync(path, 'utf8'), codec);
+  } catch (error) {
+    throw new StrategyCliInputError({ cause: error });
+  }
 }
 
-function jsonValue<T>(args: Args, key: string): T {
-  return jsonFile<T>(required(args, key));
+function jsonValue<T>(args: Args, key: string, codec: RuntimeCodec<T>): T {
+  return jsonFile(required(args, key), codec);
+}
+
+class StrategyCliInputError extends Error {
+  readonly name = 'StrategyCliInputError';
+
+  constructor(options: ErrorOptions) {
+    super('INPUT: cannot read valid strict JSON input.', options);
+  }
 }
 
 function print(value: unknown): void { process.stdout.write(`${JSON.stringify(value, null, 2)}\n`); }
@@ -91,18 +112,21 @@ export async function runStrategyCli(argv = process.argv.slice(2)): Promise<numb
     if (command === 'list') { print(service.list(listRequest(args))); return STRATEGY_EXIT.success; }
     if (command === 'resolve') {
       only(args, ['scope', 'context', 'root']);
-      print(service.resolve(jsonValue(args, 'scope'), jsonValue(args, 'context'))); return STRATEGY_EXIT.success;
+      print(service.resolve(
+        jsonValue(args, 'scope', strategyScopeRuntimeSchema),
+        jsonValue(args, 'context', resolverContextRuntimeSchema),
+      )); return STRATEGY_EXIT.success;
     }
-    if (command === 'research') { only(args, ['request', 'root']); print(service.research(jsonValue(args, 'request'))); return STRATEGY_EXIT.success; }
-    if (command === 'validate') { only(args, ['request', 'root']); print(service.validate(jsonValue(args, 'request'))); return STRATEGY_EXIT.success; }
+    if (command === 'research') { only(args, ['request', 'root']); print(await service.research(jsonValue(args, 'request', researchStrategyRequestRuntimeSchema))); return STRATEGY_EXIT.success; }
+    if (command === 'validate') { only(args, ['request', 'root']); print(service.validate(jsonValue(args, 'request', validateStrategyRequestRuntimeSchema))); return STRATEGY_EXIT.success; }
     if (command === 'approval-payload') {
       only(args, ['input']);
       // Canonicalization and field validation occur again when the signer is invoked.
-      print(jsonValue<LearningApprovalPayload>(args, 'input')); return STRATEGY_EXIT.success;
+      print(jsonValue(args, 'input', learningApprovalPayloadRuntimeSchema)); return STRATEGY_EXIT.success;
     }
     if (command === 'approval-sign') {
       only(args, ['payload', 'out']);
-      const payload = jsonValue<LearningApprovalPayload>(args, 'payload');
+      const payload = jsonValue(args, 'payload', learningApprovalPayloadRuntimeSchema);
       const output = required(args, 'out');
       // The signing secret is deliberately accepted only through the protected env var.
       // Never add an argv flag or a diagnostic containing this value.
@@ -112,7 +136,7 @@ export async function runStrategyCli(argv = process.argv.slice(2)): Promise<numb
       chmodSync(output, 0o600);
       return STRATEGY_EXIT.success;
     }
-    if (command === 'promote') { only(args, ['request', 'root']); print(service.promote(jsonValue(args, 'request'))); return STRATEGY_EXIT.success; }
+    if (command === 'promote') { only(args, ['request', 'root']); print(await service.promote(jsonValue(args, 'request', promoteStrategyRequestRuntimeSchema))); return STRATEGY_EXIT.success; }
     if (command === 'audit') {
       only(args, ['strategy-id', 'root']);
       print(service.list(optional(args, 'strategy-id') ? { strategyId: optional(args, 'strategy-id') } : {})); return STRATEGY_EXIT.success;
@@ -121,7 +145,10 @@ export async function runStrategyCli(argv = process.argv.slice(2)): Promise<numb
       only(args, ['strategy-id', 'root']);
       const strategyId = required(args, 'strategy-id');
       if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/u.test(strategyId)) throw new Error('INPUT: --strategy-id is invalid.');
-      print(await syncLearningMirrorToPrisma(new StrategyStoreManager(join(root, `${strategyId}.json`)))); return STRATEGY_EXIT.success;
+      print(await syncLearningMirrorToPrisma(new StrategyStoreManager(join(root, `${strategyId}.json`), resolveProductionLocalWriteAuthority({
+        tenantId: 'local-primary', projectId: process.env.SANGFOR_ENGAGEMENT_ID ?? 'local-primary', actorId: 'strategy-cli',
+        aggregate: 'learning_strategy_lifecycle', sourceRoot: root,
+      })))); return STRATEGY_EXIT.success;
     }
     throw new Error(`INPUT: unsupported strategy subcommand ${command}.`);
   } catch (error) {

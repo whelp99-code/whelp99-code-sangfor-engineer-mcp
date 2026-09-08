@@ -42,7 +42,10 @@ data/captures/**
 
 # Learning-loop runtime stores (feedback/lessons, eval cases, wiki proposals)
 data/feedback/
-data/evals/
+data/evals/*
+!data/evals/rag/
+data/evals/rag/*
+!data/evals/rag/project-completeness-v1.json
 data/wiki/
 
 # Local-only debug/spike scripts (kept on disk, not committed)

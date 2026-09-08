@@ -1,0 +1,62 @@
+{
+  "campaign": "api_read_only",
+  "evaluatedAt": "2026-08-25T12:00:00.000Z",
+  "currentFirmware": {
+    "vendor": "SANGFOR",
+    "adapterProduct": "HCI_SCP",
+    "productVariant": "SCP",
+    "versionRaw": "6.10.0R2",
+    "versionFamily": "6.10",
+    "revision": "R2",
+    "buildId": null,
+    "hotfix": null,
+    "uiFingerprint": "d3ef7de562f9a4a34a9a0b05a112955fdecdd0102c3faae5eeb03a195091a5e4",
+    "apiFingerprint": "14c2529eb4498c5d1ffd6915d05bf58a91bdda796af59f41d480d11c099d0479",
+    "specVersion": "6.10",
+    "truthDigest": "40e715e7d82b1fe7002091ee9c2e544db94b51dcd0fb13b85d6eb1a7de10bcab"
+  },
+  "currentDigests": {
+    "recipeDigest": "e1d8e552330911f9f779f85b6f2c00a15e790dcc3fbb3b28f5da1d660a30c5b8",
+    "toolDigest": "7c9bbe5ec9b3fb774e8fa0f54247e93c34ddf8e5d16fe3073420de0ae81a262d",
+    "runtimeDigest": "d92c6a81b2ff50096bcda80885427d1f59a25b5f483f7055523504925d16ab23",
+    "deviceIdentityDigest": "258b5476c841034a9bd8e6b2ba5a8d4e107db4d92149a85668c30451e7120458",
+    "windowIdentityDigest": "3f435bb1c2cfc1f656b61ef4b9ebaf2c4e1f232704cc6acf964de2979001d79c",
+    "originDigest": "063384f0164bf480eb61c7b184d32f267e92080e7b0c6f1cc423b107b095a265"
+  },
+  "reviewer": {
+    "actorId": "human-reviewer-1",
+    "actorType": "human_pm"
+  },
+  "runIdentities": [
+    {
+      "runId": "run-1",
+      "environment": "real_device",
+      "deviceIdentityDigest": "4637ea12bf9a0fd47bfdeb2eacbbd2512173f887dd4646b16c7cc1e6b6a26ead",
+      "windowIdentityDigest": "0cbc6bf019efcd4b2544748f9e957437ade33dc1063c858b6b20405f5c506c81"
+    },
+    {
+      "runId": "run-2",
+      "environment": "real_device",
+      "deviceIdentityDigest": "03204de92e11fc8c528139be419065920eb83dbff1a4663bbea455aa6e9702bd",
+      "windowIdentityDigest": "0cbc6bf019efcd4b2544748f9e957437ade33dc1063c858b6b20405f5c506c81"
+    },
+    {
+      "runId": "run-3",
+      "environment": "real_device",
+      "deviceIdentityDigest": "4637ea12bf9a0fd47bfdeb2eacbbd2512173f887dd4646b16c7cc1e6b6a26ead",
+      "windowIdentityDigest": "0cbc6bf019efcd4b2544748f9e957437ade33dc1063c858b6b20405f5c506c81"
+    },
+    {
+      "runId": "run-4",
+      "environment": "real_device",
+      "deviceIdentityDigest": "03204de92e11fc8c528139be419065920eb83dbff1a4663bbea455aa6e9702bd",
+      "windowIdentityDigest": "0cbc6bf019efcd4b2544748f9e957437ade33dc1063c858b6b20405f5c506c81"
+    },
+    {
+      "runId": "run-5",
+      "environment": "real_device",
+      "deviceIdentityDigest": "4637ea12bf9a0fd47bfdeb2eacbbd2512173f887dd4646b16c7cc1e6b6a26ead",
+      "windowIdentityDigest": "0cbc6bf019efcd4b2544748f9e957437ade33dc1063c858b6b20405f5c506c81"
+    }
+  ]
+}

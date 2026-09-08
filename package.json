@@ -4,6 +4,10 @@
   "private": true,
   "description": "Sangfor product-specific senior engineer MCP server with planner, approval, mock operator, feedback learning, and wiki integration.",
   "packageManager": "pnpm@10.28.1",
+  "engines": {
+    "node": ">=22 <25",
+    "pnpm": "10.28.1"
+  },
   "type": "module",
   "bin": {
     "sangfor-engineer-mcp": "bin/sangfor-engineer-mcp.mjs"
@@ -19,6 +23,8 @@
     "test": "vitest run --config vitest.config.ts",
     "test:ui": "vitest run --config vitest.ui.config.ts",
     "test:observer:e2e": "tsx scripts/test-observer-e2e.ts",
+    "test:postgres:mandatory": "tsx scripts/run-mandatory-postgres-tests.ts --require",
+    "driver:learning-strategy": "tsx scripts/learning-strategy-driver.ts",
     "loop:tick": "tsx scripts/loop-tick.ts",
     "strategy": "tsx scripts/strategy-cli.ts",
     "observe": "tsx scripts/observe-cli.ts",
@@ -56,10 +62,15 @@
     "learn:nightly": "pnpm run learn:all && pnpm run learn:kb:full && pnpm run rag:reembed",
     "smoke:mcp": "node scripts/smoke-mcp-tools.mjs",
     "check:mcp-scorecard": "node scripts/check-mcp-scorecard.mjs",
+    "check:mcp-inventory-truth": "tsx scripts/check-mcp-inventory-truth.ts --documented AGENTS.md --documented apps/mcp-server/AGENTS.md --documented README.md --documented ARCHITECTURE.md --documented docs/MCP_FEATURES_AND_USAGE.md --documented docs/BLRO_OPERATIONS_RUNBOOK.md --documented docs/START_HERE_TODAY.md --documented docs/TOMORROW_MORNING.md --documented docs/design-docs/thin-apps-fat-packages.md",
+    "check:tracker-truth:offline": "tsx scripts/check-tracker-truth.ts --offline-fixture tests/fixtures/tracker/valid.json",
+    "check:tracker-truth": "tsx scripts/check-tracker-truth.ts",
     "check:hygiene": "node scripts/check-source-hygiene.mjs",
     "check:browser-boundary": "node scripts/check-browser-boundary.mjs",
     "check:data-scope-boundary": "node scripts/check-data-scope-boundary.mjs",
     "verify:rls": "node scripts/verify-rls-isolation.mjs",
+    "blro:enrollment-admin": "tsx scripts/blro-enrollment-admin.ts",
+    "blro:cert-rotation:verify": "tsx scripts/test-blro-cert-rotation.ts",
     "jm:endpoint:preflight": "node scripts/jm-endpoint-preflight.mjs",
     "jm:endpoint:doctor": "node scripts/jm-endpoint-install.mjs --doctor",
     "jm:endpoint:install": "node scripts/jm-endpoint-install.mjs --run",
@@ -89,8 +100,13 @@
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
+    "@types/pg": "^8.23.1",
     "prisma": "^6.19.3",
     "typescript": "^5.9.3",
     "vitest": "^4.1.8"
-  }
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ]
 }

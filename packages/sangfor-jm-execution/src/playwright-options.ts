@@ -1,12 +1,7 @@
 import { isAbsolute } from 'node:path';
 import { isLoopbackBrowserTarget } from '../../sangfor-browser-contracts/src/index.js';
+import { parseOwnedCdpProfilesEnvironment } from './runtime-boundaries.js';
 import type { LocalJmMode, LocalJmSession } from './types.js';
-
-interface OwnedCdpProfile {
-  profileRef: string;
-  cdpPort: number;
-  expectedOrigin: string;
-}
 
 export function resolvePlaywrightLaunchOptions(input: {
   headless: boolean;
@@ -44,28 +39,16 @@ export function shouldIgnoreHttpsErrors(
 export function assertOwnedCdpBinding(session: LocalJmSession): void {
   if (session.cdpPort === undefined) return;
   const raw = process.env.SANGFOR_JM_CDP_PROFILES_JSON;
-  let profiles: unknown;
-  try {
-    profiles = raw ? JSON.parse(raw) : undefined;
-  } catch {
-    throw new Error('CDP_PROFILE_INVALID: trusted CDP profile registry is corrupt.');
-  }
-  if (!Array.isArray(profiles)) {
+  if (raw === undefined) {
     throw new Error(
       'CDP_PROFILE_REQUIRED: borrowed CDP ports require SANGFOR_JM_CDP_PROFILES_JSON.',
     );
   }
-  const owned = profiles.some((candidate): candidate is OwnedCdpProfile => {
-    if (typeof candidate !== 'object' || candidate === null) return false;
-    const value = candidate as Record<string, unknown>;
-    if (
-      typeof value.profileRef !== 'string'
-      || !value.profileRef
-      || value.cdpPort !== session.cdpPort
-      || typeof value.expectedOrigin !== 'string'
-    ) return false;
+  const profiles = parseOwnedCdpProfilesEnvironment(raw);
+  const owned = profiles.some((candidate) => {
+    if (candidate.cdpPort !== session.cdpPort) return false;
     try {
-      return new URL(value.expectedOrigin).origin === session.origin;
+      return new URL(candidate.expectedOrigin).origin === session.origin;
     } catch {
       return false;
     }

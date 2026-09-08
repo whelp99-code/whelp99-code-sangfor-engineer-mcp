@@ -215,7 +215,7 @@ export async function syncStrategyMirror(
   }
   let committed = false;
   if (changed) {
-    const result = manager.commit(updated, currentGeneration);
+    const result = await manager.commit(updated, currentGeneration);
     if (!result.ok) throw new Error(`MIRROR_STORE_COMMIT_FAILED: ${result.error ?? 'unknown error'}`);
     committed = true;
   }

@@ -1,15 +1,14 @@
+import { testFileLocalWriteAuthority } from './helpers/local-write-authority.js';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtempSync, rmSync, existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { mkdtempSync, rmSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { spawn } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
 import {
   StrategyStoreManager,
   computeContentHash,
-  type StrategyStore,
   type StrategyRevision,
 } from '../packages/sangfor-learning-strategy/src/store.js';
+import { RuntimeSchemaError } from '../packages/shared/src/runtime-schema.js';
 
 const CONTENT_A = 'a'.repeat(64);
 const CONTENT_B = 'b'.repeat(64);
@@ -22,7 +21,7 @@ describe('PR-001C: Strategy store', () => {
   beforeEach(() => {
     tempDir = mkdtempSync(join(tmpdir(), 'learning-store-'));
     storePath = join(tempDir, 'strategy-store.json');
-    manager = new StrategyStoreManager(storePath);
+    manager = new StrategyStoreManager(storePath, testFileLocalWriteAuthority('learning_strategy_lifecycle', storePath));
   });
 
   afterEach(() => {
@@ -77,31 +76,31 @@ describe('PR-001C: Strategy store', () => {
   });
 
   describe('commit — atomic with lock/CAS/fsync', () => {
-    it('commits store to disk', () => {
+    it('commits store to disk', async () => {
       const store = manager.createStrategy('strategy-1');
-      const result = manager.commit(store, 0);
+      const result = await manager.commit(store, 0);
       expect(result.ok).toBe(true);
       expect(existsSync(storePath)).toBe(true);
     });
 
-    it('rejects commit with generation conflict (CAS)', () => {
+    it('rejects commit with generation conflict (CAS)', async () => {
       const store = manager.createStrategy('strategy-1');
-      manager.commit(store, 0);
+      await manager.commit(store, 0);
 
       // Try to commit with stale expected generation (0 instead of current 1)
-      const result = manager.commit(store, 0);
+      const result = await manager.commit(store, 0);
       expect(result.ok).toBe(false);
       expect(result.error).toContain('GENERATION_CONFLICT');
     });
 
-    it('loads committed store from disk', () => {
+    it('loads committed store from disk', async () => {
       const store = manager.createStrategy('strategy-1');
       const updated = manager.addRevision(store, {
         strategyId: 'strategy-1',
         state: 'draft',
         contentHash: CONTENT_A,
       });
-      manager.commit(updated, 0);
+      await manager.commit(updated, 0);
 
       const loaded = manager.load();
       expect(loaded).not.toBeNull();
@@ -111,10 +110,17 @@ describe('PR-001C: Strategy store', () => {
   });
 
   describe('corrupt generation — fail-closed', () => {
-    it('returns null for corrupt JSON', () => {
-      writeFileSync(storePath, '{invalid-json');
-      const loaded = manager.load();
-      expect(loaded).toBeNull();
+    it('throws a typed freeze error for corrupt JSON', () => {
+      // Given
+      const prior = '{invalid-json';
+      writeFileSync(storePath, prior);
+
+      // When
+      const load = () => manager.load();
+
+      // Then
+      expect(load).toThrow(RuntimeSchemaError);
+      expect(readFileSync(storePath, 'utf8')).toBe(prior);
     });
 
     it('returns null for non-existent file', () => {
@@ -147,11 +153,11 @@ describe('PR-001C: Strategy store', () => {
       // In a real concurrent scenario, one process would acquire the lock
       // and the other would wait or timeout
       const store = manager.createStrategy('strategy-1');
-      const result1 = manager.commit(store, 0);
+      const result1 = await manager.commit(store, 0);
       expect(result1.ok).toBe(true);
 
       // Second commit with same expected generation should fail (CAS)
-      const result2 = manager.commit(store, 0);
+      const result2 = await manager.commit(store, 0);
       expect(result2.ok).toBe(false);
       expect(result2.error).toContain('GENERATION_CONFLICT');
     });

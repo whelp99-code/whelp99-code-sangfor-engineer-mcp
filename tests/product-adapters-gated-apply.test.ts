@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { generateProductChangePlan, applyApprovedProductChange, type ProductChangeExecutor } from '../packages/sangfor-product-adapters/src/index.js';
 
-const APPROVAL = { approvedBy: 'jmpark', approvalToken: 'signed', changeTicketId: 'CHG-1', rollbackPlanId: 'RB-1' };
+const APPROVAL = { approvedBy: 'jmpark', approvalToken: 'signed', changeTicketId: 'CHG-1', rollbackPlanId: 'RB-1' , authorityEpoch: 0};
 
 function criticalPlan() {
   return generateProductChangePlan({ product: 'HCI_SCP', requirements: ['Enable DRS for the HCI resource pool and verify HA status'] });
@@ -36,25 +36,30 @@ describe('applyApprovedProductChange — executor seam behind gates (tech-debt #
     expect(String(r.reason)).toMatch(/SANGFOR_ALLOW_REAL_EXECUTION/);
   });
 
-  it('all gates pass but no executor attached → safe stub, no mutation', async () => {
+  it('Given all legacy gates pass without an executor, When apply is requested, Then it typed-refuses instead of returning false success', async () => {
     process.env.SANGFOR_ALLOW_REAL_EXECUTION = 'true';
+
     const r = await applyApprovedProductChange({ plan: criticalPlan(), approval: APPROVAL });
-    expect(r.ok).toBe(true);
-    expect(r.mutationPerformed).toBe(false);
-    expect(String(r.reason)).toMatch(/No executor attached/);
+
+    expect(r).toMatchObject({
+      ok: false,
+      code: 'LEGACY_PRODUCT_APPLY_DEPRECATED',
+      mutationPerformed: false,
+    });
   });
 
-  it('all gates pass + mock executor → mutation performed, executor saw the approval', async () => {
+  it('Given an executor is attached to the legacy API, When apply is requested, Then it refuses without invoking the executor', async () => {
     process.env.SANGFOR_ALLOW_REAL_EXECUTION = 'true';
-    let seenApproval: unknown;
-    const executor: ProductChangeExecutor = async (ctx) => {
-      seenApproval = ctx.approval;
-      return { mutationPerformed: true, details: { appliedTasks: ctx.plan.tasks.length } };
+    let called = false;
+    const executor: ProductChangeExecutor = async () => {
+      called = true;
+      return { mutationPerformed: true };
     };
+
     const r = await applyApprovedProductChange({ plan: criticalPlan(), approval: APPROVAL, executor });
-    expect(r.ok).toBe(true);
-    expect(r.mutationPerformed).toBe(true);
-    expect(seenApproval).toEqual(APPROVAL);
+
+    expect(r).toMatchObject({ ok: false, code: 'LEGACY_PRODUCT_APPLY_DEPRECATED', mutationPerformed: false });
+    expect(called).toBe(false);
   });
 
   it('production stays gated even with executor + real-execution flag', async () => {

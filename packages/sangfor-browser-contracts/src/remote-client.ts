@@ -6,14 +6,23 @@ import {
   type BrowserExecutionPort,
 } from './browser-execution.js';
 import {
+  BLRO_CONTRACT_VERSION,
+  CONTRACT_VERSION_HEADER,
+  formatContractVersion,
+  type ContractVersion,
+} from './protocol-version.js';
+import {
+  REMOTE_EXECUTION_DEADLINE_HEADER,
   REMOTE_TRANSPORT_ERROR_CODES,
   buildRemoteJobEnvelope,
   createExactServerIdentityChecker,
   indeterminateAfterDispatch,
   normalizeFingerprint256,
   refusedResult,
+  remoteErrorBodySchema,
   type RemoteEnvelopeOptions,
 } from './remote-protocol.js';
+import { collectRemoteResponseBody } from './remote-response.js';
 
 export interface RemoteTlsClientOptions {
   readonly cert: string | Buffer;
@@ -33,6 +42,8 @@ export interface RemoteHttpRequest {
   readonly headers: Readonly<Record<string, string>>;
   readonly body: string;
   readonly tls: RemoteTlsClientOptions;
+  readonly signal?: AbortSignal;
+  readonly deadline?: string;
 }
 
 export interface RemoteHttpResponse {
@@ -54,6 +65,8 @@ export interface RemoteBrowserExecutionPortOptions {
   readonly tls: RemoteTlsClientOptions;
   readonly envelope: RemoteEnvelopeOptions;
   readonly transport?: RemoteHttpTransport;
+  /** The contract version this endpoint speaks; declared on every dispatch. */
+  readonly contractVersion?: ContractVersion;
 }
 
 export function createNodeHttpsTransport(): RemoteHttpTransport {
@@ -73,16 +86,12 @@ export function createNodeHttpsTransport(): RemoteHttpTransport {
       rejectUnauthorized: true,
       servername: request.tls.servername ?? request.url.hostname,
       checkServerIdentity: checker,
+      signal: request.signal,
     }, (incoming) => {
-      const chunks: Buffer[] = [];
-      incoming.on('data', (chunk: Buffer | string) => {
-        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-      });
-      incoming.on('end', () => resolve({
+      collectRemoteResponseBody(incoming).then((body) => resolve({
         statusCode: incoming.statusCode ?? 0,
-        body: Buffer.concat(chunks).toString('utf8'),
-      }));
-      incoming.on('error', reject);
+        body,
+      }), reject);
     });
     outgoing.on('error', reject);
     outgoing.on('finish', hooks.markDispatched);
@@ -105,9 +114,12 @@ export function createRemoteBrowserExecutionPort(
     throw new Error('expectedServerFingerprint256 is required.');
   }
   const transport = options.transport ?? createNodeHttpsTransport();
+  const declaredVersion = formatContractVersion(
+    options.contractVersion ?? BLRO_CONTRACT_VERSION,
+  );
   return {
     buildEnvelope: buildRemoteJobEnvelope,
-    async execute(input) {
+    async execute(input, context) {
       const request = browserExecutionRequestSchema.parse(input);
       const envelope = buildRemoteJobEnvelope(request, options.envelope);
       const body = JSON.stringify(envelope);
@@ -120,9 +132,15 @@ export function createRemoteBrowserExecutionPort(
             'content-type': 'application/json',
             accept: 'application/json',
             'content-length': String(Buffer.byteLength(body)),
+            [CONTRACT_VERSION_HEADER]: declaredVersion,
+            ...(context === undefined
+              ? {}
+              : { [REMOTE_EXECUTION_DEADLINE_HEADER]: context.deadline }),
           },
           body,
           tls: options.tls,
+          signal: context?.signal,
+          deadline: context?.deadline,
         }, {
           markDispatched() {
             dispatched = true;
@@ -162,8 +180,12 @@ function mapResponse(
   }
   const result = browserExecutionResultSchema.safeParse(parsed);
   if (!result.success) {
-    return response.statusCode >= 200 && response.statusCode < 300
-      ? indeterminateAfterDispatch(requestId, 'Remote success body was not a valid result.')
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return indeterminateAfterDispatch(requestId, 'Remote success body was not a valid result.');
+    }
+    const refusal = remoteErrorBodySchema.safeParse(parsed);
+    return refusal.success
+      ? refusedResult(requestId, refusal.data.error.code, refusal.data.error.message)
       : refusedResult(
         requestId,
         REMOTE_TRANSPORT_ERROR_CODES.BAD_RESPONSE,

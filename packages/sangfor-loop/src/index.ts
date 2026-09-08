@@ -1,6 +1,11 @@
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { isAbsolute, join } from 'node:path';
 import { appendJsonl, nowId, resolveRepoData, withDirLock, writeFileAtomicSync } from '../../shared/src/index.js';
+import {
+  parseBoundaryLoopCursorsV1,
+  parseBoundaryLoopGraphV1,
+  parseBoundaryLoopLedgerLineV1,
+} from './runtime-boundaries.js';
 
 // ─── Loop-graph runtime (design: docs/plans/designs/001-loop-graph-runtime.md)
 // The graph is DATA (data/graph/pipeline.json), verified against the code by
@@ -45,9 +50,9 @@ export function loadLoopGraph(graphPath = DEFAULT_GRAPH_PATH()): LoopGraph {
   if (!existsSync(graphPath)) throw new Error(`LOOP_GRAPH_MISSING: ${graphPath}`);
   let parsed: LoopGraph;
   try {
-    parsed = JSON.parse(readFileSync(graphPath, 'utf8')) as LoopGraph;
-  } catch {
-    throw new Error(`LOOP_GRAPH_CORRUPT: unparseable JSON at ${graphPath}`);
+    parsed = parseBoundaryLoopGraphV1(readFileSync(graphPath, 'utf8'));
+  } catch (error) {
+    throw new LoopStateError('LOOP_GRAPH_CORRUPT', { cause: error });
   }
   if (parsed.version !== 1) throw new Error(`LOOP_GRAPH_CORRUPT: unsupported version ${String(parsed.version)}`);
   if (!Array.isArray(parsed.nodes) || !Array.isArray(parsed.edges)) throw new Error('LOOP_GRAPH_CORRUPT: nodes/edges must be arrays');
@@ -66,15 +71,26 @@ export function loadLoopGraph(graphPath = DEFAULT_GRAPH_PATH()): LoopGraph {
 // ─── Cursors: per-edge progress markers. Fail closed on corruption — a
 // silently-reset cursor would replay every event as new (duplicate work) or,
 // worse, mask lost progress as "nothing to do".
-interface EdgeCursor { lines?: number; mtimeMs?: number }
-type CursorStore = Record<string, EdgeCursor>;
+export interface EdgeCursor { lines?: number; mtimeMs?: number }
+export type CursorStore = Record<string, EdgeCursor>;
 
 function loadCursors(cursorsPath: string): CursorStore {
   if (!existsSync(cursorsPath)) return {};
   try {
-    return JSON.parse(readFileSync(cursorsPath, 'utf8')) as CursorStore;
-  } catch {
-    throw new Error(`LOOP_CURSORS_CORRUPT: ${cursorsPath}`);
+    return parseBoundaryLoopCursorsV1(readFileSync(cursorsPath, 'utf8'));
+  } catch (error) {
+    throw new LoopStateError('LOOP_CURSORS_CORRUPT', { cause: error });
+  }
+}
+
+export class LoopStateError extends Error {
+  readonly name = 'LoopStateError';
+
+  constructor(
+    readonly code: 'LOOP_GRAPH_CORRUPT' | 'LOOP_CURSORS_CORRUPT',
+    options?: ErrorOptions,
+  ) {
+    super(code, options);
   }
 }
 
@@ -122,7 +138,8 @@ export async function runLoopTick(options: RunLoopTickOptions): Promise<TickResu
     const outcomes: EdgeOutcome[] = [];
 
     for (const edge of graph.edges) {
-      const node = nodesById.get(edge.to)!;
+      const node = nodesById.get(edge.to);
+      if (node === undefined) throw new LoopStateError('LOOP_GRAPH_CORRUPT');
       const watchPath = edge.watch === undefined ? undefined : isAbsolute(edge.watch) ? edge.watch : join(watchRoot, edge.watch);
       const record = (outcome: TickOutcome, detail?: string) => outcomes.push({ edge: edge.id, node: node.id, outcome, detail });
 
@@ -200,9 +217,7 @@ export function buildLoopStatus(options: { graphPath?: string; cursorsPath?: str
   let lastLedger: LoopLedgerEntry[] = [];
   if (existsSync(ledgerPath)) {
     const lines = readFileSync(ledgerPath, 'utf8').split('\n').filter((l) => l.trim().length > 0);
-    lastLedger = lines.slice(-(options.tail ?? 20)).flatMap((line) => {
-      try { return [JSON.parse(line) as LoopLedgerEntry]; } catch { return []; }
-    });
+    lastLedger = lines.slice(-(options.tail ?? 20)).map((line) => parseBoundaryLoopLedgerLineV1(line));
   }
   return {
     graphPath,

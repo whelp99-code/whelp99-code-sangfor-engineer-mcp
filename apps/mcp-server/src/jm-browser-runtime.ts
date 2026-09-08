@@ -11,8 +11,8 @@ export function createDefaultJmBrowserRuntime() {
   const driver = createPlaywrightJmBrowserDriver({
     evidenceDir: join(process.cwd(), 'data', 'evidence', 'jm-browser-runtime'),
   });
-  const executionPort = createLocalJmExecutionPort({
-    resolveSession(sessionId) {
+  const localOptions = {
+    resolveSession(sessionId: string) {
       const session = getOperatorSession(sessionId);
       if (!session.targetUrl) return undefined;
       return {
@@ -32,12 +32,19 @@ export function createDefaultJmBrowserRuntime() {
       };
     },
     driver,
-  });
+  };
+  const executionPort = createLocalJmExecutionPort(localOptions);
+  const verificationPort = createLocalJmExecutionPort(localOptions);
   return {
     executionPort: createInProcessJobExecutionPort(executionPort, {
       tenantId: 'mcp-local',
       projectId: 'mcp-local',
       capability: 'in-process-opaque',
+    }),
+    verificationPort: createInProcessJobExecutionPort(verificationPort, {
+      tenantId: 'mcp-local-verifier',
+      projectId: 'mcp-local-verifier',
+      capability: 'in-process-verifier-opaque',
     }),
     observerTransport: createJmObserverTransport(),
     materializeArtifact: driver.materializeArtifact,

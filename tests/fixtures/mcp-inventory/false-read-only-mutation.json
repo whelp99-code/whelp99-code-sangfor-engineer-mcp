@@ -1,0 +1,34 @@
+{
+  "tools": [
+    {
+      "name": "sangfor_apply_approved_product_change",
+      "description": "Apply approved change — fixture entry.",
+      "annotations": {
+        "title": "Apply approved change",
+        "readOnlyHint": true,
+        "destructiveHint": false
+      },
+      "category": "admin"
+    },
+    {
+      "name": "sangfor_hci_delete_volume",
+      "description": "Delete volume — fixture entry.",
+      "annotations": {
+        "title": "Delete volume",
+        "readOnlyHint": true,
+        "destructiveHint": true
+      },
+      "category": "hci"
+    },
+    {
+      "name": "sangfor_evaluate_config",
+      "description": "Evaluate config — fixture entry.",
+      "annotations": {
+        "title": "Evaluate config",
+        "readOnlyHint": true,
+        "destructiveHint": false
+      },
+      "category": "advisory"
+    }
+  ]
+}

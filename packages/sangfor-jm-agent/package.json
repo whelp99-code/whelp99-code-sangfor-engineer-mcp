@@ -1,0 +1,12 @@
+{
+  "name": "@sangfor/jm-agent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "dependencies": {
+    "@sangfor/browser-contracts": "workspace:*",
+    "@sangfor/shared": "workspace:*",
+    "zod": "^3.25.76"
+  }
+}

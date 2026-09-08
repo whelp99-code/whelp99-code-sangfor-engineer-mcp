@@ -4,11 +4,11 @@ Sangfor product-specific senior engineer MCP server — advises, plans, and (beh
 gates) executes Sangfor/FortiOS/Cisco device work. Read-only by default; irreversible
 acts always require a human-signed, single-use approval.
 
-**MCP scorecard: 96/100 — grade A** (`pnpm run check:mcp-scorecard`). 108 tools, snake_case
+**MCP scorecard: 96/100 — grade A** (`pnpm run check:mcp-scorecard`). 118 tools, snake_case
 `sangfor_*` naming, agent self-onboarding (`sangfor_agent_manifest` / `sangfor_capabilities`),
 MCP resources, and documented mutation gating on every write tool.
 
-현재 108개 MCP 도구의 전체 기능 목록, Cursor/stdio/HTTP 연결법, 승인 흐름과 예제는 **[MCP 기능 및 사용 가이드](docs/MCP_FEATURES_AND_USAGE.md)**를 참고하세요.
+현재 118개 MCP 도구의 전체 기능 목록, Cursor/stdio/HTTP 연결법, 승인 흐름과 예제는 **[MCP 기능 및 사용 가이드](docs/MCP_FEATURES_AND_USAGE.md)**를 참고하세요.
 
 ## Quickstart (customer / first run)
 
