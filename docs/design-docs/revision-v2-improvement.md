@@ -2,7 +2,7 @@
 
 작성일: 2026-09-08. 실행 이슈: [#80](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/issues/80).
 후속 PR: [#81](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/81).
-기준: PR #78의 `069df31`, 후속 브랜치 `codex/revision-v2`. 상태: 구현·검증 진행 중.
+기준: PR #78의 `069df31`, 후속 브랜치 `codex/revision-v2`. 상태: 개발 검증 완료, PR 검토 대기. 운영 배포·색인 승격은 미실행.
 
 1차 개선안은 필요한 과제를 폭넓게 나열했으나 실제로 개발할 계약과 운영 인수 조건의 구분이 부족했다. 이번에는 평가의 신뢰성, 검색 근거를 확인하는 화면, 판정 불가의 해결 안내를 개발 단위로 구체화한다. 검색 엔진 채택과 운영 정상 판정은 측정·정책 근거가 있어야 한다.
 
@@ -50,7 +50,19 @@ HNSW 품질 보고서는 임베딩 공간과 벤치마크 식별자를 포함해
 
 ## 검증 기록
 
-중간 검증 이력: 관련 평가 회귀 18개, 재정렬·임베딩 회귀 16개 통과(외부 서비스 1개 미실행). 첫 전체 회귀 3,174개 통과/97개 환경 의존 제외. PostgreSQL 추가 변경 이후 최종 재검증 예정. 스키마 변경으로 census digest 검사가 감지한 차이는 `BlroRagEmbeddingCohort`뿐이며 60개 모델·150개 저장 심볼·39개 credential 경계와 소유 목록이 유지됨을 확인하고 잠금 digest를 갱신했다.
+| 검증 | 결과 |
+| --- | --- |
+| 전체 단위 회귀 `pnpm test` | 3,203 통과, 102 환경 의존 제외 |
+| `pnpm run lint` / `pnpm run build` | 통과 |
+| 실제 Chromium `pnpm run test:ui` | 5 통과 |
+| 필수 PostgreSQL `pnpm run test:postgres:mandatory` | 29개 파일, 166 통과, 0 제외 |
+| RLS 격리 | 39개 테이블, 659개 조건 통과 |
+| 구조 경계·hygiene·tracker | 통과 |
+| MCP smoke / inventory | 118개 도구 확인, 54 write·8 destructive |
+| GitHub CI | [Node 22/24·필수 PostgreSQL 통과](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/actions/runs/34222329454), 코드 `9d5ee29` |
+| 새 문맥 독립 리뷰 | `ship`, 추가 지적 없음; 독립 회귀 87개 통과 |
+
+부모가 누적 변경 전체를 검토하고 로컬 단위·타입·빌드·UI 및 실제 PostgreSQL 검사를 수행했다. SQL/스키마 변경에 따른 census 차이를 검토했으며, 모델 60개·저장 심볼 150개·credential 경계 39개와 소유 목록이 유지됨을 확인하고 digest를 갱신했다. PostgreSQL 필수 프로필은 백업·복구, 다중 replica, 승격 경쟁 조건, 마이그레이션 재실행, HNSW 재현율을 포함한다. 환경 의존 제외를 DB 검증 완료로 대체하지 않고 별도 필수 프로필에서 실행했다.
 
 실제 원본 66,767청크와 기존 메타데이터 후보를 같은 고정 v2 21개 양성/4개 부정으로 실행했다. HitRate@5/Recall@5는 원본 0.6190, 후보 0.7143으로 이전과 같았다. 두 실행 모두 forbiddenHits=0, no-answer 오답 반환=0, 정답 원문 누락=0. 비교 기준선과 후보 중 어느 쪽이든 정답 원문이 누락되면 품질 통과를 거부한다. 새 독립 표본이나 의미 모델 성능 실험은 아니다.
 
@@ -68,16 +80,18 @@ pnpm --silent run rag:eval:corpus CANDIDATE_INDEX data/evals/rag/revision-v1-qre
 
 비교용 baseline은 schemaVersion 2, 동일 qrels/settings/k/문항 수가 필요하다. k=5 이외에는 기존 At5 정책을 재해석하지 않고 거부한다. 판정 없는 단독 보고서는 promotionStatus=NOT_EVALUATED다. 단일 실행의 지연은 운용 SLO로 보지 않는다.
 
-최종 통합 로컬 검증(독립 리뷰 전): `pnpm test` 3,200개 통과·99개 환경 의존 제외, `pnpm run lint` 및 `pnpm run build` 통과, 실제 Chromium `pnpm run test:ui` 5개 통과. MCP smoke/inventory는 118개 도구(54 write, 8 destructive)를 확인했고 구조 경계·hygiene·오프라인 tracker가 통과했다. 초기 초안 `667e3cf` CI는 Node 22/24·필수 PostgreSQL 모두 통과했다. 후속 CI `a367c5d`는 PostgreSQL 162개 중 161개가 통과했고, 가공하지 않은 해시 벡터의 HNSW 재현율 검사 1개가 실패했다. 마이그레이션·잠금·이력 검사는 통과했다. [pgvector 공식 문서](https://github.com/pgvector/pgvector#iterative-index-scans)에 따른 relaxed scan과 materialized CTE 외부 재정렬을 적용하여 늦게 탐색된 가까운 후보를 보존한다. 0.99 재현율 기준과 기존 표본은 유지하며 수정 후 CI 결과를 별도로 기록한다.
-
 ## 운영 전환 보류 조건
 
 정답 데이터 누락, 미달 품질, 고객/버전 범위 위반, 모델 revision 미확인, TTL 정책 부재는 보류 사유다. 기능 구현만으로 색인 승격·실장비 실행을 허용하지 않는다. 기존 서명·nonce·독립 재조회·RLS 경계는 그대로 인수 조건이다.
 
-## 독립 리뷰 보완 기록
+## 독립 리뷰에서 발견한 결함과 수정
 
-첫 새 문맥 리뷰는 `a367c5d`에 `fix-first`를 반환했다. 정답 원문 누락의 품질 게이트 누락과 라우팅 검증 후 코호트 변경 경쟁 조건을 부모가 수정했다. 품질 게이트 14개, 실제 PostgreSQL 검색/승격 13개 회귀가 통과했다. HNSW 벤치마크 실패 해결과 새 독립 리뷰 후 최종 판정을 갱신한다.
+첫 새 문맥 리뷰는 `a367c5d`에 `fix-first`를 반환했다. 부모는 정답 원문 누락의 품질 게이트, 라우팅 검증 직후 변경된 코호트/코퍼스에 대한 후보 실행, HNSW 재현율 실패를 수정했다. 검증 후 다시 독립 리뷰를 받아 `ship`(추가 지적 없음)을 확인했다.
 
-HNSW 원인 재현: 원형 해시 벡터의 동일 거리 분포에서 m=16/32/48/64/80 재생성은 일부 문서 연결이 끊겼다. 190개 합성 문서에서 m=100은 독립 탐색 5회 모두 15/15 정답을 회수했다. 새 마이그레이션과 테스트 인덱스 구성을 m=100, ef_construction=1000으로 일치시킨다. 이는 pgvector의 최대 연결 설정이며 메모리·색인 크기·색인 작성 비용이 증가한다. 190개 표본 안정성을 운영 일반화로 해석하지 않으며 실제 코퍼스의 지연·재현율 승격 기준은 유지한다. 재색인은 인덱스 식별자를 변경하므로 기존 승격 증거를 재사용하지 못한다.
+HNSW는 동일 거리의 희소 해시 벡터에서 일부 문서가 연결되지 않는 경우를 실제 DB에서 재현했다. 원형 해시를 다른 벡터로 바꾸던 기존 `+0.01` 보정은 제거했다. `m=100, ef_construction=1000`을 새 마이그레이션과 테스트 인덱스에 동일하게 적용하고 재색인했다. 원래 0.99 재현율 기준과 고정 문항은 유지했으며, 로컬 표본 회귀·전체 필수 DB 프로필·GitHub DB 프로필에서 통과했다.
 
-색인 교체의 HNSW 유지 비용을 포함해 대량 교체 트랜잭션만 60초로 제한한다. 일반 검색 시간 제한·승격 지연 기준은 변경하지 않는다. 부모의 실제 PostgreSQL 표본 회귀에서 1,000행 초과 exact 검색과 canonical HNSW 2개가 통과했다.
+`m=100`은 [pgvector 0.8.1의 최대 연결 설정](https://github.com/pgvector/pgvector/blob/v0.8.1/src/hnsw.h)이다. 190개 합성 표본의 별도 5회 재생성에서 모두 정답을 회수했지만 운영 코퍼스의 연결성이나 성능을 보장하지 않는다. 메모리·색인 크기·색인 작성 비용이 증가한다. 실제 코퍼스에서 품질·지연·복구·업데이트를 측정한 서명된 증거가 있어야 승격할 수 있다. 재색인은 인덱스 식별자를 변경해 기존 승격 증거를 무효화한다. 대량 교체 트랜잭션만 60초로 제한하며 일반 검색 및 승격 지연 기준은 유지한다.
+
+중간 실패는 숨기지 않았다. 탐색 순서만 바꾼 수정은 HNSW 실패를 해결하지 못했다. 최초 임시 로컬 DB의 무비밀번호 URL은 런타임 설정 검사가 거부했고, 해당 실행을 중단해 테스트 연결 설정을 수정한 후 전체 프로필을 통과했다.
+
+Astra Advisor 네이티브 위임과 독립 리뷰 절차를 사용했다. 요청한 모델/effort와 실제 실행 확인은 구분하며, 네이티브 도구가 실행 모델·토큰 사용량을 공개하지 않아 비용 및 절감률은 산정하지 않았다.
