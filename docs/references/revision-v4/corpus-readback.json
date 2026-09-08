@@ -1,0 +1,23 @@
+{
+  "sourceSha256": "55107e56f6ee22845894dcc7d16eb00c5b5c3887af451dd255d1965a7000b294",
+  "candidateSha256": "f9197db60e0eed1525a36f5162f00062c8c1311e1bb8edbe8876323f5f62062e",
+  "chunks": 66767,
+  "model": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+  "revision": "e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+  "embeddingSpaceId": "7cdaaa733f5c8b9c7bced76c9895eced5cca4c6f4cc3c0362e4079322b4054a0",
+  "dimensions": 384,
+  "minNorm": 0.9999998598313193,
+  "maxNorm": 1.0000001449232412,
+  "spotCheckIndexes": [
+    0,
+    12345,
+    66766
+  ],
+  "spotCheckCosines": [
+    1.0000000235030777,
+    0.9999999762229368,
+    1.0000001034546868
+  ],
+  "sourceMetadataPreserved": true,
+  "promotionAuthorized": false
+}

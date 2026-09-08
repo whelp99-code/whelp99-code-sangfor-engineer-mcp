@@ -1,0 +1,1008 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-08T14:13:22.125Z",
+  "indexSha256": "f9197db60e0eed1525a36f5162f00062c8c1311e1bb8edbe8876323f5f62062e",
+  "qrelsSha256": "85dd4ed04074e3459f0dffb12de56f8002dd62526405e95b42edcab21503630a",
+  "implementationSha256": "facd2830e3cf8d5000d00e556551fd23a3f51dd49d029adfc0dd233792457892",
+  "implementationFiles": [
+    "scripts/rag-corpus-eval.ts",
+    "packages/sangfor-rag/src/corpus-eval-contract.ts",
+    "packages/sangfor-rag/src/rag-search.ts",
+    "packages/sangfor-rag/src/rag-ranking.ts",
+    "packages/sangfor-rag/src/retrieval-text.ts",
+    "packages/sangfor-rag/src/bm25.ts",
+    "packages/sangfor-rag/src/query-normalization.ts",
+    "packages/sangfor-rag/src/retrieval-eval.ts",
+    "packages/sangfor-rag/src/corpus-eval-gate.ts",
+    "packages/sangfor-rag/src/hash-embedding.ts",
+    "packages/sangfor-rag/src/embedding-space.ts",
+    "packages/sangfor-rag/src/embedding-profile.ts",
+    "packages/sangfor-rag/src/rag-product.ts",
+    "packages/sangfor-rag/src/rag-index-store.ts",
+    "packages/sangfor-rag/src/embedding-provider.ts",
+    "packages/sangfor-rag/src/rapid-mlx-provider.ts",
+    "packages/sangfor-rag/src/openai-embeddings-client.ts",
+    "packages/sangfor-rag/src/mimo-rerank-provider.ts",
+    "packages/sangfor-rag/src/local-rerank-provider.ts"
+  ],
+  "settings": {
+    "hybridAlpha": "0.5",
+    "allowCustomer": false,
+    "execution": "async-configured-provider",
+    "embeddingModel": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+    "embeddingRevision": "e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+    "localRerankerEnabled": false,
+    "localRerankerPassages": 1,
+    "localReranker": null,
+    "localRerankerRevision": null,
+    "rerankDisabled": true,
+    "fusion": "rrf"
+  },
+  "settingsSha256": "c6f5f686b4c0a0d8af8e3acbb3959485c6a5a5816710b4f585450781c4330fa3",
+  "evaluationOnly": true,
+  "promotionStatus": "NOT_EVALUATED",
+  "missingRelevantSources": [],
+  "positiveQueryCount": 12,
+  "noAnswerQueryCount": 4,
+  "byProduct": {
+    "HCI": {
+      "queryCount": 8,
+      "hitRateAtK": 0.75,
+      "recallAtK": 0.75,
+      "mrrAtK": 0.3854166666666667,
+      "ndcgAtK": 0.47793322734847077
+    },
+    "NGFW": {
+      "queryCount": 4,
+      "hitRateAtK": 0.5,
+      "recallAtK": 0.5,
+      "mrrAtK": 0.125,
+      "ndcgAtK": 0.21533827903669653
+    }
+  },
+  "byLanguage": {
+    "en": {
+      "queryCount": 12,
+      "hitRateAtK": 0.6666666666666666,
+      "recallAtK": 0.6666666666666666,
+      "mrrAtK": 0.2986111111111111,
+      "ndcgAtK": 0.39040157791121266
+    }
+  },
+  "node": "v24.19.0",
+  "cpu": "AMD EPYC Processor",
+  "chunkCount": 66767,
+  "profile": "async retrieval; actual providers and degradation recorded per query",
+  "k": 5,
+  "coldLoadMs": 2769.023305,
+  "meanLatencyMs": 152.1454834375,
+  "p50LatencyMs": 115.10299000000032,
+  "p95LatencyMs": 468.79986599999984,
+  "metrics": {
+    "queryCount": 12,
+    "hitRateAtK": 0.6666666666666666,
+    "recallAtK": 0.6666666666666666,
+    "mrrAtK": 0.2986111111111111,
+    "ndcgAtK": 0.39040157791121266
+  },
+  "noAnswerFalsePositiveRate": 1,
+  "forbiddenHits": 0,
+  "hardNegativeQueryRate": 0,
+  "hardNegativeHits": 0,
+  "rows": [
+    {
+      "queryId": "v3-validation-01",
+      "product": "HCI",
+      "language": "en",
+      "latencyMs": 468.79986599999984,
+      "mode": "hybrid-semantic",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 8673
+        },
+        "embeddingModelCounts": {
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 8673
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "7cdaaa733f5c8b9c7bced76c9895eced5cca4c6f4cc3c0362e4079322b4054a0",
+        "retrievalMode": "hybrid-semantic"
+      },
+      "hits": [
+        {
+          "queryId": "v3-validation-01",
+          "sourceId": "data/sources/raw/support_10_1381_2654264.md",
+          "rank": 1,
+          "score": 0.01639344262295082
+        },
+        {
+          "queryId": "v3-validation-01",
+          "sourceId": "data/sources/raw/support_10_1229_2639807.md",
+          "rank": 2,
+          "score": 0.016129032258064516
+        },
+        {
+          "queryId": "v3-validation-01",
+          "sourceId": "data/sources/raw/support_10_1054_2643765.md",
+          "rank": 3,
+          "score": 0.014492753623188406
+        },
+        {
+          "queryId": "v3-validation-01",
+          "sourceId": "data/sources/raw/support_10_1229_2639760.md",
+          "rank": 4,
+          "score": 0.013888888888888888
+        },
+        {
+          "queryId": "v3-validation-01",
+          "sourceId": "data/sources/raw/support_10_1381_2654165.md",
+          "rank": 5,
+          "score": 0.013836596385542169
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "v3-validation-02",
+      "product": "HCI",
+      "language": "en",
+      "latencyMs": 141.5703070000004,
+      "mode": "hybrid-semantic",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 8673
+        },
+        "embeddingModelCounts": {
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 8673
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "7cdaaa733f5c8b9c7bced76c9895eced5cca4c6f4cc3c0362e4079322b4054a0",
+        "retrievalMode": "hybrid-semantic"
+      },
+      "hits": [
+        {
+          "queryId": "v3-validation-02",
+          "sourceId": "data/sources/raw/support_10_1229_2639806.md",
+          "rank": 1,
+          "score": 0.014102564102564103
+        },
+        {
+          "queryId": "v3-validation-02",
+          "sourceId": "data/sources/raw/support_10_1381_2654263.md",
+          "rank": 2,
+          "score": 0.01406926406926407
+        },
+        {
+          "queryId": "v3-validation-02",
+          "sourceId": "data/sources/raw/support_10_1229_2639808.md",
+          "rank": 3,
+          "score": 0.013721804511278194
+        },
+        {
+          "queryId": "v3-validation-02",
+          "sourceId": "data/sources/raw/support_10_1381_2654265.md",
+          "rank": 4,
+          "score": 0.013496376811594202
+        },
+        {
+          "queryId": "v3-validation-02",
+          "sourceId": "data/sources/raw/support_10_1054_2643765.md",
+          "rank": 5,
+          "score": 0.012561274509803922
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "v3-validation-03",
+      "product": "HCI",
+      "language": "en",
+      "latencyMs": 127.44474200000013,
+      "mode": "hybrid-semantic",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 8673
+        },
+        "embeddingModelCounts": {
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 8673
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "7cdaaa733f5c8b9c7bced76c9895eced5cca4c6f4cc3c0362e4079322b4054a0",
+        "retrievalMode": "hybrid-semantic"
+      },
+      "hits": [
+        {
+          "queryId": "v3-validation-03",
+          "sourceId": "data/sources/raw/support_10_1054_2643765.md",
+          "rank": 1,
+          "score": 0.014495798319327732
+        },
+        {
+          "queryId": "v3-validation-03",
+          "sourceId": "data/sources/raw/support_10_1381_2654308.md",
+          "rank": 2,
+          "score": 0.013910060975609756
+        },
+        {
+          "queryId": "v3-validation-03",
+          "sourceId": "data/sources/raw/support_10_1229_2639808.md",
+          "rank": 3,
+          "score": 0.012434009447068631
+        },
+        {
+          "queryId": "v3-validation-03",
+          "sourceId": "data/sources/raw/support_10_1229_2639829.md",
+          "rank": 4,
+          "score": 0.012361286697569883
+        },
+        {
+          "queryId": "v3-validation-03",
+          "sourceId": "data/sources/raw/support_10_1381_2654265.md",
+          "rank": 5,
+          "score": 0.012338020402536532
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "v3-validation-04",
+      "product": "HCI",
+      "language": "en",
+      "latencyMs": 132.04211099999975,
+      "mode": "hybrid-semantic",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 8673
+        },
+        "embeddingModelCounts": {
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 8673
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "7cdaaa733f5c8b9c7bced76c9895eced5cca4c6f4cc3c0362e4079322b4054a0",
+        "retrievalMode": "hybrid-semantic"
+      },
+      "hits": [
+        {
+          "queryId": "v3-validation-04",
+          "sourceId": "data/sources/raw/support_10_1229_2639720.md",
+          "rank": 1,
+          "score": 0.01639344262295082
+        },
+        {
+          "queryId": "v3-validation-04",
+          "sourceId": "data/sources/raw/support_10_1381_2654412.md",
+          "rank": 2,
+          "score": 0.016129032258064516
+        },
+        {
+          "queryId": "v3-validation-04",
+          "sourceId": "data/sources/raw/support_10_1229_2639902.md",
+          "rank": 3,
+          "score": 0.011944214305440487
+        },
+        {
+          "queryId": "v3-validation-04",
+          "sourceId": "data/sources/raw/support_10_1229_2639894.md",
+          "rank": 4,
+          "score": 0.010056599959571456
+        },
+        {
+          "queryId": "v3-validation-04",
+          "sourceId": "data/sources/raw/support_10_1373_2646636.md",
+          "rank": 5,
+          "score": 0.009879905041195364
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "v3-validation-05",
+      "product": "HCI",
+      "language": "en",
+      "latencyMs": 113.31011699999999,
+      "mode": "hybrid-semantic",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 8673
+        },
+        "embeddingModelCounts": {
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 8673
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "7cdaaa733f5c8b9c7bced76c9895eced5cca4c6f4cc3c0362e4079322b4054a0",
+        "retrievalMode": "hybrid-semantic"
+      },
+      "hits": [
+        {
+          "queryId": "v3-validation-05",
+          "sourceId": "data/sources/raw/support_10_1070_2129250.md",
+          "rank": 1,
+          "score": 0.014190821256038648
+        },
+        {
+          "queryId": "v3-validation-05",
+          "sourceId": "data/sources/raw/support_case_2_308916.md",
+          "rank": 2,
+          "score": 0.013899613899613899
+        },
+        {
+          "queryId": "v3-validation-05",
+          "sourceId": "data/sources/raw/support_10_1054_2643820.md",
+          "rank": 3,
+          "score": 0.013554485464597824
+        },
+        {
+          "queryId": "v3-validation-05",
+          "sourceId": "data/sources/raw/support_10_1054_2643819.md",
+          "rank": 4,
+          "score": 0.0132404181184669
+        },
+        {
+          "queryId": "v3-validation-05",
+          "sourceId": "data/sources/raw/support_10_1229_2639882.md",
+          "rank": 5,
+          "score": 0.012224591329068942
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "v3-validation-06",
+      "product": "HCI",
+      "language": "en",
+      "latencyMs": 119.17389899999989,
+      "mode": "hybrid-semantic",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 8673
+        },
+        "embeddingModelCounts": {
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 8673
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "7cdaaa733f5c8b9c7bced76c9895eced5cca4c6f4cc3c0362e4079322b4054a0",
+        "retrievalMode": "hybrid-semantic"
+      },
+      "hits": [
+        {
+          "queryId": "v3-validation-06",
+          "sourceId": "data/sources/raw/support_10_1229_2639894.md",
+          "rank": 1,
+          "score": 0.016133229247983348
+        },
+        {
+          "queryId": "v3-validation-06",
+          "sourceId": "data/sources/raw/support_10_1381_2654461.md",
+          "rank": 2,
+          "score": 0.015749007936507936
+        },
+        {
+          "queryId": "v3-validation-06",
+          "sourceId": "data/sources/raw/support_10_1381_2654462.md",
+          "rank": 3,
+          "score": 0.013764880952380952
+        },
+        {
+          "queryId": "v3-validation-06",
+          "sourceId": "data/sources/raw/support_10_1229_2639751.md",
+          "rank": 4,
+          "score": 0.013458110516934046
+        },
+        {
+          "queryId": "v3-validation-06",
+          "sourceId": "data/sources/raw/support_10_1381_2662956.md",
+          "rank": 5,
+          "score": 0.012260765550239234
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "v3-validation-07",
+      "product": "HCI",
+      "language": "en",
+      "latencyMs": 115.10299000000032,
+      "mode": "hybrid-semantic",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 8673
+        },
+        "embeddingModelCounts": {
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 8673
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "7cdaaa733f5c8b9c7bced76c9895eced5cca4c6f4cc3c0362e4079322b4054a0",
+        "retrievalMode": "hybrid-semantic"
+      },
+      "hits": [
+        {
+          "queryId": "v3-validation-07",
+          "sourceId": "data/sources/raw/support_10_1229_2639804.md",
+          "rank": 1,
+          "score": 0.015443098123069612
+        },
+        {
+          "queryId": "v3-validation-07",
+          "sourceId": "data/sources/raw/support_10_1381_2654261.md",
+          "rank": 2,
+          "score": 0.015289449112978524
+        },
+        {
+          "queryId": "v3-validation-07",
+          "sourceId": "data/sources/raw/support_10_1381_2662796.md",
+          "rank": 3,
+          "score": 0.01221001221001221
+        },
+        {
+          "queryId": "v3-validation-07",
+          "sourceId": "data/sources/raw/support_10_1381_2654236.md",
+          "rank": 4,
+          "score": 0.010334958660165358
+        },
+        {
+          "queryId": "v3-validation-07",
+          "sourceId": "data/sources/raw/community_thread_10496.md",
+          "rank": 5,
+          "score": 0.009624937903626429
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "v3-validation-08",
+      "product": "HCI",
+      "language": "en",
+      "latencyMs": 108.42699099999936,
+      "mode": "hybrid-semantic",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 8673
+        },
+        "embeddingModelCounts": {
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 8673
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "7cdaaa733f5c8b9c7bced76c9895eced5cca4c6f4cc3c0362e4079322b4054a0",
+        "retrievalMode": "hybrid-semantic"
+      },
+      "hits": [
+        {
+          "queryId": "v3-validation-08",
+          "sourceId": "data/sources/raw/support_10_1054_2643765.md",
+          "rank": 1,
+          "score": 0.015384615384615385
+        },
+        {
+          "queryId": "v3-validation-08",
+          "sourceId": "data/sources/raw/support_10_1381_2662801.md",
+          "rank": 2,
+          "score": 0.014863387978142076
+        },
+        {
+          "queryId": "v3-validation-08",
+          "sourceId": "data/sources/raw/support_10_1381_2662866.md",
+          "rank": 3,
+          "score": 0.014705882352941176
+        },
+        {
+          "queryId": "v3-validation-08",
+          "sourceId": "data/sources/raw/support_10_1229_2639806.md",
+          "rank": 4,
+          "score": 0.01401689708141321
+        },
+        {
+          "queryId": "v3-validation-08",
+          "sourceId": "data/sources/raw/support_10_1381_2654263.md",
+          "rank": 5,
+          "score": 0.013960604322050105
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "v3-validation-09",
+      "product": "NGFW",
+      "language": "en",
+      "latencyMs": 326.4012730000004,
+      "mode": "hybrid-semantic",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 8200
+        },
+        "embeddingModelCounts": {
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 8200
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "7cdaaa733f5c8b9c7bced76c9895eced5cca4c6f4cc3c0362e4079322b4054a0",
+        "retrievalMode": "hybrid-semantic"
+      },
+      "hits": [
+        {
+          "queryId": "v3-validation-09",
+          "sourceId": "data/sources/raw/support_21_1088_2639184.md",
+          "rank": 1,
+          "score": 0.0152073732718894
+        },
+        {
+          "queryId": "v3-validation-09",
+          "sourceId": "data/sources/raw/support_21_1093_2637105.md",
+          "rank": 2,
+          "score": 0.014734561213434454
+        },
+        {
+          "queryId": "v3-validation-09",
+          "sourceId": "data/sources/raw/support_21_1090_2640297.md",
+          "rank": 3,
+          "score": 0.014306006493506494
+        },
+        {
+          "queryId": "v3-validation-09",
+          "sourceId": "data/sources/raw/support_21_1095_2647815.md",
+          "rank": 4,
+          "score": 0.013888888888888888
+        },
+        {
+          "queryId": "v3-validation-09",
+          "sourceId": "data/sources/raw/support_21_1092_2631418.md",
+          "rank": 5,
+          "score": 0.013599853961299745
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "v3-validation-10",
+      "product": "NGFW",
+      "language": "en",
+      "latencyMs": 134.23358999999982,
+      "mode": "hybrid-semantic",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 8200
+        },
+        "embeddingModelCounts": {
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 8200
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "7cdaaa733f5c8b9c7bced76c9895eced5cca4c6f4cc3c0362e4079322b4054a0",
+        "retrievalMode": "hybrid-semantic"
+      },
+      "hits": [
+        {
+          "queryId": "v3-validation-10",
+          "sourceId": "data/sources/raw/support_21_1090_2640341.md",
+          "rank": 1,
+          "score": 0.01639344262295082
+        },
+        {
+          "queryId": "v3-validation-10",
+          "sourceId": "data/sources/raw/support_21_1092_2631462.md",
+          "rank": 2,
+          "score": 0.016129032258064516
+        },
+        {
+          "queryId": "v3-validation-10",
+          "sourceId": "data/sources/raw/support_21_1093_2637150.md",
+          "rank": 3,
+          "score": 0.015873015873015872
+        },
+        {
+          "queryId": "v3-validation-10",
+          "sourceId": "data/sources/raw/support_21_1095_2647860.md",
+          "rank": 4,
+          "score": 0.015625
+        },
+        {
+          "queryId": "v3-validation-10",
+          "sourceId": "data/sources/raw/support_21_1095_2648086.md",
+          "rank": 5,
+          "score": 0.009365020879390814
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "v3-validation-11",
+      "product": "NGFW",
+      "language": "en",
+      "latencyMs": 114.76501999999982,
+      "mode": "hybrid-semantic",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 8200
+        },
+        "embeddingModelCounts": {
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 8200
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "7cdaaa733f5c8b9c7bced76c9895eced5cca4c6f4cc3c0362e4079322b4054a0",
+        "retrievalMode": "hybrid-semantic"
+      },
+      "hits": [
+        {
+          "queryId": "v3-validation-11",
+          "sourceId": "data/sources/raw/support_21_1090_2640188.md",
+          "rank": 1,
+          "score": 0.015772478887232988
+        },
+        {
+          "queryId": "v3-validation-11",
+          "sourceId": "data/sources/raw/support_21_1092_2631304.md",
+          "rank": 2,
+          "score": 0.015310892940626462
+        },
+        {
+          "queryId": "v3-validation-11",
+          "sourceId": "data/sources/raw/support_21_1093_2636990.md",
+          "rank": 3,
+          "score": 0.015045248868778281
+        },
+        {
+          "queryId": "v3-validation-11",
+          "sourceId": "data/sources/raw/support_21_1087_2642416.md",
+          "rank": 4,
+          "score": 0.015045248868778281
+        },
+        {
+          "queryId": "v3-validation-11",
+          "sourceId": "data/sources/raw/support_21_1088_2639130.md",
+          "rank": 5,
+          "score": 0.014603174603174604
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "v3-validation-12",
+      "product": "NGFW",
+      "language": "en",
+      "latencyMs": 109.131617,
+      "mode": "hybrid-semantic",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 8200
+        },
+        "embeddingModelCounts": {
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 8200
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "7cdaaa733f5c8b9c7bced76c9895eced5cca4c6f4cc3c0362e4079322b4054a0",
+        "retrievalMode": "hybrid-semantic"
+      },
+      "hits": [
+        {
+          "queryId": "v3-validation-12",
+          "sourceId": "data/sources/raw/support_21_1090_2640360.md",
+          "rank": 1,
+          "score": 0.014219443323920937
+        },
+        {
+          "queryId": "v3-validation-12",
+          "sourceId": "data/sources/raw/support_21_1093_2638443.md",
+          "rank": 2,
+          "score": 0.013144841269841268
+        },
+        {
+          "queryId": "v3-validation-12",
+          "sourceId": "data/sources/raw/support_21_1092_2631481.md",
+          "rank": 3,
+          "score": 0.013010540184453228
+        },
+        {
+          "queryId": "v3-validation-12",
+          "sourceId": "data/sources/raw/support_21_1093_2637169.md",
+          "rank": 4,
+          "score": 0.010130718954248366
+        },
+        {
+          "queryId": "v3-validation-12",
+          "sourceId": "data/sources/raw/support_21_1093_2637284.md",
+          "rank": 5,
+          "score": 0.01010900140646976
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "v3-no-01",
+      "product": "HCI",
+      "language": "en",
+      "latencyMs": 117.52136599999994,
+      "mode": "hybrid-semantic",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 8673
+        },
+        "embeddingModelCounts": {
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 8673
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "7cdaaa733f5c8b9c7bced76c9895eced5cca4c6f4cc3c0362e4079322b4054a0",
+        "retrievalMode": "hybrid-semantic"
+      },
+      "hits": [
+        {
+          "queryId": "v3-no-01",
+          "sourceId": "data/sources/raw/support_case_2_308972.md",
+          "rank": 1,
+          "score": 0.00819672131147541
+        },
+        {
+          "queryId": "v3-no-01",
+          "sourceId": "data/sources/raw/support_10_1381_2662784.md",
+          "rank": 2,
+          "score": 0.008064516129032258
+        },
+        {
+          "queryId": "v3-no-01",
+          "sourceId": "data/sources/raw/support_case_2_308928.md",
+          "rank": 3,
+          "score": 0.007936507936507936
+        },
+        {
+          "queryId": "v3-no-01",
+          "sourceId": "data/sources/raw/community_thread_10824.md",
+          "rank": 4,
+          "score": 0.0078125
+        },
+        {
+          "queryId": "v3-no-01",
+          "sourceId": "data/sources/raw/community_thread_9603.md",
+          "rank": 5,
+          "score": 0.007692307692307693
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "v3-no-02",
+      "product": "NGFW",
+      "language": "ko",
+      "latencyMs": 103.045615,
+      "mode": "hybrid-semantic",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 8200
+        },
+        "embeddingModelCounts": {
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 8200
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "7cdaaa733f5c8b9c7bced76c9895eced5cca4c6f4cc3c0362e4079322b4054a0",
+        "retrievalMode": "hybrid-semantic"
+      },
+      "hits": [
+        {
+          "queryId": "v3-no-02",
+          "sourceId": "data/sources/raw/support_21_1087_2642510.md",
+          "rank": 1,
+          "score": 0.00819672131147541
+        },
+        {
+          "queryId": "v3-no-02",
+          "sourceId": "data/sources/raw/support_21_1087_2642464.md",
+          "rank": 2,
+          "score": 0.008064516129032258
+        },
+        {
+          "queryId": "v3-no-02",
+          "sourceId": "data/sources/raw/support_21_1087_2642367.md",
+          "rank": 3,
+          "score": 0.007936507936507936
+        },
+        {
+          "queryId": "v3-no-02",
+          "sourceId": "data/sources/raw/support_21_1093_2636934.md",
+          "rank": 4,
+          "score": 0.0078125
+        },
+        {
+          "queryId": "v3-no-02",
+          "sourceId": "data/sources/raw/support_21_1093_2638411.md",
+          "rank": 5,
+          "score": 0.007692307692307693
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "v3-no-03",
+      "product": "HCI",
+      "language": "en",
+      "latencyMs": 105.9474310000005,
+      "mode": "hybrid-semantic",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 8673
+        },
+        "embeddingModelCounts": {
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 8673
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "7cdaaa733f5c8b9c7bced76c9895eced5cca4c6f4cc3c0362e4079322b4054a0",
+        "retrievalMode": "hybrid-semantic"
+      },
+      "hits": [
+        {
+          "queryId": "v3-no-03",
+          "sourceId": "data/sources/raw/community_thread_8037.md",
+          "rank": 1,
+          "score": 0.00819672131147541
+        },
+        {
+          "queryId": "v3-no-03",
+          "sourceId": "data/sources/raw/support_practice_10_1129950.md",
+          "rank": 2,
+          "score": 0.008064516129032258
+        },
+        {
+          "queryId": "v3-no-03",
+          "sourceId": "data/sources/raw/support_practice_10_1137300.md",
+          "rank": 3,
+          "score": 0.007936507936507936
+        },
+        {
+          "queryId": "v3-no-03",
+          "sourceId": "data/sources/raw/community_thread_10073.md",
+          "rank": 4,
+          "score": 0.0078125
+        },
+        {
+          "queryId": "v3-no-03",
+          "sourceId": "data/sources/raw/support_10_1381_2662859.md",
+          "rank": 5,
+          "score": 0.007692307692307693
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "v3-no-04",
+      "product": "NGFW",
+      "language": "en",
+      "latencyMs": 97.41079999999965,
+      "mode": "hybrid-semantic",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 8200
+        },
+        "embeddingModelCounts": {
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 8200
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "7cdaaa733f5c8b9c7bced76c9895eced5cca4c6f4cc3c0362e4079322b4054a0",
+        "retrievalMode": "hybrid-semantic"
+      },
+      "hits": [
+        {
+          "queryId": "v3-no-04",
+          "sourceId": "data/sources/raw/support_21_1095_2653232.md",
+          "rank": 1,
+          "score": 0.009248843894513185
+        },
+        {
+          "queryId": "v3-no-04",
+          "sourceId": "data/sources/raw/support_21_1090_2640334.md",
+          "rank": 2,
+          "score": 0.009131300750727748
+        },
+        {
+          "queryId": "v3-no-04",
+          "sourceId": "data/sources/raw/support_21_1093_2637143.md",
+          "rank": 3,
+          "score": 0.008995614825494084
+        },
+        {
+          "queryId": "v3-no-04",
+          "sourceId": "data/sources/raw/support_21_1095_2653216.md",
+          "rank": 4,
+          "score": 0.008826358826358826
+        },
+        {
+          "queryId": "v3-no-04",
+          "sourceId": "data/sources/raw/support_21_1095_2653227.md",
+          "rank": 5,
+          "score": 0.008713250237095245
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    }
+  ],
+  "comparison": null,
+  "baselineReportSha256": null
+}
