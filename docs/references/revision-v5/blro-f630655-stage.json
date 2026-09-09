@@ -1,0 +1,9 @@
+{
+  "status": "STAGED_NOT_ACTIVATED",
+  "sourceRef": "f630655",
+  "archiveSha256": "7401eca8536a3b74283c7d290e32c526795f478bb7c27b337f74a4bd9fca6644",
+  "path": "/home/blro/orca/projects/sangfor-engineer-mcp/releases/f630655",
+  "provenance": "git archive; remote SHA verified before fresh extraction",
+  "validation": "Remote install/build/runtime acceptance pending",
+  "operationalState": "start-mcp.sh unchanged; no project user service observed; unrelated evoharvest database not reused"
+}
