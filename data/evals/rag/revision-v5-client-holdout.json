@@ -1,0 +1,287 @@
+{
+  "k": 5,
+  "queries": [
+    {
+      "queryId": "v5-holdout-01",
+      "query": "가상 키로 인증한 HCI 6.11.3 클러스터에서 인증에 사용한 노드를 교체하면 라이선스는 어떻게 되나요?\nIn an HCI 6.11.3 cluster authenticated with a virtual key, what happens to the license if a node used for authentication is replaced?",
+      "product": "HCI",
+      "language": "ko",
+      "family": "virtual-key-replacement",
+      "relevantSources": [
+        "data/sources/raw/support_10_1381_2654217.md"
+      ],
+      "version": "6.11.3",
+      "originalQuery": "가상 키로 인증한 HCI 6.11.3 클러스터에서 인증에 사용한 노드를 교체하면 라이선스는 어떻게 되나요?",
+      "clientTranslation": "In an HCI 6.11.3 cluster authenticated with a virtual key, what happens to the license if a node used for authentication is replaced?"
+    },
+    {
+      "queryId": "v5-holdout-02",
+      "query": "In HCI 6.11.3, what happens to a scheduled quiesced backup when the guest cannot be quiesced?",
+      "product": "HCI",
+      "language": "en",
+      "family": "quiesced-fallback",
+      "relevantSources": [
+        "data/sources/raw/support_10_1381_2654371.md"
+      ],
+      "version": "6.11.3",
+      "originalQuery": "In HCI 6.11.3, what happens to a scheduled quiesced backup when the guest cannot be quiesced?",
+      "clientTranslation": null
+    },
+    {
+      "queryId": "v5-holdout-03",
+      "query": "HCI 6.11.3에 SSL 인증서를 가져올 때 인증서 형식과 키 파일 크기 제한은 무엇인가요?\nWhen importing an SSL certificate into HCI 6.11.3, what are the certificate format and key file size limits?",
+      "product": "HCI",
+      "language": "ko",
+      "family": "certificate-format",
+      "relevantSources": [
+        "data/sources/raw/support_10_1381_2654409.md"
+      ],
+      "version": "6.11.3",
+      "originalQuery": "HCI 6.11.3에 SSL 인증서를 가져올 때 인증서 형식과 키 파일 크기 제한은 무엇인가요?",
+      "clientTranslation": "When importing an SSL certificate into HCI 6.11.3, what are the certificate format and key file size limits?"
+    },
+    {
+      "queryId": "v5-holdout-04",
+      "query": "How soon can HCI 6.11.3 repeat a backup health check, and what happens if it is requested too early?",
+      "product": "HCI",
+      "language": "en",
+      "family": "backup-check-interval",
+      "relevantSources": [
+        "data/sources/raw/support_10_1381_2654378.md"
+      ],
+      "version": "6.11.3",
+      "originalQuery": "How soon can HCI 6.11.3 repeat a backup health check, and what happens if it is requested too early?",
+      "clientTranslation": null
+    },
+    {
+      "queryId": "v5-holdout-05",
+      "query": "SCMT 3.0에서 사내 NTP 서버를 시간 동기화 대상으로 지정하는 메뉴와 입력 방법은 무엇인가요?\nIn SCMT 3.0, which menu and input method are used to specify an internal NTP server for time synchronization?",
+      "product": "HCI",
+      "language": "ko",
+      "family": "scmt-time-source",
+      "relevantSources": [
+        "data/sources/raw/support_10_1070_2125050.md"
+      ],
+      "version": "6.10.0",
+      "originalQuery": "SCMT 3.0에서 사내 NTP 서버를 시간 동기화 대상으로 지정하는 메뉴와 입력 방법은 무엇인가요?",
+      "clientTranslation": "In SCMT 3.0, which menu and input method are used to specify an internal NTP server for time synchronization?"
+    },
+    {
+      "queryId": "v5-holdout-06",
+      "query": "Which administrator login restrictions can the HCI 6.2.0 password policy control?",
+      "product": "HCI",
+      "language": "en",
+      "family": "admin-password-controls",
+      "relevantSources": [
+        "data/sources/raw/support_10_1054_2643820.md"
+      ],
+      "version": "6.2.0",
+      "originalQuery": "Which administrator login restrictions can the HCI 6.2.0 password policy control?",
+      "clientTranslation": null
+    },
+    {
+      "queryId": "v5-holdout-07",
+      "query": "Athena NDR 3.0.98 연동 시 신구 구조별로 권장되는 STA 버전은 무엇인가요?\nFor integration with Athena NDR 3.0.98, which STA versions are recommended for the old and new architectures?",
+      "product": "NDR",
+      "language": "ko",
+      "family": "sta-compatibility",
+      "relevantSources": [
+        "data/sources/raw/support_24_1219_2644670.md"
+      ],
+      "version": "3.0.98",
+      "originalQuery": "Athena NDR 3.0.98 연동 시 신구 구조별로 권장되는 STA 버전은 무엇인가요?",
+      "clientTranslation": "For integration with Athena NDR 3.0.98, which STA versions are recommended for the old and new architectures?"
+    },
+    {
+      "queryId": "v5-holdout-08",
+      "query": "For Athena NGFW 8.0.107, what network interruption should be planned for a restart during upgrade?",
+      "product": "NGFW",
+      "language": "en",
+      "family": "upgrade-interruption",
+      "relevantSources": [
+        "data/sources/raw/support_21_1095_2653564.md"
+      ],
+      "version": "8.0.107",
+      "originalQuery": "For Athena NGFW 8.0.107, what network interruption should be planned for a restart during upgrade?",
+      "clientTranslation": null
+    },
+    {
+      "queryId": "v5-holdout-09",
+      "query": "SCC 2.6.0 비즈니스 프로브에서 모니터링 정보는 어떤 프로토콜별로 제공되나요?\nFor SCC 2.6.0 business probes, which protocols have monitoring information available?",
+      "product": "SCC",
+      "language": "ko",
+      "family": "probe-protocols",
+      "relevantSources": [
+        "data/sources/raw/support_32_1101_1539000.md"
+      ],
+      "version": "2.6.0",
+      "originalQuery": "SCC 2.6.0 비즈니스 프로브에서 모니터링 정보는 어떤 프로토콜별로 제공되나요?",
+      "clientTranslation": "For SCC 2.6.0 business probes, which protocols have monitoring information available?"
+    },
+    {
+      "queryId": "v5-holdout-10",
+      "query": "What service verification is required after upgrading SCP 6.12.0?",
+      "product": "HCI_SCP",
+      "language": "en",
+      "family": "post-upgrade-services",
+      "relevantSources": [
+        "data/sources/raw/support_45_1388_2655904.md"
+      ],
+      "version": "6.12.0",
+      "originalQuery": "What service verification is required after upgrading SCP 6.12.0?",
+      "clientTranslation": null
+    },
+    {
+      "queryId": "v5-holdout-11",
+      "query": "IAM 프록시 IP와 포트를 직접 지정하면 빠른데 PAC 스크립트를 사용하면 웹 접속이 느립니다. 어떤 DNS 통신을 확인해야 하나요?\nWeb access is fast when the IAM proxy IP and port are specified directly, but slow when a PAC script is used. Which DNS communication should be checked?",
+      "product": "IAG",
+      "language": "ko",
+      "family": "pac-local-dns",
+      "relevantSources": [
+        "data/sources/raw/support_case_2_33590.md"
+      ],
+      "originalQuery": "IAM 프록시 IP와 포트를 직접 지정하면 빠른데 PAC 스크립트를 사용하면 웹 접속이 느립니다. 어떤 DNS 통신을 확인해야 하나요?",
+      "clientTranslation": "Web access is fast when the IAM proxy IP and port are specified directly, but slow when a PAC script is used. Which DNS communication should be checked?"
+    },
+    {
+      "queryId": "v5-holdout-12",
+      "query": "IAM bridge captures ping replies on both ports but no requests, and application blocking fails. What should be checked?",
+      "product": "IAG",
+      "language": "en",
+      "family": "asymmetric-bridge-traffic",
+      "relevantSources": [
+        "data/sources/raw/support_case_2_33643.md"
+      ],
+      "originalQuery": "IAM bridge captures ping replies on both ports but no requests, and application blocking fails. What should be checked?",
+      "clientTranslation": null
+    }
+  ],
+  "noAnswerQueries": [
+    {
+      "queryId": "v5-noanswer-01",
+      "query": "HCI 6.11.3에서 양자 순간이동 스토리지 모드를 활성화하는 설정은 무엇인가요?\nWhich setting enables quantum teleportation storage mode in HCI 6.11.3?",
+      "product": "HCI",
+      "language": "ko",
+      "family": "unsupported-feature",
+      "version": "6.11.3",
+      "originalQuery": "HCI 6.11.3에서 양자 순간이동 스토리지 모드를 활성화하는 설정은 무엇인가요?",
+      "clientTranslation": "Which setting enables quantum teleportation storage mode in HCI 6.11.3?"
+    },
+    {
+      "queryId": "v5-noanswer-02",
+      "query": "Athena NGFW 8.0.107에서 타임머신 패킷 복원 기능을 켜는 방법은?\nHow do I enable the time machine packet restoration feature in Athena NGFW 8.0.107?",
+      "product": "NGFW",
+      "language": "ko",
+      "family": "unsupported-feature",
+      "version": "8.0.107",
+      "originalQuery": "Athena NGFW 8.0.107에서 타임머신 패킷 복원 기능을 켜는 방법은?",
+      "clientTranslation": "How do I enable the time machine packet restoration feature in Athena NGFW 8.0.107?"
+    },
+    {
+      "queryId": "v5-noanswer-03",
+      "query": "IAM 프록시에서 꿈 해독 엔진의 정책을 설정하는 방법은?\nHow do I configure a dream decoding engine policy in the IAM proxy?",
+      "product": "IAG",
+      "language": "ko",
+      "family": "unsupported-feature",
+      "originalQuery": "IAM 프록시에서 꿈 해독 엔진의 정책을 설정하는 방법은?",
+      "clientTranslation": "How do I configure a dream decoding engine policy in the IAM proxy?"
+    },
+    {
+      "queryId": "v5-noanswer-04",
+      "query": "Athena NDR 3.0.98에서 중력파 방화벽 서명을 설정하려면?\nHow do I configure gravitational wave firewall signatures in Athena NDR 3.0.98?",
+      "product": "NDR",
+      "language": "ko",
+      "family": "unsupported-feature",
+      "version": "3.0.98",
+      "originalQuery": "Athena NDR 3.0.98에서 중력파 방화벽 서명을 설정하려면?",
+      "clientTranslation": "How do I configure gravitational wave firewall signatures in Athena NDR 3.0.98?"
+    },
+    {
+      "queryId": "v5-noanswer-05",
+      "query": "SCC 2.6.0에서 화성 기후 제어 프로브를 만드는 방법은?\nHow do I create a Mars climate control probe in SCC 2.6.0?",
+      "product": "SCC",
+      "language": "ko",
+      "family": "unsupported-feature",
+      "version": "2.6.0",
+      "originalQuery": "SCC 2.6.0에서 화성 기후 제어 프로브를 만드는 방법은?",
+      "clientTranslation": "How do I create a Mars climate control probe in SCC 2.6.0?"
+    },
+    {
+      "queryId": "v5-noanswer-06",
+      "query": "SCP 6.12.0에서 텔레파시 네트워크 드라이버를 설치하는 방법은?\nHow do I install a telepathy network driver in SCP 6.12.0?",
+      "product": "HCI_SCP",
+      "language": "ko",
+      "family": "unsupported-feature",
+      "version": "6.12.0",
+      "originalQuery": "SCP 6.12.0에서 텔레파시 네트워크 드라이버를 설치하는 방법은?",
+      "clientTranslation": "How do I install a telepathy network driver in SCP 6.12.0?"
+    },
+    {
+      "queryId": "v5-noanswer-07",
+      "query": "HCI 99.99.99의 인증서 가져오기 제한을 알려주세요.\nWhat are the certificate import limits in HCI 99.99.99?",
+      "product": "HCI",
+      "language": "ko",
+      "family": "unknown-version",
+      "version": "99.99.99",
+      "originalQuery": "HCI 99.99.99의 인증서 가져오기 제한을 알려주세요.",
+      "clientTranslation": "What are the certificate import limits in HCI 99.99.99?"
+    },
+    {
+      "queryId": "v5-noanswer-08",
+      "query": "NGFW 99.99.99의 업그레이드 중 서비스 중단 시간을 알려주세요.\nWhat is the service interruption duration during an upgrade of NGFW 99.99.99?",
+      "product": "NGFW",
+      "language": "ko",
+      "family": "unknown-version",
+      "version": "99.99.99",
+      "originalQuery": "NGFW 99.99.99의 업그레이드 중 서비스 중단 시간을 알려주세요.",
+      "clientTranslation": "What is the service interruption duration during an upgrade of NGFW 99.99.99?"
+    },
+    {
+      "queryId": "v5-noanswer-09",
+      "query": "NDR 99.99.99와 호환되는 STA 버전은 무엇인가요?\nWhich STA version is compatible with NDR 99.99.99?",
+      "product": "NDR",
+      "language": "ko",
+      "family": "unknown-version",
+      "version": "99.99.99",
+      "originalQuery": "NDR 99.99.99와 호환되는 STA 버전은 무엇인가요?",
+      "clientTranslation": "Which STA version is compatible with NDR 99.99.99?"
+    },
+    {
+      "queryId": "v5-noanswer-10",
+      "query": "SCP 99.99.99의 업그레이드 후 검사 절차는?\nWhat is the post-upgrade checking procedure for SCP 99.99.99?",
+      "product": "HCI_SCP",
+      "language": "ko",
+      "family": "unknown-version",
+      "version": "99.99.99",
+      "originalQuery": "SCP 99.99.99의 업그레이드 후 검사 절차는?",
+      "clientTranslation": "What is the post-upgrade checking procedure for SCP 99.99.99?"
+    },
+    {
+      "queryId": "v5-noanswer-11",
+      "query": "SCC 99.99.99의 비즈니스 프로브 프로토콜 목록은?\nWhich protocols are listed for business probes in SCC 99.99.99?",
+      "product": "SCC",
+      "language": "ko",
+      "family": "unknown-version",
+      "version": "99.99.99",
+      "originalQuery": "SCC 99.99.99의 비즈니스 프로브 프로토콜 목록은?",
+      "clientTranslation": "Which protocols are listed for business probes in SCC 99.99.99?"
+    },
+    {
+      "queryId": "v5-noanswer-12",
+      "query": "HCI 99.99.99에서 정지 백업이 실패하면 어떤 동작을 하나요?\nWhat happens if a quiesced backup fails in HCI 99.99.99?",
+      "product": "HCI",
+      "language": "ko",
+      "family": "unknown-version",
+      "version": "99.99.99",
+      "originalQuery": "HCI 99.99.99에서 정지 백업이 실패하면 어떤 동작을 하나요?",
+      "clientTranslation": "What happens if a quiesced backup fails in HCI 99.99.99?"
+    }
+  ],
+  "name": "revision-v5-client-translated-holdout",
+  "translationProvenance": {
+    "sourceFixtureSha256": "7c7be3aa0c31a5ff4bd7bea0a626a9dac8b7eece935ad6bfad6d965030224623",
+    "author": "current Codex client",
+    "status": "authored from question text only before any holdout search",
+    "limitations": "Same frozen questions, not an additional independent sample; no automatic backend translator; report canonical raw results separately"
+  }
+}
