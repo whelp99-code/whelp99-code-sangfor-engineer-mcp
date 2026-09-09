@@ -99,6 +99,29 @@ async function withAuth<T extends { readonly ok: boolean; readonly code?: string
   return { status: engineerCaseHttpStatus(result), body: result };
 }
 
+export function stripClaimedEngineerCaseGrants(document: Record<string, unknown>): Record<string, unknown> {
+  const {
+    guideReadyGranted: _claimedGuideReady,
+    executionPassGranted: _claimedExecutionPass,
+    approved: _claimedApproved,
+    ...rest
+  } = document;
+  const execution = rest.execution && typeof rest.execution === 'object' && !Array.isArray(rest.execution)
+    ? { ...(rest.execution as Record<string, unknown>) }
+    : undefined;
+  if (execution?.result === 'pass') {
+    execution.result = 'indeterminate';
+    if (typeof execution.reason !== 'string' || execution.reason.length === 0) {
+      execution.reason = 'stored execution.pass is not an execution PASS grant';
+    }
+  }
+  return {
+    ...rest,
+    ...(rest.progress === 'accepted' ? { progress: 'pm_review' } : {}),
+    ...(execution ? { execution } : {}),
+  };
+}
+
 export function postSaveEngineerCase(
   body: EngineerCaseSaveBody,
   store: EngineerCaseApiPort,
@@ -106,7 +129,7 @@ export function postSaveEngineerCase(
 ) {
   return withAuth(auth, (scope) => store.save({
     auth: scope,
-    document: body.document,
+    document: stripClaimedEngineerCaseGrants(body.document),
     requestId: body.requestId,
     expectedRevision: body.expectedRevision,
     artifacts: body.artifacts,

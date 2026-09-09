@@ -197,6 +197,36 @@ describe('engineer case API', () => {
     expect(String(artifact.body.payload)).not.toContain('plain');
   });
 
+  it('does not persist a caller-claimed accepted progress or execution PASS', async () => {
+    const db = new FakeEngineerCaseAuthorityDatabase();
+    const store = storeFor(db);
+    const base = await listen(store);
+    const saved = await call(base, 'POST', '/api/engineer-cases', {
+      requestId: 'req-claimed',
+      document: fixtureCase({
+        progress: 'accepted',
+        guideReadyGranted: true,
+        executionPassGranted: true,
+        approved: true,
+        execution: { result: 'pass', reason: 'claimed pass' },
+      }),
+    });
+    expect(saved.body).toMatchObject({
+      ok: true, status: 'saved', approved: false, guideReadyGranted: false, executionPassGranted: false,
+    });
+    const resumed = await call(base, 'GET', '/api/engineer-cases?caseId=case-existing-1');
+    expect(resumed.body).toMatchObject({
+      ok: true, status: 'saved', approved: false, guideReadyGranted: false, executionPassGranted: false,
+    });
+    const document = resumed.body.document as EngineerCaseDocument;
+    expect(document.progress).not.toBe('accepted');
+    expect(document.guide.readiness).not.toBe('review_ready');
+    expect(document.execution.result).not.toBe('pass');
+    expect(document).not.toHaveProperty('guideReadyGranted');
+    expect(document).not.toHaveProperty('executionPassGranted');
+    expect(document).not.toHaveProperty('approved');
+  });
+
   it('refuses missing auth, forged scope, and the other project', async () => {
     const db = new FakeEngineerCaseAuthorityDatabase();
     const store = storeFor(db);

@@ -131,7 +131,11 @@ describe('engineer case persistence', () => {
     expect(assembled.guideReadyGranted).toBe(false);
     expect(assembled.value.guide.readiness).toBe('blocked');
 
-    const saved = await store.saveEngineerCase({ auth: AUTH, document: fixtureCase(), requestId: 'req-1' });
+    const saved = await store.saveEngineerCase({
+      auth: AUTH,
+      document: fixtureCase({ progress: 'accepted' }),
+      requestId: 'req-1',
+    });
     expect(saved).toMatchObject({ ok: true, guideReadyGranted: false, executionPassGranted: false, approved: false });
     const loaded = await store.loadEngineerCase({ ...AUTH, caseId: 'case-existing-1' });
     expect(loaded.ok).toBe(true);
@@ -139,6 +143,7 @@ describe('engineer case persistence', () => {
     expect(loaded.guideReadyGranted).toBe(false);
     expect(loaded.executionPassGranted).toBe(false);
     const document = loaded.document as EngineerCaseDocument;
+    expect(document.progress).not.toBe('accepted');
     expect(document.guide.readiness).toBe(assembled.value.guide.readiness);
     expect(document.guide.readiness).not.toBe('review_ready');
     expect(document.execution.result).not.toBe('pass');

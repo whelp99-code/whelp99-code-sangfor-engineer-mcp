@@ -169,6 +169,7 @@ export function prepareEngineerCaseForPersistence(
     tenantId: auth.tenantId,
     projectId: auth.projectId,
     actorId: auth.actorId,
+    progress: document.progress === 'accepted' ? 'pm_review' : document.progress,
     guide: { ...document.guide, readiness: assemblePersistedReadiness(document) },
     evidence: document.evidence.map((item) => ({
       ...item,
