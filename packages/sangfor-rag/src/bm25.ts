@@ -19,7 +19,11 @@ const TECHNICAL_PLURALS = new Map([
 const tokenCache = new WeakMap<object, { text: string; counts: Map<string, number>; length: number }>();
 
 export function tokenize(text: string): string[] {
-  return (text.toLowerCase().match(TOKEN_RE) ?? []).filter((term) => !STOP_WORDS.has(term)).map((term) => TECHNICAL_PLURALS.get(term) ?? term);
+  return (text.toLowerCase().match(TOKEN_RE) ?? [])
+    // A sentence-final period on a plain word is punctuation. Preserve dotted
+    // identifiers, versions, paths and switches rather than stripping all dots.
+    .map((term) => /^[a-z가-힣]+\.$/.test(term) ? term.slice(0, -1) : term)
+    .filter((term) => !STOP_WORDS.has(term)).map((term) => TECHNICAL_PLURALS.get(term) ?? term);
 }
 
 export interface Bm25Options {

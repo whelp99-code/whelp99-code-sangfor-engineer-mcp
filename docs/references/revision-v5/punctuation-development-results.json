@@ -1,0 +1,57 @@
+{
+  "status": "DEVELOPMENT_ONLY_NOT_ACCEPTANCE",
+  "baseCommit": "5b3fe20",
+  "change": "Remove one sentence-final period on plain alphabetic/Korean lexical tokens; preserve technical dotted tokens.",
+  "configuration": {
+    "corpusSha256": "ee04fc7a022c3901ce8a7adce3a29c49bc23c8315e613165e035d4754793e8d4",
+    "hybridAlpha": 0,
+    "requireSubjectMatch": true,
+    "reranking": false
+  },
+  "rows": [
+    {
+      "fixture": "revision-v1-qrels-v2",
+      "metrics": {
+        "queryCount": 21,
+        "hitRateAtK": 0.9523809523809523,
+        "recallAtK": 0.9523809523809523,
+        "mrrAtK": 0.742063492063492,
+        "ndcgAtK": 0.7901652568971519
+      },
+      "noAnswerFalsePositiveRate": 0
+    },
+    {
+      "fixture": "revision-v3-validation",
+      "metrics": {
+        "queryCount": 12,
+        "hitRateAtK": 1,
+        "recallAtK": 1,
+        "mrrAtK": 0.8222222222222223,
+        "ndcgAtK": 0.8655710672695451
+      },
+      "noAnswerFalsePositiveRate": 0
+    },
+    {
+      "fixture": "revision-v5-client-korean-development",
+      "metrics": {
+        "queryCount": 12,
+        "hitRateAtK": 0.9166666666666666,
+        "recallAtK": 0.9166666666666666,
+        "mrrAtK": 0.7388888888888888,
+        "ndcgAtK": 0.7822377339362118
+      },
+      "noAnswerFalsePositiveRate": 0
+    },
+    {
+      "fixture": "revision-v5-client-holdout",
+      "metrics": {
+        "queryCount": 12,
+        "hitRateAtK": 0.8333333333333334,
+        "recallAtK": 0.8333333333333334,
+        "mrrAtK": 0.75,
+        "ndcgAtK": 0.7718216255952429
+      },
+      "noAnswerFalsePositiveRate": 0.5
+    }
+  ]
+}
