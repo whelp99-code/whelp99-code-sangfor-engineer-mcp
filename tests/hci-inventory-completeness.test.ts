@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { collectInventory, renderHciHealthReport, summarizeHciHealth } from '@sangfor/hci-client';
+import { collectInventory, renderHciHealthReport, resolveSameOriginPage, summarizeHciHealth } from '@sangfor/hci-client';
 import type { HciClient, HttpJsonResult } from '@sangfor/hci-client';
 
 const volume = { id: 'v1', name: 'data', status: 'available', size: 1, description: null };
@@ -172,5 +172,24 @@ describe('HCI collection completeness and health verdict', () => {
     });
     expect(inventory.collection.volumes).toMatchObject({ status: 'partial', reason: 'EXTERNAL_ORIGIN' });
     expect(inventory.volumes).toEqual([expect.objectContaining({ id: 'v1' })]);
+  });
+
+  it('refuses a protocol-relative next link as an external origin', async () => {
+    const serviceBase = 'http://127.0.0.1:3400/openstack/volume/v2/lab';
+    expect(resolveSameOriginPage('//untrusted.invalid/stolen', serviceBase))
+      .toEqual({ ok: false, reason: 'EXTERNAL_ORIGIN' });
+    expect(resolveSameOriginPage('  //untrusted.invalid/stolen', serviceBase))
+      .toEqual({ ok: false, reason: 'EXTERNAL_ORIGIN' });
+    expect(resolveSameOriginPage('/volumes/detail?marker=v1', serviceBase))
+      .toEqual({ ok: true, path: '/volumes/detail?marker=v1' });
+
+    const inventory = await collectInventory(client({
+      volume: response({ volumes: [volume], volumes_links: [{ rel: 'next', href: '//untrusted.invalid/stolen' }] }),
+    }), {
+      request: { serviceOrigins: { volume: serviceBase } },
+    });
+    expect(inventory.collection.volumes).toMatchObject({ status: 'partial', reason: 'EXTERNAL_ORIGIN' });
+    expect(inventory.volumes).toEqual([expect.objectContaining({ id: 'v1' })]);
+    expect(inventory.readRequests.filter((read) => read.service === 'volume')).toHaveLength(1);
   });
 });

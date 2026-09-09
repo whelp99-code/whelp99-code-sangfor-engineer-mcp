@@ -192,13 +192,17 @@ export function resolveSameOriginPage(
   next: string,
   serviceBase: string | undefined,
 ): { ok: true; path: string } | { ok: false; reason: 'EXTERNAL_ORIGIN' | 'INVALID_NEXT' } {
-  if (!next.trim()) return { ok: false, reason: 'INVALID_NEXT' };
-  if (next.startsWith('/') || next.startsWith('?')) {
-    return { ok: true, path: next.startsWith('?') ? next : next };
+  const href = next.trim();
+  if (!href) return { ok: false, reason: 'INVALID_NEXT' };
+  // Protocol-relative next (`//host/...`) is an external origin. Refuse it
+  // here so a later `new URL(path, base)` client cannot inherit our scheme.
+  if (href.startsWith('//')) return { ok: false, reason: 'EXTERNAL_ORIGIN' };
+  if (href.startsWith('/') || href.startsWith('?')) {
+    return { ok: true, path: href };
   }
   let nextUrl: URL;
   try {
-    nextUrl = new URL(next);
+    nextUrl = new URL(href);
   } catch {
     return { ok: false, reason: 'INVALID_NEXT' };
   }
