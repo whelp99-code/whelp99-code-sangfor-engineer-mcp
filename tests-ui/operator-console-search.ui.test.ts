@@ -77,6 +77,17 @@ describe('operator console RAG search — real browser', () => {
     await page.context().close();
   });
 
+  it('explains when a current device observation is required', async () => {
+    const { page } = await openConsole();
+    await page.route('**/api/rag-search', route => route.fulfill({ json: { results: [], diagnostics: { degraded: false, evidenceRequirement: 'live-runtime' } } }));
+    await page.locator('#nav button[data-panel="rag"]').click();
+    await page.locator('#rag-query').fill('What are our current device settings?');
+    await page.locator('#btn-rag').click();
+    await page.waitForFunction(() => (document.querySelector('#rag-hits')?.textContent ?? '').includes('권한 있는 장비 조회 결과가 필요합니다'));
+    expect(await page.locator('#rag-hits article').count()).toBe(0);
+    await page.context().close();
+  });
+
   it('renders untrusted knowledge and API errors as inert text, and makes empty results actionable', async () => {
     const { page } = await openConsole();
     await page.locator('#nav button[data-panel="knowledge"]').click();

@@ -78,6 +78,7 @@ export interface RagSearchHit extends RagDocumentChunk {
 }
 
 export interface RagSearchDiagnostics {
+  evidenceRequirement?: 'live-runtime';
   degraded: boolean;
   degradedReason?: string;
   queryBackend?: EmbeddingBackend;

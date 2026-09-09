@@ -1,0 +1,87 @@
+{
+  "name": "Runtime evidence routing actual MCP development readback",
+  "k": 5,
+  "queries": [
+    {
+      "queryId": "hci-cli-6113",
+      "query": "An engineer needs shell-level routine maintenance commands for a 6.11.3 cluster; which guide applies?",
+      "product": "HCI",
+      "family": "manual",
+      "language": "en",
+      "tags": [
+        "positive",
+        "versioned",
+        "acronym",
+        "hci"
+      ],
+      "relevantSources": [
+        "data/sources/raw/support_10_1381_2654470.md",
+        "data/sources/raw/support_10_1381_2662960.md"
+      ],
+      "hardNegativeSources": [
+        "data/sources/raw/support_10_1229_2639675.md"
+      ]
+    },
+    {
+      "queryId": "ko-v3-validation-04",
+      "query": "HCI 시스템 로그 설정은 어디서 하나요?\nWhere do I set up HCI system logs?",
+      "product": "HCI",
+      "language": "ko",
+      "relevantSources": [
+        "data/sources/raw/support_10_1381_2654412.md"
+      ],
+      "evidenceTitle": "Hyper Converged Infrastructure (HCI/aSV) 6.11.3 - User Manual / HCI Platform Configuration Guide / Syslog Configurations",
+      "evidenceExcerpt": " a unified infrastructure combining compute, storage, networking, and built-in security to simplify deployment, operations, and services. Documents Best Practices Cases Softwares Tools Community Search Product Click to switch product version. Got it Do not remind again. 6.11.3 Release Notes User Manual Product Description Installation And Deployment HCI Cluster Initialization Platform Login Virtual Machine Configuration Guidance Configuring Virtual Network Storage Configuration Guide Reliability Configuration Guide aSecurity Configuration Guide HCI Platform Configuration Guide Viewing Node/Cluster Running Status Port Management Certificate Setting Viewing the Alarm Log Alert Options Syslog C",
+      "originalQuery": "HCI 시스템 로그 설정은 어디서 하나요?",
+      "clientTranslation": "Where do I set up HCI system logs?"
+    },
+    {
+      "queryId": "v5-holdout-01",
+      "query": "가상 키로 인증한 HCI 6.11.3 클러스터에서 인증에 사용한 노드를 교체하면 라이선스는 어떻게 되나요?\nIn an HCI 6.11.3 cluster authenticated with a virtual key, what happens to the license if a node used for authentication is replaced?",
+      "product": "HCI",
+      "language": "ko",
+      "family": "virtual-key-replacement",
+      "relevantSources": [
+        "data/sources/raw/support_10_1381_2654217.md"
+      ],
+      "version": "6.11.3",
+      "originalQuery": "가상 키로 인증한 HCI 6.11.3 클러스터에서 인증에 사용한 노드를 교체하면 라이선스는 어떻게 되나요?",
+      "clientTranslation": "In an HCI 6.11.3 cluster authenticated with a virtual key, what happens to the license if a node used for authentication is replaced?"
+    }
+  ],
+  "noAnswerQueries": [
+    {
+      "queryId": "v5-holdout2-noanswer-01",
+      "query": "우리 고객 HCI 6.11.3 클러스터에 지금 로그인 중인 관리자의 실명과 접속 IP를 알려줘.\nWhat are the real names and source IP addresses of administrators currently logged into our customer HCI 6.11.3 cluster?",
+      "product": "HCI",
+      "language": "ko",
+      "family": "private-runtime-state",
+      "reason": "Static public manuals cannot establish customer runtime/private values.",
+      "version": "6.11.3",
+      "originalQuery": "우리 고객 HCI 6.11.3 클러스터에 지금 로그인 중인 관리자의 실명과 접속 IP를 알려줘.",
+      "clientTranslation": "What are the real names and source IP addresses of administrators currently logged into our customer HCI 6.11.3 cluster?"
+    },
+    {
+      "queryId": "v5-holdout2-noanswer-03",
+      "query": "우리 NDR 3.0.98 장비에서 오늘 탐지된 공격자의 실제 신원을 확인해 줘.\nIdentify the real-world identities of the attackers detected by our NDR 3.0.98 device today.",
+      "product": "NDR",
+      "language": "ko",
+      "family": "private-runtime-state",
+      "reason": "Static public manuals cannot establish customer runtime/private values.",
+      "version": "3.0.98",
+      "originalQuery": "우리 NDR 3.0.98 장비에서 오늘 탐지된 공격자의 실제 신원을 확인해 줘.",
+      "clientTranslation": "Identify the real-world identities of the attackers detected by our NDR 3.0.98 device today."
+    },
+    {
+      "queryId": "v5-holdout2-noanswer-08",
+      "query": "What are the current private keys configured on our customer NGFW 8.0.107 device?",
+      "product": "NGFW",
+      "language": "en",
+      "family": "private-secret",
+      "reason": "Static public manuals cannot establish customer runtime/private values.",
+      "version": "8.0.107",
+      "originalQuery": "What are the current private keys configured on our customer NGFW 8.0.107 device?",
+      "clientTranslation": null
+    }
+  ]
+}

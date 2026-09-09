@@ -66,7 +66,7 @@ export const knowledgeToolCatalog: readonly ToolCatalogEntry[] = [
       const weakReason: 'no_hits' | 'low_score' | undefined = hits.length === 0
         ? 'no_hits'
         : (topScore !== undefined && topScore < searchGapWeakThreshold() ? 'low_score' : undefined);
-      if (weakReason) {
+      if (weakReason && diagnostics.evidenceRequirement !== 'live-runtime') {
         recordSearchGap({ query: args.query, product: args.product, version: args.version, hitCount: hits.length, topScore, reason: weakReason });
       }
       // privacy_mode=summary already returns an object ({count, hits}) — merge
@@ -77,7 +77,7 @@ export const knowledgeToolCatalog: readonly ToolCatalogEntry[] = [
       // object-shaped response and sangfor_rag_index_summary.
       if (args.privacy_mode === 'summary') {
         const summarized = summarizeSearchHits(hits);
-        return diagnostics.degraded ? { ...summarized, ...diagnostics } : summarized;
+        return diagnostics.degraded || diagnostics.evidenceRequirement ? { ...summarized, ...diagnostics } : summarized;
       }
       return args.include_vectors ? hits : hits.map(omitVectorFromHit);
     }

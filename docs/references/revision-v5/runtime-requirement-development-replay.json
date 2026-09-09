@@ -1,0 +1,793 @@
+{
+  "status": "DEVELOPMENT_ROUTE_REPLAY_NOT_NEW_EMBEDDING_OR_MODEL_INFERENCE",
+  "selectionSha256": "430682c4a07c768ea20b76e61ea67de0ffe5681d17b77a6f98207388da182001",
+  "runtimeRequirementSha256": "dda815bac1babd290817f5419ceac7952b493cd15a5b4e7e3ae9de4522c2bc7b",
+  "limits": "Previously exposed questions only. Replays the new public-document routing branch against preserved actual retrieval outputs; unchanged retrieval/reranking outputs are reused. This is not a fresh end-to-end evaluation or independent holdout result.",
+  "reports": [
+    {
+      "fixture": "revision-v1-qrels-v2",
+      "fixtureSha256": "f6e772f55ff326b62673002d2ada3fe437b26d42e0b66396cc4eef0a2f3af1a8",
+      "positiveCount": 21,
+      "noAnswerCount": 4,
+      "hitRateAt5": 0.9523809523809523,
+      "noAnswerFalsePositiveRate": 0,
+      "rows": [
+        {
+          "queryId": "hci-cli-6113",
+          "noAnswer": false,
+          "requiresLiveEvidence": false,
+          "goldRank": 1,
+          "returned": 3
+        },
+        {
+          "queryId": "scp-nbu-xbsa-key",
+          "noAnswer": false,
+          "requiresLiveEvidence": false,
+          "goldRank": 2,
+          "returned": 5
+        },
+        {
+          "queryId": "scp-rapid-recovery-ko",
+          "noAnswer": false,
+          "requiresLiveEvidence": false,
+          "goldRank": 3,
+          "returned": 5
+        },
+        {
+          "queryId": "ndr-3098-preupgrade",
+          "noAnswer": false,
+          "requiresLiveEvidence": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "ndr-resolved-issues",
+          "noAnswer": false,
+          "requiresLiveEvidence": false,
+          "goldRank": 1,
+          "returned": 2
+        },
+        {
+          "queryId": "ngfw-80107-guaranteed",
+          "noAnswer": false,
+          "requiresLiveEvidence": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "ngfw-80106-limited",
+          "noAnswer": false,
+          "requiresLiveEvidence": false,
+          "goldRank": 2,
+          "returned": 5
+        },
+        {
+          "queryId": "iag-vpn-bandwidth-ko",
+          "noAnswer": false,
+          "requiresLiveEvidence": false,
+          "goldRank": 1,
+          "returned": 1
+        },
+        {
+          "queryId": "hci-overlay-6111",
+          "noAnswer": false,
+          "requiresLiveEvidence": false,
+          "goldRank": 3,
+          "returned": 5
+        },
+        {
+          "queryId": "hci-datastore",
+          "noAnswer": false,
+          "requiresLiveEvidence": false,
+          "goldRank": 2,
+          "returned": 5
+        },
+        {
+          "queryId": "hci-iscsi-ko",
+          "noAnswer": false,
+          "requiresLiveEvidence": false,
+          "goldRank": 2,
+          "returned": 5
+        },
+        {
+          "queryId": "backup-space-case",
+          "noAnswer": false,
+          "requiresLiveEvidence": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "scc-tenant-quota",
+          "noAnswer": false,
+          "requiresLiveEvidence": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "scp-612-scheduled-backup",
+          "noAnswer": false,
+          "requiresLiveEvidence": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "hci-system-diagnostics",
+          "noAnswer": false,
+          "requiresLiveEvidence": false,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "hci-raid-ko",
+          "noAnswer": false,
+          "requiresLiveEvidence": false,
+          "goldRank": 2,
+          "returned": 5
+        },
+        {
+          "queryId": "hci-api-reference",
+          "noAnswer": false,
+          "requiresLiveEvidence": false,
+          "goldRank": 1,
+          "returned": 1
+        },
+        {
+          "queryId": "sfvddk-api",
+          "noAnswer": false,
+          "requiresLiveEvidence": false,
+          "goldRank": 3,
+          "returned": 5
+        },
+        {
+          "queryId": "hci-dfw-ko",
+          "noAnswer": false,
+          "requiresLiveEvidence": false,
+          "goldRank": 3,
+          "returned": 5
+        },
+        {
+          "queryId": "ndr-environment-ko",
+          "noAnswer": false,
+          "requiresLiveEvidence": false,
+          "goldRank": 1,
+          "returned": 4
+        },
+        {
+          "queryId": "vcenter-cert-case",
+          "noAnswer": false,
+          "requiresLiveEvidence": false,
+          "goldRank": 1,
+          "returned": 1
+        },
+        {
+          "queryId": "no-hci-9999",
+          "noAnswer": true,
+          "requiresLiveEvidence": false,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "no-ndr-9999-ko",
+          "noAnswer": true,
+          "requiresLiveEvidence": false,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "no-ngfw-9999",
+          "noAnswer": true,
+          "requiresLiveEvidence": false,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "no-scp-9999-ko",
+          "noAnswer": true,
+          "requiresLiveEvidence": false,
+          "goldRank": 0,
+          "returned": 0
+        }
+      ]
+    },
+    {
+      "fixture": "revision-v3-validation",
+      "fixtureSha256": "85dd4ed04074e3459f0dffb12de56f8002dd62526405e95b42edcab21503630a",
+      "positiveCount": 12,
+      "noAnswerCount": 4,
+      "hitRateAt5": 0.9166666666666666,
+      "noAnswerFalsePositiveRate": 0,
+      "rows": [
+        {
+          "queryId": "v3-validation-01",
+          "noAnswer": false,
+          "requiresLiveEvidence": false,
+          "goldRank": 2,
+          "returned": 5
+        },
+        {
+          "queryId": "v3-validation-02",
+          "noAnswer": false,
+          "requiresLiveEvidence": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "v3-validation-03",
+          "noAnswer": false,
+          "requiresLiveEvidence": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "v3-validation-04",
+          "noAnswer": false,
+          "requiresLiveEvidence": false,
+          "goldRank": 2,
+          "returned": 5
+        },
+        {
+          "queryId": "v3-validation-05",
+          "noAnswer": false,
+          "requiresLiveEvidence": false,
+          "goldRank": 1,
+          "returned": 3
+        },
+        {
+          "queryId": "v3-validation-06",
+          "noAnswer": false,
+          "requiresLiveEvidence": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "v3-validation-07",
+          "noAnswer": false,
+          "requiresLiveEvidence": false,
+          "goldRank": 0,
+          "returned": 1
+        },
+        {
+          "queryId": "v3-validation-08",
+          "noAnswer": false,
+          "requiresLiveEvidence": false,
+          "goldRank": 1,
+          "returned": 1
+        },
+        {
+          "queryId": "v3-validation-09",
+          "noAnswer": false,
+          "requiresLiveEvidence": false,
+          "goldRank": 4,
+          "returned": 5
+        },
+        {
+          "queryId": "v3-validation-10",
+          "noAnswer": false,
+          "requiresLiveEvidence": false,
+          "goldRank": 2,
+          "returned": 4
+        },
+        {
+          "queryId": "v3-validation-11",
+          "noAnswer": false,
+          "requiresLiveEvidence": false,
+          "goldRank": 4,
+          "returned": 5
+        },
+        {
+          "queryId": "v3-validation-12",
+          "noAnswer": false,
+          "requiresLiveEvidence": false,
+          "goldRank": 5,
+          "returned": 5
+        },
+        {
+          "queryId": "v3-no-01",
+          "noAnswer": true,
+          "requiresLiveEvidence": false,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "v3-no-02",
+          "noAnswer": true,
+          "requiresLiveEvidence": false,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "v3-no-03",
+          "noAnswer": true,
+          "requiresLiveEvidence": false,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "v3-no-04",
+          "noAnswer": true,
+          "requiresLiveEvidence": false,
+          "goldRank": 0,
+          "returned": 0
+        }
+      ]
+    },
+    {
+      "fixture": "revision-v5-client-korean-development",
+      "fixtureSha256": "177701bbc478fd5f076310e45873249938a6a5d16f8809a6105ef2170011b4b5",
+      "positiveCount": 12,
+      "noAnswerCount": 4,
+      "hitRateAt5": 0.9166666666666666,
+      "noAnswerFalsePositiveRate": 0,
+      "rows": [
+        {
+          "queryId": "ko-v3-validation-01",
+          "noAnswer": false,
+          "requiresLiveEvidence": false,
+          "goldRank": 2,
+          "returned": 5
+        },
+        {
+          "queryId": "ko-v3-validation-02",
+          "noAnswer": false,
+          "requiresLiveEvidence": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "ko-v3-validation-03",
+          "noAnswer": false,
+          "requiresLiveEvidence": false,
+          "goldRank": 1,
+          "returned": 2
+        },
+        {
+          "queryId": "ko-v3-validation-04",
+          "noAnswer": false,
+          "requiresLiveEvidence": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "ko-v3-validation-05",
+          "noAnswer": false,
+          "requiresLiveEvidence": false,
+          "goldRank": 1,
+          "returned": 3
+        },
+        {
+          "queryId": "ko-v3-validation-06",
+          "noAnswer": false,
+          "requiresLiveEvidence": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "ko-v3-validation-07",
+          "noAnswer": false,
+          "requiresLiveEvidence": false,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "ko-v3-validation-08",
+          "noAnswer": false,
+          "requiresLiveEvidence": false,
+          "goldRank": 1,
+          "returned": 1
+        },
+        {
+          "queryId": "ko-v3-validation-09",
+          "noAnswer": false,
+          "requiresLiveEvidence": false,
+          "goldRank": 2,
+          "returned": 5
+        },
+        {
+          "queryId": "ko-v3-validation-10",
+          "noAnswer": false,
+          "requiresLiveEvidence": false,
+          "goldRank": 2,
+          "returned": 4
+        },
+        {
+          "queryId": "ko-v3-validation-11",
+          "noAnswer": false,
+          "requiresLiveEvidence": false,
+          "goldRank": 3,
+          "returned": 5
+        },
+        {
+          "queryId": "ko-v3-validation-12",
+          "noAnswer": false,
+          "requiresLiveEvidence": false,
+          "goldRank": 5,
+          "returned": 5
+        },
+        {
+          "queryId": "ko-v3-no-01",
+          "noAnswer": true,
+          "requiresLiveEvidence": false,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "ko-v3-no-02",
+          "noAnswer": true,
+          "requiresLiveEvidence": false,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "ko-v3-no-03",
+          "noAnswer": true,
+          "requiresLiveEvidence": false,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "ko-v3-no-04",
+          "noAnswer": true,
+          "requiresLiveEvidence": false,
+          "goldRank": 0,
+          "returned": 0
+        }
+      ]
+    },
+    {
+      "fixture": "revision-v5-client-holdout",
+      "fixtureSha256": "14ed95ed68c22a9c6fc81f3d38af0c0ac487ed597f55825ff5ed43c77cac280d",
+      "positiveCount": 12,
+      "noAnswerCount": 12,
+      "hitRateAt5": 0.9166666666666666,
+      "noAnswerFalsePositiveRate": 0,
+      "rows": [
+        {
+          "queryId": "v5-holdout-01",
+          "noAnswer": false,
+          "requiresLiveEvidence": false,
+          "goldRank": 1,
+          "returned": 1
+        },
+        {
+          "queryId": "v5-holdout-02",
+          "noAnswer": false,
+          "requiresLiveEvidence": false,
+          "goldRank": 1,
+          "returned": 2
+        },
+        {
+          "queryId": "v5-holdout-03",
+          "noAnswer": false,
+          "requiresLiveEvidence": false,
+          "goldRank": 1,
+          "returned": 1
+        },
+        {
+          "queryId": "v5-holdout-04",
+          "noAnswer": false,
+          "requiresLiveEvidence": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "v5-holdout-05",
+          "noAnswer": false,
+          "requiresLiveEvidence": false,
+          "goldRank": 1,
+          "returned": 1
+        },
+        {
+          "queryId": "v5-holdout-06",
+          "noAnswer": false,
+          "requiresLiveEvidence": false,
+          "goldRank": 1,
+          "returned": 4
+        },
+        {
+          "queryId": "v5-holdout-07",
+          "noAnswer": false,
+          "requiresLiveEvidence": false,
+          "goldRank": 1,
+          "returned": 1
+        },
+        {
+          "queryId": "v5-holdout-08",
+          "noAnswer": false,
+          "requiresLiveEvidence": false,
+          "goldRank": 0,
+          "returned": 5
+        },
+        {
+          "queryId": "v5-holdout-09",
+          "noAnswer": false,
+          "requiresLiveEvidence": false,
+          "goldRank": 1,
+          "returned": 1
+        },
+        {
+          "queryId": "v5-holdout-10",
+          "noAnswer": false,
+          "requiresLiveEvidence": false,
+          "goldRank": 3,
+          "returned": 5
+        },
+        {
+          "queryId": "v5-holdout-11",
+          "noAnswer": false,
+          "requiresLiveEvidence": false,
+          "goldRank": 1,
+          "returned": 1
+        },
+        {
+          "queryId": "v5-holdout-12",
+          "noAnswer": false,
+          "requiresLiveEvidence": false,
+          "goldRank": 1,
+          "returned": 4
+        },
+        {
+          "queryId": "v5-noanswer-01",
+          "noAnswer": true,
+          "requiresLiveEvidence": false,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "v5-noanswer-02",
+          "noAnswer": true,
+          "requiresLiveEvidence": false,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "v5-noanswer-03",
+          "noAnswer": true,
+          "requiresLiveEvidence": false,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "v5-noanswer-04",
+          "noAnswer": true,
+          "requiresLiveEvidence": false,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "v5-noanswer-05",
+          "noAnswer": true,
+          "requiresLiveEvidence": false,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "v5-noanswer-06",
+          "noAnswer": true,
+          "requiresLiveEvidence": false,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "v5-noanswer-07",
+          "noAnswer": true,
+          "requiresLiveEvidence": false,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "v5-noanswer-08",
+          "noAnswer": true,
+          "requiresLiveEvidence": false,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "v5-noanswer-09",
+          "noAnswer": true,
+          "requiresLiveEvidence": false,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "v5-noanswer-10",
+          "noAnswer": true,
+          "requiresLiveEvidence": false,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "v5-noanswer-11",
+          "noAnswer": true,
+          "requiresLiveEvidence": false,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "v5-noanswer-12",
+          "noAnswer": true,
+          "requiresLiveEvidence": false,
+          "goldRank": 0,
+          "returned": 0
+        }
+      ]
+    },
+    {
+      "fixture": "revision-v5-client-holdout-2",
+      "fixtureSha256": "58c2208f559877af0bedf54f5768f1c15522646368378afdf04e1258e58e91d0",
+      "positiveCount": 12,
+      "noAnswerCount": 12,
+      "hitRateAt5": 1,
+      "noAnswerFalsePositiveRate": 0.08333333333333333,
+      "rows": [
+        {
+          "queryId": "v5-holdout2-01",
+          "noAnswer": false,
+          "requiresLiveEvidence": false,
+          "goldRank": 1,
+          "returned": 1
+        },
+        {
+          "queryId": "v5-holdout2-02",
+          "noAnswer": false,
+          "requiresLiveEvidence": false,
+          "goldRank": 1,
+          "returned": 4
+        },
+        {
+          "queryId": "v5-holdout2-03",
+          "noAnswer": false,
+          "requiresLiveEvidence": false,
+          "goldRank": 1,
+          "returned": 1
+        },
+        {
+          "queryId": "v5-holdout2-04",
+          "noAnswer": false,
+          "requiresLiveEvidence": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "v5-holdout2-05",
+          "noAnswer": false,
+          "requiresLiveEvidence": false,
+          "goldRank": 1,
+          "returned": 1
+        },
+        {
+          "queryId": "v5-holdout2-06",
+          "noAnswer": false,
+          "requiresLiveEvidence": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "v5-holdout2-07",
+          "noAnswer": false,
+          "requiresLiveEvidence": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "v5-holdout2-08",
+          "noAnswer": false,
+          "requiresLiveEvidence": false,
+          "goldRank": 4,
+          "returned": 5
+        },
+        {
+          "queryId": "v5-holdout2-09",
+          "noAnswer": false,
+          "requiresLiveEvidence": false,
+          "goldRank": 1,
+          "returned": 1
+        },
+        {
+          "queryId": "v5-holdout2-10",
+          "noAnswer": false,
+          "requiresLiveEvidence": false,
+          "goldRank": 1,
+          "returned": 1
+        },
+        {
+          "queryId": "v5-holdout2-11",
+          "noAnswer": false,
+          "requiresLiveEvidence": false,
+          "goldRank": 1,
+          "returned": 2
+        },
+        {
+          "queryId": "v5-holdout2-12",
+          "noAnswer": false,
+          "requiresLiveEvidence": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "v5-holdout2-noanswer-01",
+          "noAnswer": true,
+          "requiresLiveEvidence": true,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "v5-holdout2-noanswer-02",
+          "noAnswer": true,
+          "requiresLiveEvidence": false,
+          "goldRank": 0,
+          "returned": 1
+        },
+        {
+          "queryId": "v5-holdout2-noanswer-03",
+          "noAnswer": true,
+          "requiresLiveEvidence": true,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "v5-holdout2-noanswer-04",
+          "noAnswer": true,
+          "requiresLiveEvidence": false,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "v5-holdout2-noanswer-05",
+          "noAnswer": true,
+          "requiresLiveEvidence": true,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "v5-holdout2-noanswer-06",
+          "noAnswer": true,
+          "requiresLiveEvidence": false,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "v5-holdout2-noanswer-07",
+          "noAnswer": true,
+          "requiresLiveEvidence": true,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "v5-holdout2-noanswer-08",
+          "noAnswer": true,
+          "requiresLiveEvidence": true,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "v5-holdout2-noanswer-09",
+          "noAnswer": true,
+          "requiresLiveEvidence": false,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "v5-holdout2-noanswer-10",
+          "noAnswer": true,
+          "requiresLiveEvidence": false,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "v5-holdout2-noanswer-11",
+          "noAnswer": true,
+          "requiresLiveEvidence": false,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "v5-holdout2-noanswer-12",
+          "noAnswer": true,
+          "requiresLiveEvidence": false,
+          "goldRank": 0,
+          "returned": 0
+        }
+      ]
+    }
+  ]
+}

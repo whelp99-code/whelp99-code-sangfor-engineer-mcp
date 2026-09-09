@@ -1,3 +1,4 @@
+import { requiresLiveRuntimeEvidence } from './query-evidence-requirement.js';
 import { computeRagSearchDiagnostics, countBy, withDiagnostics } from './rag-search-diagnostics.js';
 export { getRagSearchDiagnostics } from './rag-search-diagnostics.js';
 import { attachHitContext } from './hit-context.js';
@@ -30,6 +31,15 @@ export function omitVectorFromHit<T extends { vector: number[] }>(hit: T): Omit<
 }
 
 export async function ragSearch(input: RagSearchInput): Promise<RagSearchHit[]> {
+  const localReranker = createLocalRerankFromEnv();
+  const minimumScore = localReranker?.minimumScore;
+  const scoreOrder = minimumScore !== undefined ? localScoreOrderFromEnv() : undefined;
+  if (requiresLiveRuntimeEvidence(input.query)) {
+    if (input.product) resolveRagProduct(input.product);
+    const limit = input.limit ?? 8;
+    if (!Number.isInteger(limit) || limit < 1 || limit > 100) throw new Error('RAG_LIMIT_INVALID');
+    return withDiagnostics([], { degraded: false, evidenceRequirement: 'live-runtime' });
+  }
   const index = loadRagIndex(input.indexPath);
   const product = input.product ? resolveRagProduct(input.product) : undefined;
   const provider = await getEmbeddingProvider();
@@ -69,9 +79,6 @@ export async function ragSearch(input: RagSearchInput): Promise<RagSearchHit[]> 
   );
   const ranked = rankHybrid(filtered, queryVector, normalizedQuery, querySpace).filter(hasRetrievalEvidence).sort((left, right) => right.score - left.score);
   let pool = distinctSources(ranked, candidateLimit);
-  const localReranker = createLocalRerankFromEnv();
-  const minimumScore = localReranker?.minimumScore;
-  const scoreOrder = minimumScore !== undefined ? localScoreOrderFromEnv() : undefined;
   if (minimumScore !== undefined && (embeddingFailure || wasEmbeddingFallback())) throw new Error('RAG_SCORE_GATE_RETRIEVAL_UNAVAILABLE');
   const reranker = localReranker ?? createMimoRerankFromEnv();
   if (localReranker && process.env.SANGFOR_LOCAL_RERANK_PASSAGES === '2') pool = expandRerankPassages(ranked, pool);
@@ -163,6 +170,10 @@ export function ragSearchScopedSync(input: ScopedRagSearchInput): RagSearchHit[]
 
 export function ragSearchSync(input: RagSearchInput): RagSearchHit[] {
   if (localRerankMinimumScoreFromEnv() !== undefined) throw new Error('RAG_SCORE_GATE_ASYNC_REQUIRED');
+  if (requiresLiveRuntimeEvidence(input.query)) {
+    if (input.product) resolveRagProduct(input.product);
+    return withDiagnostics([], { degraded: false, evidenceRequirement: 'live-runtime' });
+  }
   const index = loadRagIndex(input.indexPath);
   const product = input.product ? resolveRagProduct(input.product) : undefined;
   const normalizedQuery = normalizeRetrievalQuery(input.query);

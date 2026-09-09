@@ -1,0 +1,56 @@
+{
+  "status": "ACTUAL_MCP_RUNTIME_REQUIREMENT_READBACK",
+  "contextSha256": "02b4f4ec1c765790369f5f6534da64207e96f35d7aee7d55f2cbebd5ca7d5ab4",
+  "fixtureSha256": "26fc15ac783fa5c4ba71f7364c934eb2489f38c3a262c7dc41fbd09030b78c23",
+  "rows": [
+    {
+      "queryId": "hci-cli-6113",
+      "noAnswer": false,
+      "actualIds": [
+        "structured_7bd9da632e3c21cb0835c121e3c32dc015f94e864f93f9076f4d36055778661b",
+        "structured_c5a322c649922017ee752e21cd19ddf25c9b6d29e0799226c7a4e1a7562c779a",
+        "structured_be205db09f15aea85f05f529e8fd0726b78dabff23db8de66080e1052207977b"
+      ],
+      "matchesExpected": true
+    },
+    {
+      "queryId": "ko-v3-validation-04",
+      "noAnswer": false,
+      "actualIds": [
+        "structured_3e571d3830a1d82a46a713d59a952ba4a844929ecaf3e5aeb9fb187cd9bfea95",
+        "structured_c4c72ff442464ca06e08967dbad0a6f47bb30d424ea981eacb0da237d70a34f7",
+        "structured_d3276090f57e6df74cb2f78a518e09cf27f4b0ba9c3e11ed694740d672116ba2",
+        "structured_bddd8f6192e9114af2a32e0ccdf7cd64b58e2a69c29b788274fae9d8eec9db46",
+        "structured_774f3120af68de7b34dd85c57221fa772fc647af9749a745a5febfae7559c777"
+      ],
+      "matchesExpected": true
+    },
+    {
+      "queryId": "v5-holdout-01",
+      "noAnswer": false,
+      "actualIds": [
+        "structured_a9d2e12e789df30366a567e358bbd1658ef046d8685c9555e130845fe54a221e"
+      ],
+      "matchesExpected": true
+    },
+    {
+      "queryId": "v5-holdout2-noanswer-01",
+      "noAnswer": true,
+      "actualIds": [],
+      "matchesExpected": true
+    },
+    {
+      "queryId": "v5-holdout2-noanswer-03",
+      "noAnswer": true,
+      "actualIds": [],
+      "matchesExpected": true
+    },
+    {
+      "queryId": "v5-holdout2-noanswer-08",
+      "noAnswer": true,
+      "actualIds": [],
+      "matchesExpected": true
+    }
+  ],
+  "limits": "Three positive and three previously exposed runtime-fact requests; actual stdio MCP calls. Not an independent holdout evaluation."
+}

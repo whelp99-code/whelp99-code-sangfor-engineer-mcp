@@ -49,7 +49,7 @@ async function main(): Promise<void> {
   const implementationSha256 = createHash('sha256');
   const implementationFiles = ['package.json', 'pnpm-lock.yaml', 'scripts/rag-corpus-eval.ts', 'packages/sangfor-rag/src/corpus-eval-contract.ts',
     'packages/sangfor-rag/src/rag-search.ts', 'packages/sangfor-rag/src/rag-search-diagnostics.ts', 'packages/sangfor-rag/src/rag-ranking.ts',
-    'packages/sangfor-rag/src/hit-context.ts', 'packages/sangfor-rag/src/query-evidence.ts', 'packages/sangfor-rag/src/retrieval-text.ts', 'packages/sangfor-rag/src/bm25.ts', 'packages/sangfor-rag/src/query-normalization.ts',
+    'packages/sangfor-rag/src/hit-context.ts', 'packages/sangfor-rag/src/query-evidence.ts', 'packages/sangfor-rag/src/query-evidence-requirement.ts', 'packages/sangfor-rag/src/retrieval-text.ts', 'packages/sangfor-rag/src/bm25.ts', 'packages/sangfor-rag/src/query-normalization.ts',
     'packages/sangfor-rag/src/retrieval-eval.ts', 'packages/sangfor-rag/src/corpus-eval-gate.ts',
     'packages/sangfor-rag/src/hash-embedding.ts', 'packages/sangfor-rag/src/embedding-space.ts',
     'packages/sangfor-rag/src/embedding-profile.ts', 'packages/sangfor-rag/src/rag-product.ts',
