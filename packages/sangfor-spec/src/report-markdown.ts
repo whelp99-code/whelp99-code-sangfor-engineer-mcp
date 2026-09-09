@@ -27,7 +27,11 @@ export function renderAdvisoryReport(spec: IntendedSpec, result: EvaluationResul
   const line = (i: ItemResult) => {
     const ev = i.observed !== undefined ? ` (기대: ${JSON.stringify(i.expected)}, 실제: ${JSON.stringify(i.observed)})` : (i.expected !== undefined ? ` (기대: ${JSON.stringify(i.expected)}, 실제: 확인 불가)` : '');
     const senior = spec.items.find((s) => s.id === i.id)?.needsSeniorReview ? ' ⚠ 시니어 검토 필요' : '';
-    return `- **${i.label}**${senior}${ev}${cite(i.id)}${provenance(i)}\n  - 판정: ${i.verdict} — ${i.reason}`;
+    const item = spec.items.find((s) => s.id === i.id);
+    const observationTime = i.observedSource?.collectedAt ?? '(미기록)';
+    const maxAge = item?.maxAgeSec === undefined ? '(미설정)' : `${item.maxAgeSec}초`;
+    const actions = i.nextActions?.length ? i.nextActions.map((action) => `${action.code}: ${action.label}`).join(' / ') : '없음';
+    return `- **${i.label}**${senior}${ev}${cite(i.id)}${provenance(i)}\n  - 판정: ${i.verdict} — ${i.reason}\n  - 관측 시각: ${observationTime}\n  - 관측 유효시간(maxAge): ${maxAge}\n  - 다음 조치: ${actions}`;
   };
   const section = (title: string, cat: Category, empty: string) => {
     const items = byCat(cat);

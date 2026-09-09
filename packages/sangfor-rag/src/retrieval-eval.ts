@@ -53,12 +53,12 @@ export function computeRetrievalMetrics(
   for (const queryId of queryIds) {
     const relevant = new Map((qrelsByQuery.get(queryId) ?? []).map((qrel) => [qrel.sourceId, qrel.grade]));
     const ranked = [...(hitsByQuery.get(queryId) ?? [])]
-      .sort((a, b) => a.rank - b.rank || b.score - a.score || a.sourceId.localeCompare(b.sourceId))
-      .slice(0, k);
+      .sort((a, b) => a.rank - b.rank || b.score - a.score || a.sourceId.localeCompare(b.sourceId));
     const seen = new Set<string>();
     const retrievedGrades: number[] = [];
     let firstRelevantRank = 0;
     for (const hit of ranked) {
+      if (retrievedGrades.length === k) break;
       if (seen.has(hit.sourceId)) continue;
       seen.add(hit.sourceId);
       const grade = relevant.get(hit.sourceId) ?? 0;

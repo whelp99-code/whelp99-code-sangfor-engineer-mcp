@@ -40,6 +40,25 @@ const observedSourceSchema = z.object({
   collectionStatus: z.enum(['complete', 'partial', 'failed']).optional(),
 }).strict();
 
+const assessmentReasonCodeSchema = z.enum([
+  'ASSESSMENT_TIME_MISSING', 'ASSESSMENT_TIME_INVALID', 'FRESHNESS_POLICY_MISSING', 'FRESHNESS_POLICY_INVALID',
+  'EVIDENCE_EXPIRED', 'EVIDENCE_MISSING', 'EVIDENCE_FUTURE', 'COLLECTION_INCOMPLETE', 'COLLECTION_UNPROVEN',
+  'OBSERVED_VALUE_MISSING', 'OBSERVED_VALUE_INCOMPATIBLE', 'SENIOR_REVIEW_REQUIRED', 'CONFIRMED_FAIL',
+]);
+const assessmentActionCodeSchema = z.enum([
+  'SET_FRESHNESS_POLICY', 'RECOLLECT_OBSERVATION', 'COMPLETE_COLLECTION', 'OBSERVE_REQUIRED_VALUE',
+  'NORMALIZE_OBSERVED_VALUE', 'SET_ASSESSMENT_TIME', 'REQUEST_SENIOR_REVIEW', 'REVIEW_CONFIRMED_FAIL',
+]);
+const actionableReasonSchema = z.object({
+  code: assessmentReasonCodeSchema,
+  itemIds: z.array(idSchema).max(100_000).optional(),
+}).strict();
+const assessmentNextActionSchema = z.object({
+  code: assessmentActionCodeSchema,
+  label: textSchema,
+  itemIds: z.array(idSchema).max(100_000).optional(),
+}).strict();
+
 const itemResultSchema = z.object({
   id: idSchema,
   label: textSchema,
@@ -49,6 +68,8 @@ const itemResultSchema = z.object({
   observedSource: observedSourceSchema.optional(),
   expected: runtimeJsonValueSchema.optional(),
   reason: textSchema,
+  actionableReason: actionableReasonSchema.optional(),
+  nextActions: z.array(assessmentNextActionSchema).max(100_000).optional(),
 }).strict();
 
 export const evaluationResultRuntimeSchema: RuntimeCodec<EvaluationResult> = z.object({
@@ -59,6 +80,8 @@ export const evaluationResultRuntimeSchema: RuntimeCodec<EvaluationResult> = z.o
     evaluatedAt: z.string().nullable(),
     freshnessRequired: z.boolean(),
   }).strict().optional(),
+  actionableReasons: z.array(actionableReasonSchema).max(100_000).optional(),
+  nextActions: z.array(assessmentNextActionSchema).max(100_000).optional(),
   items: z.array(itemResultSchema).max(100_000),
   summary: z.object({
     pass: z.number().int().nonnegative(),

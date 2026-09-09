@@ -936,6 +936,8 @@ model BlroRagEmbeddingCohort {
   backend    String
   model      String
   dimensions Int
+  embeddingSpace Json?
+  embeddingSpaceDigest String?
   active     Boolean            @default(false)
   createdAt  DateTime           @default(now()) @db.Timestamptz(3)
   tenant     BlroTenant         @relation(fields: [tenantId], references: [id], onDelete: Restrict)
@@ -945,7 +947,6 @@ model BlroRagEmbeddingCohort {
   promotionEvidence BlroRagIndexPromotionEvidence[]
 
   @@id([tenantId, projectId, id])
-  @@unique([tenantId, projectId, indexEpoch, backend, model, dimensions])
   @@index([tenantId, projectId, indexEpoch])
 }
 

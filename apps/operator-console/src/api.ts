@@ -13,7 +13,7 @@ import { listCapabilitySafety } from '../../../packages/sangfor-safety/src/index
 import { analyzeProject, generateConfigPlanAsync } from '../../../packages/sangfor-planner/src/index.js';
 import { listSeedManuals, searchManuals } from '../../../packages/sangfor-knowledge/src/index.js';
 import { listSeedWiki, searchWiki } from '../../../packages/sangfor-wiki/src/index.js';
-import { ragSearch, exportRagIndexSummary, getEmbeddingProvider, resetEmbeddingProviderCache, type RagSearchHit } from '../../../packages/sangfor-rag/src/index.js';
+import { ragSearch, exportRagIndexSummary, getEmbeddingProvider, getRagSearchDiagnostics, resetEmbeddingProviderCache, type RagSearchHit } from '../../../packages/sangfor-rag/src/index.js';
 import { createMimoRerankFromEnv, resolveMimoBaseUrl, resolveMimoBillingMode } from '../../../packages/sangfor-rag/src/mimo-rerank-provider.js';
 import { isMimoViaLitellm, resolveLitellmBaseUrl, resolveLitellmEmbeddingModel } from '../../../packages/sangfor-rag/src/litellm-config.js';
 import { probeEmbeddingsEndpoint } from '../../../packages/sangfor-rag/src/openai-embeddings-client.js';
@@ -73,6 +73,15 @@ export function toPublicHit(hit: RagSearchHit) {
   };
 }
 
+type PublicSearchMode = 'semantic' | 'hash' | 'bm25' | 'unknown';
+
+function publicSearchMode(mode?: string): PublicSearchMode {
+  if (mode === 'hybrid-semantic') return 'semantic';
+  if (mode === 'hybrid-hash') return 'hash';
+  if (mode === 'bm25') return 'bm25';
+  return 'unknown';
+}
+
 export async function postRagSearch(body: { query?: string; product?: string; version?: string; limit?: number }) {
   if (!body.query?.trim()) throw new Error('query is required');
   const results = await ragSearch({
@@ -82,7 +91,15 @@ export async function postRagSearch(body: { query?: string; product?: string; ve
     limit: body.limit ?? 10,
     indexPath: RAG_INDEX
   });
-  return { query: body.query, results: results.map(toPublicHit) };
+  const diagnostics = getRagSearchDiagnostics(results);
+  return {
+    query: body.query,
+    results: results.map(toPublicHit),
+    diagnostics: {
+      searchMode: publicSearchMode(diagnostics.retrievalMode ?? results[0]?.retrievalMode),
+      degraded: diagnostics.degraded === true,
+    },
+  };
 }
 
 export async function postDiscoverConsole(body: Record<string, unknown>) {

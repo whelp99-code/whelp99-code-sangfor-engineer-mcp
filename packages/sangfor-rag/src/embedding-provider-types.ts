@@ -12,7 +12,8 @@ export interface RerankProvider {
   rerank(
     query: string,
     candidates: Array<{ id: string; text: string; title?: string }>,
-    topK: number
+    topK: number,
+    signal?: AbortSignal
   ): Promise<string[]>;
   healthCheck(): Promise<{ ok: boolean; detail?: string }>;
 }

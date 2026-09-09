@@ -1,6 +1,6 @@
 import type { PrismaClient } from '@prisma/client';
 import { sealIndexPromotionEvidence } from '../../packages/sangfor-rag/src/index-promotion-authority.js';
-import { sealIndexPromotionReport } from '../../packages/sangfor-rag/src/index-promotion-evaluator.js';
+import { indexPromotionBenchmarkProfileDigest, sealIndexPromotionReport } from '../../packages/sangfor-rag/src/index-promotion-evaluator.js';
 import { IndexPromotionStore } from '../../packages/sangfor-rag/src/index-promotion-store.js';
 import type { PgvectorScope } from '../../packages/sangfor-rag/src/pgvector-types.js';
 
@@ -16,8 +16,11 @@ export async function promotionFixture(input: PromotionFixtureInput) {
   const now = new Date();
   const report = sealIndexPromotionReport({
     schemaVersion: 'rag.index-promotion/1', ...state, exactResultDigest: 'a'.repeat(64),
-    candidateResultDigest: 'b'.repeat(64), measuredAt: now.toISOString(), maxAgeSeconds: 3600,
+    candidateResultDigest: 'b'.repeat(64), benchmarkDigest: 'c'.repeat(64),
+    benchmarkProfileDigest: indexPromotionBenchmarkProfileDigest(), benchmarkQueryCount: 16, k: 5,
+    measuredAt: now.toISOString(), maxAgeSeconds: 3600,
     recallAtK: 0.99, exactP95Ms: 200, candidateP95Ms: 150, recoveryRate: 1, updateRate: 1,
+    recoveryMeasured: true, updateMeasured: true,
     scopeIsolationProof: true, candidateRowCount: state.candidateRowCount,
   });
   return { now, report, evidence: sealIndexPromotionEvidence({
@@ -26,5 +29,5 @@ export async function promotionFixture(input: PromotionFixtureInput) {
 }
 
 export async function createHnsw(owner: PrismaClient): Promise<void> {
-  await owner.$executeRawUnsafe(`CREATE INDEX "BlroRagEmbedding_embedding_hnsw_idx" ON "BlroRagEmbedding" USING hnsw ("embedding" vector_cosine_ops) WITH (m=16,ef_construction=1000)`);
+  await owner.$executeRawUnsafe(`CREATE INDEX "BlroRagEmbedding_embedding_hnsw_idx" ON "BlroRagEmbedding" USING hnsw ("embedding" vector_cosine_ops) WITH (m=100,ef_construction=1000)`);
 }

@@ -1,32 +1,27 @@
-import { createHash, randomUUID } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { performance } from 'node:perf_hooks';
 import { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
 import { parseBenchmarkCorpus } from '../packages/sangfor-rag/src/benchmark-schema.js';
 import { hashEmbedding } from '../packages/sangfor-rag/src/hash-embedding.js';
-import { sealIndexPromotionEvidence } from '../packages/sangfor-rag/src/index-promotion-authority.js';
-import { canonicalPromotionJson, sealIndexPromotionReport } from '../packages/sangfor-rag/src/index-promotion-evaluator.js';
-import { IndexPromotionStore } from '../packages/sangfor-rag/src/index-promotion-store.js';
+import { buildUnmeasuredIndexPromotionQaReport } from '../packages/sangfor-rag/src/index-promotion-qa-report.js';
 import { PgvectorRagStore } from '../packages/sangfor-rag/src/pgvector-store.js';
 import { parsePgvectorCohort, parsePgvectorScope, parsePgvectorUpsert } from '../packages/sangfor-rag/src/pgvector-schema.js';
+import { PGVECTOR_HASH_EMBEDDING_SPACE } from '../packages/sangfor-rag/src/pgvector-types.js';
 
 const EnvironmentSchema = z.object({
   DATABASE_URL: z.string().url(), BLRO_OWNER_DATABASE_URL: z.string().url(),
-  SANGFOR_RAG_PROMOTION_SECRET: z.string().min(32),
-  SANGFOR_RAG_PROMOTION_AUTHORITY_ACTOR_ID: z.string().min(1),
 }).passthrough();
 const CORPUS_PATH = 'data/evals/rag/project-completeness-v1.json';
 const INDEX_NAME = 'BlroRagEmbedding_embedding_hnsw_idx';
 const scope = parsePgvectorScope({ tenantId: 'tenant-rag-promotion-qa', projectId: 'project-rag-promotion-qa', actorId: 'actor-rag-promotion-qa' });
-const cohort = parsePgvectorCohort({ ...scope, id: 'cohort-rag-promotion-qa', indexEpoch: 34, backend: 'hash', model: 'hash-v1', dimensions: 384 });
+const cohort = parsePgvectorCohort({ ...scope, id: 'cohort-rag-promotion-qa', indexEpoch: 34, backend: 'hash', model: 'hash', dimensions: 384, embeddingSpace: PGVECTOR_HASH_EMBEDDING_SPACE });
 
 type Measurement = { readonly ids: readonly string[]; readonly durations: readonly number[] };
 
 function denseVector(text: string): readonly number[] {
-  const values = hashEmbedding(text).map((value) => value + 0.01);
-  const norm = Math.sqrt(values.reduce((sum, value) => sum + value * value, 0));
-  return values.map((value) => value / norm);
+  return hashEmbedding(text);
 }
 
 function p95(values: readonly number[]): number {
@@ -38,7 +33,7 @@ async function measure(store: PgvectorRagStore, corpus: ReturnType<typeof parseB
   const ids: string[] = [];
   const durations: number[] = [];
   for (const query of corpus.queries) {
-    const input = { scope, query: denseVector(query.text), filters: query.filters, limit: query.limit };
+    const input = { scope, query: denseVector(query.text), embeddingSpace: PGVECTOR_HASH_EMBEDDING_SPACE, filters: query.filters, limit: query.limit };
     const started = performance.now();
     const hits = backend === 'exact' ? await store.searchExact(input) : await store.searchHnsw(input);
     durations.push(performance.now() - started);
@@ -75,6 +70,7 @@ async function main(): Promise<void> {
       sourceRef: entry.filePath, contentHash: `todo32-${entry.id}`,
       aclActorIds: entry.aclActorIds.map((actor) => actor === 'actor-alpha' ? scope.actorId : actor),
       embedding: denseVector(entry.text),
+      embeddingSpace: PGVECTOR_HASH_EMBEDDING_SPACE,
     }));
     const store = new PgvectorRagStore(database);
     await store.promoteCohort(cohort);
@@ -86,22 +82,18 @@ async function main(): Promise<void> {
     const exactSet = new Set(exact.ids);
     const recovered = candidate.ids.filter((id) => exactSet.has(id)).length;
     const forbidden = new Set(corpus.queries.flatMap((query) => query.forbiddenIds.map((id) => `${query.id}:${id}`)));
-    const state = await new IndexPromotionStore(database).readCurrentState(scope);
-    const report = sealIndexPromotionReport({
-      schemaVersion: 'rag.index-promotion/1', ...state,
-      exactResultDigest: createHash('sha256').update(canonicalPromotionJson(exact.ids)).digest('hex'),
-      candidateResultDigest: createHash('sha256').update(canonicalPromotionJson(candidate.ids)).digest('hex'),
-      measuredAt: new Date().toISOString(), maxAgeSeconds: 3600,
+    const report = buildUnmeasuredIndexPromotionQaReport({
+      benchmarkDigest: createHash('sha256').update(readFileSync(CORPUS_PATH)).digest('hex'),
+      benchmarkQueryCount: corpus.queries.length,
       recallAtK: exact.ids.length === 0 ? 0 : recovered / exact.ids.length,
-      exactP95Ms: p95(exact.durations), candidateP95Ms: p95(candidate.durations), recoveryRate: 1,
-      updateRate: 1, scopeIsolationProof: candidate.ids.every((id) => !forbidden.has(id)), candidateRowCount: state.candidateRowCount,
+      exactP95Ms: p95(exact.durations),
+      candidateP95Ms: p95(candidate.durations),
+      scopeIsolationProof: candidate.ids.every((id) => !forbidden.has(id)),
+      index: INDEX_NAME,
     });
-    const evidence = sealIndexPromotionEvidence({
-      report, authorityActorId: environment.SANGFOR_RAG_PROMOTION_AUTHORITY_ACTOR_ID,
-      nonce: randomUUID(), secret: environment.SANGFOR_RAG_PROMOTION_SECRET,
-    });
-    writeFileSync(output, `${canonicalPromotionJson(evidence)}\n`, { flag: 'wx' });
-    process.stdout.write(`${JSON.stringify({ report: output, reportDigest: report.reportDigest, recallAtK: report.recallAtK, exactP95Ms: report.exactP95Ms, candidateP95Ms: report.candidateP95Ms, index: INDEX_NAME })}\nRAG_INDEX_PROMOTION_MEASURED\n`);
+    writeFileSync(output, `${JSON.stringify(report)}\n`, { flag: 'wx' });
+    process.stdout.write(`${JSON.stringify({ report: output, ...report })}\nRAG_INDEX_PROMOTION_NOT_ELIGIBLE\n`);
+    process.exitCode = 2;
   } finally {
     await database.$disconnect();
     await owner.$disconnect();

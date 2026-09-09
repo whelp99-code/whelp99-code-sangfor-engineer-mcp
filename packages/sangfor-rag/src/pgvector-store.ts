@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { embeddingSpaceId, embeddingSpaceSchema, sameEmbeddingSpace, type EmbeddingSpace } from './embedding-space.js';
 import {
   ACTIVE_COHORT_SQL,
   EXACT_SEARCH_SQL,
@@ -30,7 +31,11 @@ export { RagPgvectorRefusal, RagPgvectorUnavailableError } from './pgvector-sche
 
 const ActiveRowSchema = z.object({
   id: z.string(), backend: z.string(), model: z.string(), dimensions: z.number().int(),
+  embeddingSpace: z.unknown().nullable(), embeddingSpaceDigest: z.string().nullable(),
 }).strict();
+const CohortIdentityRowSchema = ActiveRowSchema.pick({
+  id: true, backend: true, model: true, dimensions: true, embeddingSpace: true, embeddingSpaceDigest: true,
+}).extend({ indexEpoch: z.number().int() }).strict();
 const PlanRowSchema = z.object({ 'QUERY PLAN': z.string() }).strict();
 
 type ReplaceInput = {
@@ -49,13 +54,27 @@ async function requireActive(transaction: PgvectorSqlExecutor, scope: PgvectorSc
   if (rows.length !== 1) throw new RagPgvectorRefusal('RAG_PGVECTOR_ACTIVE_COHORT_AMBIGUOUS', `received ${rows.length} active cohorts`);
   const active = rows[0];
   if (!active) throw new RagPgvectorRefusal('RAG_PGVECTOR_ACTIVE_COHORT_AMBIGUOUS', 'active cohort disappeared');
+  const parsedSpace = embeddingSpaceSchema.safeParse(active.embeddingSpace);
+  if (!parsedSpace.success || !active.embeddingSpaceDigest
+    || embeddingSpaceId(parsedSpace.data) !== active.embeddingSpaceDigest
+    || parsedSpace.data.model !== active.model || parsedSpace.data.dimensions !== active.dimensions
+    || (active.backend === 'hash') !== (parsedSpace.data.model === 'hash')) {
+    throw new RagPgvectorRefusal('RAG_PGVECTOR_EMBEDDING_SPACE_UNVERIFIED', active.id);
+  }
   return active;
+}
+
+function activeEmbeddingSpace(active: z.infer<typeof ActiveRowSchema>): EmbeddingSpace {
+  return embeddingSpaceSchema.parse(active.embeddingSpace);
 }
 
 async function writeChunk(transaction: PgvectorSqlExecutor, input: PgvectorUpsert): Promise<void> {
   const active = await requireActive(transaction, input);
   if (active.id !== input.cohortId || active.dimensions !== input.embedding.length) {
     throw new RagPgvectorRefusal('RAG_PGVECTOR_COHORT_MISMATCH', input.id);
+  }
+  if (!sameEmbeddingSpace(activeEmbeddingSpace(active), input.embeddingSpace)) {
+    throw new RagPgvectorRefusal('RAG_PGVECTOR_EMBEDDING_SPACE_MISMATCH', input.id);
   }
   await transaction.$executeRawUnsafe(`
     INSERT INTO "BlroRagAuthoritativeChunk"
@@ -103,15 +122,28 @@ export class PgvectorRagStore {
         `SELECT pg_advisory_xact_lock(hashtext($1),hashtext($2))`,
         input.tenantId, input.projectId,
       );
+      const existingRows = z.array(CohortIdentityRowSchema).parse(await transaction.$queryRawUnsafe<unknown>(`
+        SELECT "id","indexEpoch","backend","model","dimensions","embeddingSpace","embeddingSpaceDigest"
+        FROM "BlroRagEmbeddingCohort"
+        WHERE "tenantId"=$1 AND "projectId"=$2 AND "id"=$3
+        FOR UPDATE`, input.tenantId, input.projectId, input.id));
+      const existing = existingRows[0];
+      const inputDigest = embeddingSpaceId(input.embeddingSpace);
+      const existingSpace = existing ? embeddingSpaceSchema.safeParse(existing.embeddingSpace) : undefined;
+      if (existing && (existing.indexEpoch !== input.indexEpoch || existing.backend !== input.backend || existing.model !== input.model
+        || existing.dimensions !== input.dimensions || existing.embeddingSpaceDigest !== inputDigest
+        || !existingSpace?.success || embeddingSpaceId(existingSpace.data) !== existing.embeddingSpaceDigest)) {
+        throw new RagPgvectorRefusal('RAG_PGVECTOR_COHORT_IDENTITY_IMMUTABLE', input.id);
+      }
       await transaction.$executeRawUnsafe(`UPDATE "BlroRagEmbeddingCohort" SET "active"=false WHERE "tenantId"=$1 AND "projectId"=$2 AND "active"=true`, input.tenantId, input.projectId);
       await transaction.$executeRawUnsafe(`
         INSERT INTO "BlroRagEmbeddingCohort"
-          ("id","tenantId","projectId","indexEpoch","backend","model","dimensions","active")
-        VALUES ($1,$2,$3,$4,$5,$6,$7,true)
+          ("id","tenantId","projectId","indexEpoch","backend","model","dimensions","embeddingSpace","embeddingSpaceDigest","active")
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9,true)
         ON CONFLICT ("tenantId","projectId","id") DO UPDATE SET
-          "indexEpoch"=EXCLUDED."indexEpoch","backend"=EXCLUDED."backend","model"=EXCLUDED."model",
-          "dimensions"=EXCLUDED."dimensions","active"=true`,
+          "active"=true`,
         input.id, input.tenantId, input.projectId, input.indexEpoch, input.backend, input.model, input.dimensions,
+        JSON.stringify(input.embeddingSpace), embeddingSpaceId(input.embeddingSpace),
       );
     }, { isolationLevel: 'ReadCommitted' }));
   }
@@ -120,6 +152,7 @@ export class PgvectorRagStore {
     const input = parsePgvectorUpsert(raw);
     await this.execute(() => this.database.$transaction(async (transaction) => {
       await setScope(transaction, input);
+      await transaction.$executeRawUnsafe(`SELECT pg_advisory_xact_lock(hashtext($1),hashtext($2))`, input.tenantId, input.projectId);
       await writeChunk(transaction, input);
     }));
   }
@@ -135,17 +168,20 @@ export class PgvectorRagStore {
     }
     await this.execute(() => this.database.$transaction(async (transaction) => {
       await setScope(transaction, scope);
+      await transaction.$executeRawUnsafe(`SELECT pg_advisory_xact_lock(hashtext($1),hashtext($2))`, scope.tenantId, scope.projectId);
       const active = await requireActive(transaction, scope);
       if (active.id !== raw.cohortId) throw new RagPgvectorRefusal('RAG_PGVECTOR_COHORT_MISMATCH', active.id);
       await transaction.$executeRawUnsafe(`DELETE FROM "BlroRagAuthoritativeChunk" WHERE "tenantId"=$1 AND "projectId"=$2`, scope.tenantId, scope.projectId);
       for (const chunk of chunks) await writeChunk(transaction, chunk);
-    }, { isolationLevel: 'Serializable' }));
+    // Bounded bulk ingestion includes HNSW maintenance; interactive query timeout is too short.
+    }, { isolationLevel: 'Serializable', timeout: 60_000 }));
   }
 
   async delete(raw: DeleteInput): Promise<void> {
     const scope = parsePgvectorScope(raw.scope);
     await this.execute(() => this.database.$transaction(async (transaction) => {
       await setScope(transaction, scope);
+      await transaction.$executeRawUnsafe(`SELECT pg_advisory_xact_lock(hashtext($1),hashtext($2))`, scope.tenantId, scope.projectId);
       await transaction.$executeRawUnsafe(`DELETE FROM "BlroRagAuthoritativeChunk" WHERE "tenantId"=$1 AND "projectId"=$2 AND "id"=$3`, scope.tenantId, scope.projectId, raw.chunkId);
     }));
   }
@@ -170,9 +206,12 @@ export class PgvectorRagStore {
         await transaction.$executeRawUnsafe('SET LOCAL enable_seqscan=off');
         await transaction.$executeRawUnsafe('SET LOCAL enable_sort=off');
         await transaction.$executeRawUnsafe('SET LOCAL hnsw.ef_search=1000');
-        await transaction.$executeRawUnsafe(`SET LOCAL hnsw.iterative_scan='strict_order'`);
+        await transaction.$executeRawUnsafe(`SET LOCAL hnsw.iterative_scan='relaxed_order'`);
       }
       const active = await requireActive(transaction, input.scope);
+      if (!sameEmbeddingSpace(activeEmbeddingSpace(active), input.embeddingSpace)) {
+        throw new RagPgvectorRefusal('RAG_PGVECTOR_QUERY_EMBEDDING_SPACE_MISMATCH', active.id);
+      }
       const sql = mode === 'exact' ? EXACT_SEARCH_SQL : SEARCH_SQL;
       const rows = await transaction.$queryRawUnsafe<unknown>(sql, ...this.searchValues(input, active.id));
       return z.array(PgvectorHitRowSchema).parse(rows);
@@ -186,8 +225,11 @@ export class PgvectorRagStore {
       await transaction.$executeRawUnsafe('SET LOCAL enable_seqscan=off');
       await transaction.$executeRawUnsafe('SET LOCAL enable_sort=off');
       await transaction.$executeRawUnsafe('SET LOCAL hnsw.ef_search=1000');
-      await transaction.$executeRawUnsafe(`SET LOCAL hnsw.iterative_scan='strict_order'`);
+      await transaction.$executeRawUnsafe(`SET LOCAL hnsw.iterative_scan='relaxed_order'`);
       const active = await requireActive(transaction, input.scope);
+      if (!sameEmbeddingSpace(activeEmbeddingSpace(active), input.embeddingSpace)) {
+        throw new RagPgvectorRefusal('RAG_PGVECTOR_QUERY_EMBEDDING_SPACE_MISMATCH', active.id);
+      }
       const rows = z.array(PlanRowSchema).parse(await transaction.$queryRawUnsafe<unknown>(EXPLAIN_HNSW_SQL, ...this.searchValues(input, active.id)));
       return rows.map((row) => row['QUERY PLAN']).join('\n');
     }));

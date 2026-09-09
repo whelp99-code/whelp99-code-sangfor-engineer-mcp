@@ -7,7 +7,9 @@
  */
 
 import { compareValue } from './compare.js';
+import { aggregateActionableReasons, aggregateNextActions, nextActionsFor } from './assessment-actions.js';
 import type {
+  AssessmentReasonCode,
   Category,
   CoverageInfo,
   EvaluateOptions,
@@ -21,34 +23,39 @@ import type {
   Verdict,
 } from './types.js';
 
+interface Demotion {
+  reason: string;
+  reasonCode: AssessmentReasonCode;
+}
+
 /** A1 freshness SLO. Returns a demotion reason when the item declares maxAgeSec and
  *  the evidence cannot be proven fresh; null when the item has no budget or the
  *  evidence is within it. Only ever consulted on a would-be PASS — demotion-only. */
-function freshnessDemotion(item: SpecItem, source: ObservedSource | undefined, nowMs: number, options: EvaluateOptions): string | null {
+function freshnessDemotion(item: SpecItem, source: ObservedSource | undefined, nowMs: number, options: EvaluateOptions): Demotion | null {
   const mode = options.mode ?? 'comparison';
-  if (mode === 'snapshot' && options.now === undefined) return 'assessment-time-missing: 과거 스냅샷 평가 시각 필요';
-  if (!Number.isFinite(nowMs)) return 'assessment-time-invalid: 평가 기준 시각 파싱 불가';
+  if (mode === 'snapshot' && options.now === undefined) return { reason: 'assessment-time-missing: 과거 스냅샷 평가 시각 필요', reasonCode: 'ASSESSMENT_TIME_MISSING' };
+  if (!Number.isFinite(nowMs)) return { reason: 'assessment-time-invalid: 평가 기준 시각 파싱 불가', reasonCode: 'ASSESSMENT_TIME_INVALID' };
   if (source?.collectionStatus === 'partial' || source?.collectionStatus === 'failed') {
-    return `collection-incomplete: ${source.collectionStatus} 수집으로 정상 판정 불가`;
+    return { reason: `collection-incomplete: ${source.collectionStatus} 수집으로 정상 판정 불가`, reasonCode: 'COLLECTION_INCOMPLETE' };
   }
-  if (mode === 'current' && source?.collectionStatus !== 'complete') return 'collection-unproven: 현재 상태의 수집 완전성 근거 없음';
-  if (item.maxAgeSec === undefined && mode === 'current') return 'freshness-policy-missing: 항목별 관측 유효시간 정책 필요';
+  if (mode === 'current' && source?.collectionStatus !== 'complete') return { reason: 'collection-unproven: 현재 상태의 수집 완전성 근거 없음', reasonCode: 'COLLECTION_UNPROVEN' };
+  if (item.maxAgeSec === undefined && mode === 'current') return { reason: 'freshness-policy-missing: 항목별 관측 유효시간 정책 필요', reasonCode: 'FRESHNESS_POLICY_MISSING' };
   if (item.maxAgeSec === undefined && mode === 'comparison') return null;
-  if (item.maxAgeSec !== undefined && (!Number.isFinite(item.maxAgeSec) || item.maxAgeSec < 0)) return 'freshness-policy-invalid: 잘못된 관측 유효시간';
+  if (item.maxAgeSec !== undefined && (!Number.isFinite(item.maxAgeSec) || item.maxAgeSec < 0)) return { reason: 'freshness-policy-invalid: 잘못된 관측 유효시간', reasonCode: 'FRESHNESS_POLICY_INVALID' };
   const skew = options.maxFutureSkewSec ?? 0;
-  if (!Number.isFinite(skew) || skew < 0) return 'freshness-policy-invalid: 잘못된 미래 시각 허용 범위';
+  if (!Number.isFinite(skew) || skew < 0) return { reason: 'freshness-policy-invalid: 잘못된 미래 시각 허용 범위', reasonCode: 'FRESHNESS_POLICY_INVALID' };
   const collectedAt = source?.collectedAt;
   if (!collectedAt) {
-    return 'evidence-expired: 신선도 입증 불가 — 관측값에 collectedAt 없음 (freshness unprovable)';
+    return { reason: 'evidence-expired: 신선도 입증 불가 — 관측값에 collectedAt 없음 (freshness unprovable)', reasonCode: 'EVIDENCE_MISSING' };
   }
   const capturedMs = Date.parse(collectedAt);
   if (Number.isNaN(capturedMs)) {
-    return `evidence-expired: collectedAt 파싱 불가 (${collectedAt})`;
+    return { reason: `evidence-expired: collectedAt 파싱 불가 (${collectedAt})`, reasonCode: 'EVIDENCE_MISSING' };
   }
   const ageSec = (nowMs - capturedMs) / 1000;
-  if (ageSec < -skew) return 'evidence-future: 관측 시각이 평가 기준 시각보다 미래임';
+  if (ageSec < -skew) return { reason: 'evidence-future: 관측 시각이 평가 기준 시각보다 미래임', reasonCode: 'EVIDENCE_FUTURE' };
   if (item.maxAgeSec !== undefined && ageSec > item.maxAgeSec) {
-    return `evidence-expired: 증거 나이 ${Math.round(ageSec)}s > 허용 ${item.maxAgeSec}s`;
+    return { reason: `evidence-expired: 증거 나이 ${Math.round(ageSec)}s > 허용 ${item.maxAgeSec}s`, reasonCode: 'EVIDENCE_EXPIRED' };
   }
   return null;
 }
@@ -61,13 +68,15 @@ export function evaluateSpec(spec: IntendedSpec, observed: Record<string, unknow
     // Cannot assert a MUST item without a source citation — needs senior review.
     if (item.severity === 'must' && !item.source) {
       return { ...base, verdict: 'INDETERMINATE', category: 'indeterminate',
-        reason: 'MUST item has no source citation — needs senior review before asserting misconfiguration' };
+        reason: 'MUST item has no source citation — needs senior review before asserting misconfiguration',
+        actionableReason: { code: 'SENIOR_REVIEW_REQUIRED' }, nextActions: nextActionsFor('SENIOR_REVIEW_REQUIRED') };
     }
 
     // No observed value → cannot determine.
     if (!Object.prototype.hasOwnProperty.call(observed, item.observedKey)) {
       return { ...base, verdict: 'INDETERMINATE', category: 'indeterminate',
-        reason: `No observed value for "${item.observedKey}"` };
+        reason: `No observed value for "${item.observedKey}"`,
+        actionableReason: { code: 'OBSERVED_VALUE_MISSING' }, nextActions: nextActionsFor('OBSERVED_VALUE_MISSING') };
     }
 
     const fact = normalizeFact(observed[item.observedKey]);
@@ -80,19 +89,21 @@ export function evaluateSpec(spec: IntendedSpec, observed: Record<string, unknow
       // string 'true' vs boolean true, 'N/A' vs a numeric threshold). Comparing
       // anyway would fabricate a PASS or FAIL — surface it as 판정 불가 instead.
       return withSrc({ ...base, verdict: 'INDETERMINATE' as Verdict, category: 'indeterminate' as Category, observed: value,
-        reason: `관측 타입(${typeof value})이 기대 타입과 불일치하거나 수치 변환 불가 — 판정 불가` });
+        reason: `관측 타입(${typeof value})이 기대 타입과 불일치하거나 수치 변환 불가 — 판정 불가`,
+        actionableReason: { code: 'OBSERVED_VALUE_INCOMPATIBLE' }, nextActions: nextActionsFor('OBSERVED_VALUE_INCOMPATIBLE') });
     }
     if (cmp === 'pass') {
       // A datum flagged for senior review must never be auto-PASSed, even on a match.
       if (item.needsSeniorReview) {
         return withSrc({ ...base, verdict: 'INDETERMINATE' as Verdict, category: 'indeterminate' as Category, observed: value,
-          reason: '시니어 검토 필요 항목 — 자동 PASS 금지 (senior review required)' });
+          reason: '시니어 검토 필요 항목 — 자동 PASS 금지 (senior review required)',
+          actionableReason: { code: 'SENIOR_REVIEW_REQUIRED' }, nextActions: nextActionsFor('SENIOR_REVIEW_REQUIRED') });
       }
       // A1: a match on expired/unprovable evidence must not become a PASS.
       const expired = freshnessDemotion(item, observedSource, nowMs, options ?? {});
       if (expired) {
         return withSrc({ ...base, verdict: 'INDETERMINATE' as Verdict, category: 'indeterminate' as Category, observed: value,
-          reason: expired });
+          reason: expired.reason, actionableReason: { code: expired.reasonCode }, nextActions: nextActionsFor(expired.reasonCode) });
       }
       return withSrc({ ...base, verdict: 'PASS' as Verdict, category: 'ok' as Category, observed: value, reason: 'matches expected' });
     }
@@ -103,7 +114,8 @@ export function evaluateSpec(spec: IntendedSpec, observed: Record<string, unknow
       : item.severity === 'must' ? 'misconfiguration' : 'missing';
     const seniorNote = item.needsSeniorReview ? ' — 시니어 검토 필요(senior review)' : '';
     return withSrc({ ...base, verdict: 'FAIL' as Verdict, category, observed: value,
-      reason: `expected ${item.op} ${JSON.stringify(item.expected)}, observed ${JSON.stringify(value)}${seniorNote}` });
+      reason: `expected ${item.op} ${JSON.stringify(item.expected)}, observed ${JSON.stringify(value)}${seniorNote}`,
+      actionableReason: { code: 'CONFIRMED_FAIL' }, nextActions: nextActionsFor('CONFIRMED_FAIL') });
   });
 
   const summary = summarize(items);
@@ -116,6 +128,7 @@ export function evaluateSpec(spec: IntendedSpec, observed: Record<string, unknow
     unobservedItems: spec.items.filter((i) => !Object.prototype.hasOwnProperty.call(observed, i.observedKey)).map((i) => i.id),
   };
   return { specId: spec.id, ok: computeOk(summary), items, summary, coverage,
+    actionableReasons: aggregateActionableReasons(items), nextActions: aggregateNextActions(items),
     assessment: {
       mode: options?.mode ?? 'comparison',
       evaluatedAt: Number.isFinite(nowMs) ? new Date(nowMs).toISOString() : null,

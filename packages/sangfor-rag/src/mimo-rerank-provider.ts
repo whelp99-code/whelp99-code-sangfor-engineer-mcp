@@ -35,7 +35,8 @@ export class MimoRerankProvider implements RerankProvider {
   async rerank(
     query: string,
     candidates: Array<{ id: string; text: string; title?: string }>,
-    topK: number
+    topK: number,
+    signal?: AbortSignal
   ): Promise<string[]> {
     if (!candidates.length) return [];
     const lines = candidates.map((c, i) => {
@@ -68,7 +69,7 @@ export class MimoRerankProvider implements RerankProvider {
           temperature: 0.1,
           stream: false
         }),
-        signal: controller.signal
+        signal: signal ? AbortSignal.any([controller.signal, signal]) : controller.signal
       });
       if (!res.ok) {
         throw new Error(`MiMo rerank ${res.status}: ${(await res.text()).slice(0, 200)}`);
@@ -78,12 +79,15 @@ export class MimoRerankProvider implements RerankProvider {
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       if (!jsonMatch) throw new Error('MiMo rerank: no JSON in response');
       const parsed = parseBoundaryRagRerankResponseV1(jsonMatch[0]);
-      const ranked = parsed.ranked?.filter(id => candidates.some(c => c.id === id)) ?? [];
-      if (ranked.length) return ranked.slice(0, topK);
+      const ranked = parsed.ranked ?? [];
+      const knownIds = new Set(candidates.map((candidate) => candidate.id));
+      if (!ranked.length || new Set(ranked).size !== ranked.length || ranked.some((id) => !knownIds.has(id))) {
+        throw new Error('RAG_RERANK_IDS_INVALID');
+      }
+      return ranked.slice(0, topK);
     } finally {
       clearTimeout(timeout);
     }
-    return candidates.slice(0, topK).map(c => c.id);
   }
 
   async healthCheck(): Promise<{ ok: boolean; detail?: string }> {

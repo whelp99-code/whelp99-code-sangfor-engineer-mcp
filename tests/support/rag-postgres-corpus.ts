@@ -5,7 +5,7 @@ import { cosineSimilarity } from '../../packages/sangfor-rag/src/hash-embedding.
 import { vectorLiteral } from '../../packages/sangfor-rag/src/pgvector-sql.js';
 import { parsePgvectorCohort, parsePgvectorScope, parsePgvectorUpsert } from '../../packages/sangfor-rag/src/pgvector-schema.js';
 import { PgvectorRagStore } from '../../packages/sangfor-rag/src/pgvector-store.js';
-import type { PgvectorHit, PgvectorScope, PgvectorSearch, PgvectorUpsert } from '../../packages/sangfor-rag/src/pgvector-types.js';
+import { PGVECTOR_HASH_EMBEDDING_SPACE, type PgvectorHit, type PgvectorScope, type PgvectorSearch, type PgvectorUpsert } from '../../packages/sangfor-rag/src/pgvector-types.js';
 
 type FixtureInput = {
   readonly owner: PrismaClient;
@@ -165,12 +165,14 @@ export async function buildScopeFirstCorpusFixture(input: FixtureInput): Promise
       trustLevel: chunk.trustLevel, title: chunk.title, text: chunk.text, sourceRef: chunk.filePath,
       contentHash: `scope-first-${chunk.id}`, aclActorIds: chunk.aclActorIds,
       embedding: input.embedding(chunk.text),
+      embeddingSpace: PGVECTOR_HASH_EMBEDDING_SPACE,
     });
   });
   for (const scope of sourceScopes.values()) {
     const active = parsePgvectorCohort({
       ...scope, id: `cohort-${scope.projectId}`, indexEpoch: 35,
-      backend: 'hash', model: 'hash-v1', dimensions: input.corpus.cohort.dimensions,
+      backend: 'hash', model: 'hash', dimensions: input.corpus.cohort.dimensions,
+      embeddingSpace: PGVECTOR_HASH_EMBEDDING_SPACE,
     });
     await input.store.promoteCohort(active);
     await input.store.replace({

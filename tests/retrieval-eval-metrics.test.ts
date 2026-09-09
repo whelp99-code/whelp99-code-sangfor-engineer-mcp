@@ -25,4 +25,14 @@ describe('computeRetrievalMetrics', () => {
     expect(metrics.ndcgAtK).toBeGreaterThan(0);
     expect(metrics.ndcgAtK).toBeLessThan(0.5);
   });
+  it('deduplicates document chunks before applying source-level k', () => {
+    const metrics = computeRetrievalMetrics([{ queryId: 'q', sourceId: 'answer', grade: 1 }], [
+      { queryId: 'q', sourceId: 'noise', rank: 1, score: 1 },
+      { queryId: 'q', sourceId: 'noise', rank: 2, score: 0.9 },
+      { queryId: 'q', sourceId: 'answer', rank: 3, score: 0.8 },
+    ], 2);
+    expect(metrics.hitRateAtK).toBe(1);
+    expect(metrics.mrrAtK).toBe(0.5);
+  });
+
 });

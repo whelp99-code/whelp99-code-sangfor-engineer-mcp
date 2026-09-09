@@ -1,10 +1,9 @@
 import { z } from 'zod';
 import {
-  IndexPromotionEvidenceSchema,
   type IndexPromotionEvidence,
   type VerificationAuthority,
-  verifyIndexPromotionEvidence,
 } from './index-promotion-authority.js';
+import { parseHistoricalPromotionEvidence, verifyHistoricalPromotionEvidence, type HistoricalPromotionEvidence } from './index-promotion-legacy-history.js';
 import { canonicalPromotionJson } from './index-promotion-evaluator.js';
 import type { PgvectorScope, PgvectorSqlExecutor } from './pgvector-types.js';
 
@@ -27,22 +26,15 @@ export class IndexPromotionHistoryError extends Error {
 function parseHistoryRow(
   row: HistoryRow,
   authority: VerificationAuthority,
-): IndexPromotionEvidence {
-  const parsed = IndexPromotionEvidenceSchema.safeParse(row.evidence);
-  if (!parsed.success) {
-    throw new IndexPromotionHistoryError('PROMOTION_EVIDENCE_HISTORY_CORRUPT', row.nonce, { cause: parsed.error });
-  }
-  const evidence = parsed.data;
+): HistoricalPromotionEvidence {
+  let evidence: HistoricalPromotionEvidence;
+  try { evidence = verifyHistoricalPromotionEvidence(row.evidence, authority); }
+  catch (error) { throw new IndexPromotionHistoryError('PROMOTION_EVIDENCE_HISTORY_CORRUPT', row.nonce, { cause: error }); }
   if (row.nonce !== evidence.nonce || row.cohortId !== evidence.report.cohortId
     || row.indexEpoch !== evidence.report.indexEpoch || row.authorityActorId !== evidence.authorityActorId
     || row.evidenceCanonical !== canonicalPromotionJson(evidence)
     || row.reportDigest !== evidence.report.reportDigest) {
     throw new IndexPromotionHistoryError('PROMOTION_EVIDENCE_HISTORY_CORRUPT', row.nonce);
-  }
-  try {
-    verifyIndexPromotionEvidence(evidence, authority);
-  } catch (error) {
-    throw new IndexPromotionHistoryError('PROMOTION_EVIDENCE_HISTORY_CORRUPT', row.nonce, { cause: error });
   }
   return evidence;
 }
@@ -51,7 +43,7 @@ async function verifiedHistory(
   transaction: PgvectorSqlExecutor,
   scope: PgvectorScope,
   authority: VerificationAuthority,
-): Promise<ReadonlyMap<string, IndexPromotionEvidence>> {
+): Promise<ReadonlyMap<string, HistoricalPromotionEvidence>> {
   const rows = z.array(HistoryRowSchema).parse(await transaction.$queryRawUnsafe<unknown>(`
     SELECT "nonce","cohortId","indexEpoch","authorityActorId","evidence","evidenceCanonical","reportDigest"
     FROM "BlroRagIndexPromotionEvidence" WHERE "tenantId"=$1 AND "projectId"=$2
@@ -62,15 +54,17 @@ async function verifiedHistory(
 async function assertPromotionRowsRetained(
   transaction: PgvectorSqlExecutor,
   scope: PgvectorScope,
-  history: ReadonlyMap<string, IndexPromotionEvidence>,
+  history: ReadonlyMap<string, HistoricalPromotionEvidence>,
 ): Promise<void> {
   const promotions = z.array(PromotionEvidenceRowSchema).parse(await transaction.$queryRawUnsafe<unknown>(`
     SELECT "report" FROM "BlroRagIndexPromotion" WHERE "tenantId"=$1 AND "projectId"=$2`,
   scope.tenantId, scope.projectId));
   for (const row of promotions) {
-    const parsed = IndexPromotionEvidenceSchema.safeParse(row.report);
-    const retained = parsed.success ? history.get(parsed.data.nonce) : undefined;
-    if (!parsed.success || !retained || canonicalPromotionJson(retained) !== canonicalPromotionJson(parsed.data)) {
+    let evidence: HistoricalPromotionEvidence;
+    try { evidence = parseHistoricalPromotionEvidence(row.report); }
+    catch (error) { throw new IndexPromotionHistoryError('PROMOTION_EVIDENCE_HISTORY_MISSING', scope.projectId, { cause: error }); }
+    const retained = history.get(evidence.nonce);
+    if (!retained || canonicalPromotionJson(retained) !== canonicalPromotionJson(evidence)) {
       throw new IndexPromotionHistoryError('PROMOTION_EVIDENCE_HISTORY_MISSING', scope.projectId);
     }
   }

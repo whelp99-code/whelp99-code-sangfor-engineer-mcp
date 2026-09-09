@@ -6,6 +6,7 @@ import { IndexPromotionStore } from '../../packages/sangfor-rag/src/index-promot
 import { IndexPromotionReportSchema } from '../../packages/sangfor-rag/src/index-promotion-types.js';
 import { hashEmbedding } from '../../packages/sangfor-rag/src/hash-embedding.js';
 import { parsePgvectorCohort, parsePgvectorScope } from '../../packages/sangfor-rag/src/pgvector-schema.js';
+import { PGVECTOR_HASH_EMBEDDING_SPACE } from '../../packages/sangfor-rag/src/pgvector-types.js';
 import { PgvectorRagStore } from '../../packages/sangfor-rag/src/pgvector-store.js';
 import type { PgvectorDatabase, PgvectorScope } from '../../packages/sangfor-rag/src/pgvector-types.js';
 import { promotionFixture } from './rag-promotion-postgres.js';
@@ -53,7 +54,7 @@ async function mutationRefused(
 
 async function routeReason(store: IndexPromotionStore, scope: PgvectorScope): Promise<string> {
   const routed = await new IndexPromotionRouter(store).search(
-    { scope, query: hashEmbedding('oracle'), filters: {}, limit: 1 },
+    { scope, query: hashEmbedding('oracle'), embeddingSpace: PGVECTOR_HASH_EMBEDDING_SPACE, filters: {}, limit: 1 },
     { backend: 'auto', now: new Date() },
   );
   return routed.diagnostics.reason;
@@ -108,7 +109,7 @@ export async function exercisePromotionHistory(input: ScenarioInput) {
   });
   await new PgvectorRagStore(input.database).promoteCohort(parsePgvectorCohort({
     ...alternateScope, id: `cohort-${alternateScope.projectId}`, indexEpoch: 35,
-    backend: 'hash', model: 'hash-v1', dimensions: 384,
+    backend: 'hash', model: 'hash', dimensions: 384, embeddingSpace: PGVECTOR_HASH_EMBEDDING_SPACE,
   }));
   const alternate = await promotionFixture({
     promotion: restarted, scope: alternateScope, authority: input.authority, nonce: first.evidence.nonce,

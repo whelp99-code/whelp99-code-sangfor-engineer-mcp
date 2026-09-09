@@ -7,6 +7,7 @@ import type {
   PgvectorDatabase,
   PgvectorSqlExecutor,
 } from '../../packages/sangfor-rag/src/pgvector-types.js';
+import { PGVECTOR_HASH_EMBEDDING_SPACE } from '../../packages/sangfor-rag/src/pgvector-types.js';
 
 const databaseUrl = process.env['DATABASE_URL'];
 const ownerUrl = process.env['BLRO_OWNER_DATABASE_URL'];
@@ -97,7 +98,7 @@ const first = new PrismaClient({ datasources: { db: { url: databaseUrl } } });
 const second = new PrismaClient({ datasources: { db: { url: databaseUrl } } });
 
 function cohort(scope: typeof raceScope, id: string, indexEpoch: number) {
-  return parsePgvectorCohort({ ...scope, id, indexEpoch, backend: 'hash', model: 'hash-v1', dimensions: 384 });
+  return parsePgvectorCohort({ ...scope, id, indexEpoch, backend: 'hash', model: 'hash', dimensions: 384, embeddingSpace: PGVECTOR_HASH_EMBEDDING_SPACE });
 }
 
 async function activeCohorts(scope: typeof raceScope): Promise<readonly { id: string }[]> {

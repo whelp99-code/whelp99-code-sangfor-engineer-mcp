@@ -15,6 +15,29 @@ export class IndexPromotionReportError extends Error {
   }
 }
 
+export const INDEX_PROMOTION_POLICY = Object.freeze({
+  // The committed project-completeness benchmark contains 16 independent
+  // queries. Smaller ad-hoc samples cannot authorize production routing.
+  minimumBenchmarkQueries: 16,
+  minimumK: 1,
+  minimumRecallAtK: 0.99,
+  absoluteCandidateP95Ms: 100,
+  maximumCandidateToExactP95Ratio: 0.8,
+});
+
+const INDEX_PROMOTION_BENCHMARK_PROFILE = Object.freeze({
+  schemaVersion: 'rag.index-promotion-benchmark-profile/1',
+  metric: 'exact-result-recall-at-k',
+  minimumK: INDEX_PROMOTION_POLICY.minimumK,
+  minimumBenchmarkQueries: INDEX_PROMOTION_POLICY.minimumBenchmarkQueries,
+  minimumRecallAtK: INDEX_PROMOTION_POLICY.minimumRecallAtK,
+  absoluteCandidateP95Ms: INDEX_PROMOTION_POLICY.absoluteCandidateP95Ms,
+  maximumCandidateToExactP95Ratio: INDEX_PROMOTION_POLICY.maximumCandidateToExactP95Ratio,
+  requireUpdateReadback: true,
+  requireRecoveryReadback: true,
+  requireScopeIsolation: true,
+});
+
 export function canonicalPromotionJson(value: unknown): string {
   if (value === null || typeof value !== 'object') return JSON.stringify(value);
   if (Array.isArray(value)) return `[${value.map(canonicalPromotionJson).join(',')}]`;
@@ -24,6 +47,10 @@ export function canonicalPromotionJson(value: unknown): string {
 
 export function promotionReportDigest(input: IndexPromotionReportInput): string {
   return createHash('sha256').update(canonicalPromotionJson(input)).digest('hex');
+}
+
+export function indexPromotionBenchmarkProfileDigest(): string {
+  return createHash('sha256').update(canonicalPromotionJson(INDEX_PROMOTION_BENCHMARK_PROFILE)).digest('hex');
 }
 
 export function sealIndexPromotionReport(raw: unknown): IndexPromotionReport {
@@ -48,6 +75,7 @@ function mismatchReason(report: IndexPromotionReport, currentRaw: unknown): stri
   if (report.tenantId !== current.data.tenantId || report.projectId !== current.data.projectId) return 'PROMOTION_SCOPE_MISMATCH';
   if (report.cohortId !== current.data.cohortId || report.indexEpoch !== current.data.indexEpoch) return 'PROMOTION_COHORT_MISMATCH';
   if (report.corpusDigest !== current.data.corpusDigest) return 'PROMOTION_CORPUS_MISMATCH';
+  if (report.embeddingSpaceDigest !== current.data.embeddingSpaceDigest) return 'PROMOTION_EMBEDDING_SPACE_MISMATCH';
   if (report.extensionName !== current.data.extensionName || report.extensionVersion !== current.data.extensionVersion) return 'PROMOTION_EXTENSION_UNSUPPORTED';
   if (report.indexName !== current.data.indexName || report.indexIdentity !== current.data.indexIdentity) return 'PROMOTION_INDEX_MISMATCH';
   if (report.candidateRowCount !== current.data.candidateRowCount) return 'PROMOTION_ROW_COUNT_MISMATCH';
@@ -64,8 +92,14 @@ export function evaluateIndexPromotion(raw: unknown, current: unknown, now: Date
   if (mismatch) return { eligible: false, reason: mismatch };
   const ageMilliseconds = now.getTime() - Date.parse(parsed.data.measuredAt);
   if (!Number.isFinite(ageMilliseconds) || ageMilliseconds < 0 || ageMilliseconds > parsed.data.maxAgeSeconds * 1000) return { eligible: false, reason: 'PROMOTION_REPORT_STALE' };
-  if (parsed.data.recallAtK < 0.99) return { eligible: false, reason: 'PROMOTION_RECALL_LOW' };
-  if (parsed.data.candidateP95Ms > 100 && parsed.data.candidateP95Ms > parsed.data.exactP95Ms * 0.8) return { eligible: false, reason: 'PROMOTION_LATENCY_HIGH' };
+  if (parsed.data.benchmarkQueryCount < INDEX_PROMOTION_POLICY.minimumBenchmarkQueries
+    || parsed.data.k < INDEX_PROMOTION_POLICY.minimumK) return { eligible: false, reason: 'PROMOTION_BENCHMARK_INSUFFICIENT' };
+  if (parsed.data.benchmarkProfileDigest !== indexPromotionBenchmarkProfileDigest()) {
+    return { eligible: false, reason: 'PROMOTION_BENCHMARK_PROFILE_UNSUPPORTED' };
+  }
+  if (parsed.data.recallAtK < INDEX_PROMOTION_POLICY.minimumRecallAtK) return { eligible: false, reason: 'PROMOTION_RECALL_LOW' };
+  if (parsed.data.candidateP95Ms > INDEX_PROMOTION_POLICY.absoluteCandidateP95Ms
+    && parsed.data.candidateP95Ms > parsed.data.exactP95Ms * INDEX_PROMOTION_POLICY.maximumCandidateToExactP95Ratio) return { eligible: false, reason: 'PROMOTION_LATENCY_HIGH' };
   if (parsed.data.recoveryRate !== 1) return { eligible: false, reason: 'PROMOTION_RECOVERY_FAILED' };
   if (parsed.data.updateRate !== 1) return { eligible: false, reason: 'PROMOTION_UPDATE_FAILED' };
   if (!parsed.data.scopeIsolationProof) return { eligible: false, reason: 'PROMOTION_SCOPE_ISOLATION_FAILED' };

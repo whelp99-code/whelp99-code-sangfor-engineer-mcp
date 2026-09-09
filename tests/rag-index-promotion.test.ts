@@ -1,10 +1,12 @@
 import { spawnSync } from 'node:child_process';
 import { describe, expect, it, vi } from 'vitest';
-import { evaluateIndexPromotion, sealIndexPromotionReport } from '../packages/sangfor-rag/src/index-promotion-evaluator.js';
+import { evaluateIndexPromotion, indexPromotionBenchmarkProfileDigest, sealIndexPromotionReport } from '../packages/sangfor-rag/src/index-promotion-evaluator.js';
 import { CandidateSearchUnavailableError, IndexPromotionRouter } from '../packages/sangfor-rag/src/index-promotion-router.js';
 import type { HnswIndexIdentity, IndexPromotionReportInput, PromotionCurrentState, PromotionSearchPort } from '../packages/sangfor-rag/src/index-promotion-types.js';
 import { parsePgvectorScope } from '../packages/sangfor-rag/src/pgvector-schema.js';
 import { hashEmbedding } from '../packages/sangfor-rag/src/hash-embedding.js';
+import { buildUnmeasuredIndexPromotionQaReport } from '../packages/sangfor-rag/src/index-promotion-qa-report.js';
+import { PGVECTOR_HASH_EMBEDDING_SPACE } from '../packages/sangfor-rag/src/pgvector-types.js';
 
 const measuredAt = '2026-08-27T12:00:00.000Z';
 const now = new Date('2026-08-27T12:05:00.000Z');
@@ -17,17 +19,20 @@ const identity: HnswIndexIdentity = {
 const current: PromotionCurrentState = {
   tenantId: scope.tenantId, projectId: scope.projectId, cohortId: 'cohort-a', indexEpoch: 34,
   corpusDigest: 'a'.repeat(64), extensionName: 'vector', extensionVersion: '0.8.1', indexName: 'BlroRagEmbedding_embedding_hnsw_idx',
-  indexIdentity: 'd'.repeat(64), candidateRowCount: 210,
+  indexIdentity: 'd'.repeat(64), embeddingSpaceDigest: 'e'.repeat(64), candidateRowCount: 210,
 };
 
 function input(overrides: Partial<IndexPromotionReportInput> = {}): IndexPromotionReportInput {
   return {
     schemaVersion: 'rag.index-promotion/1', tenantId: current.tenantId, projectId: current.projectId,
     cohortId: current.cohortId, indexEpoch: current.indexEpoch, corpusDigest: current.corpusDigest,
+    embeddingSpaceDigest: current.embeddingSpaceDigest, benchmarkDigest: 'f'.repeat(64),
+    benchmarkProfileDigest: indexPromotionBenchmarkProfileDigest(), benchmarkQueryCount: 16, k: 5,
     exactResultDigest: 'b'.repeat(64), candidateResultDigest: 'c'.repeat(64),
     extensionName: current.extensionName, extensionVersion: current.extensionVersion,
     indexName: current.indexName, indexIdentity: current.indexIdentity, measuredAt, maxAgeSeconds: 3600,
     recallAtK: 0.99, exactP95Ms: 120, candidateP95Ms: 95, recoveryRate: 1, updateRate: 1,
+    recoveryMeasured: true, updateMeasured: true,
     scopeIsolationProof: true, candidateRowCount: current.candidateRowCount, ...overrides,
   };
 }
@@ -51,7 +56,7 @@ function port(options: { readonly promotion?: unknown | null; readonly preflight
   };
 }
 
-const query = { scope, query: hashEmbedding('oracle'), filters: {}, limit: 5 };
+const query = { scope, query: hashEmbedding('oracle'), embeddingSpace: PGVECTOR_HASH_EMBEDDING_SPACE, filters: {}, limit: 5 };
 
 describe('index promotion evaluator', () => {
   it.each([
@@ -67,6 +72,9 @@ describe('index promotion evaluator', () => {
     ['PROMOTION_RECOVERY_FAILED', { recoveryRate: 0.99 }],
     ['PROMOTION_UPDATE_FAILED', { updateRate: 0.99 }],
     ['PROMOTION_SCOPE_ISOLATION_FAILED', { scopeIsolationProof: false }],
+    ['PROMOTION_BENCHMARK_INSUFFICIENT', { benchmarkQueryCount: 15 }],
+    ['PROMOTION_BENCHMARK_PROFILE_UNSUPPORTED', { benchmarkProfileDigest: 'a'.repeat(64) }],
+    ['PROMOTION_EMBEDDING_SPACE_MISMATCH', { embeddingSpaceDigest: 'a'.repeat(64) }],
     ['PROMOTION_REPORT_STALE', { measuredAt: '2026-08-27T10:00:00.000Z', maxAgeSeconds: 60 }],
     ['PROMOTION_CORPUS_MISMATCH', { corpusDigest: 'e'.repeat(64) }],
     ['PROMOTION_SCOPE_MISMATCH', { projectId: 'project-b' }],
@@ -79,6 +87,11 @@ describe('index promotion evaluator', () => {
   it('refuses report digest tampering and malformed or nonfinite values', () => {
     expect(evaluateIndexPromotion({ ...report(), recallAtK: 0.5 }, current, now)).toEqual({ eligible: false, reason: 'PROMOTION_REPORT_DIGEST_MISMATCH' });
     expect(() => sealIndexPromotionReport(input({ candidateP95Ms: Number.NaN }))).toThrow(/PROMOTION_REPORT_INVALID/u);
+  });
+
+  it('cannot seal claimed update or recovery success without an explicit measured marker', () => {
+    expect(() => sealIndexPromotionReport({ ...input(), updateMeasured: false })).toThrow(/PROMOTION_REPORT_INVALID/u);
+    expect(() => sealIndexPromotionReport({ ...input(), recoveryMeasured: false })).toThrow(/PROMOTION_REPORT_INVALID/u);
   });
 });
 
@@ -103,6 +116,14 @@ describe('diagnostic promotion search router', () => {
     expect(result.diagnostics.reason).toBe('PROMOTION_REPORT_INVALID');
   });
 
+  it('uses exact when a request asks for more neighbors than the report measured', async () => {
+    const search = port({ promotion: report({ k: 1 }) });
+    const result = await new IndexPromotionRouter(search).search(query, { backend: 'auto', now });
+    expect(result).toMatchObject({ backend: 'exact', diagnostics: { reason: 'PROMOTION_QUERY_LIMIT_EXCEEDS_BENCHMARK_K' } });
+    expect(search.preflightCandidate).not.toHaveBeenCalled();
+    expect(search.searchCandidate).not.toHaveBeenCalled();
+  });
+
   it('falls back visibly before dispatch when the named index is missing', async () => {
     const search = port({ preflight: false });
     const result = await new IndexPromotionRouter(search).search(query, { backend: 'auto', now });
@@ -119,7 +140,7 @@ describe('diagnostic promotion search router', () => {
     expect(result.hits.map((hit) => hit.id)).toEqual(['candidate']);
     expect(result.diagnostics.reason).toBe('PROMOTION_VALID');
     expect(barrier).toHaveBeenCalledTimes(1);
-    expect(search.searchCandidate).toHaveBeenCalledWith(query, identity);
+    expect(search.searchCandidate).toHaveBeenCalledWith(query, identity, report(), now);
   });
 
   it.each([
@@ -130,6 +151,18 @@ describe('diagnostic promotion search router', () => {
     await expect(new IndexPromotionRouter(search).search(query, { backend: 'auto', now })).rejects.toBeInstanceOf(CandidateSearchUnavailableError);
     expect(search.searchExact).not.toHaveBeenCalled();
     expect(search.searchCandidate).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('index promotion QA artifact', () => {
+  it('records useful measurements but cannot be parsed or sealed as routing authority', () => {
+    const artifact = buildUnmeasuredIndexPromotionQaReport({
+      benchmarkDigest: 'a'.repeat(64), benchmarkQueryCount: 16, recallAtK: 1,
+      exactP95Ms: 12, candidateP95Ms: 8, scopeIsolationProof: true,
+      index: 'BlroRagEmbedding_embedding_hnsw_idx',
+    });
+    expect(artifact).toMatchObject({ eligibility: 'NOT_ELIGIBLE', updateMeasured: false, recoveryMeasured: false });
+    expect(() => sealIndexPromotionReport(artifact)).toThrow(/PROMOTION_REPORT_INVALID/u);
   });
 });
 

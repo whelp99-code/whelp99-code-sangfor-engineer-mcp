@@ -12,6 +12,11 @@ const IndexPromotionReportInputObjectSchema = z.object({
   cohortId: NonemptySchema,
   indexEpoch: z.number().int().nonnegative(),
   corpusDigest: DigestSchema,
+  embeddingSpaceDigest: DigestSchema,
+  benchmarkDigest: DigestSchema,
+  benchmarkProfileDigest: DigestSchema,
+  benchmarkQueryCount: z.number().int().positive(),
+  k: z.number().int().positive().max(100),
   exactResultDigest: DigestSchema,
   candidateResultDigest: DigestSchema,
   extensionName: NonemptySchema,
@@ -25,6 +30,8 @@ const IndexPromotionReportInputObjectSchema = z.object({
   candidateP95Ms: z.number().finite().nonnegative(),
   recoveryRate: z.number().finite().min(0).max(1),
   updateRate: z.number().finite().min(0).max(1),
+  recoveryMeasured: z.literal(true),
+  updateMeasured: z.literal(true),
   scopeIsolationProof: z.boolean(),
   candidateRowCount: z.number().int().nonnegative(),
 }).strict();
@@ -51,6 +58,7 @@ export const PromotionCurrentStateSchema = z.object({
   cohortId: NonemptySchema,
   indexEpoch: z.number().int().nonnegative(),
   corpusDigest: DigestSchema,
+  embeddingSpaceDigest: DigestSchema,
   extensionName: z.literal('vector'),
   extensionVersion: z.literal('0.8.1'),
   indexName: NonemptySchema,
@@ -86,5 +94,5 @@ export interface PromotionSearchPort {
   readCurrentState(scope: PgvectorScope): Promise<unknown>;
   preflightCandidate(scope: PgvectorScope, indexName: string): Promise<HnswIndexIdentity | null>;
   searchExact(input: PgvectorSearch): Promise<unknown>;
-  searchCandidate(input: PgvectorSearch, expectedIdentity: HnswIndexIdentity): Promise<unknown>;
+  searchCandidate(input: PgvectorSearch, expectedIdentity: HnswIndexIdentity, expectedReport: IndexPromotionReport, now: Date): Promise<unknown>;
 }
