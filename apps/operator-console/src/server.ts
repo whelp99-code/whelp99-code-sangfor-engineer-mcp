@@ -38,6 +38,7 @@ import {
   type OperatorServerOptions,
 } from './engineer-case-api.js';
 import { postReviewEngineerCase } from './engineer-case-review.js';
+import { getDownloadEngineerGuide, postExportEngineerGuide, sendEngineerGuideDownload } from './engineer-case-guide.js';
 import { dashboardHtml } from './ui.js';
 import {
   decodeOperatorRequestBody,
@@ -204,6 +205,21 @@ export function createOperatorServer(options: OperatorServerOptions = {}): http.
           caseAuth(),
         );
         return json(res, result.body, result.status);
+      }
+
+      if (method === 'POST' && url.pathname === '/api/engineer-cases/guide-export') {
+        const body = await readJsonBody(req, 'engineer-cases-guide-export');
+        const result = await postExportEngineerGuide(body, caseStore, caseAuth());
+        return json(res, result.body, result.status);
+      }
+
+      if (method === 'GET' && url.pathname === '/api/engineer-cases/guide-download') {
+        return sendEngineerGuideDownload(res, await getDownloadEngineerGuide(
+          url.searchParams.get('caseId'),
+          url.searchParams.get('artifactId'),
+          caseStore,
+          caseAuth(),
+        ), json);
       }
 
       if (method === 'GET' && (url.pathname === '/' || url.pathname === '/index.html')) {

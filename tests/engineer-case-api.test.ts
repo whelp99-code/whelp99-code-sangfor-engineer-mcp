@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import type { AddressInfo } from 'node:net';
 import http from 'node:http';
 import { MAPPER_VERSION } from '../packages/sangfor-config-state/src/provenance.js';
-import { ENGINEER_CASE_SCHEMA_VERSION, type EngineerCaseAuthContext, type EngineerCaseDocument } from '../packages/shared/src/engineer-case-contract.js';
+import { computeEngineerGuideDigest, ENGINEER_CASE_SCHEMA_VERSION, type EngineerCaseAuthContext, type EngineerCaseDocument } from '../packages/shared/src/engineer-case-contract.js';
 import { BlroAuthorityStore } from '../packages/sangfor-authority/src/authority-store.js';
 import {
   ENGINEER_CASE_READ_PERMISSION,
@@ -176,11 +176,15 @@ describe('engineer case API', () => {
     const restarted = await listen(new BlroAuthorityStore(db), AUTH);
     const resumed = await call(restarted, 'GET', '/api/engineer-cases?caseId=case-existing-1');
     expect(resumed.status).toBe(200);
+    const document = resumed.body.document as EngineerCaseDocument;
+    const { digest: storedDigest, ...storedFields } = document.guide;
     expect(resumed.body).toMatchObject({
-      ok: true, status: 'saved', revision: 'rev-1', guideDigest: DIGEST,
+      ok: true, status: 'saved', revision: 'rev-1', guideDigest: storedDigest,
       approved: false, guideReadyGranted: false, executionPassGranted: false,
     });
-    const document = resumed.body.document as EngineerCaseDocument;
+    expect(document.guide.readiness).toBe('blocked');
+    expect(storedDigest).toBe(computeEngineerGuideDigest(storedFields));
+    expect(storedDigest).not.toBe(DIGEST);
     expect(document.guide.readiness).not.toBe('review_ready');
     expect(document.execution.result).not.toBe('pass');
 

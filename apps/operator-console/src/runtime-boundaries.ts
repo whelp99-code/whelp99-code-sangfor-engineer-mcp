@@ -86,6 +86,10 @@ const requestSchemas = {
     caseId: engineerIdSchema,
     artifactId: engineerIdSchema,
   }).strict(),
+  'engineer-cases-guide-export': z.object({
+    caseId: engineerIdSchema,
+    expectedRevision: engineerIdSchema.optional(),
+  }).strict(),
   'engineer-cases-review': z.object({
     caseId: engineerIdSchema.optional(),
     draft: z.object({
@@ -124,6 +128,7 @@ const operatorRequestSchema: z.ZodType<AnyOperatorRequestBody> = z.union([
   requestSchemas['engineer-cases-resume'],
   requestSchemas['engineer-cases-compare'],
   requestSchemas['engineer-cases-artifact'],
+  requestSchemas['engineer-cases-guide-export'],
   requestSchemas['engineer-cases-review'],
 ]);
 
@@ -138,6 +143,21 @@ export function parseBoundaryOperatorRequestBodyV1(source: string): AnyOperatorR
   return parseRuntimeJson(source, {
     schema: operatorRequestSchema,
     schemaName: 'operator-console.request-body.v1',
+    policy: 'deny',
+  });
+}
+
+const storedGuideDocxSchema = z.object({
+  encoding: z.literal('base64'),
+  bytes: z.string().min(1),
+  fileName: z.string().regex(/^[A-Za-z0-9._-]+\.docx$/u),
+}).strict();
+
+/** Stored Word artifact payload. Not a parseBoundary*V1 lock entry; parseRuntimeJson owns the JSON. */
+export function parseStoredGuideDocxPayload(source: string): z.output<typeof storedGuideDocxSchema> {
+  return parseRuntimeJson(source, {
+    schema: storedGuideDocxSchema,
+    schemaName: 'operator-console.guide-docx.v1',
     policy: 'deny',
   });
 }

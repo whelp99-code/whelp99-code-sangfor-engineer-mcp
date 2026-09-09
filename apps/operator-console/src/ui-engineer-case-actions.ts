@@ -1,6 +1,7 @@
 export const ENGINEER_CASE_ACTION_SCRIPT = `
     var ecAssembled = null;
     var ecExpectedRevision = '';
+    var ecSavedCaseId = '';
 
     function ecText(value, fallback) {
       var text = typeof value === 'string' ? value.trim() : '';
@@ -76,6 +77,36 @@ export const ENGINEER_CASE_ACTION_SCRIPT = `
       });
     }
 
+    function ecRenderGuide(review) {
+      var guide = review.guide || {};
+      var meta = $('ec-guide-meta');
+      ecClear(meta);
+      ecAppend(meta, 'p', ecText(guide.durableLabel, '초안/저장 구분 없음') +
+        ' · 사례 revision ' + ecText(guide.caseRevision, 'unknown') +
+        ' · 가이드 revision ' + ecText(guide.guideRevision, 'unknown'), 'meta');
+      ecAppend(meta, 'p', ecText(guide.readinessClaim, '문서 준비도 주장 없음'), 'meta');
+      ecAppend(meta, 'p', 'field_accepted=' + String(!!guide.fieldAccepted) +
+        ' · approved_for_window=' + String(!!guide.approvedForWindow), 'meta');
+      if (review.progressClaim) ecAppend(meta, 'p', review.progressClaim, 'meta');
+      if (review.nextActions && review.nextActions.length) {
+        ecAppend(meta, 'p', '다음 행동: ' + review.nextActions.join(' / '), 'meta');
+      }
+      var steps = $('ec-guide-steps');
+      ecClear(steps);
+      if (!guide.steps || !guide.steps.length) {
+        ecAppend(steps, 'p', '저장된 단계 없음. 없는 단계를 만들지 않습니다.', 'meta');
+      } else {
+        guide.steps.forEach(function (step) {
+          ecAppend(steps, 'p', String(step.order) + '. ' + ecText(step.title, step.id) + ' — 검증: ' + ecText(step.verify, '미확인'), 'snippet');
+        });
+      }
+      if (guide.unresolved && guide.unresolved.length) {
+        guide.unresolved.forEach(function (item) {
+          ecAppend(steps, 'p', '미확인: ' + item, 'meta');
+        });
+      }
+    }
+
     function ecShowReview(data) {
       var review = data.review || {};
       var failures = review.failures || [];
@@ -89,11 +120,15 @@ export const ENGINEER_CASE_ACTION_SCRIPT = `
       ecRenderRows($('ec-observations'), review.observations, '수집 결과 없음');
       ecRenderRows($('ec-calculations'), review.calculations, '계산 불가');
       ecRenderRows($('ec-unresolved'), review.unresolved, '미확인 항목 표시 없음');
+      ecRenderGuide(review);
       if (review.caseId) $('ec-case-id').value = review.caseId;
       if (review.revision) $('ec-revision').value = review.revision;
       $('ec-json').textContent = JSON.stringify(data.document || data, null, 2);
       ecAssembled = data.document || null;
-      if (data.durable === 'saved' && review.revision) ecExpectedRevision = review.revision;
+      if (data.durable === 'saved' && review.revision) {
+        ecExpectedRevision = review.revision;
+        ecSavedCaseId = review.caseId || $('ec-case-id').value.trim();
+      }
     }
 
     async function ecCall(path, body) {
@@ -106,11 +141,40 @@ export const ENGINEER_CASE_ACTION_SCRIPT = `
         data = Object.assign({ ok: false, status: 'unsaved', code: data.code || 'unauthorized', error: data.error || 'unauthorized' }, data);
       }
       data.saveComplete = false;
+      data.downloadComplete = !!data.downloadComplete;
       data.guideReadyGranted = !!data.guideReadyGranted;
       data.executionPassGranted = !!data.executionPassGranted;
       data.approved = !!data.approved;
       return { httpStatus: response.status, data: data };
     }
+
+    async function ecDownloadDocx(caseId, artifactId) {
+      var path = '/api/engineer-cases/guide-download?caseId=' + encodeURIComponent(caseId) + '&artifactId=' + encodeURIComponent(artifactId);
+      var response = await fetch(path, { method: 'GET', headers: buildApiHeaders(readApiToken(), {}) });
+      if (response.status === 401 || !response.ok) return false;
+      var blob = await response.blob();
+      var name = 'engineer-guide.docx';
+      var disposition = response.headers.get('content-disposition') || '';
+      var match = disposition.match(/filename="([A-Za-z0-9._-]+\\.docx)"/);
+      if (match) name = match[1];
+      var url = URL.createObjectURL(blob);
+      var link = document.createElement('a');
+      link.href = url;
+      link.download = name;
+      link.rel = 'noopener';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      return true;
+    }
+
+    $('ec-btn-sample').onclick = function () {
+      $('ec-reqs').value = '가용 용량 여유 20% 이상 유지';
+      $('ec-collections').value = 'usable-capacity | 40 | TiB\\nhost-cpu | | cores';
+      $('ec-case-id').value = $('ec-case-id').value.trim() || 'case-sample-1';
+      ecStatus('warn', '샘플을 채웠습니다. 아직 저장·내려받기가 아닙니다. 완료가 아닙니다.');
+    };
 
     $('ec-btn-review').onclick = async function () {
       var result = await ecCall('/api/engineer-cases/review', { draft: ecReadDraft() });
@@ -137,6 +201,7 @@ export const ENGINEER_CASE_ACTION_SCRIPT = `
         return;
       }
       ecExpectedRevision = result.data.revision || '';
+      ecSavedCaseId = result.data.caseId || $('ec-case-id').value.trim();
       if (result.data.caseId) $('ec-case-id').value = result.data.caseId;
       if (result.data.revision) $('ec-revision').value = result.data.revision;
       ecStatus('ok', '저장됨. 승인·가이드 준비·실행 통과가 아닙니다. · ' + ecGrantLine(result.data));
@@ -163,7 +228,36 @@ export const ENGINEER_CASE_ACTION_SCRIPT = `
     };
 
     $('ec-btn-export').onclick = async function () {
-      ecAssembled = null;
-      ecStatus('fail', '내보내기 오류: 이 화면에서는 가이드를 내보내지 않습니다. 완료가 아닙니다.');
+      var caseId = ecSavedCaseId || $('ec-case-id').value.trim() || $('ec-resume-id').value.trim();
+      if (!ecSavedCaseId && !caseId) {
+        ecStatus('fail', '내보내기 오류: 저장된 사례가 없습니다. 완료가 아닙니다.');
+        return;
+      }
+      var body = { caseId: caseId };
+      if (ecExpectedRevision) body.expectedRevision = ecExpectedRevision;
+      var result = await ecCall('/api/engineer-cases/guide-export', body);
+      $('ec-json').textContent = JSON.stringify(result.data, null, 2);
+      if (!result.data.ok || result.data.downloadComplete !== true || !result.data.artifactId) {
+        var exported = result.data.exportedCaseRevision ? ' 생성 문서 사례 revision=' + result.data.exportedCaseRevision : '';
+        var current = result.data.currentCaseRevision ? ' 현재 저장 revision=' + result.data.currentCaseRevision : '';
+        ecStatus('fail', '내보내기 오류: ' + ecText(result.data.code || result.data.error, 'EXPORT_FAILED') + exported + current + '. 완료가 아닙니다. · ' + ecGrantLine(result.data));
+        return;
+      }
+      var downloaded = await ecDownloadDocx(result.data.caseId, result.data.artifactId);
+      if (!downloaded) {
+        ecStatus('fail', '내보내기는 되었으나 내려받기에 실패했습니다. 완료가 아닙니다. · ' + ecGrantLine(result.data));
+        return;
+      }
+      var changed = ' 생성 문서 사례 revision=' + result.data.exportedCaseRevision +
+        ' · 가이드 revision=' + result.data.exportedGuideRevision +
+        (result.data.revisionChangedDuringExport
+          ? ' · 현재 저장 revision=' + result.data.currentCaseRevision + ' (생성 문서와 다름)'
+          : '') + '.';
+      ecStatus('warn', 'Word를 받았습니다. 승인·가이드 준비·실행 통과가 아닙니다.' + changed + ' · ' + ecGrantLine(result.data));
+      $('ec-artifact-id').value = result.data.artifactId;
+      if (result.data.currentCaseRevision) {
+        $('ec-revision').value = result.data.currentCaseRevision;
+        ecExpectedRevision = result.data.currentCaseRevision;
+      }
     };
 `;

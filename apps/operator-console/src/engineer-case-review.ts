@@ -15,6 +15,7 @@ import {
   engineerCaseHttpStatus,
   type EngineerCaseApiPort,
 } from './engineer-case-api.js';
+import { projectEngineerGuidePreview, type EngineerGuidePreview } from './engineer-case-guide-preview.js';
 
 export type EngineerCaseReviewBody = {
   readonly caseId?: string;
@@ -45,6 +46,7 @@ export type EngineerCaseReviewView = {
   readonly unresolved: readonly EngineerCaseReviewRow[];
   readonly nextActions: readonly string[];
   readonly failures: readonly string[];
+  readonly guide: EngineerGuidePreview;
 };
 
 export type EngineerCaseReviewSuccess = {
@@ -119,7 +121,10 @@ function assessmentRow(item: EngineerAssessment): EngineerCaseReviewRow {
   };
 }
 
-export function projectEngineerCaseReview(document: EngineerCaseDocument): EngineerCaseReviewView {
+export function projectEngineerCaseReview(
+  document: EngineerCaseDocument,
+  durable: 'saved' | 'unsaved' = 'unsaved',
+): EngineerCaseReviewView {
   const calcUnavailable = document.calculations.length === 0
     || document.calculations.some((item) => item.sourceKind === 'unknown' || item.result?.presence === 'unknown' || !!item.unavailableReason);
   const failures = [
@@ -175,6 +180,7 @@ export function projectEngineerCaseReview(document: EngineerCaseDocument): Engin
       ]),
     ],
     failures,
+    guide: projectEngineerGuidePreview(document, durable),
   };
 }
 
@@ -199,7 +205,7 @@ function reviewOk(document: EngineerCaseDocument, durable: 'saved' | 'unsaved', 
     executionPassGranted: false,
     collectionConnected: false,
     saveComplete: false,
-    review: projectEngineerCaseReview(document),
+    review: projectEngineerCaseReview(document, durable),
     document,
   };
 }

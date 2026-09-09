@@ -33,15 +33,11 @@ export const DASHBOARD_BODY = `  <header>
           <div class="card"><h3>임베딩 / MiMo</h3><div id="embed-health" class="meta">로딩…</div></div>
         </div>
         <div class="card" style="margin-top:14px">
-          <h3>문서 링크</h3>
-          <ul class="doc-list">
-            <li><a class="link" href="https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/blob/main/docs/design/KB_DAILY_CDP_AUTOMATION.md" target="_blank">Glass CDP — KB 일일 자동화</a> · <code>pnpm run check:glass-cdp</code></li>
-            <li><a class="link" href="https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/blob/main/docs/design/RAG_SEMANTIC_EMBEDDINGS.md" target="_blank">Rapid-MLX + MiMo RAG</a> · <code>pnpm run check:embedding-providers</code></li>
-            <li><a class="link" href="https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/blob/main/docs/LOCAL_SETUP.md#mimo-token-plan" target="_blank">MiMo Token Plan</a> (<code>tp-xxxxx</code>, APAC <code>token-plan-sgp</code>)</li>
-          </ul>
+          <h3>지원·연결 상태</h3>
+          <p class="meta">이 화면은 operator-console(:3502)입니다. MCP stdio와 별개이며, 표시된 모델명이나 저장소 문서 링크가 현재 배포의 지원 범위는 아닙니다.</p>
+          <p class="meta">장비 콘솔과 mock(:3400)은 연결되어 있지 않습니다. iframe으로 열지 않으며 실제 장비 쓰기는 없습니다.</p>
+          <p class="meta">사례 검토에서 저장·가이드 Word만 다룹니다. 승인 실행 UI는 없습니다.</p>
         </div>
-        <p class="meta" style="margin-top:14px">Mock HCI 콘솔: <a class="link" href="http://localhost:3400" target="_blank">http://localhost:3400</a></p>
-        <iframe src="http://localhost:3400" title="Mock Sangfor HCI Console"></iframe>
       </div>
 
       <div id="automation" class="panel">

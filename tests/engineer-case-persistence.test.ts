@@ -3,13 +3,16 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { MAPPER_VERSION, bindObservedFactToCase } from '../packages/sangfor-config-state/src/provenance.js';
-import { ENGINEER_CASE_SCHEMA_VERSION, type EngineerCaseDocument } from '../packages/shared/src/engineer-case-contract.js';
+import { computeEngineerGuideDigest, ENGINEER_CASE_SCHEMA_VERSION, type EngineerCaseDocument } from '../packages/shared/src/engineer-case-contract.js';
 import { assembleEngineerCase } from '../packages/sangfor-planner/src/engineer-case.js';
 import { BlroAuthorityStore } from '../packages/sangfor-authority/src/authority-store.js';
 import {
   ENGINEER_CASE_READ_PERMISSION,
   ENGINEER_CASE_WRITE_PERMISSION,
 } from '../packages/sangfor-authority/src/authority-store-contracts.js';
+import {
+  prepareEngineerCaseForPersistence,
+} from '../packages/sangfor-authority/src/engineer-case-persistence.js';
 import {
   indexEngineerCaseOriginals,
   persistEngineerCase,
@@ -116,7 +119,12 @@ describe('engineer case persistence', () => {
     expect(loaded.ok).toBe(true);
     if (!loaded.ok) throw new Error('expected reload');
     expect(loaded.revision).toBe('rev-1');
-    expect(loaded.guideDigest).toBe(DIGEST);
+    const storedGuide = (loaded.document as EngineerCaseDocument).guide;
+    const { digest: storedDigest, ...storedFields } = storedGuide;
+    expect(storedGuide.readiness).toBe('blocked');
+    expect(storedDigest).toBe(computeEngineerGuideDigest(storedFields));
+    expect(loaded.guideDigest).toBe(storedDigest);
+    expect(loaded.guideDigest).not.toBe(DIGEST);
     expect(loaded.evidenceRefs).toEqual(['ev-1']);
     const artifact = await restarted.loadEngineerCaseArtifact({ ...AUTH, caseId: 'case-existing-1', artifactId: 'art-1' });
     expect(artifact.ok).toBe(true);
@@ -147,6 +155,20 @@ describe('engineer case persistence', () => {
     expect(document.guide.readiness).toBe(assembled.value.guide.readiness);
     expect(document.guide.readiness).not.toBe('review_ready');
     expect(document.execution.result).not.toBe('pass');
+  });
+
+  it('refreshes guide digest when persist rewrites review_ready', () => {
+    const incoming = fixtureCase();
+    const prepared = prepareEngineerCaseForPersistence(incoming, AUTH);
+    expect(prepared.ok).toBe(true);
+    if (!prepared.ok) throw new Error('expected prepare');
+    const stored = prepared.value.value.guide;
+    const { digest, ...fields } = stored;
+    expect(stored.readiness).toBe('blocked');
+    expect(stored.readiness).not.toBe('review_ready');
+    expect(digest).toBe(computeEngineerGuideDigest(fields));
+    expect(digest).not.toBe(incoming.guide.digest);
+    expect(incoming.guide.readiness).toBe('review_ready');
   });
 
   it('refuses fixture snapshots persisted as observed', async () => {

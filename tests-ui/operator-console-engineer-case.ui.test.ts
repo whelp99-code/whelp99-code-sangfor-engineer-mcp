@@ -76,10 +76,48 @@ describe('operator console engineer case review — real browser', () => {
     expect(saved).toContain('승인·가이드 준비·실행 통과가 아닙니다');
     expect(saved).not.toContain('현장 인수');
 
+    const downloadPromise = page.waitForEvent('download');
     await page.locator('#ec-btn-export').click();
-    expect(await page.locator('#ec-status').textContent()).toContain('내보내기 오류');
+    const download = await downloadPromise;
+    expect(download.suggestedFilename()).toMatch(/\.docx$/);
+    await page.waitForFunction(() => (document.querySelector('#ec-status')?.textContent || '').includes('Word를 받았습니다'));
+    expect(await page.locator('#ec-status').textContent()).toContain('승인=false');
+    expect(await page.locator('#ec-status').textContent()).toContain('생성 문서 사례 revision');
+    expect(await page.locator('#ec-guide-meta').textContent()).toContain('문서 주장');
+    expect(await page.locator('#ec-first-use').textContent()).toContain('처음 쓰는 경우');
+    await page.close();
+  });
+
+  it('does not treat an unsaved export click as a completed download', async () => {
+    const page = await openConsole();
+    const downloads: string[] = [];
+    page.on('download', (download) => { downloads.push(download.suggestedFilename()); });
+    await page.locator('#ec-btn-export').click();
+    await page.waitForFunction(() => (document.querySelector('#ec-status')?.textContent || '').includes('내보내기 오류'));
     expect(await page.locator('#ec-status').textContent()).toContain('완료가 아닙니다');
     expect(await page.locator('a[download]').count()).toBe(0);
+    expect(downloads).toEqual([]);
+    await page.close();
+  });
+
+  it('resumes a saved case and distinguishes the stored revision', async () => {
+    const page = await openConsole();
+    await page.locator('#ec-case-id').fill('case-ui-resume-1');
+    await page.locator('#ec-reqs').fill('가용 용량 여유 20% 이상 유지');
+    await page.locator('#ec-collections').fill('usable-capacity | 40 | TiB');
+    await page.locator('#ec-btn-review').click();
+    await page.waitForFunction(() => (document.querySelector('#ec-status')?.textContent || '').includes('검토됨'));
+    await page.locator('#ec-btn-save').click();
+    await page.waitForFunction(() => (document.querySelector('#ec-status')?.textContent || '').includes('저장됨'));
+    const revision = await page.locator('#ec-revision').inputValue();
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.locator('#nav button[data-panel="engineer-case"]').click();
+    await page.locator('#ec-resume-id').fill('case-ui-resume-1');
+    await page.locator('#ec-btn-resume').click();
+    await page.waitForFunction(() => (document.querySelector('#ec-guide-meta')?.textContent || '').includes('저장된 현재 revision'));
+    expect(await page.locator('#ec-revision').inputValue()).toBe(revision);
+    expect(await page.locator('#ec-guide-meta').textContent()).toContain(revision);
+    expect(await page.locator('#ec-status').textContent()).toContain('완료가 아닙니다');
     await page.close();
   });
 });

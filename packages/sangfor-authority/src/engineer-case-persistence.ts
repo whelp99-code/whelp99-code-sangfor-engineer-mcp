@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { RuntimeSchemaError } from '../../shared/src/runtime-schema.js';
 import {
+  computeEngineerGuideDigest,
   engineerCaseDocumentSchema,
   isEngineerCaseAuthContext,
   parseEngineerCaseDocument,
@@ -60,6 +61,19 @@ export function assemblePersistedReadiness(document: EngineerCaseDocument): 'dra
     || document.guide.unresolved.length > 0
     || document.assessments.some((item) => item.status === 'unresolved');
   return unknownPresent ? 'blocked' : 'draft';
+}
+
+function persistableGuide(document: EngineerCaseDocument): EngineerCase['guide'] {
+  const readiness = assemblePersistedReadiness(document);
+  const fields = {
+    revision: document.guide.revision,
+    requirementRefs: document.guide.requirementRefs,
+    steps: document.guide.steps,
+    prerequisites: document.guide.prerequisites,
+    unresolved: document.guide.unresolved,
+    readiness,
+  };
+  return { ...fields, digest: computeEngineerGuideDigest(fields) };
 }
 
 function claimedScopeIssues(document: EngineerCaseDocument, auth: EngineerCaseAuthContext): EngineerCaseIssue[] {
@@ -170,7 +184,7 @@ export function prepareEngineerCaseForPersistence(
     projectId: auth.projectId,
     actorId: auth.actorId,
     progress: document.progress === 'accepted' ? 'pm_review' : document.progress,
-    guide: { ...document.guide, readiness: assemblePersistedReadiness(document) },
+    guide: persistableGuide(document),
     evidence: document.evidence.map((item) => ({
       ...item,
       owner: item.owner ?? { tenantId: auth.tenantId, projectId: auth.projectId, caseId: document.caseId },
