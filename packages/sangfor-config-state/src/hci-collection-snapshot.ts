@@ -5,6 +5,11 @@ import {
   type EngineerValue,
 } from '../../shared/src/engineer-case-contract.js';
 import { bindObservedFactToCase, type FactProvenance } from './provenance.js';
+import {
+  bindRequiredObservationsToCase,
+  type HciRequiredObservationBinding,
+  type HciRequiredObservationInput,
+} from './required-observations.js';
 
 export type HciCollectionSnapshotSurface = 'volumes' | 'servers' | 'images';
 
@@ -32,6 +37,7 @@ export type HciCollectionSnapshotInventory = {
     readonly firmwareVersion?: string;
     readonly surfaces?: readonly string[];
   };
+  readonly requiredObservations?: HciRequiredObservationInput;
 };
 
 export type HciCollectionSnapshotBinding = {
@@ -58,6 +64,7 @@ export type HciCollectionSnapshot = {
   };
   readonly mutationDispatchCount: 0;
   readonly guideReadyGranted: false;
+  readonly requiredObservations: HciRequiredObservationBinding;
 };
 
 const SURFACE_UNITS = {
@@ -176,6 +183,20 @@ export function buildHciCollectionSnapshot(
       ? observedOrUnknown(surface, inventory, binding)
       : providedObservation(surface, inventory, binding)
   ));
+  const requiredObservations = inventory.requiredObservations
+    ? bindRequiredObservationsToCase(inventory.requiredObservations, binding)
+    : bindRequiredObservationsToCase({
+      fields: [],
+      acquisition: {
+        host_cpu: 'unsupported',
+        host_ram: 'unsupported',
+        storage_usable_capacity: 'unsupported',
+        network_topology: 'unsupported',
+        ha_status: 'unsupported',
+      },
+      guideReadyGranted: false,
+      fieldAcceptanceBlockersResolved: false,
+    }, binding);
   return {
     schema: 'hci-collection-snapshot.v1',
     persisted: false,
@@ -189,6 +210,7 @@ export function buildHciCollectionSnapshot(
     manualImport: { allowed: true, promotesTo: 'provided', neverObserved: true },
     mutationDispatchCount: 0,
     guideReadyGranted: false,
+    requiredObservations,
   };
 }
 

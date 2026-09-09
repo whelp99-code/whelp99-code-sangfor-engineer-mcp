@@ -29,6 +29,13 @@ export {
   type HciCollectionSnapshotInventory,
 } from './hci-collection-snapshot.js';
 
+export {
+  bindRequiredObservationsToCase,
+  HCI_E03B_FIELD_IDS,
+  type HciRequiredObservationBinding,
+  type HciRequiredObservationInput,
+} from './required-observations.js';
+
 /** An observed fact: the value plus the provenance envelope describing how it was
  *  obtained. The wrapper stays `{ value, source }` so @sangfor/spec keeps unwrapping it;
  *  `source` IS the envelope (endpoint/collectedAt/collector remain, transport and
