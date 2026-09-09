@@ -1,3 +1,5 @@
+import { computeRagSearchDiagnostics, countBy, withDiagnostics } from './rag-search-diagnostics.js';
+export { getRagSearchDiagnostics } from './rag-search-diagnostics.js';
 import { attachHitContext } from './hit-context.js';
 import { createLocalRerankFromEnv, localRerankMinimumScoreFromEnv } from './local-rerank-provider.js';
 import { localScoreOrderFromEnv, orderScoredHits } from './local-score-order.js';
@@ -6,96 +8,21 @@ import type { ProductCode } from '@sangfor/shared';
 import { resolveRagProduct } from './rag-product.js';
 import { RuntimeSchemaError } from '../../shared/src/runtime-schema.js';
 import { embedForRole, getEmbeddingProvider, wasEmbeddingFallback } from './embedding-provider.js';
-import type { EmbeddingBackend } from './embedding-provider-types.js';
 import { hashEmbedding } from './hash-embedding.js';
 import { isMimoViaLitellm } from './litellm-config.js';
 import { createMimoRerankFromEnv } from './mimo-rerank-provider.js';
 import { normalizeRetrievalQuery } from './query-normalization.js';
 import { loadRagIndex } from './index.js';
 import { DEFAULT_INDEX_PATH } from './rag-index-store.js';
-import { canCompareVector, distinctSources, expandRerankPassages, hasRetrievalEvidence, rankHybrid } from './rag-ranking.js';
-import { embeddingSpaceId, resolveEmbeddingSpace, type EmbeddingSpace } from './embedding-space.js';
+import { distinctSources, expandRerankPassages, hasRetrievalEvidence, rankHybrid } from './rag-ranking.js';
+import { resolveEmbeddingSpace, type EmbeddingSpace } from './embedding-space.js';
 import { actualEmbeddingModelName } from './rag-ingest.js';
 import type {
   RagDocumentChunk,
-  RagIndex,
-  RagSearchDiagnostics,
   RagSearchHit,
   RagSearchInput,
   ScopedRagSearchInput,
 } from './rag-types.js';
-
-let lastRagSearchDiagnostics: RagSearchDiagnostics = { degraded: false };
-const resultDiagnostics = new WeakMap<readonly RagSearchHit[], RagSearchDiagnostics>();
-
-export function getRagSearchDiagnostics(hits?: readonly RagSearchHit[]): RagSearchDiagnostics {
-  return hits ? resultDiagnostics.get(hits) ?? { degraded: true, degradedReason: 'diagnostics unavailable for this result' } : lastRagSearchDiagnostics;
-}
-
-function withDiagnostics(hits: RagSearchHit[], diagnostics: RagSearchDiagnostics): RagSearchHit[] {
-  const actual = { ...diagnostics, retrievalMode: hits.some((hit) => hit.retrievalMode === 'hybrid-semantic')
-    ? 'hybrid-semantic' as const : hits.some((hit) => hit.retrievalMode === 'hybrid-hash') ? 'hybrid-hash' as const : 'bm25' as const };
-  resultDiagnostics.set(hits, actual);
-  lastRagSearchDiagnostics = actual;
-  return hits;
-}
-
-function countBy<T extends string | number>(items: readonly T[]): Record<string, number> {
-  return items.reduce<Record<string, number>>((counts, item) => {
-    const key = String(item);
-    counts[key] = (counts[key] ?? 0) + 1;
-    return counts;
-  }, {});
-}
-
-function computeRagSearchDiagnostics(
-  index: RagIndex,
-  queryWasHashFallback: boolean,
-  queryBackend?: EmbeddingBackend,
-  queryVectorDims?: number,
-  querySpace?: EmbeddingSpace,
-  queryVector: number[] = [],
-): RagSearchDiagnostics {
-  const reasons: string[] = [];
-  const semanticChunks = index.chunks.filter((chunk) => (chunk.embeddingBackend ?? 'hash') !== 'hash').length;
-  const indexVectorDims = countBy(index.chunks.map((chunk) => chunk.vectorDims ?? chunk.vector.length));
-  const embeddingModelCounts = countBy(index.chunks.map(
-    (chunk) => chunk.embeddingModel ?? `${chunk.embeddingBackend ?? 'hash'}:unknown`,
-  ));
-  const vectorDimensionMismatches = typeof queryVectorDims === 'number'
-    ? index.chunks.filter((chunk) => chunk.vector.length !== queryVectorDims).length
-    : 0;
-  const mixedEmbeddingModels = Object.keys(embeddingModelCounts).length > 1;
-  const incompatibleEmbeddingSpaces = index.chunks.filter((chunk) => !canCompareVector(chunk, queryVector, querySpace)).length;
-  if (incompatibleEmbeddingSpaces > 0) reasons.push(`${incompatibleEmbeddingSpaces} chunks have no matching verified embedding space; their vector scores are disabled`);
-  if (!querySpace) reasons.push('query embedding space is unavailable or unpinned; using BM25');
-  if (index.chunks.length > 0 && semanticChunks === 0) {
-    reasons.push('RAG index is hash-only (no semantic embeddings ingested) — ranking is lexical/hashed, not semantic');
-  }
-  if (queryWasHashFallback) {
-    reasons.push('query embedding fell back to the hash backend (configured semantic provider unavailable)');
-  }
-  if (vectorDimensionMismatches > 0) {
-    reasons.push(`${vectorDimensionMismatches} indexed chunks have vector dimensions that do not match the query vector`);
-  }
-  if (mixedEmbeddingModels) {
-    reasons.push('RAG index contains mixed embedding model cohorts; semantic scores may be incomparable');
-  }
-  const diagnostics = {
-    degraded: reasons.length > 0,
-    queryBackend,
-    queryVectorDims,
-    indexVectorDims,
-    embeddingModelCounts,
-    vectorDimensionMismatches,
-    mixedEmbeddingModels,
-    incompatibleEmbeddingSpaces,
-    queryEmbeddingSpaceId: querySpace ? embeddingSpaceId(querySpace) : undefined,
-    retrievalMode: querySpace && incompatibleEmbeddingSpaces < index.chunks.length
-      ? querySpace.model === 'hash' ? 'hybrid-hash' as const : 'hybrid-semantic' as const : 'bm25' as const,
-  };
-  return reasons.length > 0 ? { ...diagnostics, degradedReason: reasons.join('; ') } : diagnostics;
-}
 
 export function omitVectorFromHit<T extends { vector: number[] }>(hit: T): Omit<T, 'vector'> {
   const { vector, ...rest } = hit;

@@ -10,6 +10,8 @@ const RAG_RUNTIME_MODULES = [
   '../packages/sangfor-rag/src/rag-ranking.ts',
   '../packages/sangfor-rag/src/rag-ingest.ts',
   '../packages/sangfor-rag/src/rag-search.ts',
+  '../packages/sangfor-rag/src/rag-search-diagnostics.ts',
+  '../packages/sangfor-rag/src/local-score-order.ts',
 ] as const;
 
 function pureLineCount(source: string): number {
