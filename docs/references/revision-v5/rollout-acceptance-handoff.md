@@ -15,7 +15,7 @@ Fetched ancestry: main 9bd7769 → PR78 069df31 → PR81 2311c66 → PR83 d1fc62
 
 `docs/CODE-REVIEW.md` requires human review for anything in its extra-scrutiny zones, including `@sangfor/hci-client`. The stack changes `inventory.ts` and `ops-monitor.ts` there: collection completeness, partial/failed distinction, timestamp freshness and PASS/FAIL/INDETERMINATE reporting. Passing tests do not substitute for that review. Gate/nonce/operator/shared source directories have no changed files in the inspected main-to-head diff. Do not force merge or bypass required review.
 
-CodeRabbit 0.7.6 is present but its authentication status is false; login was initiated. No completed CodeRabbit review exists for this packet. An older bot-authored PR summary is not a final-head approval.
+CodeRabbit 0.7.6 is present but its authentication status is false; login was initiated but timed out. The CLI requires the user to run `coderabbit auth login` in a user-controlled terminal. No completed CodeRabbit review exists for this packet. An older bot-authored PR summary is not a final-head approval.
 
 ## BLRO release and inputs
 
@@ -31,7 +31,7 @@ Read-only discovery found no project `.env` at the root deployment or the older 
 
 ## Remaining order
 
-1. Finish remote actual-MCP comparison and retain raw results.
+1. Remote actual-MCP comparison completed: 24/24 exact document order, text hashes, scope and neighboring evidence match local. Existing client answers revalidated against remote evidence with zero integrity failures. No new remote LLM answer generation is claimed.
 2. Obtain actual review results and resolve actionable findings; confirm final CI. Human review of the HCI changes remains required by repository policy.
 3. Verify operational configuration and database identity, signing/trust material and current schema using the existing readiness implementation. Never manufacture readiness from a live process or 2xx response.
 4. Merge the reviewed stack in order, prepare the matching immutable operational artifact and durable service wiring, then verify readiness and actual search/answer read-back after activation.
