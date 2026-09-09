@@ -1,0 +1,74 @@
+{
+  "name": "Selected score floor actual MCP development readback",
+  "k": 5,
+  "queries": [
+    {
+      "queryId": "hci-cli-6113",
+      "query": "An engineer needs shell-level routine maintenance commands for a 6.11.3 cluster; which guide applies?",
+      "product": "HCI",
+      "family": "manual",
+      "language": "en",
+      "tags": [
+        "positive",
+        "versioned",
+        "acronym",
+        "hci"
+      ],
+      "relevantSources": [
+        "data/sources/raw/support_10_1381_2654470.md",
+        "data/sources/raw/support_10_1381_2662960.md"
+      ],
+      "hardNegativeSources": [
+        "data/sources/raw/support_10_1229_2639675.md"
+      ]
+    },
+    {
+      "queryId": "ko-v3-validation-04",
+      "query": "HCI 시스템 로그 설정은 어디서 하나요?\nWhere do I set up HCI system logs?",
+      "product": "HCI",
+      "language": "ko",
+      "relevantSources": [
+        "data/sources/raw/support_10_1381_2654412.md"
+      ],
+      "evidenceTitle": "Hyper Converged Infrastructure (HCI/aSV) 6.11.3 - User Manual / HCI Platform Configuration Guide / Syslog Configurations",
+      "evidenceExcerpt": " a unified infrastructure combining compute, storage, networking, and built-in security to simplify deployment, operations, and services. Documents Best Practices Cases Softwares Tools Community Search Product Click to switch product version. Got it Do not remind again. 6.11.3 Release Notes User Manual Product Description Installation And Deployment HCI Cluster Initialization Platform Login Virtual Machine Configuration Guidance Configuring Virtual Network Storage Configuration Guide Reliability Configuration Guide aSecurity Configuration Guide HCI Platform Configuration Guide Viewing Node/Cluster Running Status Port Management Certificate Setting Viewing the Alarm Log Alert Options Syslog C",
+      "originalQuery": "HCI 시스템 로그 설정은 어디서 하나요?",
+      "clientTranslation": "Where do I set up HCI system logs?"
+    },
+    {
+      "queryId": "v5-holdout-01",
+      "query": "가상 키로 인증한 HCI 6.11.3 클러스터에서 인증에 사용한 노드를 교체하면 라이선스는 어떻게 되나요?\nIn an HCI 6.11.3 cluster authenticated with a virtual key, what happens to the license if a node used for authentication is replaced?",
+      "product": "HCI",
+      "language": "ko",
+      "family": "virtual-key-replacement",
+      "relevantSources": [
+        "data/sources/raw/support_10_1381_2654217.md"
+      ],
+      "version": "6.11.3",
+      "originalQuery": "가상 키로 인증한 HCI 6.11.3 클러스터에서 인증에 사용한 노드를 교체하면 라이선스는 어떻게 되나요?",
+      "clientTranslation": "In an HCI 6.11.3 cluster authenticated with a virtual key, what happens to the license if a node used for authentication is replaced?"
+    }
+  ],
+  "noAnswerQueries": [
+    {
+      "queryId": "v5-noanswer-05",
+      "query": "SCC 2.6.0에서 화성 기후 제어 프로브를 만드는 방법은?\nHow do I create a Mars climate control probe in SCC 2.6.0?",
+      "product": "SCC",
+      "language": "ko",
+      "family": "unsupported-feature",
+      "version": "2.6.0",
+      "originalQuery": "SCC 2.6.0에서 화성 기후 제어 프로브를 만드는 방법은?",
+      "clientTranslation": "How do I create a Mars climate control probe in SCC 2.6.0?"
+    },
+    {
+      "queryId": "no-hci-9999",
+      "query": "HCI 99.99.99 quantum fabric migration procedure",
+      "product": "HCI",
+      "version": "99.99.99",
+      "language": "en",
+      "forbiddenSources": [
+        "data/sources/raw/support_10_1381_2654207.md"
+      ]
+    }
+  ]
+}
