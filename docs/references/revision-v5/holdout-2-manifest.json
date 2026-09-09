@@ -1,0 +1,172 @@
+{
+  "schemaVersion": 1,
+  "status": "FROZEN_BEFORE_SEARCH_AND_FURTHER_IMPLEMENTATION",
+  "baseCommit": "2805d30",
+  "fixtureSha256": "a2ddf26c7976c4ae9429944af049e901aa0760203656a3915cc036eb50d9b3e3",
+  "clientFixtureSha256": "58c2208f559877af0bedf54f5768f1c15522646368378afdf04e1258e58e91d0",
+  "corpusSha256": "55107e56f6ee22845894dcc7d16eb00c5b5c3887af451dd255d1965a7000b294",
+  "structuredCorpusSha256": "ee04fc7a022c3901ce8a7adce3a29c49bc23c8315e613165e035d4754793e8d4",
+  "positiveQuestions": 12,
+  "noAnswerQuestions": 12,
+  "priorRelevantSourceOverlap": 0,
+  "evidence": [
+    {
+      "queryId": "v5-holdout2-01",
+      "source": "data/sources/raw/support_10_1229_2639655.md",
+      "chunkId": "doc_1786665223143_c9df8a_chunk_2",
+      "quote": "When two users with different permissions log in to the console in the same browser, they will replace each other's login information, resulting in abnormal use.",
+      "quoteStart": 554,
+      "chunkTextSha256": "10c2126d6660278c361c0e96df22ddca5f4535260097b8a12586f87028ef57f3",
+      "structuredChunkId": "structured_bbf320e960b2dfb3efd10672c21fee6cfa641e8ad11cee4a4b534cd2cf3b1f25",
+      "structuredQuoteStart": 407,
+      "structuredChunkTextSha256": "436f089ece39e53e5b53327438a363b7fc99f482713649c5f83de40e46e510bc",
+      "review": "Author verified exact quote against both corpora; no independent human review."
+    },
+    {
+      "queryId": "v5-holdout2-02",
+      "source": "data/sources/raw/support_10_1381_2654422.md",
+      "chunkId": "doc_1786665222593_7a7a6b_chunk_3",
+      "quote": "If the new management interface's IP information is empty, the old network interface's information will be brought to the new NIC when switching the management interface.",
+      "quoteStart": 1132,
+      "chunkTextSha256": "a1a44802c0faec9dd5ed8966f29c1380608eac0d1e6ec6150c68441186d0133e",
+      "structuredChunkId": "structured_99ff31bb27e84cfaa4e501a3ebe841e929c4f90feacabd303f7b61d60a930764",
+      "structuredQuoteStart": 1025,
+      "structuredChunkTextSha256": "d091ca1289274b476fc7b592e7ca331239ba293527ba5475bb64aafeca392557",
+      "review": "Author verified exact quote against both corpora; no independent human review."
+    },
+    {
+      "queryId": "v5-holdout2-03",
+      "source": "data/sources/raw/support_21_1095_2647844.md",
+      "chunkId": "doc_1786665227482_af11c8_chunk_2",
+      "quote": "A maximum of 1024 characters are allowed, and HTML is supported.",
+      "quoteStart": 774,
+      "chunkTextSha256": "30af4a7f4817dddcb5d57734352f10b7cef8e9583e70141b62a8dea80d22ddfa",
+      "structuredChunkId": "structured_2366c75b3c9a6cb1bef4b37e3c8eab918e4774f49e1c47e4b1cc6fda9fa55d57",
+      "structuredQuoteStart": 487,
+      "structuredChunkTextSha256": "dfab6e06177318e6b02bdf7001c7b6559189f0b515b7f96ff43779ba0b1bedb0",
+      "review": "Author verified exact quote against both corpora; no independent human review."
+    },
+    {
+      "queryId": "v5-holdout2-04",
+      "source": "data/sources/raw/support_21_1095_2653270.md",
+      "chunkId": "doc_1786665227498_3fbff3_chunk_3",
+      "quote": "If there is a NAT between the Athena NGFW and Fortinet firewalls, you must specify Local ID.",
+      "quoteStart": 535,
+      "chunkTextSha256": "3514dc86b81b71517b26979f396ac802fd0b638eb2422afb6d0a3539a60fb25b",
+      "structuredChunkId": "structured_03299e809919ca4d37a1d6a063e7a7dbd5c1ac071e6c3dbb774db93169a674c2",
+      "structuredQuoteStart": 670,
+      "structuredChunkTextSha256": "a9bc322924998253fbaa21e0365cb8705dd80862fd8d4707cef0b05064c52d78",
+      "review": "Author verified exact quote against both corpora; no independent human review."
+    },
+    {
+      "queryId": "v5-holdout2-05",
+      "source": "data/sources/raw/support_24_1076_2644570.md",
+      "chunkId": "doc_1786665232329_0477de_chunk_2",
+      "quote": "If the IP address of LAN DNS is only the source, it indicates that the imaged data only includes proxy data, and the data shall be imaged again.",
+      "quoteStart": 521,
+      "chunkTextSha256": "b55fb16c18dc3b7c725174622d951649c624fc28f55e65c351fe71d4f2ce3510",
+      "structuredChunkId": "structured_bd08a9fc18717ed93ec2c5ab2bb9b1ec2619f774766a622fc9346ba5a2bcb6d5",
+      "structuredQuoteStart": 574,
+      "structuredChunkTextSha256": "bda7534994db7af78c96a6690390ec2d0aef3baf3066075adf533fcd317219f6",
+      "review": "Author verified exact quote against both corpora; no independent human review."
+    },
+    {
+      "queryId": "v5-holdout2-06",
+      "source": "data/sources/raw/support_24_1078_2634642.md",
+      "chunkId": "doc_1786665232297_30c4ea_chunk_2",
+      "quote": "It is recommended to enable the XFF field to detect launched attacks and recognize a source IP address of WAF attacks on the STA using the XFF.",
+      "quoteStart": 349,
+      "chunkTextSha256": "5f16baf4564e303ab994b85ef0ca720e7d1a4937bbced77d459ecb8bfa9aa83b",
+      "structuredChunkId": "structured_a1ad0e95a838ae2fac5aa4f3c9eeb9882c98ec685d25efe7a6d2d544d98a8347",
+      "structuredQuoteStart": 451,
+      "structuredChunkTextSha256": "7e111ed00466310844417a1e0bce886581be038da5c2fefa89f2f13bbeb7ebc1",
+      "review": "Author verified exact quote against both corpora; no independent human review."
+    },
+    {
+      "queryId": "v5-holdout2-07",
+      "source": "data/sources/raw/support_45_1388_2656147.md",
+      "chunkId": "doc_1786665236199_5b8ded_chunk_3",
+      "quote": "Direct aggregation of two interfaces with different roles is not supported. Aggregation can be performed after canceling one interface role.",
+      "quoteStart": 40,
+      "chunkTextSha256": "7dc29342748eafb9e21e99f35880755c67d45abb486cf636c1530517810a7990",
+      "structuredChunkId": "structured_518df09b7afb86e53ea81d4fceb91591f8039a79674a2212ddaf3628e8a849ae",
+      "structuredQuoteStart": 567,
+      "structuredChunkTextSha256": "57b9c6283172e9aeeeb6695aaf6f3ced5ffda05364b1fe148128e82b54f7f417",
+      "review": "Author verified exact quote against both corpora; no independent human review."
+    },
+    {
+      "queryId": "v5-holdout2-08",
+      "source": "data/sources/raw/support_45_1379_2652433.md",
+      "chunkId": "doc_1786665237373_adfdea_chunk_7",
+      "quote": "Traffic mirroring across resource pools in different communication domains is not supported.",
+      "quoteStart": 233,
+      "chunkTextSha256": "f23a4681295ba8d32eb88b9be7169ba36de926a420ee86dcde823518df19af10",
+      "structuredChunkId": "structured_38156792d9f5e5db01be400c4b6bcfcdd463e8fa50466c4a2a2dbc9daa489ade",
+      "structuredQuoteStart": 704,
+      "structuredChunkTextSha256": "6bf2b0f6d98671f3f0e004065fa61c8102f6c54cd2a0e8fab31797d751cde672",
+      "review": "Author verified exact quote against both corpora; no independent human review."
+    },
+    {
+      "queryId": "v5-holdout2-09",
+      "source": "data/sources/raw/support_case_2_33832.md",
+      "chunkId": "doc_1786665240931_de6100_chunk_1",
+      "quote": "12.0.14 and newer versions support closing the port in [ System ]-[ Network ]-[ Advanced ]-[ Open Ports On WAN Interface ].",
+      "quoteStart": 200,
+      "chunkTextSha256": "de63f57184905f4d7622d384945279786d7892818b553fb9d73f7efc8aedafa7",
+      "structuredChunkId": "structured_f08ee3375229e746b5f7b06ebf305fcb70ed7a2078811ccda3d3bee065d5795a",
+      "structuredQuoteStart": 200,
+      "structuredChunkTextSha256": "de63f57184905f4d7622d384945279786d7892818b553fb9d73f7efc8aedafa7",
+      "review": "Author verified exact quote against both corpora; no independent human review."
+    },
+    {
+      "queryId": "v5-holdout2-10",
+      "source": "data/sources/raw/support_case_2_33600.md",
+      "chunkId": "doc_1786665240910_b8f20d_chunk_1",
+      "quote": "During the packet capture, the IAM send RST packet to server due to the smbv1 doesn’t enable inside the windows server.",
+      "quoteStart": 544,
+      "chunkTextSha256": "48fe9144e78c23824f4e2c743e521214a373e0930185a6e374f15f3a890f119c",
+      "structuredChunkId": "structured_352ffb85b310e122c39d7c297e403f4ebf7fc55cbcb6a15de0daeb08ce4e3c0c",
+      "structuredQuoteStart": 544,
+      "structuredChunkTextSha256": "3e6ad4f822316b901c0d07dfeb2f43ef1a9e30f53a565f2036b0b39c2607bb98",
+      "review": "Author verified exact quote against both corpora; no independent human review."
+    },
+    {
+      "queryId": "v5-holdout2-11",
+      "source": "data/sources/raw/support_32_1101_1540050.md",
+      "chunkId": "doc_1786665235619_e26c2c_chunk_2",
+      "quote": "Reinstall Agent: Click Reinstall in the Operation column, click Reinstall Manually, check the command for Linux systems and the command and file for Windows systems in the dialog box, and reinstall Agent manually.",
+      "quoteStart": 1158,
+      "chunkTextSha256": "8243db935de269f89ea9c45570ab92cc69a328b3f635757376d679e44bb9c5ae",
+      "structuredChunkId": "structured_f98489ee6c68676dd633f095d474a2294d0c76f2c2492d66819663c7bcba36b1",
+      "structuredQuoteStart": 172,
+      "structuredChunkTextSha256": "b7068bdbc1abad43f4d1ba7206c693c9724a78c7c34fe9341f09271408d3576e",
+      "review": "Author verified exact quote against both corpora; no independent human review."
+    },
+    {
+      "queryId": "v5-holdout2-12",
+      "source": "data/sources/raw/support_32_1101_1546800.md",
+      "chunkId": "doc_1786665235645_4565ff_chunk_2",
+      "quote": "Users can filter the billing information by data center, resource type, and billing mode (including yearly/monthly subscription and pay-as-you-go).",
+      "quoteStart": 257,
+      "chunkTextSha256": "6549ed3d0e47a0081083559f545e4e8994ebac2305fefd18b3a7e73c9b9f3245",
+      "structuredChunkId": "structured_cfc3e0236678a675a54fd2377a3ad5e32904f8d7fe21d50c06cc5db4397da247",
+      "structuredQuoteStart": 974,
+      "structuredChunkTextSha256": "51ecdae07334e19e371a2aafa1f5bea8262cd331e2fc010123fceeb1fb31e5c9",
+      "review": "Author verified exact quote against both corpora; no independent human review."
+    }
+  ],
+  "limitations": [
+    "Same author selected source-grounded synthetic questions and translations; not independently human reviewed.",
+    "Source shortlist used deterministic hash ordering with length/content filters, followed by author selection for distinct intents; not random production sampling.",
+    "Versions are filtered only when source metadata is explicit. IAG support cases retain no version filter; case conclusions must not be generalized to all releases.",
+    "Negative families include private state/secrets and invented capabilities; this is not exhaustive adversarial coverage.",
+    "No search or model scores for these questions were consulted. Newly exposed results require another final set before further tuning."
+  ],
+  "acceptance": {
+    "hitRateAt5Min": 0.9,
+    "noAnswerFalsePositiveRateMax": 0.1,
+    "forbiddenHitsMax": 0,
+    "answerCitationAndProductVersionVerificationRequired": true
+  },
+  "translationPolicy": "Faithful translation from question text, frozen alongside original before search. No document titles or answers added."
+}

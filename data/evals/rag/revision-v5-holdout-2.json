@@ -1,0 +1,243 @@
+{
+  "k": 5,
+  "queries": [
+    {
+      "queryId": "v5-holdout2-01",
+      "query": "권한이 다른 두 HCI 6.11.1R1 사용자가 같은 브라우저에서 동시에 콘솔에 로그인하면 어떤 문제가 생기나요?",
+      "product": "HCI",
+      "language": "ko",
+      "family": "hci-browser-session",
+      "relevantSources": [
+        "data/sources/raw/support_10_1229_2639655.md"
+      ],
+      "version": "6.11.1R1"
+    },
+    {
+      "queryId": "v5-holdout2-02",
+      "query": "In HCI 6.11.3, what happens to the IP settings when switching management ports if the new port has no IP information?",
+      "product": "HCI",
+      "language": "en",
+      "family": "management-port-ip-inheritance",
+      "relevantSources": [
+        "data/sources/raw/support_10_1381_2654422.md"
+      ],
+      "version": "6.11.3"
+    },
+    {
+      "queryId": "v5-holdout2-03",
+      "query": "NGFW 8.0.107의 SSL VPN 로그인 전 공지 메시지는 최대 몇 글자이며 HTML을 쓸 수 있나요?",
+      "product": "NGFW",
+      "language": "ko",
+      "family": "ssl-vpn-bulletin-format",
+      "relevantSources": [
+        "data/sources/raw/support_21_1095_2647844.md"
+      ],
+      "version": "8.0.107"
+    },
+    {
+      "queryId": "v5-holdout2-04",
+      "query": "When setting up a policy-mode IPsec tunnel between NGFW 8.0.107 and Fortinet with NAT between them, what identity setting is required?",
+      "product": "NGFW",
+      "language": "en",
+      "family": "fortinet-ipsec-nat-local-id",
+      "relevantSources": [
+        "data/sources/raw/support_21_1095_2653270.md"
+      ],
+      "version": "8.0.107"
+    },
+    {
+      "queryId": "v5-holdout2-05",
+      "query": "NDR 3.0.81 DNS 환경에서 캡처한 53번 포트 패킷의 출발지에만 사내 DNS IP가 보이면 무엇을 의미하며 어떻게 해야 하나요?",
+      "product": "NDR",
+      "language": "ko",
+      "family": "dns-mirror-proxy-diagnosis",
+      "relevantSources": [
+        "data/sources/raw/support_24_1076_2644570.md"
+      ],
+      "version": "3.0.81"
+    },
+    {
+      "queryId": "v5-holdout2-06",
+      "query": "According to NDR 3.0.92 guidance for an HCI environment, which field helps STA identify the original source IP of WAF attacks?",
+      "product": "NDR",
+      "language": "en",
+      "family": "sta-xff-original-source",
+      "relevantSources": [
+        "data/sources/raw/support_24_1078_2634642.md"
+      ],
+      "version": "3.0.92"
+    },
+    {
+      "queryId": "v5-holdout2-07",
+      "query": "SCP 6.12.0의 HCI 초기화에서 관리용 eth0와 VXLAN용 eth1을 바로 묶을 수 있나요? 먼저 무엇을 바꿔야 하나요?",
+      "product": "HCI_SCP",
+      "language": "ko",
+      "family": "aggregation-interface-role-conflict",
+      "relevantSources": [
+        "data/sources/raw/support_45_1388_2656147.md"
+      ],
+      "version": "6.12.0"
+    },
+    {
+      "queryId": "v5-holdout2-08",
+      "query": "Can SCP 6.11.3 mirror traffic between resource pools in different communication domains?",
+      "product": "HCI_SCP",
+      "language": "en",
+      "family": "mirror-communication-domain",
+      "relevantSources": [
+        "data/sources/raw/support_45_1379_2652433.md"
+      ],
+      "version": "6.11.3"
+    },
+    {
+      "queryId": "v5-holdout2-09",
+      "query": "IAM 외부 포트 스캔 차단 지원 사례에서 12.0.14 이상 버전은 WAN 개방 포트를 어느 메뉴에서 닫나요?",
+      "product": "IAG",
+      "language": "ko",
+      "family": "iam-wan-port-scan-control",
+      "relevantSources": [
+        "data/sources/raw/support_case_2_33832.md"
+      ]
+    },
+    {
+      "queryId": "v5-holdout2-10",
+      "query": "In the IAM IWA SSO case involving Windows Server 2012 R2, credentials and connectivity checked out but domain joining failed. What protocol condition did the case identify?",
+      "product": "IAG",
+      "language": "en",
+      "family": "iam-iwa-domain-case-root-cause",
+      "relevantSources": [
+        "data/sources/raw/support_case_2_33600.md"
+      ]
+    },
+    {
+      "queryId": "v5-holdout2-11",
+      "query": "SCC 2.6.0에서 Agent를 수동으로 다시 설치하려면 어떤 버튼을 누르고 어떤 정보를 확인하나요?",
+      "product": "SCC",
+      "language": "ko",
+      "family": "scc-agent-manual-reinstall",
+      "relevantSources": [
+        "data/sources/raw/support_32_1101_1540050.md"
+      ],
+      "version": "2.6.0"
+    },
+    {
+      "queryId": "v5-holdout2-12",
+      "query": "In SCC 2.6.0 tenant billing management, which filters are available for billing information and what billing modes are listed?",
+      "product": "SCC",
+      "language": "en",
+      "family": "scc-billing-filter",
+      "relevantSources": [
+        "data/sources/raw/support_32_1101_1546800.md"
+      ],
+      "version": "2.6.0"
+    }
+  ],
+  "noAnswerQueries": [
+    {
+      "queryId": "v5-holdout2-noanswer-01",
+      "query": "우리 고객 HCI 6.11.3 클러스터에 지금 로그인 중인 관리자의 실명과 접속 IP를 알려줘.",
+      "product": "HCI",
+      "language": "ko",
+      "family": "private-runtime-state",
+      "reason": "Static public manuals cannot establish customer runtime/private values.",
+      "version": "6.11.3"
+    },
+    {
+      "queryId": "v5-holdout2-noanswer-02",
+      "query": "NGFW 8.0.107에서 냄새 인식 패킷 필터의 민감도를 조정하는 방법은?",
+      "product": "NGFW",
+      "language": "ko",
+      "family": "invented-feature",
+      "reason": "Invented non-product capability; common product words are not supporting evidence.",
+      "version": "8.0.107"
+    },
+    {
+      "queryId": "v5-holdout2-noanswer-03",
+      "query": "우리 NDR 3.0.98 장비에서 오늘 탐지된 공격자의 실제 신원을 확인해 줘.",
+      "product": "NDR",
+      "language": "ko",
+      "family": "private-runtime-state",
+      "reason": "Static public manuals cannot establish customer runtime/private values.",
+      "version": "3.0.98"
+    },
+    {
+      "queryId": "v5-holdout2-noanswer-04",
+      "query": "SCP 6.12.0의 원격 식물 성장 제어 API를 호출하는 방법은?",
+      "product": "HCI_SCP",
+      "language": "ko",
+      "family": "invented-feature",
+      "reason": "Invented non-product capability; common product words are not supporting evidence.",
+      "version": "6.12.0"
+    },
+    {
+      "queryId": "v5-holdout2-noanswer-05",
+      "query": "우리 회사 IAM 관리자 계정의 현재 비밀번호는 무엇인가요?",
+      "product": "IAG",
+      "language": "ko",
+      "family": "private-secret",
+      "reason": "Static public manuals cannot establish customer runtime/private values."
+    },
+    {
+      "queryId": "v5-holdout2-noanswer-06",
+      "query": "SCC 2.6.0에서 수면 중 기억을 가상 머신 이미지로 저장하는 기능을 켜는 방법은?",
+      "product": "SCC",
+      "language": "ko",
+      "family": "invented-feature",
+      "reason": "Invented non-product capability; common product words are not supporting evidence.",
+      "version": "2.6.0"
+    },
+    {
+      "queryId": "v5-holdout2-noanswer-07",
+      "query": "Which serial number is printed on the failed physical disk in our production HCI 6.11.3 cluster right now?",
+      "product": "HCI",
+      "language": "en",
+      "family": "private-runtime-state",
+      "reason": "Static public manuals cannot establish customer runtime/private values.",
+      "version": "6.11.3"
+    },
+    {
+      "queryId": "v5-holdout2-noanswer-08",
+      "query": "What are the current private keys configured on our customer NGFW 8.0.107 device?",
+      "product": "NGFW",
+      "language": "en",
+      "family": "private-secret",
+      "reason": "Static public manuals cannot establish customer runtime/private values.",
+      "version": "8.0.107"
+    },
+    {
+      "queryId": "v5-holdout2-noanswer-09",
+      "query": "How do I activate the remote earthquake-prevention engine in NDR 3.0.98?",
+      "product": "NDR",
+      "language": "en",
+      "family": "invented-feature",
+      "reason": "Invented non-product capability; common product words are not supporting evidence.",
+      "version": "3.0.98"
+    },
+    {
+      "queryId": "v5-holdout2-noanswer-10",
+      "query": "What exact amount did our customer pay on their latest SCP 6.12.0 invoice?",
+      "product": "HCI_SCP",
+      "language": "en",
+      "family": "private-business-state",
+      "reason": "Static public manuals cannot establish customer runtime/private values.",
+      "version": "6.12.0"
+    },
+    {
+      "queryId": "v5-holdout2-noanswer-11",
+      "query": "How can IAM reconstruct the taste of food from HTTP headers?",
+      "product": "IAG",
+      "language": "en",
+      "family": "invented-feature",
+      "reason": "Invented non-product capability; common product words are not supporting evidence."
+    },
+    {
+      "queryId": "v5-holdout2-noanswer-12",
+      "query": "How do I turn on the automatic lunar mining controller in SCC 2.6.0?",
+      "product": "SCC",
+      "language": "en",
+      "family": "invented-feature",
+      "reason": "Invented non-product capability; common product words are not supporting evidence.",
+      "version": "2.6.0"
+    }
+  ]
+}
