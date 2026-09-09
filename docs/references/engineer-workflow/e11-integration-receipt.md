@@ -56,32 +56,33 @@ Requirement tracking is assessed-requirement coverage, not `requirements.length 
 
 On the existing fixture run: 2/2 requirements assessed (rate 1), defined guide steps > 0 with requirementRefs/verify/stop/recovery (rate 1), `fieldAccepted` false, `completedNormally` false.
 
-Requirement edit stales linked calculations through assessment `calculationRefs`. Collect failure may still emit Word; `completedNormally` stays false and export success is not workflow success.
+Requirement edit stales linked calculations through assessment `calculationRefs`. Collect failure keeps `completedNormally` false and now refuses Word (`COLLECTION_FAILED`); export success is not workflow success. Capacity assessment compares stored `calc-headroom` (40 GiB) to the parseable `>= 20 GiB` constraint.
 
 ## Commands
 
 | commandOrProcedure | exitCode | pass/fail/not_run |
 | --- | --- | --- |
+| Independent `evaluateEngineerFormula` 100/40/20 GiB | 0 | 60 GiB / 40 percent / 40 GiB; missing used → `MISSING_INPUTS:used` |
 | `TMPDIR=/home/jm/.cache/sangfor-e11 pnpm exec vitest run --config vitest.config.ts tests/engineer-workflow-e2e.test.ts` | 0 | pass (12/12) |
-| related engineer tests (`engineer-workflow-e2e`, `engineer-guide-export`, `engineer-case-persistence`, `engineer-case-api`, `engineer-case-review-ui`, `engineer-case-contract`, `engineer-assessment`, `engineer-guide-grounding`, `engineer-calculations`, `engineer-required-observations`, `engineer-hci-collection`, `engineer-requirements`) | 0 | pass (117) |
+| related engineer + lock + boundary (`e2e`, `guide-export`, `persist`, `api`, `review-ui`, `contract`, `assessment`, `guide-grounding`, `calc`, `required-observations`, `hci-collection`, `requirements`, `authority-manifest-lock`, `runtime-boundary-contract`, `authority-migration-manifest`, `wiki-decomposition`) | 0 | pass (152) |
 | `pnpm run lint` | 0 | pass |
 | `pnpm run build` | 0 | pass |
-| `pnpm run smoke:mcp` | 0 | pass (118 tools; no engineer-case MCP export path) |
-| `pnpm run check:browser-boundary` | 0 | pass |
-| `pnpm run check:data-scope-boundary` | 0 | pass |
-| `pnpm run check:hygiene` | 0 | pass |
-| `pnpm test` | 1 | fail: 3457 passed, 102 skipped, 2 failed (inherited only, recorded below). skip≠PASS |
 | `pnpm run test:postgres:mandatory` | 1 | not_run (`MANDATORY_POSTGRES_DATABASE_REQUIRED`; no isolation DB). not_run ≠ PASS |
+| `pnpm test` | — | **NOT re-run in full** this follow-up. Targeted lock + runtime-boundary now pass. skip≠PASS |
 | historical 26-item workbook sha256 `20e99de99a04b349a4ec82bad18c383eddb869973498ba11aeb729ac2e4eda79` | — | not_run (file not in this tree). not_run ≠ PASS |
 
 Skipped Vitest cases in the default suite are not counted as PASS.
 
-## Inherited known fails (not skipped, not weakened)
+## Follow-ups after ACCEPT WITH FOLLOW-UPS
 
-| test | observation |
+| leftover | result |
 | --- | --- |
-| `tests/authority-manifest-lock.test.ts` | lock `repositoryCensusDigest` `4cfb9c9a…` ≠ current computed census `8cc8bd72…` after the E08 compose. Lock was not rewritten. |
-| `tests/runtime-boundary-contract.test.ts` | `engineer-case-persistence.ts` lines 157 and 419 still use `JSON.parse`. Not skipped. |
+| Word on collect-fail | Fixed. `exportEngineerGuide` returns `COLLECTION_FAILED` and writes no docx. Pipeline keeps `completedNormally === false`. |
+| UNPARSEABLE_CONSTRAINT hides compare | Fixed. `%` now parses. E11 fixture constraint is `usable storage headroom >= 20 GiB`. Assess compares stored `calc-headroom` (40 GiB) to that requirement. |
+| Authority lock census | Fixed. Lock rewritten with `deriveAuthorityManifestLock` + live `loadRepositoryCensus` (`fe7ce72a…`). E08 `exportEngineerGuide` / `writeConfinedDocxArchive` owned under generated-artifacts. |
+| persistence `JSON.parse` | Fixed. Both sites use `parseRuntimeJson`. Not skipped. |
+
+Neither leftover is BLOCKED.
 
 ## Artifact digests (inputs, not generated Word)
 
@@ -90,7 +91,7 @@ Skipped Vitest cases in the default suite are not counted as PASS.
 | `tests/fixtures/engineer-workflow/e11-oracle.json` | `657deb4cd0e54bddb6675bccc946f129209910a6f56af28742525bdc451b6d7c` |
 | `tests/fixtures/engineer-workflow/cases/existing-hci-health.json` | `82a4caecbe781fed57fbe3ebaf17fcb82b214f04a3acfb9cc330214fc6f9c45e` |
 | `tests/fixtures/engineer-workflow/synthetic/existing-hci-inventory.json` | `567a5525c8ef8c52327a20648b02ce5b3aa14ed19b9e6c0a7634504864a698f0` |
-| `tests/fixtures/engineer-workflow/synthetic/existing-hci-requirements.json` | `5317a01c42b42e9ea5cb9fcdd31d86990611681d9d4d759f94954880d11b3f1a` |
+| `tests/fixtures/engineer-workflow/synthetic/existing-hci-requirements.json` | `64c4e19c3c3cd83246dae1e4d1f9387661c8f53b8bb30d31529dc7e6b08316fd` |
 
 Generated Word/JSON live under `TMPDIR` and are not retained as goldens.
 
@@ -100,4 +101,4 @@ Generated Word/JSON live under `TMPDIR` and are not retained as goldens.
 - Postgres/RLS isolation DB and historical 26-item xlsx are NOT_RUN ≠ PASS.
 - Actions CI on this stacked PR targeting `codex/engineer-e10b-guide-preview` is NOT_RUN ≠ PASS.
 - E12/E13/E14 were not started. #90 remains open.
-- Authority lock census and persistence `JSON.parse` remain inherited fails.
+- Authority lock census and persistence `JSON.parse` were fixed on this follow-up; they are not skipped.

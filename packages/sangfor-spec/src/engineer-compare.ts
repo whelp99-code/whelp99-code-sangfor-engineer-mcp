@@ -42,7 +42,7 @@ export type EngineerRequirementCompareResult = {
   readonly guideReadyGranted: false;
 };
 
-const NUMERIC_RE = /(?:^|[^\w.])(>=|<=|==|=|>|<)\s*([+-]?\d+(?:\.\d+)?)\s*(GiB|TiB|MiB|KiB|GB|TB|MB|KB|percent|%|cores|vcpu|nodes|VMs)\b/iu;
+const NUMERIC_RE = /(?:^|[^\w.])(>=|<=|==|=|>|<)\s*([+-]?\d+(?:\.\d+)?)\s*(GiB|TiB|MiB|KiB|GB|TB|MB|KB|percent|%|cores|vcpu|nodes|VMs)(?!\w)/iu;
 const NA_RE = /^(n\/a|n\.a\.|not[_ ]applicable|해당\s*없음)\b/iu;
 const BOOL_RE = /\b(enabled|disabled|true|false)\b/iu;
 

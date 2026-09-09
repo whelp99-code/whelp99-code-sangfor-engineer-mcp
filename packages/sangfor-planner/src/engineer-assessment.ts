@@ -287,6 +287,20 @@ function calcId(requirementId: string): string {
   return `calc-${requirementId}`.slice(0, 64);
 }
 
+function storedCalculationForCompare(
+  calculations: readonly EngineerCalculation[],
+  requirement: EngineerRequirement,
+  binding: EngineerAssessmentBinding,
+): EngineerCalculation | undefined {
+  const formulaId = inferFormulaId(requirement, binding);
+  if (!formulaId) return undefined;
+  const allowed = new Set(binding.calculationRefs ?? []);
+  const pool = allowed.size > 0
+    ? calculations.filter((item) => allowed.has(item.id))
+    : calculations;
+  return pool.find((item) => item.formulaId === formulaId);
+}
+
 function desiredFrom(
   requirement: EngineerRequirement,
   document: EngineerCaseDocument,
@@ -526,6 +540,14 @@ export function assessEngineerCase(request: EngineerAssessmentRequest): Engineer
     }
 
     let compareCurrent = current?.value;
+    let compareCurrentRef = current?.id;
+    const storedCalc = storedCalculationForCompare(calculations, requirement, binding);
+    if (storedCalc?.result && (!compareCurrent || compareCurrent.presence !== 'known')) {
+      compareCurrent = storedCalc.result;
+      compareCurrentRef = storedCalc.id;
+      if (!calculationRefs.includes(storedCalc.id)) calculationRefs.push(storedCalc.id);
+      reasons.push(`stored-calculation:${storedCalc.id}:${storedCalc.formulaId}`);
+    }
     if (compareCurrent && desired.constraint.kind === 'numeric') {
       compareCurrent = convertKnownToUnit(compareCurrent, desired.constraint.unit);
     }
@@ -535,7 +557,7 @@ export function assessEngineerCase(request: EngineerAssessmentRequest): Engineer
       desired: desired.constraint.kind === 'unparseable' || desired.constraint.kind === 'not_applicable_text'
         ? desired.constraint
         : desired.constraint,
-      freshnessIssue: stale,
+      freshnessIssue: storedCalc ? undefined : stale,
       conflicting: false,
       searchOnly: false,
     });
@@ -546,8 +568,12 @@ export function assessEngineerCase(request: EngineerAssessmentRequest): Engineer
       reasons.push(desired.constraint.reason);
     }
     reasons.push(compared.reason);
-    if (current) reasons.push(`current:${current.id}:${current.sourceKind}:${current.collectionStatus}`);
-    if (current?.evidenceRef) reasons.push(`evidenceRef:${current.evidenceRef}`);
+    if (compareCurrentRef && storedCalc?.id === compareCurrentRef) {
+      reasons.push(`current:${storedCalc.id}:derived:${storedCalc.formulaId}`);
+    } else if (current) {
+      reasons.push(`current:${current.id}:${current.sourceKind}:${current.collectionStatus}`);
+      if (current.evidenceRef) reasons.push(`evidenceRef:${current.evidenceRef}`);
+    }
 
     const status = compared.status;
     assessments.push({
@@ -555,7 +581,7 @@ export function assessEngineerCase(request: EngineerAssessmentRequest): Engineer
       caseId: document.caseId,
       projectId: request.auth.projectId,
       requirementRef: requirement.id,
-      currentRef: current?.id,
+      currentRef: compareCurrentRef,
       desiredRef: desired.desiredRef,
       calculationRefs,
       status,

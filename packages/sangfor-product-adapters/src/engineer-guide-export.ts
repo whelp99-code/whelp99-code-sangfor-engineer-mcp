@@ -506,6 +506,10 @@ export async function exportEngineerGuide(request: EngineerGuideExportRequest): 
   const missing = missingRequirement(document);
   if (missing) return missing;
 
+  if (document.guide.unresolved.some((item) => /collection failed/i.test(item))) {
+    return fail('COLLECTION_FAILED', 'collection failed; refusing a normal-looking completed guide export');
+  }
+
   const expectedDigest = computeEngineerGuideDigest({
     revision: document.guide.revision,
     requirementRefs: document.guide.requirementRefs,

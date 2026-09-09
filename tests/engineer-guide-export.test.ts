@@ -509,6 +509,34 @@ describe('exportEngineerGuide', () => {
     expect(JSON.stringify(result)).not.toMatch(/"fieldAccepted":true|"approvedForWindow":true/);
   });
 
+  it('refuses a normal-looking Word export after collection failure', async () => {
+    const { document } = assessedGuideCase();
+    const built = buildEngineerGuide({ document, auth: AUTH, caseRevision: 'rev-1' });
+    expect(built.ok).toBe(true);
+    if (!built.ok) throw new Error(built.message);
+    const unresolved = [...built.guide.unresolved, 'collection failed; guide output is not a normal completion'];
+    const fields = {
+      revision: built.guide.revision,
+      requirementRefs: built.guide.requirementRefs,
+      steps: built.guide.steps,
+      prerequisites: built.guide.prerequisites,
+      unresolved,
+      readiness: 'blocked' as const,
+    };
+    const result = await exportEngineerGuide({
+      document: withOwnedGuide({
+        ...built.document,
+        progress: 'inputs_pending',
+        guide: { ...fields, digest: computeEngineerGuideDigest(fields) },
+      }),
+      auth: AUTH,
+      outputPath: 'collect-fail.docx',
+      outputRoot: root,
+    });
+    expect(result).toMatchObject({ ok: false, code: 'COLLECTION_FAILED' });
+    expect(existsSync(join(root, 'collect-fail.docx'))).toBe(false);
+  });
+
   it('refuses a cross-scope auth claim', async () => {
     const { document } = assessedGuideCase();
     const built = buildEngineerGuide({ document, auth: AUTH, caseRevision: 'rev-1' });

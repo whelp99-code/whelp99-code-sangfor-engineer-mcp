@@ -11,6 +11,7 @@ import {
   evaluateDerivedFitness,
   evaluateEngineerRequirementCompare,
   evaluateSpec,
+  parseEngineerConstraint,
 } from '../packages/sangfor-spec/src/index.js';
 import {
   ENGINEER_CASE_SCHEMA_VERSION,
@@ -552,6 +553,118 @@ describe('engineer assessment compare (E06)', () => {
       caseRevision: 'rev-1',
     });
     expect(unbound).toMatchObject({ ok: false, code: 'LIVE_OBSERVED_UNBOUND', guideReadyGranted: false });
+  });
+
+  it('parses percent-sign thresholds that the E11 fixture used to hide behind UNPARSEABLE_CONSTRAINT', () => {
+    expect(parseEngineerConstraint('usable storage headroom >= 20%')).toEqual({
+      kind: 'numeric',
+      op: 'gte',
+      threshold: 20,
+      unit: 'percent',
+    });
+    expect(parseEngineerConstraint('usable storage headroom >= 20 GiB')).toEqual({
+      kind: 'numeric',
+      op: 'gte',
+      threshold: 20,
+      unit: 'GiB',
+    });
+  });
+
+  it('compares a stored demand-headroom result to the requirement instead of skipping as unparseable', () => {
+    const headroom = evaluateEngineerFormula({
+      id: 'calc-headroom',
+      formulaId: 'demand-headroom',
+      roles: {
+        total: {
+          id: 'obs-total',
+          sourceKind: 'provided',
+          collectionStatus: 'complete',
+          value: { presence: 'known', data: { kind: 'number', number: 100, unit: 'GiB' } },
+        },
+        used: {
+          id: 'obs-used',
+          sourceKind: 'provided',
+          collectionStatus: 'complete',
+          value: { presence: 'known', data: { kind: 'number', number: 40, unit: 'GiB' } },
+        },
+        demand: {
+          id: 'obs-demand',
+          sourceKind: 'provided',
+          collectionStatus: 'complete',
+          value: { presence: 'known', data: { kind: 'number', number: 20, unit: 'GiB' } },
+        },
+      },
+    });
+    expect(headroom.result).toEqual({ presence: 'known', data: { kind: 'number', number: 40, unit: 'GiB' } });
+
+    const result = assessEngineerCase({
+      document: validFixtureCase({
+        observations: [
+          observation({
+            id: 'obs-total',
+            sourceKind: 'provided',
+            collectionStatus: 'complete',
+            collectedAt: WHEN,
+            evidenceRef: 'ev-1',
+            value: { presence: 'known', data: { kind: 'number', number: 100, unit: 'GiB' } },
+          }),
+          observation({
+            id: 'obs-used',
+            sourceKind: 'provided',
+            collectionStatus: 'complete',
+            collectedAt: WHEN,
+            evidenceRef: 'ev-1',
+            value: { presence: 'known', data: { kind: 'number', number: 40, unit: 'GiB' } },
+          }),
+          observation({
+            id: 'obs-demand',
+            sourceKind: 'provided',
+            collectionStatus: 'complete',
+            collectedAt: WHEN,
+            evidenceRef: 'ev-1',
+            value: { presence: 'known', data: { kind: 'number', number: 20, unit: 'GiB' } },
+          }),
+          observation({
+            id: 'obs-storage_usable_capacity',
+            sourceKind: 'unknown',
+            collectionStatus: 'missing',
+            value: { presence: 'unknown', reason: 'E03B usable capacity is unsupported' },
+            unknownReason: 'E03B usable capacity is unsupported',
+          }),
+        ],
+        requirements: [{
+          id: 'req-remaining',
+          sourceKind: 'provided',
+          sourceRef: 'excel-row-1',
+          target: 'Capacity headroom',
+          constraint: 'usable storage headroom >= 20 GiB',
+          priority: 'high',
+          confirmationState: 'confirmed',
+          acceptanceCriterion: 'usable storage headroom >= 20 GiB',
+          revision: 'req-rev-1',
+        }],
+        calculations: [headroom],
+      }),
+      auth: AUTH,
+      caseRevision: 'rev-1',
+      now: WHEN,
+      bindings: [{
+        requirementId: 'req-remaining',
+        fieldId: 'storage_usable_capacity',
+        calculationRefs: ['calc-headroom'],
+      }],
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error(result.message);
+    expect(result.assessments[0]).toMatchObject({
+      requirementRef: 'req-remaining',
+      currentRef: 'calc-headroom',
+      status: 'satisfied',
+    });
+    expect(result.assessments[0]?.reasons.join(' ')).toMatch(/stored-calculation:calc-headroom:demand-headroom/);
+    expect(result.assessments[0]?.reasons.join(' ')).toMatch(/matches desired gte 20 GiB/);
+    expect(result.assessments[0]?.reasons.join(' ')).not.toMatch(/UNPARSEABLE_CONSTRAINT/);
+    expect(result.guideReadyGranted).toBe(false);
   });
 
   it('keeps evaluateSpec INDETERMINATE from becoming an engineer PASS', () => {

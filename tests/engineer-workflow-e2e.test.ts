@@ -213,6 +213,14 @@ describe('engineer workflow E11 integration harness', () => {
     expect(result.healthVerdict).toBe('PASS');
     expect(result.document?.assessments).toHaveLength(result.tracking.requirementIds.length);
     expect(result.document?.assessments.every((item) => result.tracking.requirementIds.includes(item.requirementRef))).toBe(true);
+    const capacityAssessment = result.document?.assessments.find((item) => item.requirementRef === 'req-1');
+    expect(capacityAssessment?.currentRef).toBe('calc-headroom');
+    expect(capacityAssessment?.status).toBe('satisfied');
+    expect(capacityAssessment?.reasons.join(' ')).toMatch(/stored-calculation:calc-headroom:demand-headroom/);
+    expect(capacityAssessment?.reasons.join(' ')).toMatch(/matches desired gte 20 GiB/);
+    expect(capacityAssessment?.reasons.join(' ')).not.toMatch(/UNPARSEABLE_CONSTRAINT/);
+    const haAssessment = result.document?.assessments.find((item) => item.requirementRef === 'req-2');
+    expect(haAssessment?.status).toBe('unresolved');
     expect(result.document?.guide.steps.length).toBeGreaterThan(0);
     expect(result.tracking.executableSteps).toBe(result.document?.guide.steps.length);
     expect(result.tracking.executableStepTrackingRate).toBe(1);
@@ -353,20 +361,25 @@ describe('engineer workflow E11 integration harness', () => {
   it('refuses to treat a collection failure plus Word output as normal completion', async () => {
     const db = new FakeEngineerCaseAuthorityDatabase();
     const store = storeFor(db);
+    const exportRoot = mkdtempSync(join(tmpdir(), 'e11-fail-'));
     const result = await existingRun(store, {
       caseId: 'case-collect-fail',
       requestId: 'e11-fail-1',
       inventoryClient: fixtureInventoryClient(inventoryFixture(), { volume: 403 }),
+      exportRoot,
     });
     expect(result.collectFailed).toBe(true);
     expect(result.completedNormally).toBe(false);
     expect(result.inventory?.collection.volumes.status).toBe('failed');
     expect(result.healthVerdict).toBe('INDETERMINATE');
     expect(result.document?.guide.readiness).not.toBe('review_ready');
+    expect(result.document?.progress).toBe('inputs_pending');
     expect(result.review?.complete).toBe(false);
     expect(result.unresolved.some((text) => text.includes('collection failed'))).toBe(true);
-    expect(result.export?.ok).toBe(true);
-    expect(result.steps.find((item) => item.id === 'export')?.status).toBe('ran');
+    expect(result.document?.guide.unresolved.some((text) => text.includes('collection failed'))).toBe(true);
+    expect(result.export).toMatchObject({ ok: false, code: 'COLLECTION_FAILED' });
+    expect(result.steps.find((item) => item.id === 'export')?.status).toBe('refused');
+    expect(readdirSync(exportRoot).some((name) => name.endsWith('.docx'))).toBe(false);
     expect(result.completedNormally).toBe(false);
     expect(result.fieldAccepted).toBe(false);
   });

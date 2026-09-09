@@ -537,7 +537,28 @@ export async function runEngineerWorkflow(input: EngineerWorkflowInput): Promise
   }
   steps.push(step('guide', 'buildEngineerGuide', 'ran'));
 
-  const assembled = assembleEngineerCase(built.document, input.auth);
+  let guideDocument = built.document;
+  if (collectFailed) {
+    const unresolved = [
+      ...guideDocument.guide.unresolved,
+      'collection failed; guide output is not a normal completion',
+    ].filter((text, index, all) => all.indexOf(text) === index);
+    const fields = {
+      revision: guideDocument.guide.revision,
+      requirementRefs: guideDocument.guide.requirementRefs,
+      steps: guideDocument.guide.steps,
+      prerequisites: guideDocument.guide.prerequisites,
+      unresolved,
+      readiness: 'blocked' as const,
+    };
+    guideDocument = {
+      ...guideDocument,
+      progress: 'inputs_pending',
+      guide: { ...fields, digest: computeEngineerGuideDigest(fields) },
+    };
+  }
+
+  const assembled = assembleEngineerCase(guideDocument, input.auth);
   if (!assembled.ok) {
     steps.push(step('persist', 'saveEngineerCase', 'refused', assembled.issues.map((item) => item.code).join(',')));
     return baseResult({
@@ -551,7 +572,7 @@ export async function runEngineerWorkflow(input: EngineerWorkflowInput): Promise
     });
   }
 
-  const prepared = prepareEngineerCaseForPersistence(built.document, input.auth);
+  const prepared = prepareEngineerCaseForPersistence(guideDocument, input.auth);
   if (!prepared.ok) {
     steps.push(step('persist', 'saveEngineerCase', 'refused', prepared.issues.map((item) => item.code).join(',')));
     return baseResult({
@@ -580,7 +601,7 @@ export async function runEngineerWorkflow(input: EngineerWorkflowInput): Promise
   }
   const persist = await input.persist({
     auth: input.auth,
-    document: built.document,
+    document: guideDocument,
     requestId: input.requestId,
     expectedRevision: input.expectedRevision,
   });
