@@ -120,6 +120,34 @@ describe('HCI collection snapshot binding', () => {
     expect(omittedOriginal.observations.every((item) => item.sourceKind !== 'observed')).toBe(true);
   });
 
+  it('emits originalPresent extras only when the API JSON contains them', async () => {
+    const omitted = await collectInventory(client(), { collectedAt: WHEN });
+    expect(omitted.originalPresentSurfaces).toBeUndefined();
+
+    const present = await collectInventory({
+      async request(service, _path, init) {
+        expect(init?.method ?? 'GET').toBe('GET');
+        if (service === 'volume') {
+          return response({
+            volumes: [volume],
+            firmware: '6.11.3-test-double',
+            collectedAt: WHEN,
+            host_cpu: { presence: 'known', data: { kind: 'integer', integer: 8, unit: 'cores' } },
+          });
+        }
+        if (service === 'compute') return response({ servers: [{ id: 's1' }] });
+        return response({ images: [] });
+      },
+    }, { collectedAt: WHEN });
+    expect(present.originalPresentSurfaces?.map((item) => item.surfaceId).sort()).toEqual([
+      'collectedAt',
+      'firmware',
+      'host_cpu',
+    ]);
+    expect(present.originalPresentSurfaces?.every((item) => item.originalPresent === true)).toBe(true);
+    expect(present.fields.find((field) => field.id === 'ha_status')?.acquisition).toBe('unsupported');
+  });
+
   it('imports a manual field as provided and refuses to mark it observed', () => {
     const imported = importProvidedObservation({
       id: 'obs-ha-status',

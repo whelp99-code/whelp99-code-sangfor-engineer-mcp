@@ -26,6 +26,12 @@ import {
   type InventoryClient,
 } from './collection.js';
 import type { HciRequiredObservationResult } from './required-observations.js';
+import {
+  applyObservedExtrasToFields,
+  extractOriginalPresentSurfacesFromPages,
+  type HciCollectExtraPage,
+  type HciInventoryOriginalPresentSurface,
+} from './collect-extras.js';
 
 /** One envelope per collected REST surface. A surface that failed still records
  *  what was called, so an empty list is never mistaken for an observed emptiness. */
@@ -68,6 +74,11 @@ export interface HciInventory {
   collectionRevision: string;
   guideReadyGranted: false;
   requiredObservations: HciRequiredObservationResult;
+  /**
+   * Grant extras taken from already-fetched REST JSON only.
+   * Absent when the device/API omitted the explicit keys.
+   */
+  originalPresentSurfaces?: readonly HciInventoryOriginalPresentSurface[];
   manualImport: {
     allowed: true;
     promotesTo: 'provided';
@@ -93,21 +104,39 @@ async function readSurface<T>(
   key: string,
   parse: (raw: unknown) => T,
   opts: HciCollectionOptions,
-): Promise<{ value: T[]; latencyMs: number; collection: HciSurfaceCollection; pages: number }> {
+  endpoint: string,
+  collectedAt: string,
+): Promise<{
+  value: T[];
+  latencyMs: number;
+  collection: HciSurfaceCollection;
+  pages: number;
+  extraPages: HciCollectExtraPage[];
+}> {
   const started = performance.now();
   const { maxPages, maxPageTimeMs } = paginationLimits(opts.request);
   const serviceBase = await serviceOriginFor(client, service, opts.request);
   const seen = new Set<string>();
   const value: T[] = [];
+  const extraPages: HciCollectExtraPage[] = [];
   let currentPath = path;
   let pages = 0;
 
-  const finish = (collection: HciSurfaceCollection) => ({
-    value,
-    collection,
-    pages,
-    latencyMs: performance.now() - started,
-  });
+  const finish = (collection: HciSurfaceCollection) => {
+    const latencyMs = performance.now() - started;
+    return {
+      value,
+      collection,
+      pages,
+      extraPages: extraPages.map((page) => ({
+        ...page,
+        endpoint,
+        latencyMs,
+        collectedAt,
+      })),
+      latencyMs,
+    };
+  };
 
   while (true) {
     if (performance.now() - started > maxPageTimeMs) {
@@ -148,6 +177,12 @@ async function readSurface<T>(
           reason: collectionFailureReason(error),
         });
       }
+      extraPages.push({
+        endpoint,
+        payload,
+        latencyMs: 0,
+        collectedAt,
+      });
       const next = nextPageHref(payload, key);
       if (!next) return finish({ status: 'complete' });
       const resolved = resolveSameOriginPage(next, serviceBase);
@@ -164,8 +199,14 @@ async function readSurface<T>(
   }
 }
 
-function emptySurface(reason: string): { value: never[]; latencyMs: number; collection: HciSurfaceCollection; pages: number } {
-  return { value: [], latencyMs: 0, collection: { status: 'failed', reason }, pages: 0 };
+function emptySurface(reason: string): {
+  value: never[];
+  latencyMs: number;
+  collection: HciSurfaceCollection;
+  pages: number;
+  extraPages: HciCollectExtraPage[];
+} {
+  return { value: [], latencyMs: 0, collection: { status: 'failed', reason }, pages: 0, extraPages: [] };
 }
 
 export async function collectInventory(
@@ -189,17 +230,26 @@ export async function collectInventory(
   const volumeRead = !targetCheck.ok
     ? skipped(targetCheck.reason)
     : surfaces.includes('volumes')
-      ? await readSurface(readClient, 'volume', SURFACE_META.volumes.path, 'volumes', parseVolume, opts)
+      ? await readSurface(
+        readClient, 'volume', SURFACE_META.volumes.path, 'volumes', parseVolume, opts,
+        SURFACE_META.volumes.endpoint, collectedAt,
+      )
       : skipped('SURFACE_NOT_REQUESTED');
   const serverRead = !targetCheck.ok
     ? skipped(targetCheck.reason)
     : surfaces.includes('servers')
-      ? await readSurface(readClient, 'compute', SURFACE_META.servers.path, 'servers', record, opts)
+      ? await readSurface(
+        readClient, 'compute', SURFACE_META.servers.path, 'servers', record, opts,
+        SURFACE_META.servers.endpoint, collectedAt,
+      )
       : skipped('SURFACE_NOT_REQUESTED');
   const imageRead = !targetCheck.ok
     ? skipped(targetCheck.reason)
     : surfaces.includes('images')
-      ? await readSurface(readClient, 'image', SURFACE_META.images.path, 'images', record, opts)
+      ? await readSurface(
+        readClient, 'image', SURFACE_META.images.path, 'images', record, opts,
+        SURFACE_META.images.endpoint, collectedAt,
+      )
       : skipped('SURFACE_NOT_REQUESTED');
 
   const collection: HciInventoryCollection = {
@@ -208,7 +258,12 @@ export async function collectInventory(
     images: imageRead.collection,
   };
   const requiredObservations = requiredObservationsFromOptions(opts);
-  const fields = buildRequiredFieldStatuses({
+  const originalPresentSurfaces = extractOriginalPresentSurfacesFromPages([
+    ...volumeRead.extraPages,
+    ...serverRead.extraPages,
+    ...imageRead.extraPages,
+  ]);
+  const fields = applyObservedExtrasToFields(buildRequiredFieldStatuses({
     collection,
     collectedAt,
     firmwareVersion: opts.firmwareVersion,
@@ -216,7 +271,7 @@ export async function collectInventory(
     providedFields: opts.providedFields,
     attemptedRequiredReads: opts.attemptedRequiredReads,
     requiredObservations,
-  });
+  }), originalPresentSurfaces);
   const request = {
     ...(opts.request?.target ? { target: opts.request.target } : {}),
     ...(opts.firmwareVersion ? { firmwareVersion: opts.firmwareVersion } : {}),
@@ -231,6 +286,7 @@ export async function collectInventory(
     servers: serverRead.value,
     images: imageRead.value,
     fields,
+    originalPresentSurfaces,
   });
 
   return {
@@ -255,6 +311,7 @@ export async function collectInventory(
     collectionRevision,
     guideReadyGranted: false,
     requiredObservations,
+    ...(originalPresentSurfaces.length > 0 ? { originalPresentSurfaces } : {}),
     manualImport: { allowed: true, promotesTo: 'provided', neverObserved: true },
   };
 }

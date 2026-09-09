@@ -31,14 +31,25 @@ const volume = { id: 'v1', name: 'data', status: 'available', size: 1, descripti
 
 const response = (json: unknown, status = 200): HttpJsonResult => ({ json, status, text: JSON.stringify(json) });
 
-function stubClient(origin: string): InventoryClient {
+const WIRE_EXTRAS = {
+  firmware: '6.11.3-test-double',
+  collectedAt: WHEN,
+  volume_status_health: { verdict: 'INDETERMINATE', scope: 'volume-status' },
+  host_cpu: { presence: 'known', data: { kind: 'integer', integer: 16, unit: 'cores' } },
+  host_ram: { presence: 'known', data: { kind: 'integer', integer: 256, unit: 'GiB' } },
+  storage_usable_capacity: { presence: 'known', data: { kind: 'number', number: 40, unit: 'TiB' } },
+  network_topology: { presence: 'known', data: { kind: 'string', text: 'mgmt-separate' } },
+  ha_status: { presence: 'known', data: { kind: 'boolean', boolean: false } },
+} as const;
+
+function stubClient(origin: string, extras: Record<string, unknown> = {}): InventoryClient {
   return {
     async endpointFor() {
       return origin;
     },
     async request(service, _path, init) {
       expect(init?.method ?? 'GET').toBe('GET');
-      if (service === 'volume') return response({ volumes: [volume] });
+      if (service === 'volume') return response({ volumes: [volume], ...extras });
       if (service === 'compute') return response({ servers: [{ id: 's1' }] });
       return response({ images: [] });
     },
@@ -384,5 +395,155 @@ describe('HCI collect → authorized-read binder', () => {
     expect(fixture.collect.reason).toBe('TARGET_UNVERIFIED');
     expect(fixture.authorized.ok).toBe(false);
     if (fixture.authorized.ok) throw new Error('fixture plus extras must not mint authorized_device_read');
+  });
+
+  it('emits originalPresent extras from API JSON and mints only on the synthetic authorized path', async () => {
+    const inventory = await collectInventory(stubClient(TARGET, WIRE_EXTRAS), {
+      collectedAt: WHEN,
+      request: { target: TARGET },
+    });
+    expect(inventory.originalPresentSurfaces?.map((item) => item.surfaceId).sort()).toEqual([
+      'collectedAt',
+      'firmware',
+      'ha_status',
+      'host_cpu',
+      'host_ram',
+      'network_topology',
+      'storage_usable_capacity',
+      'volume_status_health',
+    ]);
+    expect(inventory.originalPresentSurfaces?.every((item) => item.originalPresent === true)).toBe(true);
+    expect(inventory.originalPresentSurfaces?.every((item) => item.fact.endpoint.includes(' field:'))).toBe(true);
+    expect(inventory.fields.find((field) => field.id === 'firmware')).toMatchObject({
+      availability: 'collected',
+      sourceKind: 'observed',
+    });
+    expect(inventory.requiredObservations.fields.find((field) => field.id === 'ha_status')).toMatchObject({
+      sourceKind: 'unknown',
+      acquisition: 'unsupported',
+      value: { presence: 'unknown' },
+    });
+    expect(inventory.requiredObservations.fields.find((field) => field.id === 'ha_status')?.value).not.toEqual({
+      presence: 'known',
+      data: { kind: 'boolean', boolean: false },
+    });
+
+    const wired = bindHciCollectAuthorizedDeviceReadEvidence({
+      inventory,
+      caseId: 'case-collect-wire-extras',
+      projectId: AUTH.projectId,
+      caseRevision: 'rev-collect-wire-extras',
+      guideRevision: 'guide-collect-wire-extras',
+      session: authorizedSession(),
+    });
+    expect(wired.collect.ok).toBe(true);
+    if (!wired.collect.ok) throw new Error('expected wire extras to bind');
+    expect(wired.collect.observations).toHaveLength(ENGINEER_REQUIRED_LIVE_READ_SURFACES.length);
+    expect(wired.authorized.ok).toBe(true);
+    if (!wired.authorized.ok) throw new Error(`expected synthetic authorized mint from wire extras: ${wired.authorized.reason}`);
+    expect(wired.authorized.sourceKind).toBe('authorized_device_read');
+  });
+
+  it('keeps extras NOT_RUN when the API omits them', async () => {
+    const inventory = await collectAuthorized();
+    expect(inventory.originalPresentSurfaces).toBeUndefined();
+    const wired = bindHciCollectAuthorizedDeviceReadEvidence({
+      inventory,
+      caseId: 'case-collect-omit-extras',
+      projectId: AUTH.projectId,
+      caseRevision: 'rev-collect-omit-extras',
+      guideRevision: 'guide-collect-omit-extras',
+      session: authorizedSession(),
+    });
+    expect(wired.authorized.ok).toBe(false);
+    if (wired.authorized.ok) throw new Error('omitted extras must not mint authorized_device_read');
+    expect(wired.authorized.reason).toBe('REQUIRED_LIVE_SURFACES_NOT_RUN');
+    expect(wired.authorized.requiredLiveSurfaces.filter((item) => item.status === 'NOT_RUN').map((item) => item.id))
+      .toEqual([
+        'collectedAt',
+        'volume_status_health',
+        'firmware',
+        'host_cpu',
+        'host_ram',
+        'storage_usable_capacity',
+        'network_topology',
+        'ha_status',
+      ]);
+  });
+
+  it('does not map hypervisor-shaped JSON or volume status into extras', async () => {
+    const inventory = await collectInventory(stubClient(TARGET, {
+      hypervisors: [{ vcpus: 32, memory_mb: 65536, ha_enabled: false }],
+      flavors: [{ vcpus: 8, ram: 16384 }],
+      volume_status: 'available',
+    }), {
+      collectedAt: WHEN,
+      request: { target: TARGET },
+    });
+    expect(inventory.originalPresentSurfaces).toBeUndefined();
+    expect(inventory.fields.find((field) => field.id === 'host_cpu')?.sourceKind).toBe('unknown');
+    expect(inventory.fields.find((field) => field.id === 'volume_status_health')?.sourceKind).not.toBe('observed');
+  });
+
+  it('still refuses fixture, mock, and historical mint when the API returns extras', async () => {
+    const mockInventory = await collectInventory(stubClient(MOCK, WIRE_EXTRAS), {
+      collectedAt: WHEN,
+      request: { target: MOCK },
+    });
+    expect(mockInventory.originalPresentSurfaces?.length).toBe(8);
+    const mock = bindHciCollectAuthorizedDeviceReadEvidence({
+      inventory: mockInventory,
+      caseId: 'case-collect-mock-wire',
+      projectId: AUTH.projectId,
+      caseRevision: 'rev-collect-mock-wire',
+      guideRevision: 'guide-collect-mock-wire',
+      session: authorizedSession(MOCK),
+    });
+    expect(mock.collect.ok).toBe(false);
+    if (mock.collect.ok) throw new Error('mock :3400 plus wire extras must not bind');
+    expect(mock.collect.reason).toBe('MOCK_CONSOLE_IS_NOT_FIELD_ACCEPTED');
+    expect(mock.authorized.ok).toBe(false);
+
+    const fixtureInventory = await collectInventory({
+      async request(service) {
+        if (service === 'volume') return response({ volumes: [volume], ...WIRE_EXTRAS });
+        if (service === 'compute') return response({ servers: [{ id: 's1' }] });
+        return response({ images: [] });
+      },
+    } satisfies Pick<HciClient, 'request'>, { collectedAt: WHEN });
+    expect(fixtureInventory.originalPresentSurfaces?.length).toBe(8);
+    const fixture = bindHciCollectAuthorizedDeviceReadEvidence({
+      inventory: fixtureInventory,
+      caseId: 'case-collect-fixture-wire',
+      projectId: AUTH.projectId,
+      caseRevision: 'rev-collect-fixture-wire',
+      guideRevision: 'guide-collect-fixture-wire',
+      session: authorizedSession(),
+    });
+    expect(fixture.collect.ok).toBe(false);
+    if (fixture.collect.ok) throw new Error('fixture plus wire extras must not bind');
+    expect(fixture.collect.reason).toBe('TARGET_UNVERIFIED');
+    expect(fixture.authorized.ok).toBe(false);
+
+    const historical = bindHciCollectAuthorizedDeviceReadEvidence({
+      inventory: await collectInventory(stubClient(TARGET, WIRE_EXTRAS), {
+        collectedAt: WHEN,
+        request: { target: TARGET },
+      }),
+      caseId: 'case-collect-historical-wire',
+      projectId: AUTH.projectId,
+      caseRevision: 'rev-collect-historical-wire',
+      guideRevision: 'guide-collect-historical-wire',
+      session: {
+        kind: 'historical_record',
+        declaredTarget: TARGET,
+        measuredIdentityOrigin: TARGET,
+        collectExecuted: true,
+      },
+    });
+    expect(historical.collect.ok).toBe(false);
+    if (historical.collect.ok) throw new Error('historical plus wire extras must not bind');
+    expect(historical.collect.reason).toBe('HISTORICAL_RECORD_IS_NOT_CURRENT_LIVE');
+    expect(historical.authorized.ok).toBe(false);
   });
 });

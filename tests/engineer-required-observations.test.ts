@@ -149,7 +149,7 @@ describe('E03B required HCI observations', () => {
     expect(providedFalse.fieldAcceptanceBlockersResolved).toBe(false);
   });
 
-  it('does not invent host CPU/RAM from a guessed hypervisor payload', () => {
+  it('does not invent host CPU/RAM from a guessed hypervisor payload', async () => {
     const payload = { hypervisors: [{ vcpus: 32, memory_mb: 65536, ha_enabled: false }] };
     expect(mapRequiredFieldFromApiPayload('host_cpu', payload)).toEqual({
       mapped: false,
@@ -161,6 +161,19 @@ describe('E03B required HCI observations', () => {
       presence: 'unknown',
       reason: 'NO_OFFICIAL_HA_READ_API',
     });
+
+    const inventory = await collectInventory({
+      async request(service, _path, init) {
+        expect(init?.method ?? 'GET').toBe('GET');
+        if (service === 'volume') return response({ volumes: [volume], ...payload });
+        if (service === 'compute') return response({ servers: [{ id: 's1' }] });
+        return response({ images: [] });
+      },
+    }, { collectedAt: WHEN });
+    expect(inventory.originalPresentSurfaces).toBeUndefined();
+    expect(inventory.requiredObservations.fields.find((field) => field.id === 'host_cpu')?.value.presence).toBe('unknown');
+    expect(JSON.stringify(inventory.requiredObservations.fields.find((field) => field.id === 'host_cpu')?.value))
+      .not.toMatch(/"integer":0/);
   });
 
   it('refuses forged endpoints, auth failures, unsupported firmware, and schema-shaped payloads', () => {
