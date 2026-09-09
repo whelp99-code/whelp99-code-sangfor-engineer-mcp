@@ -1,0 +1,40 @@
+{
+  "status": "EXPOSED_DEVELOPMENT_CALIBRATION_NOT_ACCEPTANCE",
+  "complete": false,
+  "sourceCommit": "f09528217970c42e0d1a3489e375fefdb443f58b",
+  "fixture": "revision-v5-client-holdout",
+  "fixtureSha256": "14ed95ed68c22a9c6fc81f3d38af0c0ac487ed597f55825ff5ed43c77cac280d",
+  "corpusSha256": "ff1118e44d4c1f21e7e465f6e1d66fcb0f4a08a09e9f1f7fbc098054c3febfa0",
+  "model": "Qwen/Qwen3-Reranker-0.6B",
+  "revision": "e61197ed45024b0ed8a2d74b80b4d909f1255473",
+  "configurationSha256": "05bb2aff6414a543bf32068503f7c953fb9f552a133ce113260241589a85202c",
+  "executionHost": "BLRO inference over SSH loopback forwarding; local E5 query retrieval",
+  "retrievalProfile": "E5 alpha=.5 + stem-ancestors + exact subject prerequisite; up to 40 distinct sources; no oracle insertion",
+  "rows": [
+    {
+      "queryId": "v5-holdout-01",
+      "noAnswer": false,
+      "querySha256": "dbefc1359cdd0ab43af0033ab824049316c7bee1f7711f857d3d7875a96702de",
+      "candidateCount": 40,
+      "seconds": 62.129937214,
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 1126
+        },
+        "embeddingModelCounts": {
+          "intfloat/multilingual-e5-small": 1126
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "0c433ea6086f274e850e093398ac0828906b30e2a1fac952de1ca1235ede7142",
+        "retrievalMode": "hybrid-semantic"
+      },
+      "failure": "TimeoutError: The operation was aborted due to timeout",
+      "scored": []
+    }
+  ]
+}

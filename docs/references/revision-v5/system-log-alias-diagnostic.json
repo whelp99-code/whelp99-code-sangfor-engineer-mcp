@@ -1,0 +1,105 @@
+{
+  "status": "EXPOSED_DEVELOPMENT_ALIAS_DIAGNOSTIC_NOT_FINAL_CONFIGURATION",
+  "queryId": "ko-v3-validation-04",
+  "method": "Append syslog as a candidate domain alias for system logs; retain original query; do not insert sources or change qrels.",
+  "rows": [
+    {
+      "query": "HCI 시스템 로그 설정은 어디서 하나요?\nWhere do I set up HCI system logs?",
+      "querySha256": "5e6cf123fae6e6360c6663e21af7532b769606d0da92b16d84a4381fa464db9d",
+      "seconds": 2.5500070310000003,
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 5199
+        },
+        "embeddingModelCounts": {
+          "intfloat/multilingual-e5-small": 5199
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "0c433ea6086f274e850e093398ac0828906b30e2a1fac952de1ca1235ede7142",
+        "retrievalMode": "hybrid-semantic"
+      },
+      "goldRank": 0,
+      "top5": [
+        {
+          "source": "data/sources/raw/support_10_1054_2643825.md",
+          "title": "Hyper Converged Infrastructure (HCI/aSV) 6.2.0 - User Manual / Initial Login to Sangfor HCI Console / System / System Backup and Restore / System Backup",
+          "score": 0.9146277375492999
+        },
+        {
+          "source": "data/sources/raw/support_10_1381_2654410.md",
+          "title": "Hyper Converged Infrastructure (HCI/aSV) 6.11.3 - User Manual / HCI Platform Configuration Guide / Viewing the Alarm Log",
+          "score": 0.864624337265544
+        },
+        {
+          "source": "data/sources/raw/support_10_1229_2639718.md",
+          "title": "Hyper Converged Infrastructure (HCI/aSV) 6.11.1R1 - User Manual / HCI Platform Configuration Guide / Viewing the Alarm Log",
+          "score": 0.8617305551234439
+        },
+        {
+          "source": "data/sources/raw/support_10_1229_2639730.md",
+          "title": "Hyper Converged Infrastructure (HCI/aSV) 6.11.1R1 - User Manual / HCI Platform Configuration Guide / System Backup and Restore Configuration",
+          "score": 0.8268585149604697
+        },
+        {
+          "source": "data/sources/raw/support_10_1381_2654429.md",
+          "title": "Hyper Converged Infrastructure (HCI/aSV) 6.11.3 - User Manual / HCI Platform Configuration Guide / System Backup and Restore Configuration",
+          "score": 0.8207864175266033
+        }
+      ]
+    },
+    {
+      "query": "HCI 시스템 로그 설정은 어디서 하나요?\nWhere do I set up HCI system logs? syslog",
+      "querySha256": "5134d384ccddb519b12dfa8a2ef8af4b70f6f255a1fc10ca847b23cac67533cf",
+      "seconds": 0.350791753,
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 5199
+        },
+        "embeddingModelCounts": {
+          "intfloat/multilingual-e5-small": 5199
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "0c433ea6086f274e850e093398ac0828906b30e2a1fac952de1ca1235ede7142",
+        "retrievalMode": "hybrid-semantic"
+      },
+      "goldRank": 1,
+      "top5": [
+        {
+          "source": "data/sources/raw/support_10_1381_2654412.md",
+          "title": "Hyper Converged Infrastructure (HCI/aSV) 6.11.3 - User Manual / HCI Platform Configuration Guide / Syslog Configurations",
+          "score": 0.9241965618019133
+        },
+        {
+          "source": "data/sources/raw/support_10_1229_2639720.md",
+          "title": "Hyper Converged Infrastructure (HCI/aSV) 6.11.1R1 - User Manual / HCI Platform Configuration Guide / Syslog Configurations",
+          "score": 0.9232719229836928
+        },
+        {
+          "source": "data/sources/raw/support_10_1054_2643825.md",
+          "title": "Hyper Converged Infrastructure (HCI/aSV) 6.2.0 - User Manual / Initial Login to Sangfor HCI Console / System / System Backup and Restore / System Backup",
+          "score": 0.7253577695601778
+        },
+        {
+          "source": "data/sources/raw/community_thread_1657.md",
+          "title": "Sangfor Community",
+          "score": 0.7087151275257562
+        },
+        {
+          "source": "data/sources/raw/community_thread_8160.md",
+          "title": "Sangfor Community",
+          "score": 0.6765649530644389
+        }
+      ]
+    }
+  ]
+}

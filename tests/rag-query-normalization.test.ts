@@ -17,6 +17,12 @@ describe('normalizeRetrievalQuery', () => {
     expect(normalized).toContain(expected);
   });
 
+  it('retains the complete question when expanding system log terminology', () => {
+    const query = 'HCI 시스템 로그 설정은 어디서 하나요?\nWhere do I configure system logs?';
+    expect(normalizeRetrievalQuery(query)).toBe(query + ' syslog');
+    expect(normalizeRetrievalQuery('Show application logs and login history')).toBe('Show application logs and login history');
+  });
+
   it('does not alter an English query without a known bilingual term', () => {
     expect(normalizeRetrievalQuery('HCI API reference')).toBe('HCI API reference');
   });
