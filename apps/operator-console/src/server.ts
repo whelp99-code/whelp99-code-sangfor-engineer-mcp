@@ -37,6 +37,7 @@ import {
   resolveEngineerCaseApiAuth,
   type OperatorServerOptions,
 } from './engineer-case-api.js';
+import { postReviewEngineerCase } from './engineer-case-review.js';
 import { dashboardHtml } from './ui.js';
 import {
   decodeOperatorRequestBody,
@@ -180,6 +181,12 @@ export function createOperatorServer(options: OperatorServerOptions = {}): http.
       if (method === 'POST' && url.pathname === '/api/engineer-cases/compare') {
         const body = await readJsonBody(req, 'engineer-cases-compare');
         const result = await postCompareEngineerCase(body, caseStore, caseAuth());
+        return json(res, result.body, result.status);
+      }
+
+      if (method === 'POST' && url.pathname === '/api/engineer-cases/review') {
+        const body = await readJsonBody(req, 'engineer-cases-review');
+        const result = await postReviewEngineerCase(body, caseStore, caseAuth());
         return json(res, result.body, result.status);
       }
 
