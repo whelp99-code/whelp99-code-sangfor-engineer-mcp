@@ -10,13 +10,14 @@ Do not put passwords, cookies, session material, or customer host addresses in g
 
 `evaluateEngineerFieldAcceptanceGrant` may set `field_accepted` only when all of the following hold together:
 
-1. A live read actually executed, with `originalPresent === true` observed facts, `environmentKind: live`, and `sourceKind: authorized_device_read`. Fixture, synthetic live-shaped fixture, mock console, historical records, and attestation strings are not a live read.
-2. A structured PM grant verifies with the existing `@sangfor/approval` HMAC primitive (`signDomainApproval` / `verifyDomainApprovalSignature`) over the grant domain, case/guide revision, and live-read digest, keyed by `SANGFOR_ENGINEER_FIELD_ACCEPTANCE_SECRET`. Missing secret fails closed. A raw string `pm_live_read_review` or a boolean JSON claim is not a grant. This is not a device-write approval and does not use `SANGFOR_OPERATOR_APPROVAL_SECRET`.
+1. A live read actually executed, with `originalPresent === true` facts that went through `bindObservedFactToCase` / collect. HMAC binds the observation digest of those bound facts, not caller-chosen `executed` / `originalPresent` / `environmentKind` / `sourceKind` labels. `sourceKind: authorized_device_read` is derived only by the collect binder after every required surface binds. Fixture, synthetic live-shaped fixture, mock console, historical records, and attestation strings are not a live read.
+2. A structured PM grant verifies with the existing `@sangfor/approval` HMAC primitive (`signDomainApproval` / `verifyDomainApprovalSignature`) over the grant domain, case/guide revision, and that observation digest, keyed only by the process environment `SANGFOR_ENGINEER_FIELD_ACCEPTANCE_SECRET`. A request-supplied secret is not read. Missing or empty secret fails closed. A raw string `pm_live_read_review` or a boolean JSON claim is not a grant. This is not a device-write approval and does not use `SANGFOR_OPERATOR_APPROVAL_SECRET`.
 3. Case revision and guide revision on the grant, the live read, and the case under review are identical (matching revision). Mismatch refuses.
+4. The grant nonce is consumed through the existing single-use nonce store. Replay refuses. A missing or corrupt nonce store fails closed.
 
-Required conjunction: live originalPresent read + structured PM grant + matching revision.
+Required conjunction: live originalPresent bound facts + structured HMAC PM grant + matching revision + consumed nonce.
 
-Fixture PASS, `review_ready`, Word download, e2e PASS, developer tests, and `SANGFOR_ALLOW_REAL_EXECUTION` cannot set `field_accepted`. This tree has not run a live read. The only unit-test true path is an explicit HMAC test double; that double is not a production default.
+Fixture PASS, `review_ready`, Word download, e2e PASS, developer tests, and `SANGFOR_ALLOW_REAL_EXECUTION` cannot set `field_accepted`. Required surfaces with no bound originalPresent facts stay `NOT_RUN` and refuse the grant; `NOT_RUN` is not PASS. A refused grant does not report `liveRead: executed` merely because the caller claimed it. This tree has not run a live HCI collect. A unit-test binder path can exercise the sibling true path; that path is not a production default and is not `field_accepted` for a real case. A real grant still cannot happen until a real collect produces those facts.
 
 ## What the user / PM must provide before a live read starts
 

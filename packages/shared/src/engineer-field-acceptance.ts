@@ -3,9 +3,11 @@
  *
  * `field_accepted` is not a document claim, not a fixture/e2e/Word result, and
  * not an execution-gate flag. This module records refusals only. It does not
- * verify HMAC, collect, mutate, or persist. A grant requires the sibling
- * recorder in `@sangfor/approval` plus a live originalPresent read and a
- * structured PM grant. Unknown stays unknown.
+ * verify HMAC, collect, mutate, or persist. The return type is `fieldAccepted:
+ * false` / `grantPath: none` because this function cannot grant. A grant
+ * requires the sibling recorder in `@sangfor/approval` plus bound live
+ * originalPresent facts, a structured PM grant, a matching revision, and a
+ * consumed nonce. Unknown stays unknown.
  */
 
 export const ENGINEER_FIELD_ACCEPTANCE_GRANT_KIND = 'pm_live_read_review' as const;
@@ -58,6 +60,21 @@ export type EngineerLiveReadEvidence = {
   readonly guideRevision: string;
 };
 
+/**
+ * Raw fact + case binding that must be re-run through `bindObservedFactToCase`.
+ * Caller-chosen `sourceKind` / `environmentKind` labels are not proof.
+ */
+export type EngineerBoundObservationInput = {
+  readonly surfaceId: EngineerRequiredLiveReadSurfaceId;
+  readonly fact: unknown;
+  readonly caseId: string;
+  readonly projectId: string;
+  readonly observationId: string;
+  readonly environmentKind: EngineerFieldAcceptanceEnvironment;
+  readonly originalPresent: boolean;
+  readonly payload: unknown;
+};
+
 export type EngineerPmLiveReadGrant = {
   readonly approvedBy: string;
   readonly decision: 'accept_after_live_read';
@@ -87,24 +104,39 @@ export type EngineerFieldAcceptanceInput = {
   readonly guideRevision?: string;
   readonly liveRead?: EngineerLiveReadEvidence;
   readonly pmGrant?: EngineerPmLiveReadGrant;
+  readonly boundObservations?: readonly EngineerBoundObservationInput[];
 };
 
 export type EngineerLiveReadSurfaceStatus = {
   readonly id: EngineerRequiredLiveReadSurfaceId;
   readonly layer: 'E03A' | 'E03B';
   readonly acquisition: (typeof ENGINEER_REQUIRED_LIVE_READ_SURFACES)[number]['acquisition'];
-  readonly status: 'NOT_RUN';
+  readonly status: 'NOT_RUN' | 'BOUND_ORIGINAL_PRESENT';
 };
 
-export type EngineerFieldAcceptanceDecision = {
-  readonly fieldAccepted: boolean;
-  readonly grantPath: EngineerFieldAcceptanceGrantPath;
+export type EngineerFieldAcceptanceRefusal = {
+  readonly fieldAccepted: false;
+  readonly grantPath: 'none';
   readonly liveRead: EngineerFieldAcceptanceLiveReadStatus;
   readonly reasonCode: string;
   readonly refusedReasons: readonly string[];
   readonly requiredLiveSurfaces: readonly EngineerLiveReadSurfaceStatus[];
   readonly mutationDispatchCount: 0;
 };
+
+export type EngineerFieldAcceptanceGranted = {
+  readonly fieldAccepted: true;
+  readonly grantPath: typeof ENGINEER_FIELD_ACCEPTANCE_GRANT_KIND;
+  readonly liveRead: 'executed';
+  readonly reasonCode: 'PM_LIVE_READ_REVIEW_GRANTED';
+  readonly refusedReasons: readonly [];
+  readonly requiredLiveSurfaces: readonly EngineerLiveReadSurfaceStatus[];
+  readonly mutationDispatchCount: 0;
+};
+
+export type EngineerFieldAcceptanceDecision =
+  | EngineerFieldAcceptanceRefusal
+  | EngineerFieldAcceptanceGranted;
 
 function uniqueReasons(reasons: readonly string[]): string[] {
   return [...new Set(reasons)];
@@ -172,7 +204,7 @@ export function collectEngineerFieldAcceptanceRefusals(
 
 export function evaluateEngineerFieldAcceptance(
   input: EngineerFieldAcceptanceInput = {},
-): EngineerFieldAcceptanceDecision {
+): EngineerFieldAcceptanceRefusal {
   const refusedReasons = collectEngineerFieldAcceptanceRefusals(input);
   return {
     fieldAccepted: false,

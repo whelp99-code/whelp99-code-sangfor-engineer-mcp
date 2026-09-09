@@ -30,7 +30,7 @@ Exact blocker still needed from the user/PM: product, firmware, read-only collec
 
 ## Grant path
 
-`evaluateEngineerFieldAcceptanceGrant` can return `fieldAccepted: true` only for the conjunction of a structurally valid live `originalPresent` read and a structured HMAC PM grant over the same revisions, using `@sangfor/approval` primitives and `SANGFOR_ENGINEER_FIELD_ACCEPTANCE_SECRET`. Kitchen-sink claims, fixture plus attestation string, and synthetic live-shaped fixtures refuse. The unit-test true path is an explicit test double, not a production default.
+`evaluateEngineerFieldAcceptanceGrant` can return `fieldAccepted: true` only for the conjunction of live `originalPresent` facts rebound through `bindObservedFactToCase`, a structured HMAC PM grant over that observation digest and matching revisions, an environment-only `SANGFOR_ENGINEER_FIELD_ACCEPTANCE_SECRET`, and a consumed single-use nonce. Caller-built live-shaped labels do not grant. Kitchen-sink claims, fixture plus attestation string, and synthetic live-shaped fixtures refuse. A refused grant does not report `liveRead: executed` from a caller claim. Required surfaces with no bound facts stay `NOT_RUN` and refuse the grant. Shared `evaluateEngineerFieldAcceptance` still never grants (`fieldAccepted: false`, `grantPath: none`). The unit-test true path is an explicit binder+HMAC test double, not a live collect and not a production default. A real grant still cannot happen until a real collect produces those facts.
 
 Shared `evaluateEngineerFieldAcceptance` still never grants.
 
@@ -38,8 +38,9 @@ Shared `evaluateEngineerFieldAcceptance` still never grants.
 
 | commandOrProcedure | exitCode | pass/fail/not_run |
 | --- | --- | --- |
-| `TMPDIR=/home/jm/.cache/sangfor-e12 pnpm exec vitest run --config vitest.config.ts tests/engineer-field-acceptance.test.ts tests/engineer-workflow-e2e.test.ts` | 0 | pass (21) |
-| `pnpm run lint` | 0 | pass (after `pnpm run db:generate` in this worktree) |
+| `TMPDIR=/home/jm/.cache/sangfor-e12 pnpm exec vitest run --config vitest.config.ts tests/engineer-field-acceptance.test.ts tests/engineer-workflow-e2e.test.ts` | 0 | pass (30) |
+| `TMPDIR=/home/jm/.cache/sangfor-e12 pnpm exec vitest run --config vitest.config.ts tests/approval-primitives.test.ts tests/approval-security-regression.test.ts tests/operator-nonce-store.test.ts` | 0 | pass (25) |
+| `pnpm run lint` | 0 | pass |
 | `pnpm run build` | 0 | pass |
 | live HCI read collect | — | **NOT_RUN**. not_run ≠ PASS |
 | `pnpm run test:postgres:mandatory` | — | **NOT_RUN**. not_run ≠ PASS |
