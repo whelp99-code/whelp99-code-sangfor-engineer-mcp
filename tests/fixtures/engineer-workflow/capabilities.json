@@ -1,0 +1,164 @@
+{
+  "statusVocabulary": [
+    "implemented",
+    "fixture_verified",
+    "historical_live",
+    "current_live",
+    "unknown"
+  ],
+  "capabilities": [
+    {
+      "id": "hci.auth.keystone_v2",
+      "title": "HCI Keystone v2 passwordCredentials auth",
+      "implemented": true,
+      "fixture_verified": false,
+      "historical_live": true,
+      "current_live": false,
+      "unknown": false
+    },
+    {
+      "id": "hci.collect.volumes",
+      "title": "HCI GET /volumes/detail",
+      "implemented": true,
+      "fixture_verified": true,
+      "historical_live": true,
+      "current_live": false,
+      "unknown": false
+    },
+    {
+      "id": "hci.collect.servers",
+      "title": "HCI GET /servers",
+      "implemented": true,
+      "fixture_verified": true,
+      "historical_live": true,
+      "current_live": false,
+      "unknown": false
+    },
+    {
+      "id": "hci.collect.images",
+      "title": "HCI GET /v2/images",
+      "implemented": true,
+      "fixture_verified": true,
+      "historical_live": true,
+      "current_live": false,
+      "unknown": false
+    },
+    {
+      "id": "hci.health.volume_status",
+      "title": "HCI volume-status health summary",
+      "implemented": true,
+      "fixture_verified": true,
+      "historical_live": true,
+      "current_live": false,
+      "unknown": false
+    },
+    {
+      "id": "hci.collect.host_cpu",
+      "title": "Host CPU collection",
+      "implemented": false,
+      "fixture_verified": false,
+      "historical_live": false,
+      "current_live": false,
+      "unknown": true
+    },
+    {
+      "id": "hci.collect.host_ram",
+      "title": "Host RAM collection",
+      "implemented": false,
+      "fixture_verified": false,
+      "historical_live": false,
+      "current_live": false,
+      "unknown": true
+    },
+    {
+      "id": "hci.collect.storage_usable",
+      "title": "Usable storage capacity collection",
+      "implemented": false,
+      "fixture_verified": false,
+      "historical_live": false,
+      "current_live": false,
+      "unknown": true
+    },
+    {
+      "id": "hci.collect.network_topology",
+      "title": "Network topology collection",
+      "implemented": false,
+      "fixture_verified": false,
+      "historical_live": false,
+      "current_live": false,
+      "unknown": true
+    },
+    {
+      "id": "hci.collect.ha_status",
+      "title": "HA/DRS status collection",
+      "implemented": false,
+      "fixture_verified": false,
+      "historical_live": false,
+      "current_live": false,
+      "unknown": true
+    },
+    {
+      "id": "hci.firmware.identification",
+      "title": "HCI firmware recorded on collection",
+      "implemented": false,
+      "fixture_verified": false,
+      "historical_live": false,
+      "current_live": false,
+      "unknown": true
+    },
+    {
+      "id": "excel.import.checklist",
+      "title": "ITAC-style Excel import",
+      "implemented": true,
+      "fixture_verified": true,
+      "historical_live": false,
+      "current_live": false,
+      "unknown": false
+    },
+    {
+      "id": "excel.map.products",
+      "title": "Excel row product mapping",
+      "implemented": true,
+      "fixture_verified": true,
+      "historical_live": false,
+      "current_live": false,
+      "unknown": false
+    },
+    {
+      "id": "office.setting_guide_docx",
+      "title": "Setting-guide DOCX from Excel plan",
+      "implemented": true,
+      "fixture_verified": true,
+      "historical_live": false,
+      "current_live": false,
+      "unknown": false
+    },
+    {
+      "id": "planner.grounding.answer_ready",
+      "title": "Planner grounding stays answerReady false",
+      "implemented": true,
+      "fixture_verified": true,
+      "historical_live": false,
+      "current_live": false,
+      "unknown": false
+    },
+    {
+      "id": "sizing.advisory_tier",
+      "title": "Advisory sizing tier, not official BOM",
+      "implemented": true,
+      "fixture_verified": false,
+      "historical_live": false,
+      "current_live": false,
+      "unknown": false
+    },
+    {
+      "id": "workflow.assemble.case",
+      "title": "End-to-end case assembly from observation to guide",
+      "implemented": false,
+      "fixture_verified": false,
+      "historical_live": false,
+      "current_live": false,
+      "unknown": true
+    }
+  ]
+}

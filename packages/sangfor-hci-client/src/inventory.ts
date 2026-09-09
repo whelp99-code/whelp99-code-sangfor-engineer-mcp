@@ -21,6 +21,10 @@ export interface HciSurfaceCollection {
 
 export type HciInventoryCollection = Record<keyof HciInventoryProvenance, HciSurfaceCollection>;
 
+/** REST surfaces `collectInventory` actually reads. This is not cluster-wide coverage. */
+export const HCI_INVENTORY_COLLECTED_SURFACES = ['volumes', 'servers', 'images'] as const;
+export type HciInventoryCollectedSurface = (typeof HCI_INVENTORY_COLLECTED_SURFACES)[number];
+
 export interface HciInventory {
   volumes: HciVolume[];
   servers: unknown[];

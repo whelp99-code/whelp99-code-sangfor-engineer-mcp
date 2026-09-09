@@ -1,0 +1,59 @@
+{
+  "environmentKind": "historical_record",
+  "currentLive": false,
+  "records": [
+    {
+      "id": "hci-readonly-smoke-2026-07-02",
+      "kind": "historical_live",
+      "date": "2026-07-02",
+      "product": "HCI_SCP",
+      "scope": ["keystone_v2_auth", "compute_servers", "images", "volumes_service_unavailable"],
+      "firmware": null,
+      "counts": {
+        "servers": 28,
+        "images": 0,
+        "volumes": 0,
+        "volumeServiceAvailable": false
+      },
+      "writesPerformed": 0,
+      "repoEvidence": {
+        "path": "outputs/diagnosis/HCI_SCP_real_device_smoke_2026-07-02.md",
+        "sha256": "3c02bb98bc7bb31cc20b1972e0745bb019c5ddd6898817d1d3c425cf8f62bd39",
+        "reproduction": "scripts/hci-real-smoke.ts"
+      },
+      "currentStatus": "record_only",
+      "notes": [
+        "Auth and read-only inventory were recorded on that date.",
+        "Volume service returned unavailable. This is not a current_live PASS.",
+        "Host identifiers remain in the historical file; this manifest does not copy them."
+      ]
+    },
+    {
+      "id": "excel-setting-guide-26-2026-06-07",
+      "kind": "historical_record",
+      "date": "2026-06-07",
+      "product": "MULTI_PRODUCT",
+      "scope": ["excel_import", "product_mapping", "setting_guide_docx"],
+      "firmware": null,
+      "counts": {
+        "totalItems": 26,
+        "consoleItems": 12,
+        "manualItems": 14,
+        "hciScpItems": 0,
+        "endpointSecureItems": 7,
+        "iagItems": 3,
+        "ndrItems": 2
+      },
+      "repoEvidence": {
+        "derivedPlanPath": "outputs/sangfor-excel-plan/setting-plan.json",
+        "derivedPlanSha256": "c0130612b0ce1eabb080f7ddf4583d3378ee2693a22747f67dae2f155a7e4f4b",
+        "startHereRecordedDocxBytes": 8407
+      },
+      "currentStatus": "record_only",
+      "notes": [
+        "START_HERE_TODAY.md recorded a 26-item Word generation result. That text is a historical claim, not a current_live PASS.",
+        "The in-repo workbook hash is locked on the historical Excel case manifest. Customer cell text is not copied here."
+      ]
+    }
+  ]
+}
