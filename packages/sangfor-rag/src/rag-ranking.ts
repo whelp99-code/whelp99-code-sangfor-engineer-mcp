@@ -1,5 +1,6 @@
 import { cleanRetrievalText, retrievalTitle } from './retrieval-text.js';
 import { computeBm25Scores } from './bm25.js';
+import { querySubjectTerms } from './query-evidence.js';
 import { cosineSimilarity } from './hash-embedding.js';
 import { sameEmbeddingSpace, type EmbeddingSpace } from './embedding-space.js';
 import type { RagDocumentChunk } from './rag-types.js';
@@ -57,7 +58,8 @@ export function reciprocalRanks(scores: readonly number[]): number[] {
   return ranks;
 }
 
-export function hasRetrievalEvidence(hit: { keywordScore: number; cosineScore: number; retrievalMode: string }): boolean {
+export function hasRetrievalEvidence(hit: { keywordScore: number; cosineScore: number; retrievalMode: string; subjectScore?: number }): boolean {
+  if (process.env.SANGFOR_RAG_REQUIRE_SUBJECT_MATCH === '1' && !(hit.subjectScore && hit.subjectScore > 0)) return false;
   return hit.keywordScore > 0 || (hit.retrievalMode === 'hybrid-semantic' && hit.cosineScore > 0);
 }
 
@@ -67,13 +69,15 @@ export function rankHybrid<T extends RagDocumentChunk>(
   query: string,
   querySpace?: EmbeddingSpace,
 ): Array<T & { readonly score: number; readonly cosineScore: number; readonly keywordScore: number;
-  readonly vectorScoreUsed: boolean; readonly retrievalMode: 'hybrid-semantic' | 'hybrid-hash' | 'bm25' }> {
+  readonly subjectScore?: number; readonly vectorScoreUsed: boolean; readonly retrievalMode: 'hybrid-semantic' | 'hybrid-hash' | 'bm25' }> {
   const compatible = candidates.map((chunk) => canCompareVector(chunk, queryVector, querySpace));
   const alpha = compatible.some(Boolean) ? resolveHybridAlpha() : 0;
   const cosineScores = candidates.map((chunk, index) => compatible[index] ? cosineSimilarity(queryVector, chunk.vector) : 0);
   const views = candidates.map(searchView);
   const bm25Scores = computeBm25Scores(query, views.map((view) => view.body));
   const titleScores = computeBm25Scores(query, views.map((view) => view.heading));
+  const subjectScores = process.env.SANGFOR_RAG_REQUIRE_SUBJECT_MATCH === '1'
+    ? computeBm25Scores(querySubjectTerms(query).join(' '), views.map((view) => view.body)) : undefined;
   const keywordScores = candidates.map((chunk) => (bm25Scores.get(chunk.id) ?? 0) + 2 * (titleScores.get(chunk.id) ?? 0));
   const normalizeCosine = minMaxNormalizer(cosineScores.filter((_, index) => compatible[index]));
   const normalizeKeyword = minMaxNormalizer(keywordScores);
@@ -89,7 +93,8 @@ export function rankHybrid<T extends RagDocumentChunk>(
       : hitAlpha * normalizeCosine(cosineScore) + (1 - hitAlpha) * normalizeKeyword(keywordScore);
     const vectorScoreUsed = compatible[index] && alpha > 0;
     const retrievalMode = vectorScoreUsed ? querySpace?.model === 'hash' ? 'hybrid-hash' : 'hybrid-semantic' : 'bm25';
-    return { ...chunk, score, cosineScore, keywordScore, vectorScoreUsed, retrievalMode };
+    return { ...chunk, score, cosineScore, keywordScore, vectorScoreUsed, retrievalMode,
+      ...(subjectScores ? { subjectScore: subjectScores.get(chunk.id) ?? 0 } : {}) };
   });
 }
 

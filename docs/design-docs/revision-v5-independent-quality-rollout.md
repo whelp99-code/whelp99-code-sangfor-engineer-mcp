@@ -21,3 +21,10 @@
 ## 완료 기록
 
 각 단계의 원시 결과, 명령, 코드/데이터 해시와 한계를 완료 시 추가한다. 현재 1–6 완료를 주장할 근거는 없다.
+
+## 진행 증거: 평가 고정 및 무응답 개발 실험
+
+- 836c078에서 새 질문 12개(6제품), 무응답 12개를 고정했다. fixture SHA-256 `7c7be3aa0c31a5ff4bd7bea0a626a9dac8b7eece935ad6bfad6d965030224623`. 이전 평가의 정답 소스와 겹침 0, 모든 정답 인용의 원문 위치·해시 확인. 사람의 독립 검수는 아직 없으며 합성 평가라는 한계를 manifest에 기록했다. 아직 이 세트의 검색 결과는 열지 않았다.
+- `SANGFOR_RAG_REQUIRE_SUBJECT_MATCH=1` 실험: 기존 21문항 21/21, 개발 회귀 12문항 12/12 유지. 개발 무응답 오탐 1/4 → 0/4, 기존 무응답 0/4 유지. 요청 표현·제품/버전만 일치하는 결과를 거절한다. 확률 보정된 답변 신뢰도로 해석하면 안 된다. 현재 opt-in 상태이며 최종 승인 전이다.
+- 개발 평가 명령: `SANGFOR_RAG_REQUIRE_SUBJECT_MATCH=1 pnpm run rag:eval:corpus <revision-v3 corpus-cleaned.json> <revision-v1-qrels-v2.json 또는 revision-v3-validation.json>`. 설정이 달라 기존 동일 설정 게이트에 비교 보고서를 넣지 않았다. 원시 결과는 docs/references/revision-v5/subject-*.json.
+- BLRO의 실제 제품 파일 위치는 `/home/blro/orca/projects/sangfor-engineer-mcp`다. Git checkout이 아닌 파일 복사본이며 기본 3502/3600/3700 포트의 listener를 찾지 못했다. `start-mcp.sh`는 로컬 tsx stdio 서버를 실행한다. 현재 배포 여부는 더 검증해야 한다.
