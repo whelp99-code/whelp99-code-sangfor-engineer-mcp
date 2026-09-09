@@ -12,8 +12,27 @@ import {
 import type {
   AuthorityActorScope,
   AuthorityDatabase,
+  EngineerCaseArtifactResult,
+  EngineerCaseLoadResult,
+  EngineerCaseSaveRequest,
+  EngineerCaseSaveResult,
   SqlExecutor,
 } from './authority-store-contracts.js';
+import {
+  ENGINEER_CASE_READ_PERMISSION,
+  ENGINEER_CASE_WRITE_PERMISSION,
+} from './authority-store-contracts.js';
+import {
+  EngineerCasePersistenceError,
+  loadEngineerCaseArtifactRow,
+  loadEngineerCaseRow,
+  persistEngineerCaseInTransaction,
+  prepareEngineerCaseForPersistence,
+  refuseEngineerCaseLocalFallback,
+  refuseEngineerCasePublicIndex,
+  toLoadedEngineerCase,
+  unsavedEngineerCase,
+} from './engineer-case-persistence.js';
 
 export class AuthorityStorePersistenceError extends Error {
   readonly name = 'AuthorityStorePersistenceError';
@@ -240,5 +259,80 @@ export class BlroAuthorityStore {
       `SELECT "id","text","vector" FROM "BlroRagChunk" WHERE "projectId"=$1 AND (cardinality("aclActorIds")=0 OR $2=ANY("aclActorIds"))`,
       input.projectId, input.actorId,
     ));
+  }
+
+  async saveEngineerCase(input: EngineerCaseSaveRequest): Promise<EngineerCaseSaveResult> {
+    if (input.localFallback === true) return refuseEngineerCaseLocalFallback();
+    const prepared = prepareEngineerCaseForPersistence(input.document, input.auth, input.artifacts ?? []);
+    if (!prepared.ok) return unsavedEngineerCase('VALIDATION_FAILED', prepared.issues);
+    let writeAttempted = false;
+    try {
+      requireId(input.requestId, 'requestId');
+      return await this.authorized(input.auth, ENGINEER_CASE_WRITE_PERMISSION, async (tx) => {
+        writeAttempted = true;
+        return persistEngineerCaseInTransaction(tx, {
+          auth: input.auth,
+          prepared: prepared.value,
+          requestId: input.requestId,
+          expectedRevision: input.expectedRevision,
+          artifacts: input.artifacts,
+        });
+      });
+    } catch (error) {
+      if (error instanceof EngineerCasePersistenceError) return unsavedEngineerCase(error.code, error.issues);
+      if (error instanceof Error && error.message === 'AUTHORITY_SCOPE_UNAUTHORIZED') {
+        return unsavedEngineerCase('SCOPE_UNAUTHORIZED');
+      }
+      if (error instanceof Error && /^(?:AUTHORITY_|AUDIT_)/u.test(error.message)) throw error;
+      return unsavedEngineerCase(writeAttempted ? 'INDETERMINATE' : 'STORE_UNAVAILABLE');
+    }
+  }
+
+  async loadEngineerCase(input: AuthorityActorScope & { readonly caseId: string }): Promise<EngineerCaseLoadResult> {
+    try {
+      requireId(input.caseId, 'caseId');
+      return await this.authorized(input, ENGINEER_CASE_READ_PERMISSION, async (tx) => {
+        const row = await loadEngineerCaseRow(tx, input.projectId, input.caseId);
+        if (!row) return unsavedEngineerCase('NOT_FOUND');
+        const prepared = prepareEngineerCaseForPersistence(row.document, input);
+        if (!prepared.ok) return unsavedEngineerCase('VALIDATION_FAILED', prepared.issues);
+        return toLoadedEngineerCase(prepared.value);
+      });
+    } catch (error) {
+      if (error instanceof Error && error.message === 'AUTHORITY_SCOPE_UNAUTHORIZED') {
+        return unsavedEngineerCase('SCOPE_UNAUTHORIZED');
+      }
+      if (error instanceof Error && /^(?:AUTHORITY_|AUDIT_)/u.test(error.message)) throw error;
+      return unsavedEngineerCase('STORE_UNAVAILABLE');
+    }
+  }
+
+  async loadEngineerCaseArtifact(
+    input: AuthorityActorScope & { readonly caseId: string; readonly artifactId: string },
+  ): Promise<EngineerCaseArtifactResult> {
+    try {
+      requireId(input.caseId, 'caseId');
+      requireId(input.artifactId, 'artifactId');
+      return await this.authorized(input, ENGINEER_CASE_READ_PERMISSION, async (tx) => {
+        const owned = await loadEngineerCaseRow(tx, input.projectId, input.caseId);
+        if (!owned) return unsavedEngineerCase('NOT_FOUND');
+        const row = await loadEngineerCaseArtifactRow(tx, input.projectId, input.caseId, input.artifactId);
+        if (!row) return unsavedEngineerCase('ARTIFACT_NOT_FOUND');
+        return { ok: true, caseId: input.caseId, ...row };
+      });
+    } catch (error) {
+      if (error instanceof Error && error.message === 'AUTHORITY_SCOPE_UNAUTHORIZED') {
+        return unsavedEngineerCase('SCOPE_UNAUTHORIZED');
+      }
+      return unsavedEngineerCase('STORE_UNAVAILABLE');
+    }
+  }
+
+  refuseEngineerCaseLocalFallback(): EngineerCaseSaveResult {
+    return refuseEngineerCaseLocalFallback();
+  }
+
+  refuseEngineerCasePublicIndex(): EngineerCaseSaveResult {
+    return refuseEngineerCasePublicIndex();
   }
 }
