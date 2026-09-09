@@ -1,9 +1,18 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
   buildHciCollectionSnapshot,
   importProvidedObservation,
 } from '../packages/sangfor-config-state/src/index.js';
-import { collectInventory, type HciClient, type HttpJsonResult } from '@sangfor/hci-client';
+import {
+  collectInventory,
+  isFieldQualifiedDeviceEndpoint,
+  isOfficialHciCatalogReadEndpoint,
+  OFFICIAL_HCI_CATALOG_READ_ENDPOINTS,
+  unofficialListKeyEndpoint,
+  type HciClient,
+  type HttpJsonResult,
+} from '@sangfor/hci-client';
 import { assembleEngineerCase } from '../packages/sangfor-planner/src/engineer-case.js';
 import {
   ENGINEER_CASE_SCHEMA_VERSION,
@@ -118,6 +127,51 @@ describe('HCI collection snapshot binding', () => {
       originalPresent: false,
     });
     expect(omittedOriginal.observations.every((item) => item.sourceKind !== 'observed')).toBe(true);
+  });
+
+  it('emits originalPresent extras only when the API JSON contains them', async () => {
+    const omitted = await collectInventory(client(), { collectedAt: WHEN });
+    expect(omitted.originalPresentSurfaces).toBeUndefined();
+
+    const present = await collectInventory({
+      async request(service, _path, init) {
+        expect(init?.method ?? 'GET').toBe('GET');
+        if (service === 'volume') {
+          return response({
+            volumes: [volume],
+            firmware: '6.11.3-test-double',
+            collectedAt: WHEN,
+            host_cpu: { presence: 'known', data: { kind: 'integer', integer: 8, unit: 'cores' } },
+          });
+        }
+        if (service === 'compute') return response({ servers: [{ id: 's1' }] });
+        return response({ images: [] });
+      },
+    }, { collectedAt: WHEN });
+    expect(present.originalPresentSurfaces?.map((item) => item.surfaceId).sort()).toEqual([
+      'collectedAt',
+      'firmware',
+      'host_cpu',
+    ]);
+    expect(present.originalPresentSurfaces?.every((item) => item.originalPresent === true)).toBe(true);
+    expect(present.originalPresentSurfaces?.every((item) => item.fact.endpoint === unofficialListKeyEndpoint(item.surfaceId))).toBe(true);
+    expect(present.originalPresentSurfaces?.every((item) => !isFieldQualifiedDeviceEndpoint(item.fact.endpoint))).toBe(true);
+    expect(present.originalPresentSurfaces?.every((item) => !isOfficialHciCatalogReadEndpoint(item.fact.endpoint))).toBe(true);
+    expect(present.originalPresentSurfaces?.every((item) => item.fact.collector === 'hci-rest-collector')).toBe(true);
+    expect(present.fields.find((field) => field.id === 'ha_status')?.acquisition).toBe('unsupported');
+  });
+
+  it('does not treat field-qualified strings as official HCI catalog paths', () => {
+    const catalog = JSON.parse(readFileSync('data/hci-api/catalog.json', 'utf8')) as {
+      services: Record<string, { readOnly?: readonly string[] }>;
+    };
+    const catalogReads = Object.values(catalog.services).flatMap((service) => service.readOnly ?? []);
+    expect(catalogReads).toEqual(expect.arrayContaining([...OFFICIAL_HCI_CATALOG_READ_ENDPOINTS]));
+    expect(catalogReads).not.toContain('GET /volumes/detail field:firmware');
+    expect(catalogReads).not.toContain('GET /os-hypervisors');
+    expect(isOfficialHciCatalogReadEndpoint('GET /volumes/detail field:firmware')).toBe(false);
+    expect(isFieldQualifiedDeviceEndpoint('GET /volumes/detail field:firmware')).toBe(true);
+    expect(isOfficialHciCatalogReadEndpoint('GET /os-hypervisors')).toBe(false);
   });
 
   it('imports a manual field as provided and refuses to mark it observed', () => {

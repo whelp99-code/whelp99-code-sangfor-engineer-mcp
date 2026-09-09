@@ -27,6 +27,7 @@ export {
   type HciCollectionSnapshot,
   type HciCollectionSnapshotBinding,
   type HciCollectionSnapshotInventory,
+  type HciCollectOriginalPresentSurface,
 } from './hci-collection-snapshot.js';
 
 export {
@@ -54,6 +55,16 @@ export {
   type EngineerAuthorizedDeviceReadBindResult,
   type ReboundFieldAcceptanceObservation,
 } from './engineer-field-acceptance-bind.js';
+
+export {
+  authorizedCollectTargetsMatch,
+  bindHciCollectAuthorizedDeviceReadEvidence,
+  bindHciCollectToFieldAcceptanceObservations,
+  isMockConsoleOrigin,
+  type AuthorizedDeviceCollectSession,
+  type BindHciCollectObservationsResult,
+  type CollectBindSessionInput,
+} from './engineer-collect-bind.js';
 
 /** An observed fact: the value plus the provenance envelope describing how it was
  *  obtained. The wrapper stays `{ value, source }` so @sangfor/spec keeps unwrapping it;

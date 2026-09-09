@@ -28,7 +28,7 @@ import type { ExcelRequirementRow } from '../packages/sangfor-product-adapters/s
 import type { EngineerCaseAuthContext, EngineerCaseDocument } from '../packages/shared/src/engineer-case-contract.js';
 
 const FIXTURE_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), 'fixtures/engineer-workflow');
-const REPO_ROOT = resolve(FIXTURE_ROOT, '../..');
+const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const THIS_FILE = fileURLToPath(import.meta.url);
 const AUTH = { tenantId: 'tenant-a', projectId: 'proj-a', actorId: 'actor-a' } as const;
 const OTHER = { tenantId: 'tenant-b', projectId: 'proj-b', actorId: 'actor-b' } as const;
@@ -131,6 +131,10 @@ function walkFiles(dir: string, acc: string[] = []): string[] {
 }
 
 function findWorkbook(hex: string): string | undefined {
+  // Search the real repo root. tests/ as REPO_ROOT made discover NOT_RUN even
+  // when the locked-digest workbook existed under worktree .hermes/. A hermes
+  // stub or digest file is not replay; only a hash-matching .xlsx that is
+  // actually read may be recorded as ran.
   for (const root of ['.hermes', 'outputs', 'data', 'tests', 'docs']) {
     const abs = join(REPO_ROOT, root);
     const hit = walkFiles(abs).find((path) => path.endsWith('.xlsx') && sha256(readFileSync(path)) === hex);
@@ -500,6 +504,9 @@ describe('engineer workflow E11 integration harness', () => {
     expect(excelCase.expected.notCurrentLive).toBe(true);
     expect(existingCase.caseId).not.toBe(excelCase.caseId);
     expect(historical.currentLive).toBe(false);
+    expect(existsSync(join(REPO_ROOT, 'package.json'))).toBe(true);
+    expect(existsSync(join(REPO_ROOT, 'pnpm-workspace.yaml'))).toBe(true);
+    expect(existsSync(join(REPO_ROOT, 'tests', 'engineer-workflow-e2e.test.ts'))).toBe(true);
     const workbook = findWorkbook(excelCase.originalWorkbook.discoverBySha256);
     const replay = workbook ? 'ran' : 'NOT_RUN';
     expect(replay === 'ran' || replay === 'NOT_RUN').toBe(true);

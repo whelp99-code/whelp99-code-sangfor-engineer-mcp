@@ -1,12 +1,15 @@
-import { collectInventory, type HciClient, type HciInventory, type HttpJsonResult } from '../../packages/sangfor-hci-client/src/index.js';
+import { collectInventory, resolveIdentityOrigin, type HciClient, type HciInventory, type HttpJsonResult, type InventoryClient } from '../../packages/sangfor-hci-client/src/index.js';
 import { summarizeHciHealth } from '../../packages/sangfor-hci-client/src/ops-monitor.js';
 import {
   collectRequiredObservations,
   HCI_E03B_REQUIRED_FIELDS,
 } from '../../packages/sangfor-hci-client/src/required-observations.js';
 import {
+  bindEngineerAuthorizedDeviceReadEvidence,
+  bindHciCollectToFieldAcceptanceObservations,
   bindRequiredObservationsToCase,
   buildHciCollectionSnapshot,
+  isMockConsoleOrigin,
 } from '../../packages/sangfor-config-state/src/index.js';
 import { assembleEngineerCase, type EngineerCaseAssembly } from '../../packages/sangfor-planner/src/engineer-case.js';
 import {
@@ -44,7 +47,7 @@ import {
   type EngineerRequirement,
 } from '../../packages/shared/src/engineer-case-contract.js';
 import { evaluateEngineerFieldAcceptanceGrant } from '../../packages/sangfor-approval/src/engineer-field-acceptance-grant.js';
-import type { EngineerFieldAcceptanceDecision } from '../../packages/shared/src/engineer-field-acceptance.js';
+import type { EngineerBoundObservationInput, EngineerFieldAcceptanceDecision } from '../../packages/shared/src/engineer-field-acceptance.js';
 import type { ProductCode } from '../../packages/shared/src/index.js';
 
 const WHEN = '2026-09-09T00:00:00.000Z';
@@ -81,7 +84,8 @@ export type EngineerWorkflowInput = {
   readonly revision: string;
   readonly requestId: string;
   readonly expectedRevision?: string;
-  readonly inventoryClient?: Pick<HciClient, 'request'>;
+  readonly inventoryClient?: InventoryClient;
+  readonly authorizedCollect?: { readonly target: string };
   readonly skipCollect?: boolean;
   readonly requirementRows?: readonly ExcelRequirementRow[];
   readonly requirementTexts?: readonly string[];
@@ -116,6 +120,11 @@ export type EngineerWorkflowResult = {
   readonly review?: EngineerCaseReviewView;
   readonly preview?: EngineerGuidePreview;
   readonly fieldAcceptance: EngineerFieldAcceptanceDecision;
+  readonly authorizedCollectBind?: {
+    readonly observationCount: number;
+    readonly authorizedDeviceRead: boolean;
+    readonly reason?: string;
+  };
   readonly coverage?: EngineerCaseCoverage;
   readonly tracking: {
     readonly requiredFields: readonly FieldTrack[];
@@ -312,8 +321,17 @@ async function baseResult(partial: {
   coverage?: EngineerCaseCoverage;
   tracking?: EngineerWorkflowResult['tracking'];
   unresolved?: readonly string[];
+  boundObservations?: readonly EngineerBoundObservationInput[];
+  authorizedCollectBind?: EngineerWorkflowResult['authorizedCollectBind'];
 }): Promise<EngineerWorkflowResult> {
   const document = partial.document;
+  const authorized = partial.boundObservations
+    ? bindEngineerAuthorizedDeviceReadEvidence({
+      caseRevision: document?.revision ?? 'rev-unknown',
+      guideRevision: document?.guide.revision ?? 'guide-unknown',
+      observations: partial.boundObservations,
+    })
+    : undefined;
   return {
     fabricatedPass: false,
     fieldAccepted: false,
@@ -328,7 +346,10 @@ async function baseResult(partial: {
       caseId: document?.caseId,
       caseRevision: document?.revision,
       guideRevision: document?.guide.revision,
+      boundObservations: partial.boundObservations,
+      liveRead: authorized?.ok === true ? authorized.liveRead : undefined,
     }),
+    authorizedCollectBind: partial.authorizedCollectBind,
     completedNormally: false,
     collectFailed: partial.collectFailed,
     skippedCountedAsPass: false,
@@ -367,7 +388,12 @@ export async function runEngineerWorkflow(input: EngineerWorkflowInput): Promise
       ? 'new-build does not call device collect'
       : 'inventory client was not supplied'));
   } else {
-    inventory = await collectInventory(input.inventoryClient, { collectedAt: WHEN });
+    inventory = await collectInventory(input.inventoryClient, {
+      collectedAt: WHEN,
+      ...(input.authorizedCollect?.target
+        ? { request: { target: input.authorizedCollect.target } }
+        : {}),
+    });
     collectFailed = Object.values(inventory.collection).some((item) => item.status === 'failed');
     const health = summarizeHciHealth(inventory);
     healthScope = health.scope;
@@ -376,6 +402,41 @@ export async function runEngineerWorkflow(input: EngineerWorkflowInput): Promise
       ? 'one or more inventory surfaces failed'
       : undefined));
   }
+
+  let boundObservations: EngineerBoundObservationInput[] | undefined;
+  let authorizedCollectBind: EngineerWorkflowResult['authorizedCollectBind'];
+  if (inventory && input.authorizedCollect?.target && input.inventoryClient) {
+    const measured = await resolveIdentityOrigin(input.inventoryClient, {
+      target: input.authorizedCollect.target,
+    });
+    if (!measured) {
+      authorizedCollectBind = { observationCount: 0, authorizedDeviceRead: false, reason: 'TARGET_UNVERIFIED' };
+    } else if (isMockConsoleOrigin(measured) || isMockConsoleOrigin(input.authorizedCollect.target)) {
+      authorizedCollectBind = { observationCount: 0, authorizedDeviceRead: false, reason: 'MOCK_CONSOLE_IS_NOT_FIELD_ACCEPTED' };
+    } else {
+      const mapped = bindHciCollectToFieldAcceptanceObservations({
+        inventory,
+        caseId: input.caseId,
+        projectId: input.auth.projectId,
+        session: {
+          kind: 'authorized_device_collect',
+          declaredTarget: input.authorizedCollect.target,
+          measuredIdentityOrigin: measured,
+          collectExecuted: true,
+        },
+      });
+      if (!mapped.ok) {
+        authorizedCollectBind = { observationCount: 0, authorizedDeviceRead: false, reason: mapped.reason };
+      } else {
+        boundObservations = [...mapped.observations];
+        authorizedCollectBind = {
+          observationCount: mapped.observations.length,
+          authorizedDeviceRead: false,
+        };
+      }
+    }
+  }
+  const liveBound = (boundObservations?.length ?? 0) > 0;
 
   const ingested = ingestEngineerRequirements({
     mode: input.mode,
@@ -388,7 +449,15 @@ export async function runEngineerWorkflow(input: EngineerWorkflowInput): Promise
   });
   if (!ingested.ok) {
     steps.push(step('requirements', 'ingestEngineerRequirements', 'refused', ingested.code));
-    return await baseResult({ steps, collectFailed, inventory, healthScope, healthVerdict });
+    return await baseResult({
+      steps,
+      collectFailed,
+      inventory,
+      healthScope,
+      healthVerdict,
+      boundObservations,
+      authorizedCollectBind,
+    });
   }
   steps.push(step('requirements', 'ingestEngineerRequirements', 'ran'));
   const requirements: readonly EngineerRequirement[] = ingested.requirements;
@@ -398,8 +467,8 @@ export async function runEngineerWorkflow(input: EngineerWorkflowInput): Promise
     ? buildHciCollectionSnapshot(inventory, {
       caseId: input.caseId,
       projectId: input.auth.projectId,
-      environmentKind: 'fixture',
-      originalPresent: input.originalPresent === true,
+      environmentKind: liveBound ? 'live' : 'fixture',
+      originalPresent: liveBound ? true : input.originalPresent === true,
     })
     : undefined;
   const requiredBound = snapshot?.requiredObservations ?? bindRequiredObservationsToCase(required, {
@@ -466,9 +535,9 @@ export async function runEngineerWorkflow(input: EngineerWorkflowInput): Promise
     ...(input.firmware ? { firmware: input.firmware } : {}),
     revision: input.revision,
     progress: collectFailed ? 'inputs_pending' : 'draft',
-    environmentKind: 'fixture',
-    synthetic: true,
-    originalPresent: input.originalPresent === true,
+    environmentKind: liveBound ? 'live' : 'fixture',
+    synthetic: liveBound ? false : true,
+    originalPresent: liveBound ? true : input.originalPresent === true,
     observations,
     requirements,
     calculations,
@@ -501,11 +570,27 @@ export async function runEngineerWorkflow(input: EngineerWorkflowInput): Promise
     });
   } catch (error) {
     steps.push(step('assess', 'assessEngineerCase', 'failed', error instanceof Error ? error.message : 'assess threw'));
-    return await baseResult({ steps, collectFailed, inventory, healthScope, healthVerdict });
+    return await baseResult({
+      steps,
+      collectFailed,
+      inventory,
+      healthScope,
+      healthVerdict,
+      boundObservations,
+      authorizedCollectBind,
+    });
   }
   if (!assessed.ok) {
     steps.push(step('assess', 'assessEngineerCase', 'failed', assessed.code));
-    return await baseResult({ steps, collectFailed, inventory, healthScope, healthVerdict });
+    return await baseResult({
+      steps,
+      collectFailed,
+      inventory,
+      healthScope,
+      healthVerdict,
+      boundObservations,
+      authorizedCollectBind,
+    });
   }
   steps.push(step('assess', 'assessEngineerCase', 'ran'));
 
@@ -537,6 +622,8 @@ export async function runEngineerWorkflow(input: EngineerWorkflowInput): Promise
       healthScope,
       healthVerdict,
       coverage: assessed.coverage,
+      boundObservations,
+      authorizedCollectBind,
     });
   }
   if (!built.ok) {
@@ -548,6 +635,8 @@ export async function runEngineerWorkflow(input: EngineerWorkflowInput): Promise
       healthScope,
       healthVerdict,
       coverage: assessed.coverage,
+      boundObservations,
+      authorizedCollectBind,
     });
   }
   steps.push(step('guide', 'buildEngineerGuide', 'ran'));
@@ -584,6 +673,8 @@ export async function runEngineerWorkflow(input: EngineerWorkflowInput): Promise
       healthVerdict,
       assembled,
       coverage: assessed.coverage,
+      boundObservations,
+      authorizedCollectBind,
     });
   }
 
@@ -598,6 +689,8 @@ export async function runEngineerWorkflow(input: EngineerWorkflowInput): Promise
       healthVerdict,
       assembled,
       coverage: assessed.coverage,
+      boundObservations,
+      authorizedCollectBind,
     });
   }
 
@@ -612,6 +705,8 @@ export async function runEngineerWorkflow(input: EngineerWorkflowInput): Promise
       assembled,
       document: prepared.value.value,
       coverage: assessed.coverage,
+      boundObservations,
+      authorizedCollectBind,
     });
   }
   const persist = await input.persist({
@@ -666,6 +761,20 @@ export async function runEngineerWorkflow(input: EngineerWorkflowInput): Promise
     && persist.guideReadyGranted === false
     && persistedDocument.guide.readiness !== 'review_ready';
 
+  const authorized = boundObservations
+    ? bindEngineerAuthorizedDeviceReadEvidence({
+      caseRevision: persistedDocument.revision,
+      guideRevision: persistedDocument.guide.revision,
+      observations: boundObservations,
+    })
+    : undefined;
+  if (authorizedCollectBind && boundObservations) {
+    authorizedCollectBind = {
+      observationCount: boundObservations.length,
+      authorizedDeviceRead: authorized?.ok === true,
+      ...(authorized?.ok === false ? { reason: authorized.reason } : {}),
+    };
+  }
   const fieldAcceptance = await evaluateEngineerFieldAcceptanceGrant({
     environmentKind: persistedDocument.environmentKind,
     synthetic: persistedDocument.synthetic,
@@ -676,6 +785,8 @@ export async function runEngineerWorkflow(input: EngineerWorkflowInput): Promise
     caseId: persistedDocument.caseId,
     caseRevision: persistedDocument.revision,
     guideRevision: persistedDocument.guide.revision,
+    boundObservations,
+    liveRead: authorized?.ok === true ? authorized.liveRead : undefined,
   });
 
   return {
@@ -683,6 +794,7 @@ export async function runEngineerWorkflow(input: EngineerWorkflowInput): Promise
     fieldAccepted: false,
     liveProof: false,
     fieldAcceptance,
+    authorizedCollectBind,
     completedNormally,
     collectFailed,
     skippedCountedAsPass: false,

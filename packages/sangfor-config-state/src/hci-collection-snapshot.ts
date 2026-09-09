@@ -4,6 +4,9 @@ import {
   type EngineerObservation,
   type EngineerValue,
 } from '../../shared/src/engineer-case-contract.js';
+import {
+  type EngineerRequiredLiveReadSurfaceId,
+} from '../../shared/src/engineer-field-acceptance.js';
 import { bindObservedFactToCase, type FactProvenance } from './provenance.js';
 import {
   bindRequiredObservationsToCase,
@@ -12,6 +15,19 @@ import {
 } from './required-observations.js';
 
 export type HciCollectionSnapshotSurface = 'volumes' | 'servers' | 'images';
+
+/**
+ * Collect-returned bound facts for non-REST required surfaces.
+ * Absent unless collect actually produced them. The mapper must not invent
+ * these from `inventory.collectedAt`, `request.firmwareVersion`, volume
+ * status, or provided-only E03B fields.
+ */
+export type HciCollectOriginalPresentSurface = {
+  readonly surfaceId: EngineerRequiredLiveReadSurfaceId;
+  readonly fact: unknown;
+  readonly originalPresent: true;
+  readonly payload: unknown;
+};
 
 export type HciCollectionSnapshotInventory = {
   readonly volumes: readonly unknown[];
@@ -38,6 +54,7 @@ export type HciCollectionSnapshotInventory = {
     readonly surfaces?: readonly string[];
   };
   readonly requiredObservations?: HciRequiredObservationInput;
+  readonly originalPresentSurfaces?: readonly HciCollectOriginalPresentSurface[];
 };
 
 export type HciCollectionSnapshotBinding = {
