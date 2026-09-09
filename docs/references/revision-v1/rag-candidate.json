@@ -1,0 +1,851 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-09-08T06:47:33.440Z",
+  "indexSha256": "da051d0eb904f76bd02104977fd285c6f0f2097beef67fcf3fad240ae7316560",
+  "qrelsSha256": "8a8fc0135cdf2de2cf36d614fe744a14de5936c2421a1324c8c70872d3c8b70f",
+  "node": "v24.19.0",
+  "cpu": "AMD EPYC Processor",
+  "chunkCount": 66767,
+  "profile": "local sync retrieval; legacy/unpinned vectors disabled; no reranker or external inference",
+  "k": 5,
+  "coldLoadMs": 2468.994373,
+  "meanLatencyMs": 373.24160328,
+  "p95LatencyMs": 1534.500559,
+  "metrics": {
+    "queryCount": 21,
+    "hitRateAtK": 0.6190476190476191,
+    "recallAtK": 0.6190476190476191,
+    "mrrAtK": 0.42857142857142855,
+    "ndcgAtK": 0.4758229937961068
+  },
+  "noAnswerFalsePositiveRate": 0,
+  "hardNegativeHits": 3,
+  "rows": [
+    {
+      "queryId": "hci-cli-6113",
+      "latencyMs": 290.9380739999997,
+      "mode": "bm25",
+      "hits": [
+        {
+          "queryId": "hci-cli-6113",
+          "sourceId": "data/sources/raw/support_10_1381_2654487.md",
+          "rank": 1,
+          "score": 1
+        },
+        {
+          "queryId": "hci-cli-6113",
+          "sourceId": "data/sources/raw/support_10_1229_2639994.md",
+          "rank": 2,
+          "score": 0.9316977384674755
+        },
+        {
+          "queryId": "hci-cli-6113",
+          "sourceId": "data/sources/raw/support_10_1381_2654427.md",
+          "rank": 3,
+          "score": 0.8451805376787178
+        },
+        {
+          "queryId": "hci-cli-6113",
+          "sourceId": "data/sources/raw/support_10_1381_2654472.md",
+          "rank": 4,
+          "score": 0.8110331156107335
+        },
+        {
+          "queryId": "hci-cli-6113",
+          "sourceId": "data/sources/raw/support_10_1229_2639728.md",
+          "rank": 5,
+          "score": 0.7621325877368057
+        }
+      ],
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "scp-nbu-xbsa-key",
+      "latencyMs": 371.1547579999997,
+      "mode": "bm25",
+      "hits": [
+        {
+          "queryId": "scp-nbu-xbsa-key",
+          "sourceId": "data/sources/raw/support_45_1388_2656029.md",
+          "rank": 1,
+          "score": 1
+        },
+        {
+          "queryId": "scp-nbu-xbsa-key",
+          "sourceId": "data/sources/raw/support_45_1364_2636737.md",
+          "rank": 2,
+          "score": 0.9950848001053437
+        },
+        {
+          "queryId": "scp-nbu-xbsa-key",
+          "sourceId": "data/sources/raw/hci-scp-api-cli/hci_scp_45_1388_2656029.md",
+          "rank": 3,
+          "score": 0.9327658362388626
+        },
+        {
+          "queryId": "scp-nbu-xbsa-key",
+          "sourceId": "data/sources/raw/support_45_1388_2656030.md",
+          "rank": 4,
+          "score": 0.9310268878823457
+        },
+        {
+          "queryId": "scp-nbu-xbsa-key",
+          "sourceId": "data/sources/raw/support_45_1364_2636851.md",
+          "rank": 5,
+          "score": 0.8973651926523378
+        }
+      ],
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "scp-rapid-recovery-ko",
+      "latencyMs": 375.2338490000002,
+      "mode": "bm25",
+      "hits": [
+        {
+          "queryId": "scp-rapid-recovery-ko",
+          "sourceId": "data/sources/raw/support_45_1388_2656005.md",
+          "rank": 1,
+          "score": 1
+        },
+        {
+          "queryId": "scp-rapid-recovery-ko",
+          "sourceId": "data/sources/raw/support_45_1379_2653169.md",
+          "rank": 2,
+          "score": 0.9532631834722219
+        },
+        {
+          "queryId": "scp-rapid-recovery-ko",
+          "sourceId": "data/sources/raw/hci-scp-api-cli/hci_scp_45_1388_2656005.md",
+          "rank": 3,
+          "score": 0.9435586785141548
+        },
+        {
+          "queryId": "scp-rapid-recovery-ko",
+          "sourceId": "data/sources/raw/support_45_1379_2653165.md",
+          "rank": 4,
+          "score": 0.7402155165194731
+        },
+        {
+          "queryId": "scp-rapid-recovery-ko",
+          "sourceId": "data/sources/raw/support_45_1379_2653167.md",
+          "rank": 5,
+          "score": 0.7369552810996677
+        }
+      ],
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "ndr-3098-preupgrade",
+      "latencyMs": 41.86450300000024,
+      "mode": "bm25",
+      "hits": [
+        {
+          "queryId": "ndr-3098-preupgrade",
+          "sourceId": "data/sources/raw/support_24_1219_2644669.md",
+          "rank": 1,
+          "score": 1
+        },
+        {
+          "queryId": "ndr-3098-preupgrade",
+          "sourceId": "data/sources/raw/support_24_1219_2630702.md",
+          "rank": 2,
+          "score": 0.902380014306891
+        },
+        {
+          "queryId": "ndr-3098-preupgrade",
+          "sourceId": "data/sources/raw/support_24_1078_2630637.md",
+          "rank": 3,
+          "score": 0.8433706503640102
+        },
+        {
+          "queryId": "ndr-3098-preupgrade",
+          "sourceId": "data/sources/raw/support_24_1076_2644506.md",
+          "rank": 4,
+          "score": 0.8415564669381179
+        },
+        {
+          "queryId": "ndr-3098-preupgrade",
+          "sourceId": "data/sources/raw/community_thread_10850.md",
+          "rank": 5,
+          "score": 0.8139045717929593
+        }
+      ],
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "ndr-resolved-issues",
+      "latencyMs": 29.78445099999999,
+      "mode": "bm25",
+      "hits": [
+        {
+          "queryId": "ndr-resolved-issues",
+          "sourceId": "data/sources/raw/support_24_1219_2644672.md",
+          "rank": 1,
+          "score": 1
+        },
+        {
+          "queryId": "ndr-resolved-issues",
+          "sourceId": "data/sources/raw/support_24_1219_2644665.md",
+          "rank": 2,
+          "score": 0.9650928826209346
+        },
+        {
+          "queryId": "ndr-resolved-issues",
+          "sourceId": "data/sources/raw/support_24_1219_2644667.md",
+          "rank": 3,
+          "score": 0.9015598924770799
+        },
+        {
+          "queryId": "ndr-resolved-issues",
+          "sourceId": "data/sources/raw/support_24_1219_2644664.md",
+          "rank": 4,
+          "score": 0.887983494318287
+        },
+        {
+          "queryId": "ndr-resolved-issues",
+          "sourceId": "data/sources/raw/support_24_1219_2644663.md",
+          "rank": 5,
+          "score": 0.8745809919221893
+        }
+      ],
+      "hardNegativeHits": 1
+    },
+    {
+      "queryId": "ngfw-80107-guaranteed",
+      "latencyMs": 1534.500559,
+      "mode": "bm25",
+      "hits": [
+        {
+          "queryId": "ngfw-80107-guaranteed",
+          "sourceId": "data/sources/raw/community_thread_7783.md",
+          "rank": 1,
+          "score": 1
+        },
+        {
+          "queryId": "ngfw-80107-guaranteed",
+          "sourceId": "data/sources/raw/community_thread_8390.md",
+          "rank": 2,
+          "score": 0.9269779133852807
+        },
+        {
+          "queryId": "ngfw-80107-guaranteed",
+          "sourceId": "data/sources/raw/community_thread_10834.md",
+          "rank": 3,
+          "score": 0.9017857269841527
+        },
+        {
+          "queryId": "ngfw-80107-guaranteed",
+          "sourceId": "data/sources/raw/support_22_1142_2640073.md",
+          "rank": 4,
+          "score": 0.8943470354058872
+        },
+        {
+          "queryId": "ngfw-80107-guaranteed",
+          "sourceId": "data/sources/raw/community_thread_9673.md",
+          "rank": 5,
+          "score": 0.8839568129438439
+        }
+      ],
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "ngfw-80106-limited",
+      "latencyMs": 1653.0691820000002,
+      "mode": "bm25",
+      "hits": [
+        {
+          "queryId": "ngfw-80106-limited",
+          "sourceId": "data/sources/raw/support_22_1144_2633243.md",
+          "rank": 1,
+          "score": 1
+        },
+        {
+          "queryId": "ngfw-80106-limited",
+          "sourceId": "data/sources/raw/support_22_1142_2640071.md",
+          "rank": 2,
+          "score": 0.9968632771718006
+        },
+        {
+          "queryId": "ngfw-80106-limited",
+          "sourceId": "data/sources/raw/community_thread_9403.md",
+          "rank": 3,
+          "score": 0.996420944782342
+        },
+        {
+          "queryId": "ngfw-80106-limited",
+          "sourceId": "data/sources/raw/support_21_1095_2647991.md",
+          "rank": 4,
+          "score": 0.9943578410201794
+        },
+        {
+          "queryId": "ngfw-80106-limited",
+          "sourceId": "data/sources/raw/support_22_1141_2639603.md",
+          "rank": 5,
+          "score": 0.9936323826971777
+        }
+      ],
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "iag-vpn-bandwidth-ko",
+      "latencyMs": 48.82612100000006,
+      "mode": "bm25",
+      "hits": [
+        {
+          "queryId": "iag-vpn-bandwidth-ko",
+          "sourceId": "data/sources/raw/community_thread_752.md",
+          "rank": 1,
+          "score": 1
+        },
+        {
+          "queryId": "iag-vpn-bandwidth-ko",
+          "sourceId": "data/sources/raw/community_thread_7792.md",
+          "rank": 2,
+          "score": 0.9826675662100836
+        },
+        {
+          "queryId": "iag-vpn-bandwidth-ko",
+          "sourceId": "data/sources/raw/community_thread_9642.md",
+          "rank": 3,
+          "score": 0.9363189787078389
+        },
+        {
+          "queryId": "iag-vpn-bandwidth-ko",
+          "sourceId": "data/sources/raw/community_thread_2248.md",
+          "rank": 4,
+          "score": 0.8469621196781303
+        },
+        {
+          "queryId": "iag-vpn-bandwidth-ko",
+          "sourceId": "data/sources/raw/community_thread_459.md",
+          "rank": 5,
+          "score": 0.8172185736084809
+        }
+      ],
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "hci-overlay-6111",
+      "latencyMs": 310.51017299999967,
+      "mode": "bm25",
+      "hits": [
+        {
+          "queryId": "hci-overlay-6111",
+          "sourceId": "data/sources/raw/support_10_1381_2654221.md",
+          "rank": 1,
+          "score": 1
+        },
+        {
+          "queryId": "hci-overlay-6111",
+          "sourceId": "data/sources/raw/support_10_1229_2639682.md",
+          "rank": 2,
+          "score": 1
+        },
+        {
+          "queryId": "hci-overlay-6111",
+          "sourceId": "data/sources/raw/support_case_2_31978.md",
+          "rank": 3,
+          "score": 0.8828729691618269
+        },
+        {
+          "queryId": "hci-overlay-6111",
+          "sourceId": "data/sources/raw/support_10_1229_2639675.md",
+          "rank": 4,
+          "score": 0.8639680457571352
+        },
+        {
+          "queryId": "hci-overlay-6111",
+          "sourceId": "data/sources/raw/support_10_1381_2654207.md",
+          "rank": 5,
+          "score": 0.862471666938769
+        }
+      ],
+      "hardNegativeHits": 1
+    },
+    {
+      "queryId": "hci-datastore",
+      "latencyMs": 310.44008399999984,
+      "mode": "bm25",
+      "hits": [
+        {
+          "queryId": "hci-datastore",
+          "sourceId": "data/sources/raw/support_practice_10_1193700.md",
+          "rank": 1,
+          "score": 1
+        },
+        {
+          "queryId": "hci-datastore",
+          "sourceId": "data/sources/raw/community_thread_10892.md",
+          "rank": 2,
+          "score": 0.9724358512674091
+        },
+        {
+          "queryId": "hci-datastore",
+          "sourceId": "data/sources/raw/support_10_1054_2643758.md",
+          "rank": 3,
+          "score": 0.9453570205656577
+        },
+        {
+          "queryId": "hci-datastore",
+          "sourceId": "data/sources/raw/community_thread_7737.md",
+          "rank": 4,
+          "score": 0.8778826373202301
+        },
+        {
+          "queryId": "hci-datastore",
+          "sourceId": "data/sources/raw/support_10_1381_2654213.md",
+          "rank": 5,
+          "score": 0.8360569973545384
+        }
+      ],
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "hci-iscsi-ko",
+      "latencyMs": 333.20156599999973,
+      "mode": "bm25",
+      "hits": [
+        {
+          "queryId": "hci-iscsi-ko",
+          "sourceId": "data/sources/raw/support_10_1054_2643800.md",
+          "rank": 1,
+          "score": 1
+        },
+        {
+          "queryId": "hci-iscsi-ko",
+          "sourceId": "data/sources/raw/support_10_1054_2643801.md",
+          "rank": 2,
+          "score": 0.9981343471471775
+        },
+        {
+          "queryId": "hci-iscsi-ko",
+          "sourceId": "data/sources/raw/support_10_1381_2662883.md",
+          "rank": 3,
+          "score": 0.9859551601848578
+        },
+        {
+          "queryId": "hci-iscsi-ko",
+          "sourceId": "data/sources/raw/support_10_1381_2654317.md",
+          "rank": 4,
+          "score": 0.9733704149748078
+        },
+        {
+          "queryId": "hci-iscsi-ko",
+          "sourceId": "data/sources/raw/support_practice_10_1130850.md",
+          "rank": 5,
+          "score": 0.9715063954817689
+        }
+      ],
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "backup-space-case",
+      "latencyMs": 281.61994699999923,
+      "mode": "bm25",
+      "hits": [
+        {
+          "queryId": "backup-space-case",
+          "sourceId": "data/sources/raw/support_case_2_308958.md",
+          "rank": 1,
+          "score": 1
+        },
+        {
+          "queryId": "backup-space-case",
+          "sourceId": "data/sources/raw/support_case_2_34097.md",
+          "rank": 2,
+          "score": 0.8922988477984792
+        },
+        {
+          "queryId": "backup-space-case",
+          "sourceId": "data/sources/raw/support_case_2_308959.md",
+          "rank": 3,
+          "score": 0.7630373304516105
+        },
+        {
+          "queryId": "backup-space-case",
+          "sourceId": "data/sources/raw/support_10_1054_2643831.md",
+          "rank": 4,
+          "score": 0.6827765381352526
+        },
+        {
+          "queryId": "backup-space-case",
+          "sourceId": "data/sources/raw/support_practice_10_1127250.md",
+          "rank": 5,
+          "score": 0.6493138756708939
+        }
+      ],
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "scc-tenant-quota",
+      "latencyMs": 1515.5873470000006,
+      "mode": "bm25",
+      "hits": [
+        {
+          "queryId": "scc-tenant-quota",
+          "sourceId": "data/sources/raw/support_25_1361_2653858.md",
+          "rank": 1,
+          "score": 1
+        },
+        {
+          "queryId": "scc-tenant-quota",
+          "sourceId": "data/sources/raw/support_25_1377_2653969.md",
+          "rank": 2,
+          "score": 0.9131383378178106
+        },
+        {
+          "queryId": "scc-tenant-quota",
+          "sourceId": "data/sources/raw/support_32_1101_1543500.md",
+          "rank": 3,
+          "score": 0.9080991147350456
+        },
+        {
+          "queryId": "scc-tenant-quota",
+          "sourceId": "data/sources/raw/support_32_1101_1541550.md",
+          "rank": 4,
+          "score": 0.868115485093601
+        },
+        {
+          "queryId": "scc-tenant-quota",
+          "sourceId": "data/sources/raw/support_32_1101_1540650.md",
+          "rank": 5,
+          "score": 0.8603362984126199
+        }
+      ],
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "scp-612-scheduled-backup",
+      "latencyMs": 372.5290409999998,
+      "mode": "bm25",
+      "hits": [
+        {
+          "queryId": "scp-612-scheduled-backup",
+          "sourceId": "data/sources/raw/support_45_1379_2652795.md",
+          "rank": 1,
+          "score": 1
+        },
+        {
+          "queryId": "scp-612-scheduled-backup",
+          "sourceId": "data/sources/raw/support_45_1364_2645300.md",
+          "rank": 2,
+          "score": 0.996132702902575
+        },
+        {
+          "queryId": "scp-612-scheduled-backup",
+          "sourceId": "data/sources/raw/support_45_1388_2656631.md",
+          "rank": 3,
+          "score": 0.9954912619121203
+        },
+        {
+          "queryId": "scp-612-scheduled-backup",
+          "sourceId": "data/sources/raw/support_45_1334_2643467.md",
+          "rank": 4,
+          "score": 0.9851463559667486
+        },
+        {
+          "queryId": "scp-612-scheduled-backup",
+          "sourceId": "data/sources/raw/support_45_1364_2636771.md",
+          "rank": 5,
+          "score": 0.9546687546768929
+        }
+      ],
+      "hardNegativeHits": 1
+    },
+    {
+      "queryId": "hci-system-diagnostics",
+      "latencyMs": 280.4942150000006,
+      "mode": "bm25",
+      "hits": [
+        {
+          "queryId": "hci-system-diagnostics",
+          "sourceId": "data/sources/raw/support_10_1381_2654472.md",
+          "rank": 1,
+          "score": 1
+        },
+        {
+          "queryId": "hci-system-diagnostics",
+          "sourceId": "data/sources/raw/support_10_1229_2639985.md",
+          "rank": 2,
+          "score": 0.9989424789947663
+        },
+        {
+          "queryId": "hci-system-diagnostics",
+          "sourceId": "data/sources/raw/support_10_1054_2643738.md",
+          "rank": 3,
+          "score": 0.952120765584483
+        },
+        {
+          "queryId": "hci-system-diagnostics",
+          "sourceId": "data/sources/raw/support_10_1229_2639886.md",
+          "rank": 4,
+          "score": 0.8463349280267519
+        },
+        {
+          "queryId": "hci-system-diagnostics",
+          "sourceId": "data/sources/raw/support_10_1381_2654438.md",
+          "rank": 5,
+          "score": 0.7981290014341531
+        }
+      ],
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "hci-raid-ko",
+      "latencyMs": 277.09522000000106,
+      "mode": "bm25",
+      "hits": [
+        {
+          "queryId": "hci-raid-ko",
+          "sourceId": "data/sources/raw/support_10_1229_2639955.md",
+          "rank": 1,
+          "score": 1
+        },
+        {
+          "queryId": "hci-raid-ko",
+          "sourceId": "data/sources/raw/support_10_1381_2654329.md",
+          "rank": 2,
+          "score": 0.9824217251215545
+        },
+        {
+          "queryId": "hci-raid-ko",
+          "sourceId": "/Volumes/DevSpace/Projects/ITAC-security-essentials/findings/00-작업계획서.md",
+          "rank": 3,
+          "score": 0.9635809402984665
+        },
+        {
+          "queryId": "hci-raid-ko",
+          "sourceId": "data/sources/raw/support_10_1381_2654366.md",
+          "rank": 4,
+          "score": 0.92541877132203
+        },
+        {
+          "queryId": "hci-raid-ko",
+          "sourceId": "data/sources/raw/support_10_1229_2639963.md",
+          "rank": 5,
+          "score": 0.9238889472961547
+        }
+      ],
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "hci-api-reference",
+      "latencyMs": 287.4721300000001,
+      "mode": "bm25",
+      "hits": [
+        {
+          "queryId": "hci-api-reference",
+          "sourceId": "data/sources/raw/community_thread_7100.md",
+          "rank": 1,
+          "score": 1
+        },
+        {
+          "queryId": "hci-api-reference",
+          "sourceId": "data/sources/raw/community_thread_11910.md",
+          "rank": 2,
+          "score": 0.9356657093616586
+        },
+        {
+          "queryId": "hci-api-reference",
+          "sourceId": "data/sources/raw/support_10_1070_2116800.md",
+          "rank": 3,
+          "score": 0.8577428096742076
+        },
+        {
+          "queryId": "hci-api-reference",
+          "sourceId": "data/sources/raw/support_10_1070_2116350.md",
+          "rank": 4,
+          "score": 0.8221295879130431
+        },
+        {
+          "queryId": "hci-api-reference",
+          "sourceId": "data/sources/raw/community_thread_12133.md",
+          "rank": 5,
+          "score": 0.795510047652348
+        }
+      ],
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "sfvddk-api",
+      "latencyMs": 354.46753700000045,
+      "mode": "bm25",
+      "hits": [
+        {
+          "queryId": "sfvddk-api",
+          "sourceId": "data/sources/raw/support_45_1388_2655992.md",
+          "rank": 1,
+          "score": 1
+        },
+        {
+          "queryId": "sfvddk-api",
+          "sourceId": "data/sources/raw/support_45_1388_2655993.md",
+          "rank": 2,
+          "score": 0.9908583573355736
+        },
+        {
+          "queryId": "sfvddk-api",
+          "sourceId": "data/sources/raw/hci-scp-api-cli/hci_scp_45_1388_2655992.md",
+          "rank": 3,
+          "score": 0.9796002690286693
+        },
+        {
+          "queryId": "sfvddk-api",
+          "sourceId": "data/sources/raw/support_45_1379_2653161.md",
+          "rank": 4,
+          "score": 0.9795150019881956
+        },
+        {
+          "queryId": "sfvddk-api",
+          "sourceId": "data/sources/raw/support_45_1379_2653152.md",
+          "rank": 5,
+          "score": 0.9598343653760331
+        }
+      ],
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "hci-dfw-ko",
+      "latencyMs": 329.1336360000005,
+      "mode": "bm25",
+      "hits": [
+        {
+          "queryId": "hci-dfw-ko",
+          "sourceId": "data/sources/raw/support_case_2_33952.md",
+          "rank": 1,
+          "score": 1
+        },
+        {
+          "queryId": "hci-dfw-ko",
+          "sourceId": "data/sources/raw/support_10_1054_2643702.md",
+          "rank": 2,
+          "score": 0.9911177936677427
+        },
+        {
+          "queryId": "hci-dfw-ko",
+          "sourceId": "data/sources/raw/support_10_1381_2654293.md",
+          "rank": 3,
+          "score": 0.9255253416834927
+        },
+        {
+          "queryId": "hci-dfw-ko",
+          "sourceId": "data/sources/raw/support_10_1229_2639693.md",
+          "rank": 4,
+          "score": 0.9255253416834927
+        },
+        {
+          "queryId": "hci-dfw-ko",
+          "sourceId": "data/sources/raw/support_10_1381_2662917.md",
+          "rank": 5,
+          "score": 0.9123057124883848
+        }
+      ],
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "ndr-environment-ko",
+      "latencyMs": 38.63318799999979,
+      "mode": "bm25",
+      "hits": [
+        {
+          "queryId": "ndr-environment-ko",
+          "sourceId": "data/sources/raw/support_24_1076_2644512.md",
+          "rank": 1,
+          "score": 1
+        },
+        {
+          "queryId": "ndr-environment-ko",
+          "sourceId": "data/sources/raw/support_24_1078_2634583.md",
+          "rank": 2,
+          "score": 0.9967074931386773
+        },
+        {
+          "queryId": "ndr-environment-ko",
+          "sourceId": "data/sources/raw/support_24_1219_2630646.md",
+          "rank": 3,
+          "score": 0.9745625066407125
+        },
+        {
+          "queryId": "ndr-environment-ko",
+          "sourceId": "data/sources/raw/support_24_1219_2630698.md",
+          "rank": 4,
+          "score": 0.6012543637765002
+        },
+        {
+          "queryId": "ndr-environment-ko",
+          "sourceId": "data/sources/raw/support_24_1078_2634624.md",
+          "rank": 5,
+          "score": 0.5441128556787098
+        }
+      ],
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "vcenter-cert-case",
+      "latencyMs": 274.0292649999992,
+      "mode": "bm25",
+      "hits": [
+        {
+          "queryId": "vcenter-cert-case",
+          "sourceId": "data/sources/raw/support_case_2_33867.md",
+          "rank": 1,
+          "score": 1
+        },
+        {
+          "queryId": "vcenter-cert-case",
+          "sourceId": "data/sources/raw/support_practice_10_2214.md",
+          "rank": 2,
+          "score": 0.6808443030898415
+        },
+        {
+          "queryId": "vcenter-cert-case",
+          "sourceId": "data/sources/raw/community_thread_10572.md",
+          "rank": 3,
+          "score": 0.6502007313055045
+        },
+        {
+          "queryId": "vcenter-cert-case",
+          "sourceId": "data/sources/raw/community_thread_8011.md",
+          "rank": 4,
+          "score": 0.6071645219157845
+        },
+        {
+          "queryId": "vcenter-cert-case",
+          "sourceId": "data/sources/raw/community_thread_11203.md",
+          "rank": 5,
+          "score": 0.5974357371307235
+        }
+      ],
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "no-hci-9999",
+      "latencyMs": 6.586870000000999,
+      "mode": "bm25",
+      "hits": [],
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "no-ndr-9999-ko",
+      "latencyMs": 5.225236000000223,
+      "mode": "bm25",
+      "hits": [],
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "no-ngfw-9999",
+      "latencyMs": 5.1816559999988385,
+      "mode": "bm25",
+      "hits": [],
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "no-scp-9999-ko",
+      "latencyMs": 3.4614739999997255,
+      "mode": "bm25",
+      "hits": [],
+      "hardNegativeHits": 0
+    }
+  ]
+}

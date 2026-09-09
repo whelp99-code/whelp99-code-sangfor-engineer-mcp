@@ -64,9 +64,9 @@ describe('ragSearch diagnostics', () => {
     };
 
     saveRagIndex(index, indexPath);
-    await ragSearch({ product: 'HCI', query: 'storage heartbeat', indexPath, limit: 2 });
+    const hits = await ragSearch({ product: 'HCI', query: 'storage heartbeat', indexPath, limit: 2 });
 
-    const diagnostics = getRagSearchDiagnostics();
+    const diagnostics = getRagSearchDiagnostics(hits);
     expect(diagnostics.degraded).toBe(true);
     expect(diagnostics.queryBackend).toBe('hash');
     expect(diagnostics.queryVectorDims).toBe(384);
@@ -74,5 +74,9 @@ describe('ragSearch diagnostics', () => {
     expect(diagnostics.mixedEmbeddingModels).toBe(true);
     expect(diagnostics.degradedReason).toMatch(/vector dimensions/);
     expect(diagnostics.degradedReason).toMatch(/mixed embedding model/);
+    const noHits = await ragSearch({ product: 'IAG', query: 'storage heartbeat', indexPath, limit: 2 });
+    expect(noHits).toEqual([]);
+    expect(getRagSearchDiagnostics(noHits).embeddingModelCounts).toEqual({});
+    expect(getRagSearchDiagnostics(hits)).toEqual(diagnostics);
   });
 });

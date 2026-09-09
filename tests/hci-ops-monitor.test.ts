@@ -25,9 +25,10 @@ describe('summarizeHciHealth (pure)', () => {
     expect(s.volumeCount).toBe(2);
   });
 
-  it('is healthy and honest when the inventory is empty', () => {
+  it('does not claim health when an empty inventory has no collection evidence', () => {
     const s = summarizeHciHealth({ volumes: [], servers: [], images: [] });
-    expect(s.healthy).toBe(true);
+    expect(s.healthy).toBe(false);
+    expect(s.verdict).toBe('INDETERMINATE');
     expect(s.volumeCount).toBe(0);
     expect(s.findings.some((f) => f.includes('볼륨'))).toBe(true);
   });
@@ -37,6 +38,8 @@ describe('summarizeHciHealth (pure)', () => {
     const report = renderHciHealthReport(s);
     expect(report).toContain('HCI 운영 점검 리포트');
     expect(report).toContain('read-only');
+    expect(report).toContain('판정 불가');
+    expect(report).not.toContain('종합: 정상');
   });
 });
 

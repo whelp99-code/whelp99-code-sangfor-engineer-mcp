@@ -45,7 +45,7 @@ function startBridge(): Promise<void> {
 const urlOf = (s: http.Server) => `http://127.0.0.1:${(s.address() as AddressInfo).port}`;
 
 function startTower(): Promise<http.Server> {
-  const s = createTowerServer({ bridgeUrl, runsDir, registryDir, playbookOutputDir: outDir, approvalSecret: 'sec', apiToken: 'test-token', mockConsoleUrl: 'http://127.0.0.1:1' });
+  const s = createTowerServer({ authorityMode: 'local', bridgeUrl, runsDir, registryDir, playbookOutputDir: outDir, approvalSecret: 'sec', apiToken: 'test-token', mockConsoleUrl: 'http://127.0.0.1:1' });
   return new Promise((r) => s.listen(0, '127.0.0.1', () => r(s)));
 }
 
@@ -81,9 +81,9 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await browser?.close();
-  await new Promise<void>((r) => tower.close(() => r()));
-  await new Promise<void>((r) => bridge.close(() => r()));
-  for (const d of [runsDir, registryDir, outDir]) rmSync(d, { recursive: true, force: true });
+  if (tower) await new Promise<void>((r) => tower.close(() => r()));
+  if (bridge) await new Promise<void>((r) => bridge.close(() => r()));
+  for (const d of [runsDir, registryDir, outDir]) if (d) rmSync(d, { recursive: true, force: true });
 });
 
 describe('Control Tower dashboard — real browser regression (P0-1)', () => {

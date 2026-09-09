@@ -125,9 +125,15 @@ export function createEmbeddingProviderFromEnv(): HashEmbeddingProvider {
 }
 
 export async function embedForRole(provider: EmbeddingProvider, texts: readonly string[], role: EmbeddingRole): Promise<number[][]> {
-  const model = 'model' in provider && typeof provider.model === 'string'
+  const model = provider.name === 'hash' ? 'hash' : 'model' in provider && typeof provider.model === 'string'
     ? provider.model
     : resolveEmbeddingModelFromEnv();
   const profile = resolveEmbeddingProfile(model, provider.dimensions);
-  return provider.embed(formatEmbeddingBatch(texts, profile, role));
+  const vectors = await provider.embed(formatEmbeddingBatch(texts, profile, role));
+  const dimensions = vectors[0]?.length;
+  if (vectors.length !== texts.length || vectors.some((vector) => !Array.isArray(vector)
+    || vector.length === 0 || vector.length !== dimensions || !vector.every(Number.isFinite))) {
+    throw new Error('EMBEDDING_VECTOR_BATCH_INVALID');
+  }
+  return vectors;
 }

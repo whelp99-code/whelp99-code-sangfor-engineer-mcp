@@ -58,7 +58,7 @@ export const knowledgeToolCatalog: readonly ToolCatalogEntry[] = [
         throw new Error(`INVALID_TRUST_LEVEL: ${args.trustLevel}`);
       }
       const hits = await ragSearch(args);
-      const diagnostics = getRagSearchDiagnostics();
+      const diagnostics = getRagSearchDiagnostics(hits);
       // C2 search-gap flywheel: a weak result (nothing found, or the best hit
       // barely matches) is a signal for what to ingest/author next — capture it
       // instead of silently discarding it. Never blocks or fails the search.

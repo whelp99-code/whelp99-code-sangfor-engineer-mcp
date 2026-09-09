@@ -38,7 +38,7 @@ export const CLIENT_ACTION_SCRIPT = `    $('btn-analyze').onclick = async () => 
         const items = hits.items || hits.hits || hits.results || (Array.isArray(hits) ? hits : []);
         $('rag-hits').innerHTML = (items.length ? items : []).map(c => (
           '<article class="card"><h3>'+(c.title||c.id||'chunk')+'</h3>'+
-          '<div class="meta">'+(c.product||'')+(c.score != null ? ' · score '+c.score.toFixed(3) : '')+'</div>'+
+          '<div class="meta">'+(c.product||'')+' · '+(c.retrievalMode === 'hybrid-semantic' ? '의미·키워드 검색' : '키워드 기반 검색')+(c.score != null ? ' · score '+c.score.toFixed(3) : '')+'</div>'+
           '<p class="snippet">'+(c.text||c.snippet||'')+'</p></article>'
         )).join('') || '<p class="meta">결과 없음</p>';
       } catch (e) { $('rag-hits').innerHTML = '<p class="meta">'+e.message+'</p>'; }

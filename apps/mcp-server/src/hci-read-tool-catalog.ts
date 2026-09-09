@@ -24,8 +24,9 @@ export const hciReadToolCatalog: readonly ToolCatalogEntry[] = [
     handler: async (args: Record<string, unknown>) => {
       const { client, cfg } = hciClientFor(args);
       const inv = await collectInventory(client);
-      const summary = summarizeHciHealth(inv);
-      return { summary, report: renderHciHealthReport(summary, { host: cfg.host, collectedAt: new Date().toISOString() }), authContract: HCI_AUTH_CONTRACT_STATUS };
+      const configuredMaxAge = process.env.SANGFOR_HCI_VOLUME_MAX_AGE_SEC?.trim();
+      const summary = summarizeHciHealth(inv, { mode: 'current', maxAgeSec: configuredMaxAge ? Number(configuredMaxAge) : undefined });
+      return { summary, report: renderHciHealthReport(summary, { host: cfg.host, collectedAt: inv.collectedAt }), authContract: HCI_AUTH_CONTRACT_STATUS };
     }
   }],
   ["sangfor_hci_plan_create_volume", {

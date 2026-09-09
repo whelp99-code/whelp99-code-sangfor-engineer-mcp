@@ -27,7 +27,7 @@ export function renderAdvisoryReport(spec: IntendedSpec, result: EvaluationResul
   const line = (i: ItemResult) => {
     const ev = i.observed !== undefined ? ` (기대: ${JSON.stringify(i.expected)}, 실제: ${JSON.stringify(i.observed)})` : (i.expected !== undefined ? ` (기대: ${JSON.stringify(i.expected)}, 실제: 확인 불가)` : '');
     const senior = spec.items.find((s) => s.id === i.id)?.needsSeniorReview ? ' ⚠ 시니어 검토 필요' : '';
-    return `- **${i.label}**${senior}${ev}${cite(i.id)}${provenance(i)}`;
+    return `- **${i.label}**${senior}${ev}${cite(i.id)}${provenance(i)}\n  - 판정: ${i.verdict} — ${i.reason}`;
   };
   const section = (title: string, cat: Category, empty: string) => {
     const items = byCat(cat);
@@ -41,8 +41,10 @@ export function renderAdvisoryReport(spec: IntendedSpec, result: EvaluationResul
     `> ⚠️ **면책**: 본 리포트는 AI가 수집된 제품 매뉴얼을 근거로 생성한 **참고용 자문**입니다. 최종 판단과 적용은 담당 엔지니어의 책임입니다. AI는 어떤 장비 설정도 변경하지 않았습니다(read-only).`,
     ``,
     `- 대상 제품/버전: **${spec.product} ${spec.version ?? ''}**`,
+    `- 평가 모드: ${result.assessment?.mode === 'current' ? '현재 상태' : result.assessment?.mode === 'snapshot' ? '과거 스냅샷' : '설정값 비교 — 현재 상태의 최신성 보장 없음'}`,
+    `- 평가 기준 시각: ${result.assessment?.evaluatedAt ?? '(미확인)'}`,
     `- 요약: 잘못됨 ${s.misconfiguration} · 추가 필요 ${s.missing} · 환경 의존 ${s.contextDependent} · 판정 불가 ${s.indeterminate} · 정상 ${s.pass}`,
-    `- 종합 판정(ok): **${result.ok ? '정상' : '조치 필요'}**`,
+    `- 종합 판정(ok): **${result.ok ? '정상' : s.fail > 0 ? '조치 필요' : '판정 불가'}**`,
     ``,
     section('잘못된 설정 (misconfiguration)', 'misconfiguration', '없음'),
     section('추가로 필요 (missing/recommended)', 'missing', '없음'),

@@ -1,0 +1,487 @@
+{
+  "schemaVersion": 1,
+  "name": "revision-v1-canonical-products-qrels-v2",
+  "k": 5,
+  "thresholds": {
+    "candidateHitRateAt5Min": 0.85,
+    "candidateHitRateAt5VsBaselineMinDelta": -0.02,
+    "candidateRecallAt5VsBaselineMinDelta": -0.03,
+    "candidateMrrAt5VsBaselineMinDelta": -0.03,
+    "candidateNdcgAt5VsBaselineMinDelta": -0.03,
+    "candidateHardNegativeRateAt5Max": 0.35,
+    "candidateHardNegativeRateAt5VsBaselineMaxDelta": 0.05,
+    "candidateNoAnswerFalsePositiveRateAt5Max": 0.25,
+    "candidateNoAnswerFalsePositiveRateAt5VsBaselineMaxDelta": 0,
+    "candidateMeanLatencyVsBaselineMaxRatio": 1.2,
+    "candidateP95LatencyVsBaselineMaxRatio": 1.25
+  },
+  "queries": [
+    {
+      "queryId": "hci-cli-6113",
+      "query": "An engineer needs shell-level routine maintenance commands for a 6.11.3 cluster; which guide applies?",
+      "product": "HCI",
+      "family": "manual",
+      "language": "en",
+      "tags": [
+        "positive",
+        "versioned",
+        "acronym",
+        "hci"
+      ],
+      "relevantSources": [
+        "data/sources/raw/support_10_1381_2654470.md",
+        "data/sources/raw/support_10_1381_2662960.md"
+      ],
+      "hardNegativeSources": [
+        "data/sources/raw/support_10_1229_2639675.md"
+      ]
+    },
+    {
+      "queryId": "scp-nbu-xbsa-key",
+      "query": "How is an API key created for NetBackup XBSA integration with SCP?",
+      "product": "HCI_SCP",
+      "family": "api",
+      "language": "en",
+      "tags": [
+        "positive",
+        "acronym",
+        "scp"
+      ],
+      "relevantSources": [
+        "data/sources/raw/support_45_1388_2656029.md"
+      ],
+      "hardNegativeSources": [
+        "data/sources/raw/support_45_1388_2655992.md"
+      ]
+    },
+    {
+      "queryId": "scp-rapid-recovery-ko",
+      "query": "SCP Agentless Backup에서 Rapid Recovery를 수행하는 순서는 무엇인가요?",
+      "product": "HCI_SCP",
+      "family": "manual",
+      "language": "ko",
+      "tags": [
+        "positive",
+        "scp"
+      ],
+      "relevantSources": [
+        "data/sources/raw/support_45_1388_2656005.md"
+      ],
+      "hardNegativeSources": [
+        "data/sources/raw/support_45_1388_2655992.md"
+      ]
+    },
+    {
+      "queryId": "ndr-3098-preupgrade",
+      "query": "What pre-upgrade checks are required before installing NDR 3.0.98?",
+      "product": "NDR",
+      "family": "manual",
+      "language": "en",
+      "tags": [
+        "positive",
+        "versioned",
+        "acronym",
+        "security"
+      ],
+      "relevantSources": [
+        "data/sources/raw/support_24_1219_2644669.md"
+      ],
+      "hardNegativeSources": [
+        "data/sources/raw/support_24_1219_2644665.md"
+      ]
+    },
+    {
+      "queryId": "ndr-resolved-issues",
+      "query": "Which defects are documented as resolved in the NDR 3.0.98 release?",
+      "product": "NDR",
+      "family": "manual",
+      "language": "en",
+      "tags": [
+        "positive",
+        "versioned",
+        "hard-negative",
+        "security"
+      ],
+      "relevantSources": [
+        "data/sources/raw/support_24_1219_2644665.md"
+      ],
+      "hardNegativeSources": [
+        "data/sources/raw/support_24_1219_2644663.md"
+      ]
+    },
+    {
+      "queryId": "ngfw-80107-guaranteed",
+      "query": "In NGAF 8.0.107, how is a guaranteed-bandwidth traffic channel configured?",
+      "product": "NGFW",
+      "family": "manual",
+      "language": "en",
+      "tags": [
+        "positive",
+        "versioned",
+        "networking"
+      ],
+      "relevantSources": [
+        "data/sources/raw/support_21_1095_2647990.md"
+      ],
+      "hardNegativeSources": [
+        "data/sources/raw/support_21_1093_2637280.md"
+      ]
+    },
+    {
+      "queryId": "ngfw-80106-limited",
+      "query": "NGAF 8.0.106에서 제한 대역폭 채널을 설정하는 방법은?",
+      "product": "NGFW",
+      "family": "manual",
+      "language": "ko",
+      "tags": [
+        "positive",
+        "versioned",
+        "hard-negative",
+        "networking"
+      ],
+      "relevantSources": [
+        "data/sources/raw/support_21_1093_2637280.md"
+      ],
+      "hardNegativeSources": [
+        "data/sources/raw/support_21_1095_2647990.md"
+      ]
+    },
+    {
+      "queryId": "iag-vpn-bandwidth-ko",
+      "query": "게이트웨이 위쪽 VPN 구간만 처리량이 낮고 내부망은 정상일 때 조사할 지원 사례는?",
+      "product": "IAG",
+      "family": "troubleshooting",
+      "language": "ko",
+      "tags": [
+        "positive",
+        "acronym",
+        "networking"
+      ],
+      "relevantSources": [
+        "data/sources/raw/support_case_2_33587.md"
+      ],
+      "hardNegativeSources": [
+        "data/sources/raw/support_case_2_33867.md"
+      ]
+    },
+    {
+      "queryId": "hci-overlay-6111",
+      "query": "Where are overlay network interfaces configured in HCI 6.11.1?",
+      "product": "HCI",
+      "family": "manual",
+      "language": "en",
+      "tags": [
+        "positive",
+        "versioned",
+        "hard-negative",
+        "networking"
+      ],
+      "relevantSources": [
+        "data/sources/raw/support_10_1229_2639675.md"
+      ],
+      "hardNegativeSources": [
+        "data/sources/raw/support_10_1381_2654207.md"
+      ]
+    },
+    {
+      "queryId": "hci-datastore",
+      "query": "What steps create a standard datastore for cluster virtual machines?",
+      "product": "HCI",
+      "family": "manual",
+      "language": "en",
+      "tags": [
+        "positive",
+        "storage"
+      ],
+      "relevantSources": [
+        "data/sources/raw/support_10_1381_2654212.md"
+      ],
+      "hardNegativeSources": [
+        "data/sources/raw/support_10_1381_2654317.md"
+      ]
+    },
+    {
+      "queryId": "hci-iscsi-ko",
+      "query": "HCI에서 가상 iSCSI 스토리지를 구성하는 절차는?",
+      "product": "HCI",
+      "family": "manual",
+      "language": "ko",
+      "tags": [
+        "positive",
+        "acronym",
+        "storage"
+      ],
+      "relevantSources": [
+        "data/sources/raw/support_10_1381_2654317.md"
+      ],
+      "hardNegativeSources": [
+        "data/sources/raw/support_10_1381_2654212.md"
+      ]
+    },
+    {
+      "queryId": "backup-space-case",
+      "query": "A backup repository reports insufficient space although capacity appears available; how is this diagnosed?",
+      "product": "HCI",
+      "family": "troubleshooting",
+      "language": "en",
+      "tags": [
+        "positive",
+        "storage",
+        "troubleshooting"
+      ],
+      "relevantSources": [
+        "data/sources/raw/support_case_2_308958.md"
+      ],
+      "hardNegativeSources": [
+        "data/sources/raw/support_10_1381_2654317.md"
+      ]
+    },
+    {
+      "queryId": "scc-tenant-quota",
+      "query": "Where can a cloud operator display and filter tenant quota assignments?",
+      "product": "SCC",
+      "family": "manual",
+      "language": "en",
+      "tags": [
+        "positive",
+        "cloud"
+      ],
+      "relevantSources": [
+        "data/sources/raw/support_32_1101_1546200.md"
+      ],
+      "hardNegativeSources": [
+        "data/sources/raw/support_45_1388_2656631.md"
+      ]
+    },
+    {
+      "queryId": "scp-612-scheduled-backup",
+      "query": "SCP 6.12에서 테넌트 예약 백업 작업을 구성하는 방법은?",
+      "product": "HCI_SCP",
+      "family": "manual",
+      "language": "ko",
+      "tags": [
+        "positive",
+        "versioned",
+        "cloud",
+        "storage"
+      ],
+      "relevantSources": [
+        "data/sources/raw/support_45_1388_2656631.md"
+      ],
+      "hardNegativeSources": [
+        "data/sources/raw/support_45_1379_2652795.md"
+      ]
+    },
+    {
+      "queryId": "hci-system-diagnostics",
+      "query": "Which console command guide explains running built-in cluster diagnostics?",
+      "product": "HCI",
+      "family": "troubleshooting",
+      "language": "en",
+      "tags": [
+        "positive",
+        "troubleshooting"
+      ],
+      "relevantSources": [
+        "data/sources/raw/support_10_1381_2654472.md"
+      ],
+      "hardNegativeSources": [
+        "data/sources/raw/support_10_1381_2654362.md"
+      ]
+    },
+    {
+      "queryId": "hci-raid-ko",
+      "query": "RAID 상태를 확인하고 장애 디스크의 자동 격리 여부를 점검하는 방법은?",
+      "product": "HCI",
+      "family": "troubleshooting",
+      "language": "ko",
+      "tags": [
+        "positive",
+        "acronym",
+        "storage",
+        "troubleshooting"
+      ],
+      "relevantSources": [
+        "data/sources/raw/support_10_1381_2654362.md"
+      ],
+      "hardNegativeSources": [
+        "data/sources/raw/support_10_1381_2654472.md"
+      ]
+    },
+    {
+      "queryId": "hci-api-reference",
+      "query": "Where is the HCI API reference for programmatic platform operations?",
+      "product": "HCI",
+      "family": "api",
+      "language": "en",
+      "tags": [
+        "positive",
+        "acronym",
+        "hci"
+      ],
+      "relevantSources": [
+        "data/sources/raw/support_10_1381_2662748.md"
+      ],
+      "hardNegativeSources": [
+        "data/sources/raw/support_10_1381_2654470.md"
+      ]
+    },
+    {
+      "queryId": "sfvddk-api",
+      "query": "Which SFVDDK APIs support third-party integration with Agentless Backup?",
+      "product": "HCI_SCP",
+      "family": "api",
+      "language": "en",
+      "tags": [
+        "positive",
+        "acronym",
+        "scp"
+      ],
+      "relevantSources": [
+        "data/sources/raw/support_45_1388_2655992.md"
+      ],
+      "hardNegativeSources": [
+        "data/sources/raw/support_45_1388_2656029.md"
+      ]
+    },
+    {
+      "queryId": "hci-dfw-ko",
+      "query": "HCI 분산 방화벽 정책을 구성하는 절차는?",
+      "product": "HCI",
+      "family": "manual",
+      "language": "ko",
+      "tags": [
+        "positive",
+        "security",
+        "networking"
+      ],
+      "relevantSources": [
+        "data/sources/raw/support_10_1381_2654293.md"
+      ],
+      "hardNegativeSources": [
+        "data/sources/raw/support_21_1095_2647990.md"
+      ]
+    },
+    {
+      "queryId": "ndr-environment-ko",
+      "query": "NDR 설치 전에 필요한 서버와 네트워크 환경 요구사항은?",
+      "product": "NDR",
+      "family": "manual",
+      "language": "ko",
+      "tags": [
+        "positive",
+        "acronym",
+        "security"
+      ],
+      "relevantSources": [
+        "data/sources/raw/support_24_1219_2630646.md"
+      ],
+      "hardNegativeSources": [
+        "data/sources/raw/support_24_1219_2644669.md"
+      ]
+    },
+    {
+      "queryId": "vcenter-cert-case",
+      "query": "How is a certificate error during vCenter backup integration troubleshot?",
+      "product": "HCI",
+      "family": "troubleshooting",
+      "language": "en",
+      "tags": [
+        "positive",
+        "cloud",
+        "troubleshooting"
+      ],
+      "relevantSources": [
+        "data/sources/raw/support_case_2_33867.md"
+      ],
+      "hardNegativeSources": [
+        "data/sources/raw/support_45_1388_2655992.md"
+      ]
+    }
+  ],
+  "noAnswerQueries": [
+    {
+      "queryId": "no-hci-9999",
+      "query": "HCI 99.99.99 quantum fabric migration procedure",
+      "product": "HCI",
+      "version": "99.99.99",
+      "language": "en",
+      "forbiddenSources": [
+        "data/sources/raw/support_10_1381_2654207.md"
+      ]
+    },
+    {
+      "queryId": "no-ndr-9999-ko",
+      "query": "NDR 99.99.99 양자 암호화 센서 설치 절차",
+      "product": "NDR",
+      "version": "99.99.99",
+      "language": "ko",
+      "forbiddenSources": [
+        "data/sources/raw/support_24_1219_2630646.md"
+      ]
+    },
+    {
+      "queryId": "no-ngfw-9999",
+      "query": "NGAF 99.99.99 interplanetary tunnel configuration",
+      "product": "OTHER",
+      "version": "99.99.99",
+      "language": "en",
+      "forbiddenSources": [
+        "data/sources/raw/support_21_1095_2647990.md",
+        "data/sources/raw/support_21_1093_2637280.md"
+      ]
+    },
+    {
+      "queryId": "no-scp-9999-ko",
+      "query": "SCP 99.99.99 홀로그램 백업 복구 방법",
+      "product": "HCI_SCP",
+      "version": "99.99.99",
+      "language": "ko",
+      "forbiddenSources": [
+        "data/sources/raw/support_45_1388_2656631.md",
+        "data/sources/raw/support_45_1388_2656005.md"
+      ]
+    }
+  ],
+  "review": {
+    "basis": "Second explicitly versioned evaluation: original question text, answers and thresholds unchanged. NGFW/SCC are canonical products in integrated code; v1 followed legacy index labels and is retained as exploratory evidence. Fix six HCI vs SCP labels from source before evaluating this v2 candidate.",
+    "corrections": [
+      {
+        "queryId": "hci-overlay-6111",
+        "from": "HCI_SCP",
+        "to": "HCI",
+        "basis": "data/sources/raw/support_10_1229_2639675.md"
+      },
+      {
+        "queryId": "hci-iscsi-ko",
+        "from": "HCI_SCP",
+        "to": "HCI",
+        "basis": "data/sources/raw/support_10_1381_2654317.md"
+      },
+      {
+        "queryId": "backup-space-case",
+        "from": "HCI_SCP",
+        "to": "HCI",
+        "basis": "data/sources/raw/support_case_2_308958.md"
+      },
+      {
+        "queryId": "hci-api-reference",
+        "from": "HCI_SCP",
+        "to": "HCI",
+        "basis": "data/sources/raw/support_10_1381_2662748.md"
+      },
+      {
+        "queryId": "hci-dfw-ko",
+        "from": "HCI_SCP",
+        "to": "HCI",
+        "basis": "data/sources/raw/support_10_1381_2654293.md"
+      },
+      {
+        "queryId": "vcenter-cert-case",
+        "from": "HCI_SCP",
+        "to": "HCI",
+        "basis": "data/sources/raw/support_case_2_33867.md"
+      }
+    ]
+  }
+}

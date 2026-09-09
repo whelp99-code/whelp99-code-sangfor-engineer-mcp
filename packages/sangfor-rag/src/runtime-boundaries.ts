@@ -16,6 +16,11 @@ export function parseBoundaryRagIndexV1(source: string): StoredRagIndex {
     policy: 'freeze',
     expectedVersion: [1, 2],
     uniqueIdCollectionPath: ['chunks'],
+    // The retained local corpus is 253 MiB / 66,767 base64-vector rows. The
+    // generic 64 MiB envelope rejects it before schema validation. Keep a finite,
+    // domain-specific budget; larger corpora require the existing shard/DB path.
+    maxBytes: 320 * 1024 * 1024,
+    maxNodes: 2_000_000,
   });
 }
 

@@ -1,10 +1,16 @@
 import { computeBm25Scores } from './bm25.js';
-import { cosineSimilarity, hashEmbedding } from './hash-embedding.js';
+import { cosineSimilarity } from './hash-embedding.js';
+import { sameEmbeddingSpace, type EmbeddingSpace } from './embedding-space.js';
 import type { RagDocumentChunk } from './rag-types.js';
 
-function vectorForSearch(chunk: RagDocumentChunk, queryVector: number[]): number {
-  if (chunk.vector.length === queryVector.length) return cosineSimilarity(queryVector, chunk.vector);
-  return cosineSimilarity(queryVector, hashEmbedding(chunk.text, queryVector.length));
+export function canCompareVector(chunk: RagDocumentChunk, queryVector: number[], querySpace?: EmbeddingSpace): boolean {
+  return sameEmbeddingSpace(chunk.embeddingSpace, querySpace)
+    && chunk.embeddingModel === querySpace?.model
+    && chunk.vectorDims === querySpace?.dimensions
+    && chunk.vector.length === queryVector.length && queryVector.length === querySpace?.dimensions
+    && (chunk.embeddingBackend === 'hash') === (querySpace?.model === 'hash')
+    && queryVector.every(Number.isFinite) && chunk.vector.every(Number.isFinite)
+    && queryVector.some((value) => value !== 0) && chunk.vector.some((value) => value !== 0);
 }
 
 function resolveHybridAlpha(): number {
@@ -33,21 +39,26 @@ export function rankHybrid<T extends RagDocumentChunk>(
   candidates: readonly T[],
   queryVector: number[],
   query: string,
-): Array<T & { readonly score: number; readonly cosineScore: number; readonly keywordScore: number }> {
-  const alpha = resolveHybridAlpha();
-  const cosineScores = candidates.map((chunk) => vectorForSearch(chunk, queryVector));
+  querySpace?: EmbeddingSpace,
+): Array<T & { readonly score: number; readonly cosineScore: number; readonly keywordScore: number;
+  readonly vectorScoreUsed: boolean; readonly retrievalMode: 'hybrid-semantic' | 'hybrid-hash' | 'bm25' }> {
+  const compatible = candidates.map((chunk) => canCompareVector(chunk, queryVector, querySpace));
+  const alpha = compatible.some(Boolean) ? resolveHybridAlpha() : 0;
+  const cosineScores = candidates.map((chunk, index) => compatible[index] ? cosineSimilarity(queryVector, chunk.vector) : 0);
   const bm25Scores = computeBm25Scores(query, candidates.map((chunk) => ({
     id: chunk.id,
     text: `${chunk.title}\n${chunk.text}`,
   })));
   const keywordScores = candidates.map((chunk) => bm25Scores.get(chunk.id) ?? 0);
-  const normalizeCosine = minMaxNormalizer(cosineScores);
+  const normalizeCosine = minMaxNormalizer(cosineScores.filter((_, index) => compatible[index]));
   const normalizeKeyword = minMaxNormalizer(keywordScores);
   return candidates.map((chunk, index) => {
     const cosineScore = cosineScores[index];
     const keywordScore = keywordScores[index];
-    const score = alpha * normalizeCosine(cosineScore) + (1 - alpha) * normalizeKeyword(keywordScore);
-    return { ...chunk, score, cosineScore, keywordScore };
+    const score = alpha * (compatible[index] ? normalizeCosine(cosineScore) : 0) + (1 - alpha) * normalizeKeyword(keywordScore);
+    const vectorScoreUsed = compatible[index] && alpha > 0;
+    const retrievalMode = vectorScoreUsed ? querySpace?.model === 'hash' ? 'hybrid-hash' : 'hybrid-semantic' : 'bm25';
+    return { ...chunk, score, cosineScore, keywordScore, vectorScoreUsed, retrievalMode };
   });
 }
 

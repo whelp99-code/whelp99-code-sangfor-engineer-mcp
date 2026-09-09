@@ -68,6 +68,7 @@ export function toPublicHit(hit: RagSearchHit) {
     trustLevel: hit.trustLevel,
     score: hit.score,
     rerankScore: hit.rerankScore,
+    retrievalMode: hit.retrievalMode,
     source: hit.filePath
   };
 }

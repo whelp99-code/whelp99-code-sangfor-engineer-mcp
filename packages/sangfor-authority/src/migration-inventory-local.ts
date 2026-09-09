@@ -25,7 +25,7 @@ export const CREDENTIAL_REFS = [
   "credential:packages/sangfor-jm-execution/src/playwright-options.ts#assertOwnedCdpBinding",
   "credential:packages/sangfor-operator/src/gate.ts#verifyRealExecutionAllowed",
   "credential:packages/sangfor-operator/src/hci-authorization.ts#authorizeHciMutation",
-  "credential:packages/sangfor-operator/src/iag-evidence-bootstrap.ts#authorizeIagEvidenceBootstrap",
+  "credential:packages/sangfor-operator/src/iag-evidence-bootstrap.ts#evaluateIagEvidenceBootstrap",
   "credential:packages/sangfor-operator/src/iag-evidence-bootstrap.ts#verifyBootstrapApproval",
   "credential:packages/sangfor-operator/src/iag-mutation-authorization.ts#verifyIagMutationAuthorization",
   "credential:packages/sangfor-pm/src/index.ts#createPmStore",

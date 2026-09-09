@@ -40,6 +40,7 @@ const deltaSchema = z.object({
   baselineToolCount: z.literal(115),
   finalToolCount: z.literal(118),
   approvedAdditions: z.array(toolSchema).length(3),
+  reviewedChanges: z.array(toolSchema).length(1),
   sha256: z.string().regex(/^[a-f0-9]{64}$/u),
 });
 type Tool = z.infer<typeof toolSchema>;
@@ -69,7 +70,9 @@ function assertReviewedSurface(tools: readonly Tool[], baseline: Baseline, delta
   const expectedNames = [...baseline.tools.map(({ name }) => name), ...IAG_ADDITIONS].sort();
   expect(tools.map(({ name }) => name).sort()).toEqual(expectedNames);
   expect(new Set(expectedNames).size).toBe(delta.finalToolCount);
-  for (const expected of baseline.tools) expect(byName.get(expected.name), expected.name).toEqual(expected);
+  expect(delta.reviewedChanges.map(({ name }) => name)).toEqual(['sangfor_evaluate_config']);
+  const changes = new Map(delta.reviewedChanges.map((tool) => [tool.name, tool]));
+  for (const expected of baseline.tools) expect(byName.get(expected.name), expected.name).toEqual(changes.get(expected.name) ?? expected);
   expect(delta.approvedAdditions.map(({ name }) => name).sort()).toEqual([...IAG_ADDITIONS]);
   for (const expected of delta.approvedAdditions) expect(byName.get(expected.name), expected.name).toEqual(expected);
 }
@@ -124,7 +127,7 @@ describe('MCP runtime baseline and reviewed IAG delta', () => {
   });
 
   it('rejects a removed or schema-changed baseline tool and an unexpected fourth addition', () => {
-    const approved = [...baseline.tools, ...delta.approvedAdditions];
+    const approved = [...baseline.tools.map((tool) => delta.reviewedChanges.find(({ name }) => name === tool.name) ?? tool), ...delta.approvedAdditions];
     const removed = approved.filter(({ name }) => name !== baseline.tools[0]?.name);
     const changed = approved.map((tool, index) => index === 0 ? { ...tool, inputSchema: {} } : tool);
     const added = [...approved, { ...delta.approvedAdditions[0], name: 'sangfor_iag_unreviewed_fourth_tool' }];

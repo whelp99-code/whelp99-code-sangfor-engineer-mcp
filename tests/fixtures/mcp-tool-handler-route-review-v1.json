@@ -98,6 +98,21 @@
       "toolName": "sangfor_validate_learning_strategy",
       "handlerAstSha256": "32ae22d6ab4fb4dac43c5698fe9d45bee0c85df2e77cc3ef8bcaa64a7de90fd8",
       "catalogSource": "apps/mcp-server/src/learning-tool-catalog.ts"
+    },
+    {
+      "toolName": "sangfor_evaluate_config",
+      "handlerAstSha256": "2db1cd4eb21b0cef6be9022e6ffce7d2a4dc1212e0e600265603e64c65998779",
+      "catalogSource": "apps/mcp-server/src/spec-tool-catalog.ts"
+    },
+    {
+      "toolName": "sangfor_hci_health_report",
+      "handlerAstSha256": "b3267a3f169a546c358f23cdcc8639161feb7e8f7e4384f630f1693ac1cf6b38",
+      "catalogSource": "apps/mcp-server/src/hci-read-tool-catalog.ts"
+    },
+    {
+      "toolName": "sangfor_rag_search",
+      "handlerAstSha256": "557a00b554dbeb9c646dd48288d26bc2bf90428efa06f678ad6731d551cbeb9f",
+      "catalogSource": "apps/mcp-server/src/knowledge-tool-catalog.ts"
     }
   ],
   "approvedAdditions": [
@@ -117,5 +132,5 @@
       "catalogSource": "apps/mcp-server/src/iag-orchestrator-tools.ts"
     }
   ],
-  "sha256": "67837408a9776d946e8e5bc11cca17c8371c341d88c044e224a73e5c90368e1f"
+  "sha256": "362f85280fe5ab7e5798b7b4e1c1befe8f9951b314761ac7f5e5b2c48be237db"
 }

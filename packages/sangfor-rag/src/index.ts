@@ -1,11 +1,13 @@
 import { statSync } from 'node:fs';
 import { basename } from 'node:path';
-import { normalizeProduct, nowId, withDirLock, writeFileAtomicSync } from '@sangfor/shared';
+import { nowId, withDirLock, writeFileAtomicSync } from '@sangfor/shared';
 import { chunkText, extractTextFromFile } from './document-extraction.js';
 import { embedForRole, getEmbeddingProvider } from './embedding-provider.js';
 import type { EmbeddingBackend } from './embedding-provider-types.js';
 import { hashEmbedding } from './hash-embedding.js';
-import { actualEmbeddingModelName, ragChunkContentHash } from './rag-ingest.js';
+import { actualEmbeddingModelName, ragChunkContentHash, replaceDocumentRevisions } from './rag-ingest.js';
+import { resolveEmbeddingSpace } from './embedding-space.js';
+import { resolveRagProduct } from './rag-product.js';
 import {
   assertLocalRagAuthorityAllowed,
   DEFAULT_INDEX_PATH,
@@ -96,7 +98,7 @@ export function saveRagIndex(index: RagIndex, indexPath = DEFAULT_INDEX_PATH): v
 }
 
 export async function ingestDocument(input: IngestDocumentInput): Promise<{ documentId: string; chunkCount: number; indexPath: string; chunks: RagDocumentChunk[]; embeddingBackend: EmbeddingBackend }> {
-  const product = normalizeProduct(input.product);
+  const product = resolveRagProduct(input.product);
   const text = await extractTextFromFile(input.filePath);
   const title = input.title ?? basename(input.filePath);
   const sourceType = input.sourceType ?? 'manual';
@@ -107,7 +109,7 @@ export async function ingestDocument(input: IngestDocumentInput): Promise<{ docu
   const vectors = await embedForRole(provider, textChunks, 'document');
   const chunks = textChunks.map((chunkTextValue, index): RagDocumentChunk => {
     const contentHash = ragChunkContentHash(input.filePath, index, chunkTextValue);
-    const vector = vectors[index] ?? hashEmbedding(chunkTextValue);
+    const vector = vectors[index];
     return {
       id: `${documentId}_chunk_${index + 1}`,
       sourceType,
@@ -125,7 +127,8 @@ export async function ingestDocument(input: IngestDocumentInput): Promise<{ docu
       // if the configured backend (rapid-mlx/litellm) fell back to hash mid-call,
       // provider.name is already 'hash' here and the metadata must say so too.
       embeddingModel: actualEmbeddingModelName(provider),
-      vectorDims: vector.length
+      vectorDims: vector.length,
+      embeddingSpace: resolveEmbeddingSpace(actualEmbeddingModelName(provider), vector.length, provider.name),
     };
   });
   const indexPath = input.indexPath ?? DEFAULT_INDEX_PATH;
@@ -137,13 +140,11 @@ export async function ingestDocument(input: IngestDocumentInput): Promise<{ docu
   // chunks (last-writer-wins data loss, not a crash — the dangerous kind).
   const { newChunks } = withDirLock(ragIndexLockPath(indexPath), () => {
     const index = loadRagIndex(indexPath);
-    const existingHashes = new Set(index.chunks.map(chunk => chunk.contentHash));
-    const newChunks = chunks.filter(chunk => !existingHashes.has(chunk.contentHash));
-    if (newChunks.length === 0) return { newChunks };
+    const revision = replaceDocumentRevisions(index.chunks, chunks, [input.filePath]);
+    const newChunks = revision.replacements;
+    if (!revision.changed) return { newChunks };
     const hasSemantic = newChunks.some(c => c.embeddingBackend && c.embeddingBackend !== 'hash');
-    index.version = hasSemantic ? 2 : index.version;
-    index.chunks.push(...newChunks);
-    saveRagIndexUnlocked(index, indexPath); // NOT saveRagIndex — we already hold this lock
+    saveRagIndexUnlocked({ ...index, version: hasSemantic ? 2 : index.version, chunks: revision.chunks }, indexPath);
     return { newChunks };
   });
   if (newChunks.length === 0) {
@@ -170,6 +171,7 @@ export async function ingestDocumentsBatch(inputs: IngestDocumentInput[]): Promi
   if (inputs.some((input) => (input.indexPath ?? DEFAULT_INDEX_PATH) !== indexPath)) {
     throw new Error('BATCH_RAG_INDEX_PATH_MISMATCH');
   }
+  if (new Set(inputs.map((input) => input.filePath)).size !== inputs.length) throw new Error('BATCH_RAG_DUPLICATE_SOURCE');
   assertLocalRagAuthorityAllowed(indexPath);
   const provider = await getEmbeddingProvider();
   const chunks: RagDocumentChunk[] = [];
@@ -178,9 +180,9 @@ export async function ingestDocumentsBatch(inputs: IngestDocumentInput[]): Promi
     const title = input.title ?? basename(input.filePath);
     const sourceType = input.sourceType ?? 'manual';
     const trustLevel = input.trustLevel ?? (sourceType === 'manual' ? 'official' : 'internal');
-    const product = normalizeProduct(input.product);
+    const product = resolveRagProduct(input.product);
     const textChunks = chunkText(text);
-    const vectors = await provider.embed(textChunks);
+    const vectors = await embedForRole(provider, textChunks, 'document');
     const documentId = nowId('doc');
     chunks.push(...textChunks.map((chunkTextValue, index): RagDocumentChunk => ({
       id: `${documentId}_chunk_${index + 1}`,
@@ -191,22 +193,22 @@ export async function ingestDocumentsBatch(inputs: IngestDocumentInput[]): Promi
       section: `chunk-${index + 1}`,
       text: chunkTextValue,
       trustLevel,
-      vector: vectors[index] ?? hashEmbedding(chunkTextValue),
+      vector: vectors[index],
       contentHash: ragChunkContentHash(input.filePath, index, chunkTextValue),
       filePath: input.filePath,
       embeddingBackend: provider.name,
       embeddingModel: actualEmbeddingModelName(provider),
-      vectorDims: (vectors[index] ?? hashEmbedding(chunkTextValue)).length
+      vectorDims: vectors[index].length,
+      embeddingSpace: resolveEmbeddingSpace(actualEmbeddingModelName(provider), vectors[index].length, provider.name),
     })));
   }
   const { chunkCount } = withDirLock(ragIndexLockPath(indexPath), () => {
     const index = loadRagIndex(indexPath);
-    const existingHashes = new Set(index.chunks.map((chunk) => chunk.contentHash));
-    const newChunks = chunks.filter((chunk) => !existingHashes.has(chunk.contentHash));
-    if (newChunks.length === 0) return { chunkCount: 0 };
-    if (newChunks.some((chunk) => chunk.embeddingBackend !== 'hash')) index.version = 2;
-    index.chunks.push(...newChunks);
-    saveRagIndexUnlocked(index, indexPath);
+    const revision = replaceDocumentRevisions(index.chunks, chunks, inputs.map((input) => input.filePath));
+    const newChunks = revision.replacements;
+    if (!revision.changed) return { chunkCount: 0 };
+    const version = newChunks.some((chunk) => chunk.embeddingBackend !== 'hash') ? 2 : index.version;
+    saveRagIndexUnlocked({ ...index, version, chunks: revision.chunks }, indexPath);
     return { chunkCount: newChunks.length };
   });
   return {
@@ -215,4 +217,16 @@ export async function ingestDocumentsBatch(inputs: IngestDocumentInput[]): Promi
     indexPath,
     embeddingBackend: provider.name
   };
+}
+
+/** Remove derived local search data only. The source document is never deleted. */
+export function removeRagDocument(filePath: string, indexPath = DEFAULT_INDEX_PATH): { removedChunks: number } {
+  assertLocalRagAuthorityAllowed(indexPath);
+  return withDirLock(ragIndexLockPath(indexPath), () => {
+    const index = loadRagIndex(indexPath);
+    const chunks = index.chunks.filter((chunk) => chunk.filePath !== filePath);
+    const removedChunks = index.chunks.length - chunks.length;
+    if (removedChunks > 0) saveRagIndexUnlocked({ ...index, chunks }, indexPath);
+    return { removedChunks };
+  });
 }
