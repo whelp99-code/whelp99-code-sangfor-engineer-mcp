@@ -6,12 +6,12 @@
 
 ## 0. Verified program map (2026-09-10)
 
-Re-read from live GitHub issue/PR bodies and `git ls-remote origin` on this date. Do not trust session memory. Fixture / e2e PASS is not field acceptance. Local isolation store PASS is not production BLRO and not field acceptance. No stacked PR is merged to `main`. Independent reviews are COMMENT (same GitHub actor cannot APPROVE).
+Re-read from live GitHub issue/PR bodies and `git ls-remote origin` on this date. Do not trust session memory. Fixture / e2e PASS is not field acceptance. Local isolation store PASS is not production BLRO and not field acceptance. Runtime-host isolation `BLRO_STORE=PASS` is not a live-app-DB cutover and not field acceptance. No stacked PR is merged to `main`. Independent reviews are COMMENT (same GitHub actor cannot APPROVE).
 
 | Pin | SHA (verified `ls-remote`) | Note |
 | --- | --- | --- |
 | `origin/main` | `cd8e44db41b8fcd7aad4d6c052c3dd008c1e27d4` | Plan PR #110 base. Do not merge the stack here. |
-| Plan PR [#110](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/110) | this branch; map recorded after the store/RLS leftover ACCEPT | Refs #90 only on the map commit. Do not close #90/#91/#102/#108/#105 from a status update. |
+| Plan PR [#110](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/110) | this branch; map recorded after runtime-host isolation `BLRO_STORE=PASS` | Refs #90 only on the map commit. Do not close #90/#91/#102/#108/#105 from a status update. |
 | Stack tip / persist-census-RLS leftover PR [#133](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/133) | `10ec2ef075e4b9687cb5fd97a28823c23c2ca850` | Independent **ACCEPT** (self-APPROVE blocked; [comment review](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/133#pullrequestreview-5160905394)). Stacked on #132 / `3cfdf69`, not on `main`. Local isolation store only. |
 | Janus adapter PR [#132](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/132) | `3cfdf69335a6f9906bfddabbf754d296825416a2` | Independent **ACCEPT**. Production collect does not GET Janus. |
 | Janus extras catalog PR [#131](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/131) | `8ae2839e23ff3665125a469d1117fe3fdafac34c` | **ACCEPT WITH FOLLOW-UPS** (not merge-blocking). |
@@ -35,8 +35,8 @@ Primary label is the current honest unit state. `code_verified` never means `fie
 | E06 | [#99](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/issues/99) OPEN | [#121](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/121) `59c22692e03480daca47d1ccf0c72b9a922011c2` | **ACCEPT WITH FOLLOW-UPS** | **ACCEPT WITH FOLLOW-UPS** | Actions **NOT_RUN**. |
 | E07 | [#100](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/issues/100) OPEN | [#122](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/122) `4ef1f42498ba51402966bece8b7457f9bde2e30a` | snapshot-surface follow-up **ACCEPT** | **code_verified** | Highest grantable state remains `review_ready`. |
 | E08 | [#101](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/issues/101) OPEN | [#123](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/123) `493ba66c91b28639d5742ea690abf8035f75326f` | planner-import follow-up **ACCEPT** | **code_verified** | Visual Word check ≠ field accept. |
-| E09A | [#102](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/issues/102) OPEN | [#119](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/119) `5384535be0fd4061fd0674a8acff1a19ac7d2813`; leftover [#133](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/133) `10ec2ef075e4b9687cb5fd97a28823c23c2ca850` | in-memory ACCEPT WITH FOLLOW-UPS; persist/census/RLS leftover **ACCEPT** | **code_verified** | Local isolation store only. CI **NOT_RUN** ≠ PASS. Production `BLRO_STORE=NOT_RUN`. **#102 is not done.** |
-| E09B | [#108](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/issues/108) OPEN | [#124](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/124) `800514f4d0e96db3f12870e34300694ef020a919`; leftover [#133](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/133) `10ec2ef075e4b9687cb5fd97a28823c23c2ca850` | persist/digest follow-ups ACCEPT; persist/census/RLS leftover **ACCEPT** | **code_verified** | Local isolation store only. CI **NOT_RUN** ≠ PASS. Production `BLRO_STORE=NOT_RUN`. **#108 is not done.** |
+| E09A | [#102](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/issues/102) OPEN | [#119](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/119) `5384535be0fd4061fd0674a8acff1a19ac7d2813`; leftover [#133](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/133) `10ec2ef075e4b9687cb5fd97a28823c23c2ca850` | in-memory ACCEPT WITH FOLLOW-UPS; persist/census/RLS leftover **ACCEPT** | **code_verified** | Local isolation ACCEPT. Runtime-host isolation `BLRO_STORE=PASS`. Live app DB `blro` still uncutover (61/127). CI **NOT_RUN** ≠ PASS. **#102 is not done.** |
+| E09B | [#108](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/issues/108) OPEN | [#124](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/124) `800514f4d0e96db3f12870e34300694ef020a919`; leftover [#133](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/133) `10ec2ef075e4b9687cb5fd97a28823c23c2ca850` | persist/digest follow-ups ACCEPT; persist/census/RLS leftover **ACCEPT** | **code_verified** | Local isolation ACCEPT. Runtime-host isolation `BLRO_STORE=PASS`. Live app DB `blro` still uncutover (61/127). CI **NOT_RUN** ≠ PASS. **#108 is not done.** |
 | E10A | [#103](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/issues/103) OPEN | [#125](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/125) `33082c33e3004b55b6f4b6c74a2a3823ce07e4c6` | census follow-up **ACCEPT** | **code_verified** | Browser E2E evidence is fixture/UI test, not field. |
 | E10B | [#109](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/issues/109) OPEN | [#126](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/126) `ae3d190d1f7ba25fb817095fe43cddc93139ee22` | digest/rebase follow-ups **ACCEPT** | **code_verified** | Not `integration_verified`. |
 | E11 | [#104](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/issues/104) OPEN | [#127](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/127) `ffae9a6763a98830a79905365eaebeb2e0d43ddd` | compose then leftovers **ACCEPT WITH FOLLOW-UPS**; freshness leftover **ACCEPT** | **ACCEPT WITH FOLLOW-UPS** | **#104 is not done.** `integration_verified` no. Do not treat fixture e2e as field. |
@@ -72,13 +72,23 @@ Docs/map leftovers recorded here:
 - Reviewer note on #133 (not reject): the new migration is replay-safe but is not itself listed in `tests/mandatory-postgres/migration-replay-postgres.test.ts`. Todo24 replay is listed and independently passed with zero catalog drift. Do not start a feature PR for that.
 - Dual Prisma-named and `t24_tp_*` FKs remain; census 134 is honest, not a lowered bar.
 
-### Production / runtime BLRO store (future read-only check)
+### Production / runtime BLRO store
 
 Documented in [BLRO Operations Runbook](../../BLRO_OPERATIONS_RUNBOOK.md) and [BLRO Local Database](../../BLRO_LOCAL_DATABASE.md). Production DSN wiring is deployment-specific; this update does not print credentials.
 
-This coordinator session: default `ssh blro` on this machine fails because `~/.ssh/config` has macOS `UseKeychain` on another host. An isolated Host `blro` config as user `blro` works. Runtime host SSH is reachable. Docker `sangfor-blro-postgres` is running; in-container `pg_isready` reports accepting connections; host loopback `:55432` maps to container `5432`. Login-shell `DATABASE_URL` is unset. No credentialed catalog, RLS, or `test:postgres:mandatory` was run against that instance.
+**`BLRO_STORE = PASS`** on a dedicated isolation database on the runtime BLRO Postgres host. Not a live-app-DB cutover. Not field acceptance.
 
-**`BLRO_STORE = NOT_RUN`** (not PASS). Process presence is not a store check.
+This coordinator session (after the prior reachability-only `NOT_RUN`):
+
+- Isolated Host `blro` SSH (default `~/.ssh/config` still fails on macOS `UseKeychain` on another host). Docker `sangfor-blro-postgres` image `pgvector/pgvector` (digest `sha256:33198da2828a14c30348d2ccb4750833d5ed9a44c88d840a0e523d7417120337`). Host loopback `:55432` → container `5432`.
+- Observed cluster: PostgreSQL **16.12** (`16.12-1.pgdg12+1`). pgvector available **0.8.1**; installed **0.8.1** in live `blro` and in the isolation DB. Pin was not weakened.
+- Login-shell `DATABASE_URL` / `BLRO_OWNER_DATABASE_URL` / `BLRO_BACKUP_PASSWORD` unset. Role files exist under the host runtime secrets directory (names only: `postgres-admin`, `postgres-owner`, `postgres-app`, `postgres-backup`). Values were not printed.
+- Live app DB `blro` read-only catalog: 61 public tables / 43 `Blro*` / 127 FKs / 21 `_prisma_migrations` through `20260908020000_rag_hnsw_connectivity`. No `BlroEngineerCase` / `BlroEngineerCaseArtifact`. Roles `blro_app`/`blro_owner` NOSUPERUSER NOBYPASSRLS; `blro_backup` BYPASSRLS NOSUPERUSER. Live row estimates unchanged at 1 tenant / 1 project / 1 actor before and after.
+- Created empty `blro_isolation_e12_review` OWNER `blro_owner` (not live `blro`). Local-socket role probes and a `127.0.0.1:55433` tunnel (local `:55432` is a different pgserver) pointed `DATABASE_URL` / `BLRO_OWNER_DATABASE_URL` at that isolation DB only.
+- From #133 worktree `10ec2ef075e4b9687cb5fd97a28823c23c2ca850`: `pnpm run test:postgres:mandatory` **exit 0**. `MANDATORY_POSTGRES_PASS` (30 files, 167 tests, 0 skipped). `BLRO_RLS_ISOLATION_PASS` (41 tables including both engineer-case tables, 693 cells). Isolation catalog after migrate: 63 tables / 45 `Blro*` / 134 FKs / FORCE RLS 41 / pgvector 0.8.1. Todo24 replay listed migrations passed; the #133 reviewer note (new migration not listed in that file) did not fail this run — leftover stays non-blocking.
+- Live `blro` after tests and after `DROP DATABASE blro_isolation_e12_review`: still 61/127/21 migrations / 1 tenant / 1 project. No scratch leftovers. Local secret copies wiped. Tunnel closed. `SANGFOR_ALLOW_REAL_EXECUTION` was not set.
+
+Live app DB `blro` remains uncutover to the #133 schema. **#102 / #108 stay OPEN / not done.**
 
 ### User / PM artifacts still required
 
@@ -90,7 +100,7 @@ Do not paste secrets. Do not set `SANGFOR_ALLOW_REAL_EXECUTION`. Do not reuse Gi
 4. **Retention / sanitization scope** for any live evidence.
 5. **Customer requirements** for the existing case, plus provided/proposed specs for the new-build case.
 6. **Confirmation the session is read-only.**
-7. **2020 HCI/SCP English OpenAPI docx** if HCI aCMP extras (not Janus) must be wired. Catalog still cites a Passport path (`year: 2020`). That volume is **not mounted** here (no `*2020*.docx` found). Optional: persist `SANGFOR_CHROMIUM_PATH`; a display for interactive JM login. Local isolation Postgres for mandatory DB tests **has been independently re-run** on #133; production `BLRO_STORE` remains **NOT_RUN**.
+7. **2020 HCI/SCP English OpenAPI docx** if HCI aCMP extras (not Janus) must be wired. Catalog still cites a Passport path (`year: 2020`). That volume is **not mounted** here (no `*2020*.docx` found). Optional: persist `SANGFOR_CHROMIUM_PATH`; a display for interactive JM login. Local isolation Postgres and runtime-host isolation `BLRO_STORE=PASS` are recorded; live app DB `blro` is still uncutover.
 
 ### Explicit no (still in force)
 
@@ -99,7 +109,7 @@ Do not paste secrets. Do not set `SANGFOR_ALLOW_REAL_EXECUTION`. Do not reuse Gi
 - No merge of the stacked PRs to `main`, including #133.
 - No E13 / E14.
 - No program / #90 / #102 / #108 / #104 / #105 complete.
-- No production `BLRO_STORE` PASS. Local isolation ACCEPT ≠ production store check.
+- No live-app-DB `blro` cutover. Runtime-host isolation `BLRO_STORE=PASS` ≠ live schema promotion and ≠ field acceptance.
 
 ## 1. 개발 에이전트에게 전달할 입력
 

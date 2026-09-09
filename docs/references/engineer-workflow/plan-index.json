@@ -254,7 +254,7 @@
     "implementationTests": "FIXTURE_REVIEWED_NOT_INTEGRATION",
     "localIsolationStore": "ACCEPT",
     "ciForStackTip": "NOT_RUN",
-    "blroStore": "NOT_RUN",
+    "blroStore": "ISOLATION_PASS",
     "liveDeviceAccess": "NOT_RUN",
     "fieldAccepted": "NOT_RUN"
   }
