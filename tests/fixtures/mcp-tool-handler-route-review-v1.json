@@ -111,7 +111,7 @@
     },
     {
       "toolName": "sangfor_rag_search",
-      "handlerAstSha256": "557a00b554dbeb9c646dd48288d26bc2bf90428efa06f678ad6731d551cbeb9f",
+      "handlerAstSha256": "ae8384817942be991b0d29af324c4e20d320579f900b1a74cf6cd02c44dddcac",
       "catalogSource": "apps/mcp-server/src/knowledge-tool-catalog.ts"
     }
   ],
@@ -132,5 +132,5 @@
       "catalogSource": "apps/mcp-server/src/iag-orchestrator-tools.ts"
     }
   ],
-  "sha256": "362f85280fe5ab7e5798b7b4e1c1befe8f9951b314761ac7f5e5b2c48be237db"
+  "sha256": "2070dd9f10d707c60f1c550de62b4c075bd601c45d5ceb61aee8d5b3498978df"
 }
