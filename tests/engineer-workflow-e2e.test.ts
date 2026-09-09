@@ -187,7 +187,7 @@ describe('engineer workflow E11 integration harness', () => {
     expect(historical.currentLive).toBe(false);
   });
 
-  it('runs collect → requirements → calc → persist → export on the existing fixture without fabricating PASS', async () => {
+  it('runs collect → requirements → calc → assess → guide → persist → export on the existing fixture without fabricating PASS', async () => {
     const db = new FakeEngineerCaseAuthorityDatabase();
     const store = storeFor(db);
     const exportRoot = mkdtempSync(join(tmpdir(), 'e11-export-'));
@@ -200,9 +200,9 @@ describe('engineer workflow E11 integration harness', () => {
     expect(result.steps.find((item) => item.id === 'collect')).toMatchObject({ exportName: 'collectInventory', status: 'ran' });
     expect(result.steps.find((item) => item.id === 'requirements')).toMatchObject({ exportName: 'ingestEngineerRequirements', status: 'ran' });
     expect(result.steps.find((item) => item.id === 'calc')).toMatchObject({ exportName: 'evaluateEngineerFormula', status: 'ran' });
-    expect(result.steps.find((item) => item.id === 'assess')).toMatchObject({ status: 'unavailable', reason: 'ASSESS_EXPORT_ABSENT on this stacked head' });
-    expect(result.steps.find((item) => item.id === 'guide')).toMatchObject({ status: 'unavailable', reason: 'GUIDE_EXPORT_ABSENT on this stacked head' });
-    expect(result.steps.find((item) => item.id === 'persist')).toMatchObject({ exportName: 'persistEngineerCase', status: 'ran' });
+    expect(result.steps.find((item) => item.id === 'assess')).toMatchObject({ exportName: 'assessEngineerCase', status: 'ran' });
+    expect(result.steps.find((item) => item.id === 'guide')).toMatchObject({ exportName: 'buildEngineerGuide', status: 'ran' });
+    expect(result.steps.find((item) => item.id === 'persist')).toMatchObject({ exportName: 'saveEngineerCase', status: 'ran' });
     expect(result.steps.find((item) => item.id === 'export')).toMatchObject({ exportName: 'exportEngineerGuide', status: 'ran' });
     expect(result.persist).toMatchObject({ ok: true, guideReadyGranted: false, executionPassGranted: false, approved: false });
     expect(result.document?.guide.readiness).toBe('blocked');
@@ -211,7 +211,13 @@ describe('engineer workflow E11 integration harness', () => {
     expect(result.preview?.fieldAccepted).toBe(false);
     expect(result.healthScope).toBe('volume-status');
     expect(result.healthVerdict).toBe('PASS');
-    expect(result.document?.assessments).toEqual([]);
+    expect(result.document?.assessments).toHaveLength(result.tracking.requirementIds.length);
+    expect(result.document?.assessments.every((item) => result.tracking.requirementIds.includes(item.requirementRef))).toBe(true);
+    expect(result.document?.guide.steps.length).toBeGreaterThan(0);
+    expect(result.tracking.executableSteps).toBe(result.document?.guide.steps.length);
+    expect(result.tracking.executableStepTrackingRate).toBe(1);
+    expect(result.document?.guide.steps.every((item) => item.requirementRefs.length > 0 && item.verify && item.stop && item.recovery)).toBe(true);
+    expect(result.assembled?.ok === true && result.assembled.guideReadyGranted).toBe(false);
     expect(storedNumber(result.document!, 'calc-remaining')).toBe('60 GiB');
     expect(storedNumber(result.document!, 'calc-utilization')).toBe('40 percent');
     expect(storedNumber(result.document!, 'calc-headroom')).toBe('40 GiB');
@@ -220,7 +226,7 @@ describe('engineer workflow E11 integration harness', () => {
     expect(result.tracking.requiredFields).toHaveLength(existingCase.requiredFields.length);
     for (const field of oracle.expectedUnresolvedFieldIds) {
       expect(result.unresolved.some((text) => text.includes(field))).toBe(true);
-      const observation = result.document?.observations.find((item) => item.target === field);
+      const observation = result.document?.observations.find((item) => item.id === `obs-${field}` || item.target === field);
       expect(observation?.sourceKind).toBe('unknown');
       expect(observation?.value.presence).toBe('unknown');
       expect(formatStoredEngineerValue(observation!.value)).not.toMatch(/^0\b/);
@@ -242,7 +248,10 @@ describe('engineer workflow E11 integration harness', () => {
     expect(reviewJson.guideRevision).toBe(result.document?.guide.revision);
     expect(reviewJson.readiness).toBe('blocked');
     expect(result.preview?.guideRevision).toBe(result.document?.guide.revision);
+    expect(result.preview?.digest).toBe(result.document?.guide.digest);
+    expect(result.preview?.steps.map((item) => item.id)).toEqual(result.document?.guide.steps.map((item) => item.id));
     expect(result.review?.revision).toBe(result.document?.revision);
+    expect(xml).toContain(result.document!.guide.steps[0]!.title);
   });
 
   it('compares the operator API export revision with the same Word values', async () => {
@@ -357,6 +366,9 @@ describe('engineer workflow E11 integration harness', () => {
     expect(result.review?.complete).toBe(false);
     expect(result.unresolved.some((text) => text.includes('collection failed'))).toBe(true);
     expect(result.export?.ok).toBe(true);
+    expect(result.steps.find((item) => item.id === 'export')?.status).toBe('ran');
+    expect(result.completedNormally).toBe(false);
+    expect(result.fieldAccepted).toBe(false);
   });
 
   it('refuses mixed expectedRevision instead of synthesizing another revision', async () => {
@@ -444,10 +456,15 @@ describe('engineer workflow E11 integration harness', () => {
       index === 0 ? { ...item, constraint: 'remaining >= 80 GiB', revision: 'reqrev-2' } : item
     )));
     expect(next.stale.guideStale).toBe(true);
-    expect(next.stale.staleCalculationIds).toEqual([]);
-    expect(next.document.assessments).toEqual([]);
+    expect(next.stale.staleCalculationIds.length).toBeGreaterThan(0);
+    expect(next.stale.staleCalculationIds).toEqual(expect.arrayContaining(
+      document.assessments.flatMap((item) => item.calculationRefs).filter((id) => id.startsWith('calc-')),
+    ));
+    expect(next.document.assessments.length).toBeGreaterThan(0);
     expect(next.document.observations).toEqual(document.observations);
-    expect(next.document.calculations.every((item) => item.result?.presence === 'known')).toBe(true);
+    expect(next.document.calculations
+      .filter((item) => next.stale.staleCalculationIds.includes(item.id))
+      .every((item) => item.result?.presence === 'unknown')).toBe(true);
     expect(next.document.guide.readiness).toBe('blocked');
   });
 

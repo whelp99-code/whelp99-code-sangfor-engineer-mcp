@@ -1,9 +1,21 @@
-import { existsSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
 import { collectInventory, type HciClient, type HciInventory, type HttpJsonResult } from '../../packages/sangfor-hci-client/src/index.js';
 import { summarizeHciHealth } from '../../packages/sangfor-hci-client/src/ops-monitor.js';
+import {
+  collectRequiredObservations,
+  HCI_E03B_REQUIRED_FIELDS,
+} from '../../packages/sangfor-hci-client/src/required-observations.js';
+import {
+  bindRequiredObservationsToCase,
+  buildHciCollectionSnapshot,
+} from '../../packages/sangfor-config-state/src/index.js';
 import { assembleEngineerCase, type EngineerCaseAssembly } from '../../packages/sangfor-planner/src/engineer-case.js';
+import {
+  assessEngineerCase,
+  type EngineerAssessmentBinding,
+  type EngineerAssessmentResult,
+  type EngineerCaseCoverage,
+} from '../../packages/sangfor-planner/src/engineer-assessment.js';
+import { buildEngineerGuide, type EngineerGuideBuildResult } from '../../packages/sangfor-planner/src/engineer-guide.js';
 import { ingestEngineerRequirements } from '../../packages/sangfor-product-adapters/src/engineer-requirement-ingest.js';
 import {
   exportEngineerGuide,
@@ -15,6 +27,7 @@ import {
   evaluateEngineerFormula,
   operandFromObservation,
 } from '../../packages/sangfor-sizing/src/engineer-calculations.js';
+import { prepareEngineerCaseForPersistence } from '../../packages/sangfor-authority/src/engineer-case-persistence.js';
 import type { EngineerCaseSaveRequest, EngineerCaseSaveResult } from '../../packages/sangfor-authority/src/authority-store-contracts.js';
 import { projectEngineerCaseReview, type EngineerCaseReviewView } from '../../apps/operator-console/src/engineer-case-review.js';
 import { projectEngineerGuidePreview, type EngineerGuidePreview } from '../../apps/operator-console/src/engineer-case-guide-preview.js';
@@ -26,20 +39,18 @@ import {
   type EngineerCaseAuthContext,
   type EngineerCaseDocument,
   type EngineerCaseMode,
+  type EngineerGuideStep,
   type EngineerObservation,
   type EngineerRequirement,
 } from '../../packages/shared/src/engineer-case-contract.js';
 import type { ProductCode } from '../../packages/shared/src/index.js';
 
-const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '../..');
 const WHEN = '2026-09-09T00:00:00.000Z';
-const UNKNOWN_FIELDS = [
-  'host_cpu',
-  'host_ram',
-  'storage_usable_capacity',
-  'network_topology',
-  'ha_status',
-] as const;
+const CAPACITY_FORMULA_IDS = new Set([
+  'confirmed-remaining-capacity',
+  'confirmed-utilization-ratio',
+  'demand-headroom',
+]);
 
 export type EngineerWorkflowStepId =
   | 'collect'
@@ -102,11 +113,13 @@ export type EngineerWorkflowResult = {
   readonly export?: EngineerGuideExportResult;
   readonly review?: EngineerCaseReviewView;
   readonly preview?: EngineerGuidePreview;
+  readonly coverage?: EngineerCaseCoverage;
   readonly tracking: {
     readonly requiredFields: readonly FieldTrack[];
     readonly requirementIds: readonly string[];
     readonly requirementTrackingRate: number;
     readonly executableSteps: number;
+    readonly executableStepTrackingRate: number;
     readonly fabricatedPassCount: 0;
   };
   readonly unresolved: readonly string[];
@@ -131,136 +144,42 @@ export function fixtureInventoryClient(payload: {
   };
 }
 
-async function loadOptional<T>(rel: string): Promise<T | undefined> {
-  const abs = join(REPO_ROOT, rel);
-  if (!existsSync(abs)) return undefined;
-  return import(pathToFileURL(abs).href) as Promise<T>;
-}
-
-function unknownObservation(id: string, field: string): EngineerObservation {
-  const reason = `${field} is not collected by current inventory surfaces`;
-  return {
-    id,
-    sourceKind: 'unknown',
-    target: field,
-    collectionStatus: 'missing',
-    value: { presence: 'unknown', reason },
-    unknownReason: reason,
-  };
-}
-
-function surfaceObservation(
-  inventory: HciInventory,
-  surface: 'volumes' | 'servers' | 'images',
-): EngineerObservation {
-  const collection = inventory.collection[surface];
-  if (collection.status === 'complete') {
-    const count = inventory[surface].length;
-    return {
-      id: `obs-${surface}`,
-      sourceKind: 'provided',
-      target: surface,
-      collectionStatus: 'complete',
-      collectedAt: inventory.collectedAt,
-      value: { presence: 'known', data: { kind: 'integer', integer: count } },
-    };
-  }
-  const reason = collection.reason ?? `${surface} collection ${collection.status}`;
-  return {
-    id: `obs-${surface}`,
-    sourceKind: 'unknown',
-    target: surface,
-    collectionStatus: collection.status === 'partial' ? 'partial' : 'failed',
-    collectedAt: inventory.collectedAt,
-    value: { presence: 'unknown', reason },
-    unknownReason: reason,
-  };
-}
-
-function oracleCapacityObservations(): EngineerObservation[] {
+function oracleCapacityObservations(auth: EngineerCaseAuthContext, caseId: string): EngineerObservation[] {
   return [
     {
       id: 'obs-total',
+      caseId,
+      projectId: auth.projectId,
       sourceKind: 'provided',
       target: 'provided-total-capacity',
       collectionStatus: 'complete',
       collectedAt: WHEN,
+      evidenceRef: 'ev-e11-1',
       value: { presence: 'known', data: { kind: 'number', number: 100, unit: 'GiB' } },
     },
     {
       id: 'obs-used',
+      caseId,
+      projectId: auth.projectId,
       sourceKind: 'provided',
       target: 'provided-used-capacity',
       collectionStatus: 'complete',
       collectedAt: WHEN,
+      evidenceRef: 'ev-e11-1',
       value: { presence: 'known', data: { kind: 'number', number: 40, unit: 'GiB' } },
     },
     {
       id: 'obs-demand',
+      caseId,
+      projectId: auth.projectId,
       sourceKind: 'provided',
       target: 'provided-demand',
       collectionStatus: 'complete',
       collectedAt: WHEN,
+      evidenceRef: 'ev-e11-1',
       value: { presence: 'known', data: { kind: 'number', number: 20, unit: 'GiB' } },
     },
   ];
-}
-
-function newBuildObservations(specs: Record<string, unknown>): EngineerObservation[] {
-  const rows: EngineerObservation[] = [];
-  const number = (id: string, field: string, value: number, unit: 'GiB' | 'TiB'): EngineerObservation => ({
-    id,
-    sourceKind: 'provided',
-    target: field,
-    collectionStatus: 'complete',
-    collectedAt: WHEN,
-    value: { presence: 'known', data: { kind: 'number', number: value, unit } },
-  });
-  if (typeof specs.node_count === 'number') {
-    rows.push({
-      id: 'obs-node-count',
-      sourceKind: 'provided',
-      target: 'node_count',
-      collectionStatus: 'complete',
-      collectedAt: WHEN,
-      value: { presence: 'known', data: { kind: 'integer', integer: specs.node_count } },
-    });
-  }
-  if (typeof specs.cpu_per_node_cores === 'number') {
-    rows.push({
-      id: 'obs-cpu-per-node',
-      sourceKind: 'provided',
-      target: 'cpu_per_node_cores',
-      collectionStatus: 'complete',
-      collectedAt: WHEN,
-      value: { presence: 'known', data: { kind: 'integer', integer: specs.cpu_per_node_cores } },
-    });
-  }
-  if (typeof specs.ram_per_node_gib === 'number') {
-    rows.push(number('obs-ram-per-node', 'ram_per_node_gib', specs.ram_per_node_gib, 'GiB'));
-  }
-  if (typeof specs.usable_storage_tib === 'number') {
-    rows.push(number('obs-usable-storage', 'usable_storage_tib', specs.usable_storage_tib, 'TiB'));
-  }
-  if (typeof specs.ha_intent === 'string') {
-    rows.push({
-      id: 'obs-ha-intent',
-      sourceKind: 'proposed',
-      target: 'ha_intent',
-      collectionStatus: 'complete',
-      collectedAt: WHEN,
-      value: { presence: 'known', data: { kind: 'string', text: specs.ha_intent } },
-    });
-  }
-  rows.push({
-    id: 'obs-official-bom',
-    sourceKind: 'unknown',
-    target: 'official_bom',
-    collectionStatus: 'missing',
-    value: { presence: 'unknown', reason: 'official BOM is not a formula result' },
-    unknownReason: 'official BOM is not a formula result',
-  });
-  return rows;
 }
 
 function step(
@@ -270,6 +189,155 @@ function step(
   reason?: string,
 ): EngineerWorkflowStep {
   return reason ? { id, exportName, status, reason } : { id, exportName, status };
+}
+
+function placeholderGuide(requirementIds: readonly string[], unresolved: readonly string[]) {
+  const fields = {
+    revision: 'guide-draft',
+    requirementRefs: requirementIds,
+    steps: [] as EngineerCaseDocument['guide']['steps'],
+    prerequisites: ['fixture path; live device write is out of scope'],
+    unresolved,
+    readiness: 'draft' as const,
+  };
+  return { ...fields, digest: computeEngineerGuideDigest(fields) };
+}
+
+function assessmentBindings(
+  requirements: readonly EngineerRequirement[],
+  calculations: readonly EngineerCalculation[],
+): EngineerAssessmentBinding[] {
+  const capacityCalcIds = calculations
+    .filter((item) => CAPACITY_FORMULA_IDS.has(item.formulaId))
+    .map((item) => item.id);
+  return requirements.map((requirement) => {
+    const text = `${requirement.target ?? ''} ${requirement.constraint ?? ''} ${requirement.acceptanceCriterion}`.toLowerCase();
+    if (/headroom|utilization|여유|사용률|remaining|잔여|usable storage|capacity/.test(text)) {
+      return {
+        requirementId: requirement.id,
+        fieldId: 'storage_usable_capacity' as const,
+        calculationRefs: capacityCalcIds,
+      };
+    }
+    if (/\bha\b|고가용/.test(text)) {
+      return { requirementId: requirement.id, fieldId: 'ha_status' as const };
+    }
+    return { requirementId: requirement.id };
+  });
+}
+
+function trackedGuideStep(stepView: EngineerGuideStep): boolean {
+  return stepView.requirementRefs.length > 0
+    && stepView.verify.trim().length > 0
+    && stepView.stop.trim().length > 0
+    && stepView.recovery.trim().length > 0;
+}
+
+function requirementTrackingRate(
+  requirements: readonly EngineerRequirement[],
+  assessments: readonly { readonly requirementRef: string }[],
+): number {
+  if (requirements.length === 0) return 0;
+  const assessed = new Set(assessments.map((item) => item.requirementRef));
+  return requirements.filter((item) => assessed.has(item.id)).length / requirements.length;
+}
+
+function executableStepTrackingRate(steps: readonly EngineerGuideStep[]): number {
+  if (steps.length === 0) return 0;
+  return steps.filter(trackedGuideStep).length / steps.length;
+}
+
+function trackRequiredFields(input: {
+  readonly mode: EngineerCaseMode;
+  readonly inventory?: HciInventory;
+  readonly providedObservations: readonly EngineerObservation[];
+  readonly requiredBound: ReturnType<typeof bindRequiredObservationsToCase>;
+}): FieldTrack[] {
+  if (input.mode === 'new') {
+    const providedIds = new Set(input.providedObservations.map((item) => item.target ?? item.id));
+    return [
+      ...['node_count', 'cpu_per_node_cores', 'ram_per_node_gib', 'usable_storage_tib', 'ha_intent', 'firmware_requested']
+        .map((id) => ({
+          id,
+          sourceKind: id === 'ha_intent' ? 'proposed' : 'provided',
+          status: (providedIds.has(id) || id === 'firmware_requested' ? 'provided' : 'missing') as FieldTrack['status'],
+        })),
+      { id: 'requirements', sourceKind: 'provided', status: 'provided' },
+      { id: 'official_bom', sourceKind: 'unknown', status: 'unknown' },
+      ...input.requiredBound.observations.map((item) => ({
+        id: item.id.replace(/^obs-/, ''),
+        sourceKind: item.sourceKind,
+        status: item.value.presence === 'known' ? 'provided' as const : 'unknown' as const,
+      })),
+    ];
+  }
+  const inventoryFields = (input.inventory?.fields ?? []).map((field) => ({
+    id: field.id,
+    sourceKind: field.sourceKind,
+    status: field.availability === 'collected'
+      ? 'collected' as const
+      : field.availability === 'provided'
+        ? 'provided' as const
+        : field.availability === 'missing'
+          ? 'missing' as const
+          : 'unknown' as const,
+  }));
+  if (inventoryFields.length > 0) {
+    return [
+      ...inventoryFields,
+      { id: 'requirements', sourceKind: 'provided', status: 'provided' },
+    ];
+  }
+  return [
+    ...HCI_E03B_REQUIRED_FIELDS.map((id) => ({ id, sourceKind: 'unknown', status: 'unknown' as const })),
+    { id: 'requirements', sourceKind: 'provided', status: 'provided' },
+  ];
+}
+
+function baseResult(partial: {
+  steps: EngineerWorkflowStep[];
+  collectFailed: boolean;
+  inventory?: HciInventory;
+  healthScope?: string;
+  healthVerdict?: string;
+  assembled?: EngineerCaseAssembly;
+  document?: EngineerCase;
+  persist?: EngineerCaseSaveResult;
+  export?: EngineerGuideExportResult;
+  review?: EngineerCaseReviewView;
+  preview?: EngineerGuidePreview;
+  coverage?: EngineerCaseCoverage;
+  tracking?: EngineerWorkflowResult['tracking'];
+  unresolved?: readonly string[];
+}): EngineerWorkflowResult {
+  return {
+    fabricatedPass: false,
+    fieldAccepted: false,
+    liveProof: false,
+    completedNormally: false,
+    collectFailed: partial.collectFailed,
+    skippedCountedAsPass: false,
+    steps: partial.steps,
+    inventory: partial.inventory,
+    healthScope: partial.healthScope,
+    healthVerdict: partial.healthVerdict,
+    assembled: partial.assembled,
+    document: partial.document,
+    persist: partial.persist,
+    export: partial.export,
+    review: partial.review,
+    preview: partial.preview,
+    coverage: partial.coverage,
+    tracking: partial.tracking ?? {
+      requiredFields: [],
+      requirementIds: [],
+      requirementTrackingRate: 0,
+      executableSteps: 0,
+      executableStepTrackingRate: 0,
+      fabricatedPassCount: 0,
+    },
+    unresolved: partial.unresolved ?? [],
+  };
 }
 
 export async function runEngineerWorkflow(input: EngineerWorkflowInput): Promise<EngineerWorkflowResult> {
@@ -310,16 +378,22 @@ export async function runEngineerWorkflow(input: EngineerWorkflowInput): Promise
   steps.push(step('requirements', 'ingestEngineerRequirements', 'ran'));
   const requirements: readonly EngineerRequirement[] = ingested.requirements;
 
-  const collectedObs = inventory
-    ? [
-      surfaceObservation(inventory, 'volumes'),
-      surfaceObservation(inventory, 'servers'),
-      surfaceObservation(inventory, 'images'),
-    ]
-    : [];
-  const provided = input.providedObservations ?? (input.mode === 'existing' ? oracleCapacityObservations() : []);
-  const missing = UNKNOWN_FIELDS.map((field) => unknownObservation(`obs-${field.replace(/_/g, '-')}`, field));
-  const observations = [...collectedObs, ...provided, ...missing];
+  const required = inventory?.requiredObservations ?? collectRequiredObservations();
+  const snapshot = inventory
+    ? buildHciCollectionSnapshot(inventory, {
+      caseId: input.caseId,
+      projectId: input.auth.projectId,
+      environmentKind: 'fixture',
+      originalPresent: input.originalPresent === true,
+    })
+    : undefined;
+  const requiredBound = snapshot?.requiredObservations ?? bindRequiredObservationsToCase(required, {
+    caseId: input.caseId,
+    projectId: input.auth.projectId,
+  });
+  const snapshotObservations = snapshot?.observations ?? [];
+  const provided = input.providedObservations ?? (input.mode === 'existing' ? oracleCapacityObservations(input.auth, input.caseId) : []);
+  const observations = [...snapshotObservations, ...provided, ...requiredBound.observations];
 
   const total = observations.find((item) => item.id === 'obs-total');
   const used = observations.find((item) => item.id === 'obs-used');
@@ -328,12 +402,16 @@ export async function runEngineerWorkflow(input: EngineerWorkflowInput): Promise
   if (total && used) {
     calculations.push(evaluateEngineerFormula({
       id: 'calc-remaining',
+      caseId: input.caseId,
+      projectId: input.auth.projectId,
       formulaId: 'confirmed-remaining-capacity',
       roles: { total: operandFromObservation(total), used: operandFromObservation(used) },
       now: WHEN,
     }));
     calculations.push(evaluateEngineerFormula({
       id: 'calc-utilization',
+      caseId: input.caseId,
+      projectId: input.auth.projectId,
       formulaId: 'confirmed-utilization-ratio',
       roles: { total: operandFromObservation(total), used: operandFromObservation(used) },
       now: WHEN,
@@ -341,6 +419,8 @@ export async function runEngineerWorkflow(input: EngineerWorkflowInput): Promise
     if (demand) {
       calculations.push(evaluateEngineerFormula({
         id: 'calc-headroom',
+        caseId: input.caseId,
+        projectId: input.auth.projectId,
         formulaId: 'demand-headroom',
         roles: {
           total: operandFromObservation(total),
@@ -355,41 +435,13 @@ export async function runEngineerWorkflow(input: EngineerWorkflowInput): Promise
     steps.push(step('calc', 'evaluateEngineerFormula', 'unavailable', 'total/used provided operands were not supplied'));
   }
 
-  const assessMod = await loadOptional<{
-    assessEngineerCase: (request: { document: EngineerCaseDocument; auth: EngineerCaseAuthContext }) => {
-      assessments?: unknown;
-      ok?: boolean;
-    };
-  }>('packages/sangfor-planner/src/engineer-assessment.ts');
-  steps.push(assessMod
-    ? step('assess', 'assessEngineerCase', 'ran')
-    : step('assess', 'assessEngineerCase', 'unavailable', 'ASSESS_EXPORT_ABSENT on this stacked head'));
-
-  const guideMod = await loadOptional<{
-    buildEngineerGuide: (request: unknown) => { guide?: EngineerCaseDocument['guide'] };
-  }>('packages/sangfor-planner/src/engineer-guide.ts');
-  steps.push(guideMod
-    ? step('guide', 'buildEngineerGuide', 'ran')
-    : step('guide', 'buildEngineerGuide', 'unavailable', 'GUIDE_EXPORT_ABSENT on this stacked head'));
-
-  const unresolved = [
+  const draftUnresolved = [
     ...ingested.questions.map((item) => item.message),
-    ...UNKNOWN_FIELDS.map((field) => `${field} is unknown`),
+    ...HCI_E03B_REQUIRED_FIELDS.map((field) => `${field} is unknown`),
     ...(collectFailed ? ['collection failed; guide output is not a normal completion'] : []),
-    ...(assessMod ? [] : ['ASSESS_EXPORT_ABSENT']),
-    ...(guideMod ? [] : ['GUIDE_EXPORT_ABSENT']),
     ...(input.mode === 'new' ? ['provided specs are not observed device values'] : []),
     'review_ready is not field_accepted',
-  ].filter((text, index, all) => all.indexOf(text) === index).slice(0, 64);
-
-  const guideFields = {
-    revision: 'guide-e11-1',
-    requirementRefs: requirements.map((item) => item.id),
-    steps: [] as EngineerCaseDocument['guide']['steps'],
-    prerequisites: ['fixture path; live device write is out of scope'],
-    unresolved,
-    readiness: 'blocked' as const,
-  };
+  ].filter((text, index, all) => all.indexOf(text) === index);
 
   const draft: EngineerCaseDocument = {
     schemaVersion: ENGINEER_CASE_SCHEMA_VERSION,
@@ -398,7 +450,7 @@ export async function runEngineerWorkflow(input: EngineerWorkflowInput): Promise
     product: input.product,
     ...(input.firmware ? { firmware: input.firmware } : {}),
     revision: input.revision,
-    progress: collectFailed || unresolved.length > 0 ? 'inputs_pending' : 'draft',
+    progress: collectFailed ? 'inputs_pending' : 'draft',
     environmentKind: 'fixture',
     synthetic: true,
     originalPresent: input.originalPresent === true,
@@ -406,7 +458,7 @@ export async function runEngineerWorkflow(input: EngineerWorkflowInput): Promise
     requirements,
     calculations,
     assessments: [],
-    guide: { ...guideFields, digest: computeEngineerGuideDigest(guideFields) },
+    guide: placeholderGuide(requirements.map((item) => item.id), draftUnresolved),
     evidence: [{
       id: 'ev-e11-1',
       owner: { tenantId: input.auth.tenantId, projectId: input.auth.projectId, caseId: input.caseId },
@@ -418,27 +470,125 @@ export async function runEngineerWorkflow(input: EngineerWorkflowInput): Promise
     execution: { result: 'not_started', reason: 'E11 harness does not execute device changes' },
   };
 
-  const assembled = assembleEngineerCase(draft, input.auth);
+  let assessed: EngineerAssessmentResult;
+  try {
+    assessed = assessEngineerCase({
+      document: draft,
+      auth: input.auth,
+      caseRevision: input.revision,
+      now: WHEN,
+      requiredObservations: required,
+      bindings: assessmentBindings(requirements, calculations),
+      inventory: inventory
+        ? { servers: inventory.servers, volumes: inventory.volumes }
+        : undefined,
+      hciHealthVerdict: healthVerdict as 'PASS' | 'FAIL' | 'INDETERMINATE' | undefined,
+    });
+  } catch (error) {
+    steps.push(step('assess', 'assessEngineerCase', 'failed', error instanceof Error ? error.message : 'assess threw'));
+    return baseResult({ steps, collectFailed, inventory, healthScope, healthVerdict });
+  }
+  if (!assessed.ok) {
+    steps.push(step('assess', 'assessEngineerCase', 'failed', assessed.code));
+    return baseResult({ steps, collectFailed, inventory, healthScope, healthVerdict });
+  }
+  steps.push(step('assess', 'assessEngineerCase', 'ran'));
+
+  const assessedDocument: EngineerCaseDocument = assessed.assembled.ok
+    ? assessed.assembled.value
+    : {
+      ...draft,
+      calculations: assessed.calculations,
+      assessments: assessed.assessments,
+      progress: 'assessment_ready',
+    };
+
+  let built: EngineerGuideBuildResult;
+  try {
+    built = buildEngineerGuide({
+      document: assessedDocument,
+      auth: input.auth,
+      caseRevision: input.revision,
+      assessments: assessed.assessments,
+      calculations: assessed.calculations,
+      hciHealthVerdict: healthVerdict as 'PASS' | 'FAIL' | 'INDETERMINATE' | undefined,
+    });
+  } catch (error) {
+    steps.push(step('guide', 'buildEngineerGuide', 'failed', error instanceof Error ? error.message : 'guide threw'));
+    return baseResult({
+      steps,
+      collectFailed,
+      inventory,
+      healthScope,
+      healthVerdict,
+      coverage: assessed.coverage,
+    });
+  }
+  if (!built.ok) {
+    steps.push(step('guide', 'buildEngineerGuide', 'failed', built.code));
+    return baseResult({
+      steps,
+      collectFailed,
+      inventory,
+      healthScope,
+      healthVerdict,
+      coverage: assessed.coverage,
+    });
+  }
+  steps.push(step('guide', 'buildEngineerGuide', 'ran'));
+
+  const assembled = assembleEngineerCase(built.document, input.auth);
   if (!assembled.ok) {
-    steps.push(step('persist', 'persistEngineerCase', 'refused', assembled.issues.map((item) => item.code).join(',')));
-    return baseResult({ steps, collectFailed, inventory, healthScope, healthVerdict, assembled });
+    steps.push(step('persist', 'saveEngineerCase', 'refused', assembled.issues.map((item) => item.code).join(',')));
+    return baseResult({
+      steps,
+      collectFailed,
+      inventory,
+      healthScope,
+      healthVerdict,
+      assembled,
+      coverage: assessed.coverage,
+    });
+  }
+
+  const prepared = prepareEngineerCaseForPersistence(built.document, input.auth);
+  if (!prepared.ok) {
+    steps.push(step('persist', 'saveEngineerCase', 'refused', prepared.issues.map((item) => item.code).join(',')));
+    return baseResult({
+      steps,
+      collectFailed,
+      inventory,
+      healthScope,
+      healthVerdict,
+      assembled,
+      coverage: assessed.coverage,
+    });
   }
 
   if (!input.persist) {
-    steps.push(step('persist', 'persistEngineerCase', 'unavailable', 'PERSIST_INJECT_REQUIRED'));
-    return baseResult({ steps, collectFailed, inventory, healthScope, healthVerdict, assembled });
+    steps.push(step('persist', 'saveEngineerCase', 'unavailable', 'PERSIST_INJECT_REQUIRED'));
+    return baseResult({
+      steps,
+      collectFailed,
+      inventory,
+      healthScope,
+      healthVerdict,
+      assembled,
+      document: prepared.value.value,
+      coverage: assessed.coverage,
+    });
   }
   const persist = await input.persist({
     auth: input.auth,
-    document: assembled.value,
+    document: built.document,
     requestId: input.requestId,
     expectedRevision: input.expectedRevision,
   });
   steps.push(persist.ok
-    ? step('persist', 'persistEngineerCase', 'ran')
-    : step('persist', 'persistEngineerCase', persist.code === 'REVISION_CONFLICT' ? 'refused' : 'failed', persist.ok ? undefined : persist.code));
+    ? step('persist', 'saveEngineerCase', 'ran')
+    : step('persist', 'saveEngineerCase', persist.code === 'REVISION_CONFLICT' ? 'refused' : 'failed', persist.ok ? undefined : persist.code));
 
-  const persistedDocument = assembled.value;
+  const persistedDocument = prepared.value.value;
   const exported = persist.ok
     ? await exportEngineerGuide({
       document: persistedDocument,
@@ -457,14 +607,28 @@ export async function runEngineerWorkflow(input: EngineerWorkflowInput): Promise
 
   const review = projectEngineerCaseReview(persistedDocument, persist.ok ? 'saved' : 'unsaved');
   const preview = projectEngineerGuidePreview(persistedDocument, persist.ok ? 'saved' : 'unsaved');
-  const requiredFields = trackRequiredFields(input.mode, inventory, collectFailed);
+  const requiredFields = trackRequiredFields({
+    mode: input.mode,
+    inventory,
+    providedObservations: provided,
+    requiredBound,
+  });
+  const unresolved = [
+    ...draftUnresolved,
+    ...built.blockers,
+    ...built.guide.unresolved,
+  ].filter((text, index, all) => all.indexOf(text) === index).slice(0, 64);
+
   const completedNormally = !collectFailed
     && steps.every((item) => item.status === 'ran')
     && persist.ok
     && exported?.ok === true
     && unresolved.filter((item) => item !== 'review_ready is not field_accepted').length === 0
     && review.complete === false
-    && preview.fieldAccepted === false;
+    && preview.fieldAccepted === false
+    && assembled.guideReadyGranted === false
+    && persist.guideReadyGranted === false
+    && persistedDocument.guide.readiness !== 'review_ready';
 
   return {
     fabricatedPass: false,
@@ -483,76 +647,16 @@ export async function runEngineerWorkflow(input: EngineerWorkflowInput): Promise
     export: exported,
     review,
     preview,
+    coverage: assessed.coverage,
     tracking: {
       requiredFields,
       requirementIds: requirements.map((item) => item.id),
-      requirementTrackingRate: requirements.length === 0 ? 0 : 1,
+      requirementTrackingRate: requirementTrackingRate(requirements, assessed.assessments),
       executableSteps: persistedDocument.guide.steps.length,
+      executableStepTrackingRate: executableStepTrackingRate(persistedDocument.guide.steps),
       fabricatedPassCount: 0,
     },
     unresolved,
-  };
-}
-
-function trackRequiredFields(
-  mode: EngineerCaseMode,
-  inventory: HciInventory | undefined,
-  collectFailed: boolean,
-): FieldTrack[] {
-  if (mode === 'new') {
-    return [
-      ...['node_count', 'cpu_per_node_cores', 'ram_per_node_gib', 'usable_storage_tib', 'ha_intent', 'firmware_requested']
-        .map((id) => ({
-          id,
-          sourceKind: id === 'ha_intent' ? 'proposed' : 'provided',
-          status: 'provided' as const,
-        })),
-      { id: 'official_bom', sourceKind: 'unknown', status: 'unknown' },
-    ];
-  }
-  const surfaces: FieldTrack[] = (['volumes', 'servers', 'images'] as const).map((id) => ({
-    id,
-    sourceKind: collectFailed && inventory?.collection[id].status === 'failed' ? 'unknown' : 'provided',
-    status: inventory?.collection[id].status === 'complete' ? 'collected' : 'unknown',
-  }));
-  return [
-    ...surfaces,
-    { id: 'collectedAt', sourceKind: inventory ? 'provided' : 'unknown', status: inventory ? 'collected' : 'missing' },
-    { id: 'volume_status_health', sourceKind: 'derived', status: collectFailed ? 'unknown' : 'collected' },
-    { id: 'requirements', sourceKind: 'provided', status: 'provided' },
-    { id: 'firmware', sourceKind: 'unknown', status: 'missing' },
-    ...UNKNOWN_FIELDS.map((id) => ({ id, sourceKind: 'unknown', status: 'unknown' as const })),
-  ];
-}
-
-function baseResult(partial: {
-  steps: EngineerWorkflowStep[];
-  collectFailed: boolean;
-  inventory?: HciInventory;
-  healthScope?: string;
-  healthVerdict?: string;
-  assembled?: EngineerCaseAssembly;
-}): EngineerWorkflowResult {
-  return {
-    fabricatedPass: false,
-    fieldAccepted: false,
-    liveProof: false,
-    completedNormally: false,
-    collectFailed: partial.collectFailed,
-    skippedCountedAsPass: false,
-    steps: partial.steps,
-    inventory: partial.inventory,
-    healthScope: partial.healthScope,
-    healthVerdict: partial.healthVerdict,
-    assembled: partial.assembled,
-    tracking: {
-      requiredFields: [],
-      requirementIds: [],
-      requirementTrackingRate: 0,
-      executableSteps: 0,
-      fabricatedPassCount: 0,
-    },
-    unresolved: [],
   };
 }
 
@@ -561,4 +665,3 @@ export function storedNumber(document: EngineerCaseDocument, id: string): string
   if (!calculation?.result) return undefined;
   return formatStoredEngineerValue(calculation.result);
 }
-

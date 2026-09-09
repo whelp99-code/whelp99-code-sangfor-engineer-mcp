@@ -1,22 +1,42 @@
 # E11 integration receipt
 
-Secret-free evidence for [#104](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/issues/104). This is not field acceptance, not `integration_verified`, and not program completion.
+Secret-free evidence for [#104](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/issues/104). This is a fixture harness compose after independent REJECT of `0114163`. It is not field acceptance, not `integration_verified`, and not program completion.
 
 | Field | Value |
 | --- | --- |
 | unit | E11 |
 | issue | #104 |
 | baseCommit | `ae3d190d1f7ba25fb817095fe43cddc93139ee22` (`origin/codex/engineer-e10b-guide-preview`) |
-| commit | this PR head on `codex/engineer-e11-integration` |
+| composedDomain | E08 `493ba66c91b28639d5742ea690abf8035f75326f` (includes E07 `4ef1f42498ba51402966bece8b7457f9bde2e30a`) |
+| previous rejected head | `011416384bfb8395660c9352e915624aa54c9fd8` |
 | environmentKind | fixture |
 | fixtureOrLive | fixture |
 | capturedAt | 2026-09-10 |
 | liveProof | false |
 | field_accepted | false |
+| guideReadyGranted on assemble | false |
 | review_ready treated as field_accepted | false |
 | developer tests treated as field acceptance | false |
-| supportedScope | fixture HCI existing + new-build path on the unmerged persist stack; assess/guide package exports absent |
+| integration_verified | no |
+| Phase A complete | no |
+| E12/E13/E14 started | no |
+| supportedScope | fixture HCI existing + new-build path after composing the independently reviewed domain stack onto the persist/UI stack |
 | reviewer | not assigned; developer report only |
+
+## Compose
+
+Merge commit of independently reviewed E08 onto the rejected E11 persist harness. Conflict resolution did not invent assess/guide behavior:
+
+- assess/guide/Word/required-observations: E08
+- store/API/UI: persist stack
+- overlapping E04/E05 blobs were already identical
+- `tests/engineer-guide-export.test.ts`: E08
+- `report-docx.ts` package relationships namespace: E08
+- planner/product-adapter index re-exports: union without duplicate `ingestEngineerRequirements`
+
+`runEngineerWorkflow` now calls, in order: `collectInventory` → `ingestEngineerRequirements` → `evaluateEngineerFormula` → `assessEngineerCase` → `buildEngineerGuide` → `saveEngineerCase` → `exportEngineerGuide`. Step status `ran` is set only after those functions return. File existence is not used.
+
+Persist remaps readiness through `prepareEngineerCaseForPersistence` / `computeEngineerGuideDigest`. UI preview and Word/review JSON use that remapped document, whose steps come from `buildEngineerGuide`.
 
 ## Independent oracle
 
@@ -28,32 +48,40 @@ Hand arithmetic, not a pipeline golden. File sha256 `657deb4cd0e54bddb6675bccc94
 | confirmed-utilization-ratio | total 100 GiB, used 40 GiB | 40 percent |
 | demand-headroom | remaining 60 GiB, demand 20 GiB | 40 GiB |
 
-Unknown host fields stay unknown, not 0. Volume-status health PASS is not copied into capacity/HA assessments.
+Unknown host fields stay unknown, not 0. Volume-status health PASS is not copied into capacity/HA assessments. Capacity formulas use provided 100/40/20 GiB operands, not inventory `size`.
+
+## Tracking (existing fixture)
+
+Requirement tracking is assessed-requirement coverage, not `requirements.length === 0 ? 0 : 1`. Executable-step tracking is tracked E07 steps / defined steps; empty `[]` is 0, not 100%. Required fields come from E03A inventory field status plus E03B `collectRequiredObservations` (host/CPU/RAM/storage/network/HA stay unsupported unless explicitly provided).
+
+On the existing fixture run: 2/2 requirements assessed (rate 1), defined guide steps > 0 with requirementRefs/verify/stop/recovery (rate 1), `fieldAccepted` false, `completedNormally` false.
+
+Requirement edit stales linked calculations through assessment `calculationRefs`. Collect failure may still emit Word; `completedNormally` stays false and export success is not workflow success.
 
 ## Commands
 
 | commandOrProcedure | exitCode | pass/fail/not_run |
 | --- | --- | --- |
 | `TMPDIR=/home/jm/.cache/sangfor-e11 pnpm exec vitest run --config vitest.config.ts tests/engineer-workflow-e2e.test.ts` | 0 | pass (12/12) |
-| related engineer tests (`engineer-guide-export`, `engineer-case-persistence`, `engineer-case-api`, `engineer-case-review-ui`, `engineer-case-contract`) | 0 | pass (56) |
-| `pnpm run lint` (after `pnpm exec prisma generate` in this fresh worktree) | 0 | pass |
+| related engineer tests (`engineer-workflow-e2e`, `engineer-guide-export`, `engineer-case-persistence`, `engineer-case-api`, `engineer-case-review-ui`, `engineer-case-contract`, `engineer-assessment`, `engineer-guide-grounding`, `engineer-calculations`, `engineer-required-observations`, `engineer-hci-collection`, `engineer-requirements`) | 0 | pass (117) |
+| `pnpm run lint` | 0 | pass |
 | `pnpm run build` | 0 | pass |
-| `pnpm run smoke:mcp` | 0 | pass (118 tools; no engineer-case MCP export path on this head) |
+| `pnpm run smoke:mcp` | 0 | pass (118 tools; no engineer-case MCP export path) |
 | `pnpm run check:browser-boundary` | 0 | pass |
 | `pnpm run check:data-scope-boundary` | 0 | pass |
 | `pnpm run check:hygiene` | 0 | pass |
-| `pnpm test` | 1 | fail: 3390 passed, 102 skipped, 2 failed (inherited, recorded below) |
+| `pnpm test` | — | recorded in the PR after this receipt if re-run; inherited 2 fails remain |
 | `pnpm run test:postgres:mandatory` | 1 | not_run (`MANDATORY_POSTGRES_DATABASE_REQUIRED`; no isolation DB). not_run ≠ PASS |
 | historical 26-item workbook sha256 `20e99de99a04b349a4ec82bad18c383eddb869973498ba11aeb729ac2e4eda79` | — | not_run (file not in this tree). not_run ≠ PASS |
 
-Skipped Vitest cases are the existing 102 skips in the default suite. They are not counted as PASS.
+Skipped Vitest cases in the default suite are not counted as PASS.
 
 ## Inherited known fails (not skipped, not weakened)
 
 | test | observation |
 | --- | --- |
-| `tests/authority-manifest-lock.test.ts` | lock `repositoryCensusDigest` `4cfb9c9a…` ≠ computed census `4f5383b3…`. E09B-owned lock; this PR does not rewrite it. |
-| `tests/runtime-boundary-contract.test.ts` | `engineer-case-persistence.ts` lines 157 and 419 still use `JSON.parse`. E10B guide path already uses `parseRuntimeJson`. Out of E11 scope. |
+| `tests/authority-manifest-lock.test.ts` | lock `repositoryCensusDigest` `4cfb9c9a…` ≠ current computed census `8cc8bd72…` after the E08 compose. Lock was not rewritten. |
+| `tests/runtime-boundary-contract.test.ts` | `engineer-case-persistence.ts` lines 157 and 419 still use `JSON.parse`. Not skipped. |
 
 ## Artifact digests (inputs, not generated Word)
 
@@ -66,10 +94,10 @@ Skipped Vitest cases are the existing 102 skips in the default suite. They are n
 
 Generated Word/JSON live under `TMPDIR` and are not retained as goldens.
 
-## Unresolved on this stacked head
+## Unresolved
 
-- `assessEngineerCase` and `buildEngineerGuide` are absent (`ASSESS_EXPORT_ABSENT`, `GUIDE_EXPORT_ABSENT`). Pipeline `completedNormally` is false. Guide steps are empty, so executable-step tracking is not a field-ready 100%.
-- Requirement edits mark the guide stale. Calculations stay known because the stale-calc graph is assessment-linked and assessments are empty. That is not fabricated unknown.
-- Persist stack is not merged with the E08 domain stack. E11 does not merge stacked PRs.
-- Postgres/RLS and historical original replay are NOT_RUN.
-- Fixture identity is not live proof. E12/E13/E14 were not started. #90 remains open.
+- This remains a fixture harness. `field_accepted` is false. `integration_verified` is not granted. Phase A is not complete.
+- Postgres/RLS isolation DB and historical 26-item xlsx are NOT_RUN ≠ PASS.
+- Actions CI on this stacked PR targeting `codex/engineer-e10b-guide-preview` is NOT_RUN ≠ PASS.
+- E12/E13/E14 were not started. #90 remains open.
+- Authority lock census and persistence `JSON.parse` remain inherited fails.
