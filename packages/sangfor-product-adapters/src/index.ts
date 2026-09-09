@@ -22,9 +22,12 @@ export {
 } from './source-mapping.js';
 export {
   analyzeCustomerRequirements,
+  annotateGuideStepsWithCatalogClaims,
+  catalogGuidePathClaim,
   generateProductChangePlan,
   ingestTextRequirementsForCase,
 } from './requirement-planning.js';
+export type { CatalogGuidePathClaim } from './requirement-planning.js';
 export { importExcelRequirementList } from './excel-import.js';
 export {
   generateExcelBasedChangePlan,
