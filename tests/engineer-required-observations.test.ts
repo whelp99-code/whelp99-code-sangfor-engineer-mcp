@@ -10,6 +10,8 @@ import {
   classifyRequiredReadAttempt,
   collectInventory,
   collectRequiredObservations,
+  isFieldQualifiedDeviceEndpoint,
+  isOfficialHciCatalogReadEndpoint,
   isProtocolRelativeHref,
   mapRequiredFieldFromApiPayload,
   resolveSameOriginPage,
@@ -213,6 +215,11 @@ describe('E03B required HCI observations', () => {
       endpoint: 'GET /openstack/network/v2.0/networks',
       payload: { networks: [] },
     })).toBe('SCHEMA_CHANGED');
+
+    expect(isOfficialHciCatalogReadEndpoint('GET /volumes/detail field:firmware')).toBe(false);
+    expect(isFieldQualifiedDeviceEndpoint('GET /volumes/detail field:firmware')).toBe(true);
+    expect(classifyRequiredReadAttempt({ endpoint: 'GET /volumes/detail field:firmware' })).toBe('FORGED_ENDPOINT');
+    expect(classifyRequiredReadAttempt({ endpoint: 'GET /os-hypervisors' })).toBe('FORGED_ENDPOINT');
   });
 
   it('refuses protocol-relative and external-origin next or collection links', () => {

@@ -10,7 +10,15 @@ import {
   MAPPER_VERSION,
   type HciCollectOriginalPresentSurface,
 } from '../packages/sangfor-config-state/src/index.js';
-import { collectInventory, type HciClient, type HttpJsonResult, type InventoryClient } from '@sangfor/hci-client';
+import {
+  collectInventory,
+  isFieldQualifiedDeviceEndpoint,
+  isOfficialHciCatalogReadEndpoint,
+  unofficialListKeyEndpoint,
+  type HciClient,
+  type HttpJsonResult,
+  type InventoryClient,
+} from '@sangfor/hci-client';
 import {
   ENGINEER_REQUIRED_LIVE_READ_SURFACES,
   type EngineerRequiredLiveReadSurfaceId,
@@ -413,7 +421,9 @@ describe('HCI collect → authorized-read binder', () => {
       'volume_status_health',
     ]);
     expect(inventory.originalPresentSurfaces?.every((item) => item.originalPresent === true)).toBe(true);
-    expect(inventory.originalPresentSurfaces?.every((item) => item.fact.endpoint.includes(' field:'))).toBe(true);
+    expect(inventory.originalPresentSurfaces?.every((item) => item.fact.endpoint === unofficialListKeyEndpoint(item.surfaceId))).toBe(true);
+    expect(inventory.originalPresentSurfaces?.every((item) => !isFieldQualifiedDeviceEndpoint(item.fact.endpoint))).toBe(true);
+    expect(inventory.originalPresentSurfaces?.every((item) => !isOfficialHciCatalogReadEndpoint(item.fact.endpoint))).toBe(true);
     expect(inventory.fields.find((field) => field.id === 'firmware')).toMatchObject({
       availability: 'collected',
       sourceKind: 'observed',
@@ -545,5 +555,83 @@ describe('HCI collect → authorized-read binder', () => {
     if (historical.collect.ok) throw new Error('historical plus wire extras must not bind');
     expect(historical.collect.reason).toBe('HISTORICAL_RECORD_IS_NOT_CURRENT_LIVE');
     expect(historical.authorized.ok).toBe(false);
+  });
+
+  it('does not treat field-qualified strings as bindable device URLs or official catalog paths', async () => {
+    expect(isOfficialHciCatalogReadEndpoint('GET /volumes/detail field:firmware')).toBe(false);
+    expect(isOfficialHciCatalogReadEndpoint('GET /servers field:host_cpu')).toBe(false);
+    expect(isFieldQualifiedDeviceEndpoint('GET /volumes/detail field:firmware')).toBe(true);
+    expect(isFieldQualifiedDeviceEndpoint('GET /v2/images field:collectedAt')).toBe(true);
+    expect(isFieldQualifiedDeviceEndpoint(unofficialListKeyEndpoint('firmware'))).toBe(false);
+    expect(isOfficialHciCatalogReadEndpoint('GET /volumes/detail')).toBe(true);
+    expect(isOfficialHciCatalogReadEndpoint('GET /os-hypervisors')).toBe(false);
+
+    const inventory = await collectAuthorized();
+    const extras = ENGINEER_REQUIRED_LIVE_READ_SURFACES
+      .map((surface) => surface.id)
+      .filter((surfaceId) => !REST_SURFACE_IDS.has(surfaceId))
+      .map((surfaceId) => ({
+        surfaceId,
+        originalPresent: true as const,
+        fact: {
+          transport: 'api' as const,
+          endpoint: `GET /volumes/detail field:${surfaceId}`,
+          mapperVersion: MAPPER_VERSION,
+          collectedAt: WHEN,
+          collector: SYNTHETIC_COLLECTOR,
+        },
+        payload: { kind: 'field-qualified-lookalike', surfaceId },
+      }));
+    const wired = bindHciCollectAuthorizedDeviceReadEvidence({
+      inventory: { ...inventory, originalPresentSurfaces: extras },
+      caseId: 'case-collect-field-qualified',
+      projectId: AUTH.projectId,
+      caseRevision: 'rev-collect-field-qualified',
+      guideRevision: 'guide-collect-field-qualified',
+      session: authorizedSession(),
+    });
+    expect(wired.collect.ok).toBe(true);
+    if (!wired.collect.ok) throw new Error('expected REST surfaces to bind');
+    expect(wired.collect.observations.map((item) => item.surfaceId)).toEqual(['volumes', 'servers', 'images']);
+    expect(wired.collect.observations.every((item) => {
+      if (!item.fact || typeof item.fact !== 'object' || !('endpoint' in item.fact)) return false;
+      return !isFieldQualifiedDeviceEndpoint(String(item.fact.endpoint));
+    })).toBe(true);
+    expect(wired.authorized.ok).toBe(false);
+    if (wired.authorized.ok) throw new Error('field-qualified extras must not mint authorized_device_read');
+    expect(wired.authorized.reason).toBe('REQUIRED_LIVE_SURFACES_NOT_RUN');
+  });
+
+  it('still drops extras that reuse the bare GET /volumes/detail list endpoint', async () => {
+    const inventory = await collectAuthorized();
+    const extras = ENGINEER_REQUIRED_LIVE_READ_SURFACES
+      .map((surface) => surface.id)
+      .filter((surfaceId) => !REST_SURFACE_IDS.has(surfaceId))
+      .map((surfaceId) => ({
+        surfaceId,
+        originalPresent: true as const,
+        fact: {
+          transport: 'api' as const,
+          endpoint: 'GET /volumes/detail',
+          mapperVersion: MAPPER_VERSION,
+          collectedAt: WHEN,
+          collector: SYNTHETIC_COLLECTOR,
+        },
+        payload: { kind: 'bare-list-reuse', surfaceId },
+      }));
+    const wired = bindHciCollectAuthorizedDeviceReadEvidence({
+      inventory: { ...inventory, originalPresentSurfaces: extras },
+      caseId: 'case-collect-bare-list',
+      projectId: AUTH.projectId,
+      caseRevision: 'rev-collect-bare-list',
+      guideRevision: 'guide-collect-bare-list',
+      session: authorizedSession(),
+    });
+    expect(wired.collect.ok).toBe(true);
+    if (!wired.collect.ok) throw new Error('expected REST surfaces to bind');
+    expect(wired.collect.observations.map((item) => item.surfaceId)).toEqual(['volumes', 'servers', 'images']);
+    expect(wired.authorized.ok).toBe(false);
+    if (wired.authorized.ok) throw new Error('bare list reuse extras must not mint authorized_device_read');
+    expect(wired.authorized.reason).toBe('REQUIRED_LIVE_SURFACES_NOT_RUN');
   });
 });

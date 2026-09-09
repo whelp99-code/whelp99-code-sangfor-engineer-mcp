@@ -8,9 +8,10 @@ import {
 
 /**
  * Extra grant surfaces that production collect emits only when the already-fetched
- * REST JSON contains an explicit key. This is not an official HCI OpenAPI path
- * list. Missing keys stay omitted / NOT_RUN. Values are never invented from
- * `opts.collectedAt`, `firmwareVersion`, volume status, or provided E03B fields.
+ * REST JSON contains an explicit key. Provenance is `unofficial_list_key:<id>`,
+ * not a device URL or catalog path. Missing keys stay omitted / NOT_RUN. Values
+ * are never invented from `opts.collectedAt`, `firmwareVersion`, volume status,
+ * or provided E03B fields.
  */
 export const HCI_COLLECT_EXTRA_SURFACE_IDS = [
   'collectedAt',
@@ -122,8 +123,40 @@ function stableJson(value: unknown): string {
   return JSON.stringify(value);
 }
 
-function fieldQualifiedEndpoint(restEndpoint: string, surfaceId: HciCollectExtraSurfaceId): string {
-  return `${restEndpoint} field:${surfaceId}`;
+/**
+ * Official HCI OpenAPI/catalog read-only paths from data/hci-api/catalog.json.
+ * Field-qualified lookalikes and GET /os-hypervisors are not catalog paths.
+ */
+export const OFFICIAL_HCI_CATALOG_READ_ENDPOINTS = [
+  'GET /tenants',
+  'GET /volumes',
+  'GET /volumes/detail',
+  'GET /volumes/{volume_id}',
+  'GET /servers',
+  'GET /servers/detail',
+  'GET /servers/{id}',
+  'GET /flavors',
+  'GET /flavors/detail',
+  'GET /v2/images',
+] as const;
+
+const OFFICIAL_HCI_CATALOG_READ_ENDPOINT_SET = new Set<string>(OFFICIAL_HCI_CATALOG_READ_ENDPOINTS);
+
+/** Unofficial extra-key provenance. Not a device URL and not a catalog path. */
+export const UNOFFICIAL_LIST_KEY_KIND = 'unofficial_list_key' as const;
+
+const FIELD_QUALIFIED_DEVICE_ENDPOINT = /(?:^|\s)(?:GET|POST|PUT|PATCH|DELETE)\s+\S+\s+field:[A-Za-z0-9_-]+$/u;
+
+export function unofficialListKeyEndpoint(surfaceId: HciCollectExtraSurfaceId): string {
+  return `${UNOFFICIAL_LIST_KEY_KIND}:${surfaceId}`;
+}
+
+export function isOfficialHciCatalogReadEndpoint(endpoint: string): boolean {
+  return OFFICIAL_HCI_CATALOG_READ_ENDPOINT_SET.has(endpoint.trim());
+}
+
+export function isFieldQualifiedDeviceEndpoint(endpoint: string): boolean {
+  return FIELD_QUALIFIED_DEVICE_ENDPOINT.test(endpoint.trim());
 }
 
 function extraProvenance(
@@ -132,7 +165,7 @@ function extraProvenance(
 ): HciFactProvenance {
   return {
     transport: 'api',
-    endpoint: fieldQualifiedEndpoint(page.endpoint, surfaceId),
+    endpoint: unofficialListKeyEndpoint(surfaceId),
     mapperVersion: HCI_MAPPER_VERSION,
     collectedAt: page.collectedAt,
     collector: HCI_COLLECTOR,

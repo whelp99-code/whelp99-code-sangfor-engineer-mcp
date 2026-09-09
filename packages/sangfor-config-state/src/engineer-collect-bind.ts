@@ -118,6 +118,13 @@ const REQUIRED_SURFACE_IDS = new Set<EngineerRequiredLiveReadSurfaceId>(
 const REST_SURFACE_IDS = new Set<string>(REST_SURFACES);
 const REST_ENDPOINT_VALUES = new Set<string>(Object.values(REST_ENDPOINTS));
 
+/** Field-qualified lookalikes (`GET /volumes/detail field:firmware`) are not catalog URLs. */
+const FIELD_QUALIFIED_DEVICE_ENDPOINT = /(?:^|\s)(?:GET|POST|PUT|PATCH|DELETE)\s+\S+\s+field:[A-Za-z0-9_-]+$/u;
+
+function isFieldQualifiedDeviceEndpoint(endpoint: string): boolean {
+  return FIELD_QUALIFIED_DEVICE_ENDPOINT.test(endpoint.trim());
+}
+
 function extraSurfaceBindable(
   item: HciCollectOriginalPresentSurface,
   caseId: string,
@@ -128,6 +135,7 @@ function extraSurfaceBindable(
   if (REST_SURFACE_IDS.has(item.surfaceId)) return false;
   if (!isFactProvenance(item.fact)) return false;
   if (REST_ENDPOINT_VALUES.has(item.fact.endpoint)) return false;
+  if (isFieldQualifiedDeviceEndpoint(item.fact.endpoint)) return false;
   return bindObservedFactToCase(item.fact, {
     caseId,
     projectId,
@@ -183,8 +191,10 @@ function sessionDefect(session: CollectBindSessionInput, inventory: HciCollectio
  * REST volumes/servers/images come from inventory provenance.
  * firmware / collectedAt / volume_status_health / E03B pass through only when
  * collect returned them as originalPresent facts that bind through
- * bindObservedFactToCase. Timestamps, firmwareVersion options, volume status,
- * and provided-only E03B fields are not promoted.
+ * bindObservedFactToCase. Field-qualified catalog lookalikes
+ * (`GET /volumes/detail field:firmware`) are not bindable device URLs.
+ * Timestamps, firmwareVersion options, volume status, and provided-only E03B
+ * fields are not promoted.
  */
 export function bindHciCollectToFieldAcceptanceObservations(input: {
   readonly inventory: HciCollectionSnapshotInventory;
