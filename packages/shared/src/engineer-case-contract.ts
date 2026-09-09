@@ -8,7 +8,12 @@ import { parseRuntimeJson, RuntimeSchemaError } from './runtime-schema.js';
  * Compatibility: only `engineer-case.v1` is accepted. Missing, older, or newer
  * schema versions are refused. There is no silent upgrade adapter.
  *
- * This file is L0 contract only: no DB, UI, or live collection.
+ * `sourceKind: observed` requires `environmentKind: 'live'` and
+ * `originalPresent === true`. Omitted `originalPresent` is the same refusal as
+ * `false` (`MISSING_ORIGINAL_MARKED_OBSERVED`), matching `bindObservedFactToCase`.
+ *
+ * This file is L0 contract only: no DB, UI, or live collection. parse success
+ * is not a guide-ready grant; `review_ready` on the document is a claim only.
  */
 export const ENGINEER_CASE_SCHEMA_VERSION = 'engineer-case.v1' as const;
 
@@ -473,7 +478,7 @@ export const engineerCaseDocumentSchema: z.ZodType<EngineerCaseDocument> = z.obj
           message: 'FIXTURE_MARKED_OBSERVED',
         });
       }
-      if (document.originalPresent === false) {
+      if (document.originalPresent !== true) {
         context.addIssue({
           code: z.ZodIssueCode.custom,
           path: ['observations', index, 'sourceKind'],

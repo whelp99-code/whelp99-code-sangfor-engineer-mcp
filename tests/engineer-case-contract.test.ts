@@ -307,6 +307,39 @@ describe('engineer case contract', () => {
     })).toMatchObject({ ok: true, sourceKind: 'observed', provenance: LIVE_PROVENANCE });
   });
 
+  it('rejects live observed when originalPresent is omitted', () => {
+    const omitted = {
+      ...validFixtureCase({
+        environmentKind: 'live',
+        synthetic: false,
+        observations: [{
+          id: 'obs-usable',
+          sourceKind: 'observed',
+          collectionStatus: 'complete',
+          collectedAt: WHEN,
+          factProvenance: LIVE_PROVENANCE,
+          value: { presence: 'known', data: { kind: 'integer', integer: 1, unit: 'count' } },
+        }],
+      }),
+    };
+    delete (omitted as { originalPresent?: boolean }).originalPresent;
+    expect('originalPresent' in omitted).toBe(false);
+    expect(codes(omitted)).toContain('MISSING_ORIGINAL_MARKED_OBSERVED');
+
+    const assembled = assembleEngineerCase(omitted, AUTH);
+    expect(assembled.ok).toBe(false);
+    if (assembled.ok) throw new Error('omitted originalPresent must not assemble');
+    expect(assembled.issues.some((item) => item.code === 'MISSING_ORIGINAL_MARKED_OBSERVED')).toBe(true);
+
+    expect(bindObservedFactToCase(LIVE_PROVENANCE, {
+      caseId: 'case-existing-1',
+      projectId: 'proj-a',
+      observationId: 'obs-usable',
+      environmentKind: 'live',
+      originalPresent: undefined as unknown as boolean,
+    })).toEqual({ ok: false, reason: 'MISSING_ORIGINAL_MARKED_OBSERVED' });
+  });
+
   it('accepts a live observed value only with complete provenance and auth scope', () => {
     const live = validFixtureCase({
       environmentKind: 'live',
