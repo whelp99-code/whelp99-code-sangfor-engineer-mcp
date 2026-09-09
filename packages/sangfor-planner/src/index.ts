@@ -1,5 +1,11 @@
 import { assessPlanGrounding } from './grounding-assessment.js';
 export { assessPlanGrounding } from './grounding-assessment.js';
+export {
+  assembleEngineerCase,
+  validateEngineerCase,
+  type EngineerCaseAssembly,
+  type EngineerCaseIssue,
+} from './engineer-case.js';
 import { searchManuals } from '@sangfor/knowledge';
 import { searchWiki } from '@sangfor/wiki';
 import { loadRagIndex, ragSearch, ragSearchSync } from '@sangfor/rag';
