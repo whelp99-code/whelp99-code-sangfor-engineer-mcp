@@ -4,6 +4,11 @@
  * Safety principle (fixes the verifier false-pass class of bug):
  *   INDETERMINATE is NEVER counted as PASS, and overall `ok` requires positive
  *   evidence (at least one PASS, zero FAIL, zero INDETERMINATE).
+ *
+ * Derived engineer-case arithmetic lives in `@sangfor/sizing`
+ * (`evaluateEngineerFormula`). A calculation result alone is never a spec PASS;
+ * fitness still needs a sourced baseline (`evaluateDerivedFitness`) and never
+ * grants guide review_ready.
  */
 
 import { compareValue } from './compare.js';
