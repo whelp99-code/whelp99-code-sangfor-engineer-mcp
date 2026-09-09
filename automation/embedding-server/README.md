@@ -78,3 +78,26 @@ failure/timeout. Invalid configuration fails closed before inference. By default
 passage per source (100 total maximum), ranks all local passages, then deduplicates
 to the requested final source count. Local
 reranking is disabled by default; it is not automatically better than lexical search.
+
+
+### Reproducible scoring configuration
+
+The client factory and service bind model/revision, maximum input length, dtype,
+batch size, and optional instruction into `configurationSha256`. Set identical
+values on both sides. A missing or different digest refuses scoring; restart an
+older service when upgrading this client. The legacy three-argument adapter
+constructor remains available for model/revision-only integrations.
+
+Defaults are `SANGFOR_LOCAL_RERANK_MAX_LENGTH=512`,
+`SANGFOR_LOCAL_RERANK_DTYPE=auto`, and `SANGFOR_LOCAL_RERANK_BATCH_SIZE=16`.
+An optional `SANGFOR_LOCAL_RERANK_INSTRUCTION` must be nonempty and at most 2,048
+characters. Maximum input length is 128–4,096, batch size 1–32, and their product
+must not exceed 16,384. A context exceeding the model position limit is refused.
+`float32` is the supported explicit CPU dtype override; measure it on the target
+hardware rather than assuming the checkpoint dtype is fastest.
+
+`LocalRerankProvider.rerankScored()` retains finite raw model scores and verified
+candidate IDs. These scores are not calibrated answer probabilities. No score
+cutoff or automatic acceptance policy is enabled by this API. The adapter includes
+the full title once and strips only its exact duplicate leading heading from the
+body before selecting the scoring passage. Persisted source text is unchanged.

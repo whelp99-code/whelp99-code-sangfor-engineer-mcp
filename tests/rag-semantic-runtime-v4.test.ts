@@ -47,15 +47,35 @@ describe('local reranker boundary', () => {
     expect(await provider.rerank('heartbeat', candidates, 2)).toEqual(['b', 'a']);
     expect(vi.mocked(fetch).mock.calls[0][1]?.redirect).toBe('error');
   });
+  it('does not spend the reranker input on a duplicated full breadcrumb heading', async () => {
+    embeddings({ model: 'expected', revision, results: [{ index: 0, score: 1.25 }] });
+    const provider = new LocalRerankProvider('http://127.0.0.1:8005', 'expected', revision);
+    await provider.rerankScored('certificate import', [{
+      id: 'a', title: 'HCI 6.11.3 / Certificate settings',
+      text: '# HCI 6.11.3 / Certificate settings\n\nOnly CRT files are supported.',
+    }], 1);
+    const body = JSON.parse(vi.mocked(fetch).mock.calls[0][1]?.body as string);
+    expect(body.documents).toEqual(['HCI 6.11.3 / Certificate settings\nOnly CRT files are supported.']);
+  });
+  it('retains raw negative and fractional scores instead of replacing them with ranks or probabilities', async () => {
+    embeddings({ model: 'expected', revision, results: [{ index: 0, score: -3.25 }, { index: 1, score: 7.625 }] });
+    const provider = new LocalRerankProvider('http://127.0.0.1:8005', 'expected', revision);
+    expect(await provider.rerankScored('heartbeat', candidates, 2)).toEqual([
+      { id: 'b', score: 7.625 }, { id: 'a', score: -3.25 },
+    ]);
+  });
   it.each([
     { model: 'different', revision, results: [{ index: 0, score: 1 }] },
     { model: 'expected', revision: 'b'.repeat(40), results: [{ index: 0, score: 1 }] },
     { model: 'expected', revision, results: [{ index: 4, score: 1 }] },
     { model: 'expected', revision, results: [{ index: 0, score: 1 }, { index: 0, score: 2 }] },
     { model: 'expected', revision, results: [] },
+    { model: 'expected', revision, results: [{ index: 0, score: null }] },
   ])('refuses malformed or foreign results %#', async (response) => {
     embeddings(response);
-    await expect(new LocalRerankProvider('http://127.0.0.1:8005', 'expected', revision).rerank('query', candidates, 2)).rejects.toThrow();
+    const provider = new LocalRerankProvider('http://127.0.0.1:8005', 'expected', revision);
+    await expect(provider.rerank('query', candidates, 2)).rejects.toThrow();
+    await expect(provider.rerankScored('query', candidates, 2)).rejects.toThrow();
   });
 });
 
