@@ -16,6 +16,15 @@ export function localRerankConfigurationDigest(model: string, revision: string, 
     config.batchSize, config.instruction ?? null])).digest('hex');
 }
 
+export function localRerankMinimumScoreFromEnv(): number | undefined {
+  const raw = process.env.SANGFOR_LOCAL_RERANK_MIN_SCORE;
+  if (raw === undefined) return undefined;
+  if (!raw.trim()) throw new Error('RAG_LOCAL_RERANK_MIN_SCORE_INVALID');
+  const score = Number(raw);
+  if (!Number.isFinite(score)) throw new Error('RAG_LOCAL_RERANK_MIN_SCORE_INVALID');
+  return score;
+}
+
 const responseSchema = z.object({ model: z.string(), revision: z.string(),
   configurationSha256: z.string().regex(/^[a-f0-9]{64}$/).optional(),
   results: z.array(z.object({ index: z.number().int().nonnegative(), score: z.number().finite() }).strict()).min(1),
@@ -25,15 +34,17 @@ export class LocalRerankProvider implements RerankProvider {
   readonly name = 'local-cross-encoder' as const;
   /** Configured scoring identity, not proof that inference ran successfully. */
   readonly configurationSha256?: string;
-  constructor(private readonly baseUrl: string, private readonly model: string, private readonly revision: string, configuration?: LocalRerankConfiguration) {
+  constructor(private readonly baseUrl: string, private readonly model: string, private readonly revision: string, configuration?: LocalRerankConfiguration, readonly minimumScore?: number) {
     const url = new URL(baseUrl);
     if (url.protocol !== 'http:' || !['127.0.0.1', '[::1]'].includes(url.hostname)
       || url.username || url.password || url.search || url.hash || url.pathname !== '/') throw new Error('RAG_LOCAL_RERANK_LOOPBACK_REQUIRED');
     if (!model.trim() || !/^[a-f0-9]{40}$/.test(revision)) throw new Error('RAG_LOCAL_RERANK_IDENTITY_REQUIRED');
     if (configuration) this.configurationSha256 = localRerankConfigurationDigest(model, revision, configuration);
+    if (minimumScore !== undefined && (!Number.isFinite(minimumScore) || !configuration)) throw new Error('RAG_LOCAL_RERANK_SCORE_GATE_CONFIGURATION_REQUIRED');
   }
   async rerank(query: string, candidates: Array<{ id: string; text: string; title?: string }>, topK: number, signal?: AbortSignal): Promise<string[]> {
-    return (await this.rerankScored(query, candidates, topK, signal)).map((row) => row.id);
+    return (await this.rerankScored(query, candidates, topK, signal))
+      .filter((row) => this.minimumScore === undefined || row.score >= this.minimumScore).map((row) => row.id);
   }
   /** Model scores are retained verbatim; their scale is not a calibrated answer probability. */
   async rerankScored(query: string, candidates: Array<{ id: string; text: string; title?: string }>, topK: number, signal?: AbortSignal): Promise<Array<{ id: string; score: number }>> {
@@ -64,7 +75,11 @@ export class LocalRerankProvider implements RerankProvider {
 }
 
 export function createLocalRerankFromEnv(): LocalRerankProvider | undefined {
-  if (process.env.SANGFOR_LOCAL_RERANK_ENABLED !== '1') return undefined;
+  const minimumScore = localRerankMinimumScoreFromEnv();
+  if (process.env.SANGFOR_LOCAL_RERANK_ENABLED !== '1') {
+    if (minimumScore !== undefined) throw new Error('RAG_LOCAL_RERANK_SCORE_GATE_REQUIRES_ENABLED_PROVIDER');
+    return undefined;
+  }
   const configuration = configurationSchema.parse({
     maxLength: Number(process.env.SANGFOR_LOCAL_RERANK_MAX_LENGTH ?? 512),
     dtype: process.env.SANGFOR_LOCAL_RERANK_DTYPE ?? 'auto',
@@ -72,5 +87,5 @@ export function createLocalRerankFromEnv(): LocalRerankProvider | undefined {
     instruction: process.env.SANGFOR_LOCAL_RERANK_INSTRUCTION,
   });
   return new LocalRerankProvider(process.env.SANGFOR_LOCAL_RERANK_URL ?? 'http://127.0.0.1:8005',
-    process.env.SANGFOR_LOCAL_RERANK_MODEL ?? '', process.env.SANGFOR_LOCAL_RERANK_REVISION ?? '', configuration);
+    process.env.SANGFOR_LOCAL_RERANK_MODEL ?? '', process.env.SANGFOR_LOCAL_RERANK_REVISION ?? '', configuration, minimumScore);
 }

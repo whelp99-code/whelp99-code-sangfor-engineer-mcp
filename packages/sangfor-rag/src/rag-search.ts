@@ -1,5 +1,5 @@
 import { attachHitContext } from './hit-context.js';
-import { createLocalRerankFromEnv } from './local-rerank-provider.js';
+import { createLocalRerankFromEnv, localRerankMinimumScoreFromEnv } from './local-rerank-provider.js';
 import type { AuthorizationResult } from '@sangfor/identity';
 import type { ProductCode } from '@sangfor/shared';
 import { resolveRagProduct } from './rag-product.js';
@@ -142,25 +142,41 @@ export async function ragSearch(input: RagSearchInput): Promise<RagSearchHit[]> 
   const ranked = rankHybrid(filtered, queryVector, normalizedQuery, querySpace).filter(hasRetrievalEvidence).sort((left, right) => right.score - left.score);
   let pool = distinctSources(ranked, candidateLimit);
   const localReranker = createLocalRerankFromEnv();
+  const minimumScore = localReranker?.minimumScore;
+  if (minimumScore !== undefined && (embeddingFailure || wasEmbeddingFallback())) throw new Error('RAG_SCORE_GATE_RETRIEVAL_UNAVAILABLE');
   const reranker = localReranker ?? createMimoRerankFromEnv();
   if (localReranker && process.env.SANGFOR_LOCAL_RERANK_PASSAGES === '2') pool = expandRerankPassages(ranked, pool);
-  if (reranker && pool.length > 1) {
+  if (reranker && (pool.length > 1 || (minimumScore !== undefined && pool.length === 1))) {
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout> | undefined;
     try {
       const configuredTimeout = Number(process.env.SANGFOR_MIMO_RERANK_TIMEOUT_MS ?? '5000');
       const rerankTimeoutMs = Number.isFinite(configuredTimeout) && configuredTimeout > 0 ? Math.min(configuredTimeout, 60_000) : 5000;
-      const rankedIds = await Promise.race([
-        reranker.rerank(
+      let scored: Array<{ id: string; score: number }> | undefined;
+      const request = localReranker && minimumScore !== undefined
+        ? localReranker.rerankScored(normalizedQuery, pool, pool.length, controller.signal).then((rows) => {
+          if (rows.length !== pool.length) throw new Error('RAG_SCORE_GATE_INCOMPLETE_RESPONSE');
+          scored = rows;
+          return rows.filter((row) => row.score >= minimumScore).map((row) => row.id);
+        }) : reranker.rerank(
           normalizedQuery,
           pool.map((chunk) => ({ id: chunk.id, text: chunk.text, title: chunk.title })),
           localReranker ? pool.length : finalLimit,
           controller.signal,
-        ),
+        );
+      const rankedIds = await Promise.race([
+        request,
         new Promise<string[]>((_, reject) => { timer = setTimeout(() => { controller.abort(); reject(new Error('rerank-timeout')); }, rerankTimeoutMs); }),
       ]);
       const knownIds = new Set(pool.map((chunk) => chunk.id));
       const uniqueIds = [...new Set(rankedIds)];
+      if (minimumScore !== undefined && scored) {
+        if (uniqueIds.some((id) => !knownIds.has(id))) throw new Error('RAG_RERANK_IDS_INVALID');
+        const byId = new Map(pool.map((hit) => [hit.id, hit]));
+        const accepted = scored.filter((row) => row.score >= minimumScore)
+          .map((row) => ({ ...byId.get(row.id)!, rerankScore: row.score }));
+        return withDiagnostics(attachHitContext(distinctSources(accepted, finalLimit), filtered, input.contextNeighbors), diagnostics);
+      }
       if (!uniqueIds.length || uniqueIds.some((id) => !knownIds.has(id))) throw new Error('RAG_RERANK_IDS_INVALID');
       const order = new Map(uniqueIds.map((id, index) => [id, uniqueIds.length - index]));
       if (uniqueIds.length < Math.min(finalLimit, pool.length)) diagnostics = { ...diagnostics, degraded: true,
@@ -169,6 +185,9 @@ export async function ragSearch(input: RagSearchInput): Promise<RagSearchHit[]> 
         .map((chunk) => order.has(chunk.id) ? { ...chunk, rerankScore: order.get(chunk.id) } : chunk);
       return withDiagnostics(attachHitContext(distinctSources(pool, finalLimit), filtered, input.contextNeighbors), diagnostics);
     } catch (error) {
+        // Unavailable inference is not evidence of no answer. Default MCP results
+        // are arrays, so throwing preserves this distinction for every caller.
+        if (minimumScore !== undefined) throw new Error('RAG_SCORE_GATE_UNAVAILABLE', { cause: error });
         diagnostics = {
           ...diagnostics,
           degraded: true,
@@ -198,6 +217,7 @@ export function filterScopedRagCandidates(
 }
 
 export function ragSearchScopedSync(input: ScopedRagSearchInput): RagSearchHit[] {
+  if (localRerankMinimumScoreFromEnv() !== undefined) throw new Error('RAG_SCORE_GATE_ASYNC_REQUIRED');
   const product = input.product ? resolveRagProduct(input.product) : undefined;
   const normalizedQuery = normalizeRetrievalQuery(input.query);
   const authorized = filterScopedRagCandidates(input.chunks, input.authorization)
@@ -215,6 +235,7 @@ export function ragSearchScopedSync(input: ScopedRagSearchInput): RagSearchHit[]
 }
 
 export function ragSearchSync(input: RagSearchInput): RagSearchHit[] {
+  if (localRerankMinimumScoreFromEnv() !== undefined) throw new Error('RAG_SCORE_GATE_ASYNC_REQUIRED');
   const index = loadRagIndex(input.indexPath);
   const product = input.product ? resolveRagProduct(input.product) : undefined;
   const normalizedQuery = normalizeRetrievalQuery(input.query);

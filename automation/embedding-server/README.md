@@ -98,6 +98,21 @@ still uses exact lexical evidence. This profile improved some development recall
 but reduced translated-Korean Hit@5 before reranking, so it is not yet an accepted
 deployment configuration. Reported settings identify the selected profile.
 
+`SANGFOR_LOCAL_RERANK_MIN_SCORE` optionally filters local async search results by
+a finite raw model score. There is no default threshold: establish it on development
+data for the exact scoring configuration before evaluating a new frozen set. The
+floor is separately included in evaluation settings. It requires the local scorer
+to be enabled and configuration-bound. Every selected candidate, including a lone
+candidate, must be scored; rejected passages are not refilled from the original
+retrieval list. Accepted passages retain their actual score in `rerankScore`.
+An incomplete/invalid response, configuration mismatch, busy service or timeout
+throws `RAG_SCORE_GATE_UNAVAILABLE`, rather than returning empty success or lexical
+fallback. An unintended embedding fallback also refuses. Synchronous local search
+entry points refuse while a floor is configured. The floor does not prove that a
+passage answers all requested details or that adjacent context is supported; actual
+answer/citation verification remains required. These settings apply to local RAG,
+not an authorization grant or a replacement for PostgreSQL authority/ACL checks.
+
 
 ### Reproducible scoring configuration
 
@@ -116,7 +131,7 @@ must not exceed 16,384. A context exceeding the model position limit is refused.
 hardware rather than assuming the checkpoint dtype is fastest.
 
 `LocalRerankProvider.rerankScored()` retains finite raw model scores and verified
-candidate IDs. These scores are not calibrated answer probabilities. No score
-cutoff or automatic acceptance policy is enabled by this API. The adapter includes
+candidate IDs. These scores are not calibrated answer probabilities. Raw scoring
+does not apply the optional client floor or grant answer acceptance. The adapter includes
 the full title once and strips only its exact duplicate leading heading from the
 body before selecting the scoring passage. Persisted source text is unchanged.

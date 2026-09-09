@@ -33,6 +33,7 @@ async function main(): Promise<void> {
       localRerankerRevision: process.env.SANGFOR_LOCAL_RERANK_REVISION ?? null,
       ...(process.env.SANGFOR_LOCAL_RERANK_ENABLED === '1' ? {
         localRerankerConfigurationSha256: createLocalRerankFromEnv()!.configurationSha256,
+        localRerankerMinimumScore: createLocalRerankFromEnv()!.minimumScore ?? null,
       } : {}),
       ...(process.env.SANGFOR_LOCAL_RERANK_ENABLED === '1' || process.env.SANGFOR_MIMO_RERANK_ENABLED === '1' ? {
         rerankCandidates: process.env.SANGFOR_MIMO_RERANK_CANDIDATES ?? '40',

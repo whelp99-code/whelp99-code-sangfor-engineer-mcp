@@ -49,6 +49,15 @@ describe('corpus evaluation scoring provenance', () => {
         expect(changed.qrelsSha256).toBe(baseline.qrelsSha256);
         expect(changed.promotionStatus).toBe('NOT_EVALUATED');
       }
+      // An empty index avoids inference while proving the configured floor is
+      // part of report identity. Missing gold sources remain reported failures.
+      writeFileSync(indexPath, JSON.stringify({ version: 1, updatedAt: new Date(0).toISOString(), chunks: [] }));
+      const noFloor = run();
+      const withFloor = run({ SANGFOR_LOCAL_RERANK_MIN_SCORE: '4' });
+      expect(withFloor.settings.localRerankerMinimumScore).toBe(4);
+      expect(withFloor.settingsSha256).not.toBe(noFloor.settingsSha256);
+      expect(withFloor.missingRelevantSources).toEqual(['a.md']);
+      expect(withFloor.promotionStatus).toBe('NOT_EVALUATED');
     } finally { rmSync(dir, { recursive: true, force: true }); }
   }, 15000);
 });
