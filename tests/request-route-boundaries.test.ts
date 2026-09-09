@@ -67,4 +67,16 @@ describe('route-specific request boundaries', () => {
     // Then
     expect(parse).toThrow(RuntimeSchemaError);
   });
+
+  it('rejects a localFallback flag on the engineer-case save route', () => {
+    const parse = () => decodeOperatorRequestBody(
+      parseBoundaryOperatorRequestBodyV1(JSON.stringify({
+        requestId: 'req-1',
+        document: { caseId: 'case-1' },
+        localFallback: true,
+      })),
+      'engineer-cases',
+    );
+    expect(parse).toThrow(RuntimeSchemaError);
+  });
 });

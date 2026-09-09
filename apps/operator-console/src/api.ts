@@ -217,6 +217,19 @@ export function getSpecCoverage() {
   return { specs: listSpecCoverage(), safety: listCapabilitySafety() };
 }
 
+export {
+  defaultEngineerCaseStore,
+  getEngineerCaseArtifact,
+  getResumeEngineerCase,
+  postCompareEngineerCase,
+  postEngineerCaseArtifact,
+  postResumeEngineerCase,
+  postSaveEngineerCase,
+  refuseEngineerCaseFileFallback,
+  refuseEngineerCasePublicIndex,
+  resolveEngineerCaseApiAuth,
+} from './engineer-case-api.js';
+
 export function getDiagnoses() {
   const dir = join(process.cwd(), 'outputs', 'diagnosis');
   if (!existsSync(dir)) return { diagnoses: [] };

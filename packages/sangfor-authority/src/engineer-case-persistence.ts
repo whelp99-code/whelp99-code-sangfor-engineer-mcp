@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { RuntimeSchemaError } from '../../shared/src/runtime-schema.js';
 import {
+  computeEngineerGuideDigest,
   engineerCaseDocumentSchema,
   isEngineerCaseAuthContext,
   parseEngineerCaseDocument,
@@ -169,6 +170,7 @@ export function prepareEngineerCaseForPersistence(
     tenantId: auth.tenantId,
     projectId: auth.projectId,
     actorId: auth.actorId,
+    progress: document.progress === 'accepted' ? 'pm_review' : document.progress,
     guide: { ...document.guide, readiness: assemblePersistedReadiness(document) },
     evidence: document.evidence.map((item) => ({
       ...item,
@@ -183,21 +185,26 @@ export function prepareEngineerCaseForPersistence(
     },
   };
   const masked = maskEngineerCaseSecrets(value) as EngineerCase;
-  const observationDigest = digestEngineerCaseValue(masked.observations);
-  const requirementDigest = digestEngineerCaseValue(masked.requirements.map((item) => ({ id: item.id, revision: item.revision })));
+  const { digest: _claimedGuideDigest, ...guideFields } = masked.guide;
+  const consistent: EngineerCase = {
+    ...masked,
+    guide: { ...guideFields, digest: computeEngineerGuideDigest(guideFields) },
+  };
+  const observationDigest = digestEngineerCaseValue(consistent.observations);
+  const requirementDigest = digestEngineerCaseValue(consistent.requirements.map((item) => ({ id: item.id, revision: item.revision })));
   const artifactDigests = artifacts.map((item) => item.digest);
   const requestDigest = digestEngineerCaseValue({
-    document: masked,
+    document: consistent,
     artifacts: artifactDigests,
   });
   return {
     ok: true,
     value: {
-      value: masked,
+      value: consistent,
       observationDigest,
       requirementDigest,
       requestDigest,
-      evidenceRefs: masked.evidence.map((item) => item.id),
+      evidenceRefs: consistent.evidence.map((item) => item.id),
     },
   };
 }
