@@ -76,12 +76,27 @@ export function createHciObservedFact(value: unknown, provenance: HciFactProvena
   return { value, source: provenance };
 }
 
+export const HCI_INVENTORY_COLLECTED_SURFACES = ['volumes', 'servers', 'images'] as const;
+export type HciInventoryCollectedSurface = (typeof HCI_INVENTORY_COLLECTED_SURFACES)[number];
+
+/** Caller-declared read request. Collection never infers a write surface. */
+export interface HciCollectionRequest {
+  readonly target?: string;
+  readonly identityOrigin?: string;
+  readonly serviceOrigins?: Partial<Record<'identity' | 'volume' | 'compute' | 'image', string>>;
+  readonly surfaces?: readonly HciInventoryCollectedSurface[];
+  readonly maxPages?: number;
+  readonly maxPageTimeMs?: number;
+  readonly scope?: { readonly tenantId?: string; readonly projectId?: string };
+}
+
 /** Envelope fields the caller may add on top of what the transport measures. */
 export interface HciCollectionOptions {
   collectedAt?: string;
   collector?: string;
   firmwareVersion?: string;
   authPrincipal?: string;
+  request?: HciCollectionRequest;
 }
 
 /** Compose the envelope for one measured REST read. latencyMs is included only
