@@ -25,6 +25,15 @@ function redactSecrets(text: string): string {
   return text.replace(SECRET_RE, (match) => `${match.split(/[:=]/u)[0]}=***`);
 }
 
+function hasSecretShape(text: string): boolean {
+  return /(?:password|secret|token|authorization|cookie|비밀번호|패스워드|토큰)\s*[:=]\s*\S+/iu.test(text);
+}
+
+function constraintIsInferred(sourceText: string, rawConstraint: string, redactedConstraint: string): boolean {
+  if (sourceText.includes(rawConstraint)) return false;
+  return !redactSecrets(sourceText).includes(redactedConstraint);
+}
+
 function unitIssue(text: string): string | undefined {
   const matches = [...text.matchAll(UNIT_RE)].map((item) => item[2]?.toLowerCase() ?? '');
   if (matches.some((unit) => unit === 'g' || unit === '기가')) return 'ambiguous bare G/기가 unit';
@@ -57,9 +66,10 @@ function mappedRequirement(input: {
   readonly caseId: string;
   readonly projectId: string;
 }): EngineerRequirement {
-  const constraint = input.constraint?.trim() ? redactSecrets(input.constraint) : undefined;
+  const rawConstraint = input.constraint?.trim() || undefined;
+  const constraint = rawConstraint ? redactSecrets(rawConstraint) : undefined;
   const target = input.target?.trim() ? redactSecrets(input.target) : undefined;
-  const inferred = Boolean(constraint && !input.sourceText.includes(constraint));
+  const inferred = Boolean(constraint && rawConstraint && constraintIsInferred(input.sourceText, rawConstraint, constraint));
   const sourceKind = !constraint && !target ? 'unknown' : inferred ? 'proposed' : 'provided';
   return {
     id: input.id,
@@ -99,7 +109,7 @@ export function collectRequirementQuestions(
     if (DIRECTIVE_RE.test(source)) {
       questions.push(question('document_directive', [requirement.id], [requirement.sourceRef], 'Document instruction treated as data; not executed', questions.length));
     }
-    if (source.match(SECRET_RE)) {
+    if (hasSecretShape(source) || hasSecretShape(requirement.constraint ?? '') || hasSecretShape(requirement.acceptanceCriterion)) {
       questions.push(question('secret_redacted', [requirement.id], [requirement.sourceRef], 'Secret-shaped text was redacted and not extracted', questions.length));
     }
     if (allowedRoot && isExternalFileReference(source, allowedRoot)) {
@@ -196,7 +206,7 @@ export function applyUnconfirmedInferences(
     return {
       ...requirement,
       sourceKind: 'proposed',
-      constraint: match.constraint,
+      constraint: redactSecrets(match.constraint),
       confirmationState: 'unconfirmed',
     };
   });

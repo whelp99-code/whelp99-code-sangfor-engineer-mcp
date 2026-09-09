@@ -67,6 +67,7 @@ export function assertEngineerRequirementFile(input: {
 
   const stat = lstatSync(candidate);
   if (stat.isSymbolicLink()) return fail('SYMLINK_FORBIDDEN', `Symlink refused: ${candidate}`);
+  if (!stat.isFile()) return fail('MALFORMED_EXCEL', 'Excel path is not a regular file');
   const real = realpathSync(candidate);
   if (!containedByRoot(root, real)) {
     return fail('PATH_TRAVERSAL', `Resolved path escapes allowed root: ${filePath}`);

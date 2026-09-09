@@ -239,9 +239,9 @@ describe('engineer requirements (E04)', () => {
     if (!assembled.ok) throw new Error('expected assembled case');
     expect(assembled.guideReadyGranted).toBe(false);
     expect(assembled.value.guide.readiness).not.toBe('review_ready');
-    expect(result.requirements.every((item) => ['satisfied', 'change_needed', 'unresolved', 'not_applicable']
-      .includes('unresolved'))).toBe(true);
-    expect(assembled.value.assessments).toHaveLength(result.requirements.length);
+    expect(assembled.value.assessments.map((item) => item.requirementRef).sort())
+      .toEqual(result.requirements.map((item) => item.id).sort());
+    expect(assembled.value.assessments.every((item) => item.status === 'unresolved')).toBe(true);
   });
 
   it('keeps unknown targets unknown instead of substituting 0 or PASS', () => {
@@ -292,6 +292,9 @@ describe('engineer requirements (E04)', () => {
     expect(result.questions.some((item) => item.kind === 'document_directive')).toBe(true);
     expect(JSON.stringify(result)).not.toContain('"execute":true');
     expect(JSON.stringify(result)).not.toContain('supersecretvalue');
+    const secretRow = result.requirements.find((item) => item.id === 'req-8');
+    expect(secretRow?.sourceKind).toBe('provided');
+    expect(secretRow?.constraint).toContain('password=***');
     expect(result.questions.some((item) => item.kind === 'secret_redacted')).toBe(true);
     expect(result.questions.some((item) => item.kind === 'ambiguous_unit')).toBe(true);
     const conflict = result.questions.find((item) => item.kind === 'conflict');
@@ -338,6 +341,34 @@ describe('engineer requirements (E04)', () => {
       allowedRoot,
       filePath: join(allowedRoot, 'ok.xlsx'),
     })).toMatchObject({ ok: false, code: 'MALFORMED_EXCEL' });
+    mkdirSync(join(allowedRoot, 'folder.xlsx'));
+    expect(ingestEngineerRequirements({
+      mode: 'existing',
+      caseId: 'case-existing-1',
+      projectId: AUTH.projectId,
+      revision: 'req-rev-1',
+      allowedRoot,
+      filePath: join(allowedRoot, 'folder.xlsx'),
+    })).toMatchObject({ ok: false, code: 'MALFORMED_EXCEL' });
+  });
+
+  it('does not persist a secret-shaped constraint in cleartext', () => {
+    const fixtureSecret = 'e04-fixture-secret-a1b2';
+    const result = ingestEngineerRequirements({
+      mode: 'existing',
+      caseId: 'case-existing-1',
+      projectId: AUTH.projectId,
+      revision: 'req-rev-1',
+      texts: ['Keep HA enabled'],
+      unconfirmedInferences: [{ text: 'Keep HA enabled', constraint: `admin password=${fixtureSecret}` }],
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ingest');
+    const serialized = JSON.stringify(result);
+    expect(serialized).not.toContain(fixtureSecret);
+    expect(result.requirements[0]?.sourceKind).toBe('proposed');
+    expect(result.requirements[0]?.constraint).toBe('admin password=***');
+    expect(result.questions.some((item) => item.kind === 'secret_redacted')).toBe(true);
   });
 
   it('marks dependent calculations and guides stale after requirement edit or delete', () => {
