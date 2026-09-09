@@ -17,6 +17,8 @@ Do not put passwords, cookies, session material, or customer host addresses in g
 
 Required conjunction: live originalPresent bound facts + structured HMAC PM grant + matching revision + consumed nonce.
 
+When collect actually executes against an authorized device (declared target matches the in-process `endpointFor` identity origin; not mock `:3400`), those REST facts go through `bindHciCollectToFieldAcceptanceObservations` and are usable by `bindEngineerAuthorizedDeviceReadEvidence`. Fixture clients, mock console, historical kinds, and invented collector bytes cannot mint `authorized_device_read`. Current HCI collect still cannot bind E03B surfaces; those stay `NOT_RUN` and the grant refuses. The fixture workflow path still does not pass `boundObservations`.
+
 Fixture PASS, `review_ready`, Word download, e2e PASS, developer tests, and `SANGFOR_ALLOW_REAL_EXECUTION` cannot set `field_accepted`. Required surfaces with no bound originalPresent facts stay `NOT_RUN` and refuse the grant; `NOT_RUN` is not PASS. A refused grant does not report `liveRead: executed` merely because the caller claimed it. This tree has not run a live HCI collect. A unit-test binder path can exercise the sibling true path; that path is not a production default and is not `field_accepted` for a real case. A real grant still cannot happen until a real collect produces those facts.
 
 ## What the user / PM must provide before a live read starts
