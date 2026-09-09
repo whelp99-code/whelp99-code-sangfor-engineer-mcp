@@ -1,0 +1,37 @@
+[
+  {
+    "base": "origin/main",
+    "head": "origin/codex/revision-v1",
+    "ancestor": true,
+    "baseSha": "9bd77697577a0906c38055fb97525cad1e91376c",
+    "headSha": "069df31c152ae1920c393d22b3708b6e4f713b0e"
+  },
+  {
+    "base": "origin/codex/revision-v1",
+    "head": "origin/codex/revision-v2",
+    "ancestor": true,
+    "baseSha": "069df31c152ae1920c393d22b3708b6e4f713b0e",
+    "headSha": "2311c6681cc07eabf1540c8402c0347729c950fd"
+  },
+  {
+    "base": "origin/codex/revision-v2",
+    "head": "origin/codex/revision-v3",
+    "ancestor": true,
+    "baseSha": "2311c6681cc07eabf1540c8402c0347729c950fd",
+    "headSha": "d1fc62d97bc4495d854a6afe3dac8ccabff37526"
+  },
+  {
+    "base": "origin/codex/revision-v3",
+    "head": "origin/codex/revision-v4",
+    "ancestor": true,
+    "baseSha": "d1fc62d97bc4495d854a6afe3dac8ccabff37526",
+    "headSha": "292eb111a99ee7eb2ddff67b65c0e96cda6fa380"
+  },
+  {
+    "base": "origin/codex/revision-v4",
+    "head": "HEAD",
+    "ancestor": true,
+    "baseSha": "292eb111a99ee7eb2ddff67b65c0e96cda6fa380",
+    "headSha": "72e5a5be91886e20bdd02593cb2e7ca2c6485c10"
+  }
+]
