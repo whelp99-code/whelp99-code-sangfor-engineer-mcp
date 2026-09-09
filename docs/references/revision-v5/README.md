@@ -12,3 +12,5 @@
 큰 후보 인덱스·모델 가중치·체크포인트는 `.omo/revision-v5`에 보관하며 커밋하지 않는다. 운영 승격/실행 승인을 이 자료에서 추론하면 안 된다.
 
 MiniLM 동일 코퍼스 개발 비교는 `minilm-{dense,hybrid,rrf}-{original,development}.json`에 기록했다. `minilm-hybrid-korean*.json`은 기존 개발 질문의 한국어 번역 실험이며 독립 holdout이 아니다. 주제 일치 조건은 한국어 적중률과 무응답 오탐 사이의 미해결 문제를 보였으므로 최종 채택으로 해석하지 않는다.
+
+최초 최종 평가 결과는 `holdout-acceptance.json`이며 NOT_ELIGIBLE이다. `holdout-raw.json`과 `holdout-client.json`은 첫 실행 결과를 보존한다. 해당 질문은 이후 노출된 개발셋으로 취급하며 재튜닝 결과를 독립 평가로 주장하지 않는다. `candidate-selection.json`은 평가 전 후보 선택 기록이며 운영 승인 기록이 아니다.

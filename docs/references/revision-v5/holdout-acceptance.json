@@ -1,0 +1,32 @@
+{
+  "candidateFreezeCommit": "0ae2c2c",
+  "thresholds": {
+    "hitRateAt5Min": 0.9,
+    "noAnswerFalsePositiveRateMax": 0.1,
+    "forbiddenHitsMax": 0
+  },
+  "results": [
+    {
+      "mode": "raw",
+      "report": "holdout-raw.json",
+      "reportSha256": "b0a361d09b505fbdd8ffc33831abfb80be4f58b8c459e471509f6955f602ad0a",
+      "hitRateAt5": 0.6666666666666666,
+      "noAnswerFalsePositiveRate": 0,
+      "forbiddenHits": 0,
+      "decision": "NOT_ELIGIBLE"
+    },
+    {
+      "mode": "client",
+      "report": "holdout-client.json",
+      "reportSha256": "bcf2c85f9e74da58e2df3855b71b9efe08c767075e725464a9ae0d2bf379485e",
+      "hitRateAt5": 0.8333333333333334,
+      "noAnswerFalsePositiveRate": 0.5,
+      "forbiddenHits": 0,
+      "decision": "NOT_ELIGIBLE"
+    }
+  ],
+  "decision": "NOT_ELIGIBLE",
+  "deploymentAuthorizedByThisEvaluation": false,
+  "fixtureStateAfterThisRun": "EXPOSED_DEVELOPMENT; future tuning against these questions requires a newly frozen evaluation set",
+  "canonicalFixtureAndLabelsChanged": false
+}
