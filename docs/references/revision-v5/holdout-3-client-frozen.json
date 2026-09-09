@@ -1,0 +1,973 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-09T08:14:49.926Z",
+  "indexSha256": "ff1118e44d4c1f21e7e465f6e1d66fcb0f4a08a09e9f1f7fbc098054c3febfa0",
+  "qrelsSha256": "ccc088e73edc4f1bb9c7b4cd46dab64c92aadce7d8bcc779ae00cb7b2e82e400",
+  "implementationSha256": "04e5fd25cc3ff4457149b922a44893c89e7314be7e720a2c6b807b52b84d2b4d",
+  "implementationFiles": [
+    "package.json",
+    "pnpm-lock.yaml",
+    "scripts/rag-corpus-eval.ts",
+    "packages/sangfor-rag/src/corpus-eval-contract.ts",
+    "packages/sangfor-rag/src/rag-search.ts",
+    "packages/sangfor-rag/src/rag-search-diagnostics.ts",
+    "packages/sangfor-rag/src/rag-ranking.ts",
+    "packages/sangfor-rag/src/hit-context.ts",
+    "packages/sangfor-rag/src/query-evidence.ts",
+    "packages/sangfor-rag/src/query-evidence-requirement.ts",
+    "packages/sangfor-rag/src/retrieval-text.ts",
+    "packages/sangfor-rag/src/bm25.ts",
+    "packages/sangfor-rag/src/query-normalization.ts",
+    "packages/sangfor-rag/src/retrieval-eval.ts",
+    "packages/sangfor-rag/src/corpus-eval-gate.ts",
+    "packages/sangfor-rag/src/hash-embedding.ts",
+    "packages/sangfor-rag/src/embedding-space.ts",
+    "packages/sangfor-rag/src/embedding-profile.ts",
+    "packages/sangfor-rag/src/rag-product.ts",
+    "packages/sangfor-rag/src/rag-index-store.ts",
+    "packages/sangfor-rag/src/embedding-provider.ts",
+    "packages/sangfor-rag/src/rapid-mlx-provider.ts",
+    "packages/sangfor-rag/src/openai-embeddings-client.ts",
+    "packages/sangfor-rag/src/mimo-rerank-provider.ts",
+    "packages/sangfor-rag/src/local-rerank-provider.ts",
+    "packages/sangfor-rag/src/local-score-order.ts"
+  ],
+  "settings": {
+    "hybridAlpha": "0.5",
+    "lexicalProfile": "stem-ancestors",
+    "allowCustomer": false,
+    "execution": "async-configured-provider",
+    "embeddingModel": "intfloat/multilingual-e5-small",
+    "embeddingRevision": "614241f622f53c4eeff9890bdc4f31cfecc418b3",
+    "localRerankerEnabled": true,
+    "localRerankerPassages": 1,
+    "localReranker": "Qwen/Qwen3-Reranker-0.6B",
+    "localRerankerRevision": "e61197ed45024b0ed8a2d74b80b4d909f1255473",
+    "localRerankerConfigurationSha256": "05bb2aff6414a543bf32068503f7c953fb9f552a133ce113260241589a85202c",
+    "localRerankerMinimumScore": 3.666952610015869,
+    "localRerankerScoreOrder": "retrieval",
+    "rerankCandidates": "40",
+    "rerankTimeoutMs": "60000",
+    "rerankDisabled": true,
+    "requireSubjectMatch": true
+  },
+  "settingsSha256": "3970fdd9555e6c5c8069f1b21fb22351c3f45525477ce3359f5fa418a755ce34",
+  "evaluationOnly": true,
+  "promotionStatus": "NOT_EVALUATED",
+  "missingRelevantSources": [],
+  "positiveQueryCount": 12,
+  "noAnswerQueryCount": 12,
+  "byProduct": {
+    "HCI": {
+      "queryCount": 2,
+      "hitRateAtK": 1,
+      "recallAtK": 1,
+      "mrrAtK": 0.75,
+      "ndcgAtK": 0.8154648767857288
+    },
+    "HCI_SCP": {
+      "queryCount": 2,
+      "hitRateAtK": 1,
+      "recallAtK": 1,
+      "mrrAtK": 1,
+      "ndcgAtK": 1
+    },
+    "IAG": {
+      "queryCount": 2,
+      "hitRateAtK": 1,
+      "recallAtK": 1,
+      "mrrAtK": 1,
+      "ndcgAtK": 1
+    },
+    "NDR": {
+      "queryCount": 2,
+      "hitRateAtK": 1,
+      "recallAtK": 1,
+      "mrrAtK": 1,
+      "ndcgAtK": 1
+    },
+    "NGFW": {
+      "queryCount": 2,
+      "hitRateAtK": 0.5,
+      "recallAtK": 0.5,
+      "mrrAtK": 0.5,
+      "ndcgAtK": 0.5
+    },
+    "SCC": {
+      "queryCount": 2,
+      "hitRateAtK": 1,
+      "recallAtK": 1,
+      "mrrAtK": 0.75,
+      "ndcgAtK": 0.8154648767857288
+    }
+  },
+  "byLanguage": {
+    "en": {
+      "queryCount": 6,
+      "hitRateAtK": 0.8333333333333334,
+      "recallAtK": 0.8333333333333334,
+      "mrrAtK": 0.6666666666666666,
+      "ndcgAtK": 0.7103099178571526
+    },
+    "ko": {
+      "queryCount": 6,
+      "hitRateAtK": 1,
+      "recallAtK": 1,
+      "mrrAtK": 1,
+      "ndcgAtK": 1
+    }
+  },
+  "node": "v24.19.0",
+  "cpu": "AMD EPYC Processor",
+  "chunkCount": 39789,
+  "profile": "async retrieval; actual providers and degradation recorded per query",
+  "k": 5,
+  "coldLoadMs": 1687.711542,
+  "meanLatencyMs": 16128.895600791673,
+  "p50LatencyMs": 22221.169469,
+  "p95LatencyMs": 27551.083819,
+  "metrics": {
+    "queryCount": 12,
+    "hitRateAtK": 0.9166666666666666,
+    "recallAtK": 0.9166666666666666,
+    "mrrAtK": 0.8333333333333334,
+    "ndcgAtK": 0.8551549589285763
+  },
+  "noAnswerFalsePositiveRate": 0,
+  "forbiddenHits": 0,
+  "hardNegativeQueryRate": 0,
+  "hardNegativeHits": 0,
+  "rows": [
+    {
+      "queryId": "v5-holdout3-01",
+      "product": "HCI",
+      "language": "ko",
+      "latencyMs": 27551.083819,
+      "mode": "hybrid-semantic",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 78
+        },
+        "embeddingModelCounts": {
+          "intfloat/multilingual-e5-small": 78
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "0c433ea6086f274e850e093398ac0828906b30e2a1fac952de1ca1235ede7142",
+        "retrievalMode": "hybrid-semantic"
+      },
+      "hits": [
+        {
+          "queryId": "v5-holdout3-01",
+          "sourceId": "data/sources/raw/support_10_1070_2126550.md",
+          "rank": 1,
+          "score": 1,
+          "rerankScore": 7.972529411315918
+        },
+        {
+          "queryId": "v5-holdout3-01",
+          "sourceId": "data/sources/raw/support_10_1070_2126700.md",
+          "rank": 2,
+          "score": 0.8616195384229095,
+          "rerankScore": 4.47261905670166
+        },
+        {
+          "queryId": "v5-holdout3-01",
+          "sourceId": "data/sources/raw/support_10_1070_2120250.md",
+          "rank": 3,
+          "score": 0.35876911397368316,
+          "rerankScore": 3.8395042419433594
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "v5-holdout3-02",
+      "product": "HCI",
+      "language": "en",
+      "latencyMs": 23940.891815,
+      "mode": "hybrid-semantic",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 494
+        },
+        "embeddingModelCounts": {
+          "intfloat/multilingual-e5-small": 494
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "0c433ea6086f274e850e093398ac0828906b30e2a1fac952de1ca1235ede7142",
+        "retrievalMode": "hybrid-semantic"
+      },
+      "hits": [
+        {
+          "queryId": "v5-holdout3-02",
+          "sourceId": "data/sources/raw/support_10_1229_2639694.md",
+          "rank": 1,
+          "score": 1,
+          "rerankScore": 8.681218147277832
+        },
+        {
+          "queryId": "v5-holdout3-02",
+          "sourceId": "data/sources/raw/support_10_1229_2639791.md",
+          "rank": 2,
+          "score": 0.9528878854046894,
+          "rerankScore": 8.530284881591797
+        },
+        {
+          "queryId": "v5-holdout3-02",
+          "sourceId": "data/sources/raw/support_10_1229_2639780.md",
+          "rank": 3,
+          "score": 0.9502627246488722,
+          "rerankScore": 4.909282684326172
+        },
+        {
+          "queryId": "v5-holdout3-02",
+          "sourceId": "data/sources/raw/support_10_1229_2639675.md",
+          "rank": 4,
+          "score": 0.9412130660704077,
+          "rerankScore": 6.509654998779297
+        },
+        {
+          "queryId": "v5-holdout3-02",
+          "sourceId": "data/sources/raw/support_10_1229_2639682.md",
+          "rank": 5,
+          "score": 0.8705780928939048,
+          "rerankScore": 7.173111915588379
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "v5-holdout3-03",
+      "product": "NGFW",
+      "language": "ko",
+      "latencyMs": 26154.912224000007,
+      "mode": "hybrid-semantic",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 1098
+        },
+        "embeddingModelCounts": {
+          "intfloat/multilingual-e5-small": 1098
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "0c433ea6086f274e850e093398ac0828906b30e2a1fac952de1ca1235ede7142",
+        "retrievalMode": "hybrid-semantic"
+      },
+      "hits": [
+        {
+          "queryId": "v5-holdout3-03",
+          "sourceId": "data/sources/raw/support_21_1095_2653431.md",
+          "rank": 1,
+          "score": 0.9229446014301057,
+          "rerankScore": 5.415474891662598
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "v5-holdout3-04",
+      "product": "NGFW",
+      "language": "en",
+      "latencyMs": 22221.169469,
+      "mode": "hybrid-semantic",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 860
+        },
+        "embeddingModelCounts": {
+          "intfloat/multilingual-e5-small": 860
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "0c433ea6086f274e850e093398ac0828906b30e2a1fac952de1ca1235ede7142",
+        "retrievalMode": "hybrid-semantic"
+      },
+      "hits": [
+        {
+          "queryId": "v5-holdout3-04",
+          "sourceId": "data/sources/raw/support_21_1093_2637202.md",
+          "rank": 1,
+          "score": 0.958016561808102,
+          "rerankScore": 8.807764053344727
+        },
+        {
+          "queryId": "v5-holdout3-04",
+          "sourceId": "data/sources/raw/support_21_1093_2638450.md",
+          "rank": 2,
+          "score": 0.9523262218499271,
+          "rerankScore": 8.80617618560791
+        },
+        {
+          "queryId": "v5-holdout3-04",
+          "sourceId": "data/sources/raw/support_21_1093_2637203.md",
+          "rank": 3,
+          "score": 0.9455604576592667,
+          "rerankScore": 8.911377906799316
+        },
+        {
+          "queryId": "v5-holdout3-04",
+          "sourceId": "data/sources/raw/support_21_1093_2638451.md",
+          "rank": 4,
+          "score": 0.9394496578796994,
+          "rerankScore": 8.89258861541748
+        },
+        {
+          "queryId": "v5-holdout3-04",
+          "sourceId": "data/sources/raw/support_21_1093_2637440.md",
+          "rank": 5,
+          "score": 0.9061626710864257,
+          "rerankScore": 8.572751998901367
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "v5-holdout3-05",
+      "product": "NDR",
+      "language": "ko",
+      "latencyMs": 26066.788979999998,
+      "mode": "hybrid-semantic",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 125
+        },
+        "embeddingModelCounts": {
+          "intfloat/multilingual-e5-small": 125
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "0c433ea6086f274e850e093398ac0828906b30e2a1fac952de1ca1235ede7142",
+        "retrievalMode": "hybrid-semantic"
+      },
+      "hits": [
+        {
+          "queryId": "v5-holdout3-05",
+          "sourceId": "data/sources/raw/support_24_1219_2630689.md",
+          "rank": 1,
+          "score": 1,
+          "rerankScore": 7.378690719604492
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "v5-holdout3-06",
+      "product": "NDR",
+      "language": "en",
+      "latencyMs": 24001.56741400002,
+      "mode": "hybrid-semantic",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 129
+        },
+        "embeddingModelCounts": {
+          "intfloat/multilingual-e5-small": 129
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "0c433ea6086f274e850e093398ac0828906b30e2a1fac952de1ca1235ede7142",
+        "retrievalMode": "hybrid-semantic"
+      },
+      "hits": [
+        {
+          "queryId": "v5-holdout3-06",
+          "sourceId": "data/sources/raw/support_24_1078_2634604.md",
+          "rank": 1,
+          "score": 1,
+          "rerankScore": 9.436367988586426
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "v5-holdout3-07",
+      "product": "HCI_SCP",
+      "language": "ko",
+      "latencyMs": 28237.539101000002,
+      "mode": "hybrid-semantic",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 1692
+        },
+        "embeddingModelCounts": {
+          "intfloat/multilingual-e5-small": 1692
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "0c433ea6086f274e850e093398ac0828906b30e2a1fac952de1ca1235ede7142",
+        "retrievalMode": "hybrid-semantic"
+      },
+      "hits": [
+        {
+          "queryId": "v5-holdout3-07",
+          "sourceId": "data/sources/raw/support_45_1379_2663166.md",
+          "rank": 1,
+          "score": 0.9714193909795917,
+          "rerankScore": 9.01761531829834
+        },
+        {
+          "queryId": "v5-holdout3-07",
+          "sourceId": "data/sources/raw/support_45_1379_2652785.md",
+          "rank": 2,
+          "score": 0.8881307572536558,
+          "rerankScore": 7.354140281677246
+        },
+        {
+          "queryId": "v5-holdout3-07",
+          "sourceId": "data/sources/raw/support_45_1379_2652419.md",
+          "rank": 3,
+          "score": 0.8789124270182115,
+          "rerankScore": 5.616275787353516
+        },
+        {
+          "queryId": "v5-holdout3-07",
+          "sourceId": "data/sources/raw/support_45_1379_2652421.md",
+          "rank": 4,
+          "score": 0.7606721009753911,
+          "rerankScore": 4.510653495788574
+        },
+        {
+          "queryId": "v5-holdout3-07",
+          "sourceId": "data/sources/raw/support_45_1379_2652713.md",
+          "rank": 5,
+          "score": 0.6267591362716378,
+          "rerankScore": 3.794705390930176
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "v5-holdout3-08",
+      "product": "HCI_SCP",
+      "language": "en",
+      "latencyMs": 23172.128933,
+      "mode": "hybrid-semantic",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 1421
+        },
+        "embeddingModelCounts": {
+          "intfloat/multilingual-e5-small": 1421
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "0c433ea6086f274e850e093398ac0828906b30e2a1fac952de1ca1235ede7142",
+        "retrievalMode": "hybrid-semantic"
+      },
+      "hits": [
+        {
+          "queryId": "v5-holdout3-08",
+          "sourceId": "data/sources/raw/support_45_1388_2656896.md",
+          "rank": 1,
+          "score": 0.856635666175692,
+          "rerankScore": 8.478071212768555
+        },
+        {
+          "queryId": "v5-holdout3-08",
+          "sourceId": "data/sources/raw/support_45_1388_2656883.md",
+          "rank": 2,
+          "score": 0.649819858311756,
+          "rerankScore": 4.520119667053223
+        },
+        {
+          "queryId": "v5-holdout3-08",
+          "sourceId": "data/sources/raw/support_45_1388_2656804.md",
+          "rank": 3,
+          "score": 0.5937300491575436,
+          "rerankScore": 3.8370532989501953
+        },
+        {
+          "queryId": "v5-holdout3-08",
+          "sourceId": "data/sources/raw/support_45_1388_2656898.md",
+          "rank": 4,
+          "score": 0.5111586741790264,
+          "rerankScore": 6.153094291687012
+        },
+        {
+          "queryId": "v5-holdout3-08",
+          "sourceId": "data/sources/raw/support_45_1388_2655918.md",
+          "rank": 5,
+          "score": 0.4783431188634536,
+          "rerankScore": 4.223973274230957
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "v5-holdout3-09",
+      "product": "IAG",
+      "language": "ko",
+      "latencyMs": 23158.933564000006,
+      "mode": "hybrid-semantic",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 952
+        },
+        "embeddingModelCounts": {
+          "intfloat/multilingual-e5-small": 952
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "0c433ea6086f274e850e093398ac0828906b30e2a1fac952de1ca1235ede7142",
+        "retrievalMode": "hybrid-semantic"
+      },
+      "hits": [
+        {
+          "queryId": "v5-holdout3-09",
+          "sourceId": "data/sources/raw/support_case_2_33574.md",
+          "rank": 1,
+          "score": 1,
+          "rerankScore": 7.4500837326049805
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "v5-holdout3-10",
+      "product": "IAG",
+      "language": "en",
+      "latencyMs": 20674.056398999994,
+      "mode": "hybrid-semantic",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 952
+        },
+        "embeddingModelCounts": {
+          "intfloat/multilingual-e5-small": 952
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "0c433ea6086f274e850e093398ac0828906b30e2a1fac952de1ca1235ede7142",
+        "retrievalMode": "hybrid-semantic"
+      },
+      "hits": [
+        {
+          "queryId": "v5-holdout3-10",
+          "sourceId": "data/sources/raw/support_case_2_33602.md",
+          "rank": 1,
+          "score": 0.9986511875511114,
+          "rerankScore": 7.886061668395996
+        },
+        {
+          "queryId": "v5-holdout3-10",
+          "sourceId": "data/sources/raw/support_case_2_33549.md",
+          "rank": 2,
+          "score": 0.772877742530652,
+          "rerankScore": 7.256344795227051
+        },
+        {
+          "queryId": "v5-holdout3-10",
+          "sourceId": "data/sources/raw/support_case_2_33660.md",
+          "rank": 3,
+          "score": 0.6996526092391344,
+          "rerankScore": 5.824267387390137
+        },
+        {
+          "queryId": "v5-holdout3-10",
+          "sourceId": "data/sources/raw/support_case_2_33643.md",
+          "rank": 4,
+          "score": 0.478180871852186,
+          "rerankScore": 5.073943138122559
+        },
+        {
+          "queryId": "v5-holdout3-10",
+          "sourceId": "data/sources/raw/support_case_2_33619.md",
+          "rank": 5,
+          "score": 0.38960295947213797,
+          "rerankScore": 4.3196611404418945
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "v5-holdout3-11",
+      "product": "SCC",
+      "language": "ko",
+      "latencyMs": 7726.064522000001,
+      "mode": "hybrid-semantic",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 120
+        },
+        "embeddingModelCounts": {
+          "intfloat/multilingual-e5-small": 120
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "0c433ea6086f274e850e093398ac0828906b30e2a1fac952de1ca1235ede7142",
+        "retrievalMode": "hybrid-semantic"
+      },
+      "hits": [
+        {
+          "queryId": "v5-holdout3-11",
+          "sourceId": "data/sources/raw/support_32_1101_1540500.md",
+          "rank": 1,
+          "score": 0.9157742265095681,
+          "rerankScore": 6.364609718322754
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "v5-holdout3-12",
+      "product": "SCC",
+      "language": "en",
+      "latencyMs": 24698.530498000007,
+      "mode": "hybrid-semantic",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 120
+        },
+        "embeddingModelCounts": {
+          "intfloat/multilingual-e5-small": 120
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "0c433ea6086f274e850e093398ac0828906b30e2a1fac952de1ca1235ede7142",
+        "retrievalMode": "hybrid-semantic"
+      },
+      "hits": [
+        {
+          "queryId": "v5-holdout3-12",
+          "sourceId": "data/sources/raw/support_32_1101_1541400.md",
+          "rank": 1,
+          "score": 1,
+          "rerankScore": 7.849549293518066
+        },
+        {
+          "queryId": "v5-holdout3-12",
+          "sourceId": "data/sources/raw/support_32_1101_1544250.md",
+          "rank": 2,
+          "score": 0.9872805819544952,
+          "rerankScore": 8.095640182495117
+        },
+        {
+          "queryId": "v5-holdout3-12",
+          "sourceId": "data/sources/raw/support_32_1101_1546350.md",
+          "rank": 3,
+          "score": 0.36815078685668695,
+          "rerankScore": 3.774895668029785
+        },
+        {
+          "queryId": "v5-holdout3-12",
+          "sourceId": "data/sources/raw/support_32_1101_1544700.md",
+          "rank": 4,
+          "score": 0.2355946583235067,
+          "rerankScore": 4.3367767333984375
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-01",
+      "product": "HCI",
+      "language": "ko",
+      "latencyMs": 1.165264000010211,
+      "mode": "bm25",
+      "diagnostics": {
+        "degraded": false,
+        "evidenceRequirement": "live-runtime",
+        "retrievalMode": "bm25"
+      },
+      "hits": [],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-02",
+      "product": "NGFW",
+      "language": "ko",
+      "latencyMs": 0.6982069999794476,
+      "mode": "bm25",
+      "diagnostics": {
+        "degraded": false,
+        "evidenceRequirement": "live-runtime",
+        "retrievalMode": "bm25"
+      },
+      "hits": [],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-03",
+      "product": "NDR",
+      "language": "ko",
+      "latencyMs": 0.06200999999418855,
+      "mode": "bm25",
+      "diagnostics": {
+        "degraded": false,
+        "evidenceRequirement": "live-runtime",
+        "retrievalMode": "bm25"
+      },
+      "hits": [],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-04",
+      "product": "HCI_SCP",
+      "language": "ko",
+      "latencyMs": 0.03318100003525615,
+      "mode": "bm25",
+      "diagnostics": {
+        "degraded": false,
+        "evidenceRequirement": "live-runtime",
+        "retrievalMode": "bm25"
+      },
+      "hits": [],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-05",
+      "product": "IAG",
+      "language": "en",
+      "latencyMs": 0.7186660000006668,
+      "mode": "bm25",
+      "diagnostics": {
+        "degraded": false,
+        "evidenceRequirement": "live-runtime",
+        "retrievalMode": "bm25"
+      },
+      "hits": [],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-06",
+      "product": "SCC",
+      "language": "en",
+      "latencyMs": 0.05267000000458211,
+      "mode": "bm25",
+      "diagnostics": {
+        "degraded": false,
+        "evidenceRequirement": "live-runtime",
+        "retrievalMode": "bm25"
+      },
+      "hits": [],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-07",
+      "product": "HCI",
+      "language": "ko",
+      "latencyMs": 25917.522967000026,
+      "mode": "bm25",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 1126
+        },
+        "embeddingModelCounts": {
+          "intfloat/multilingual-e5-small": 1126
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "0c433ea6086f274e850e093398ac0828906b30e2a1fac952de1ca1235ede7142",
+        "retrievalMode": "bm25"
+      },
+      "hits": [],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-08",
+      "product": "NGFW",
+      "language": "en",
+      "latencyMs": 8793.728876999987,
+      "mode": "bm25",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 1098
+        },
+        "embeddingModelCounts": {
+          "intfloat/multilingual-e5-small": 1098
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "0c433ea6086f274e850e093398ac0828906b30e2a1fac952de1ca1235ede7142",
+        "retrievalMode": "bm25"
+      },
+      "hits": [],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-09",
+      "product": "NDR",
+      "language": "en",
+      "latencyMs": 6429.35594899999,
+      "mode": "bm25",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 125
+        },
+        "embeddingModelCounts": {
+          "intfloat/multilingual-e5-small": 125
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "0c433ea6086f274e850e093398ac0828906b30e2a1fac952de1ca1235ede7142",
+        "retrievalMode": "bm25"
+      },
+      "hits": [],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-10",
+      "product": "HCI_SCP",
+      "language": "en",
+      "latencyMs": 23170.164982000017,
+      "mode": "bm25",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 1421
+        },
+        "embeddingModelCounts": {
+          "intfloat/multilingual-e5-small": 1421
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "0c433ea6086f274e850e093398ac0828906b30e2a1fac952de1ca1235ede7142",
+        "retrievalMode": "bm25"
+      },
+      "hits": [],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-11",
+      "product": "IAG",
+      "language": "en",
+      "latencyMs": 20811.547417000053,
+      "mode": "bm25",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 952
+        },
+        "embeddingModelCounts": {
+          "intfloat/multilingual-e5-small": 952
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "0c433ea6086f274e850e093398ac0828906b30e2a1fac952de1ca1235ede7142",
+        "retrievalMode": "bm25"
+      },
+      "hits": [],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-12",
+      "product": "SCC",
+      "language": "en",
+      "latencyMs": 24364.777491000015,
+      "mode": "bm25",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 120
+        },
+        "embeddingModelCounts": {
+          "intfloat/multilingual-e5-small": 120
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "0c433ea6086f274e850e093398ac0828906b30e2a1fac952de1ca1235ede7142",
+        "retrievalMode": "bm25"
+      },
+      "hits": [],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    }
+  ],
+  "comparison": null,
+  "baselineReportSha256": null
+}
