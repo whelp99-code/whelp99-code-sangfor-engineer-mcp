@@ -1,0 +1,165 @@
+{
+  "status": "NO_ELIGIBLE_DEVELOPMENT_CANDIDATE",
+  "policyPath": "docs/references/revision-v5/score-floor-selection-policy-v2.json",
+  "policySha256": "1031ef09c4e9018f4d293f8e415822613588027b9e74e6f1e4ddaede6e06344d",
+  "selectorSha256": "f9ea4987615c70888d97bfcc6f24a70c2cacd2df2a65de227f3020132a0fa254",
+  "orderImplementationSha256": "093484d74e35be74b33575c26dced3c187efc3f03e54298d4e6f49c01fbea7bf",
+  "calibrations": [
+    {
+      "name": "revision-v1-qrels-v2",
+      "path": "docs/references/revision-v5/full-calibration-original-with-order.json",
+      "sha256": "bb9c26ecb85a68dddae5f26c0ae7f3da0e6426e1dafb2fadacdd1e6987900c2e",
+      "sourceCommit": "46f85a241b047586788d4c19ed25b763f04e6aa0"
+    },
+    {
+      "name": "revision-v3-validation",
+      "path": "docs/references/revision-v5/full-calibration-english.json",
+      "sha256": "5d129d3877fe4d9bb7becce187923a7b930aa1808b2abe4f8d01768b556fb582",
+      "sourceCommit": "a95b33cba6c7b04c6f8ea30a461f056d26032eaa"
+    },
+    {
+      "name": "revision-v5-client-korean-development",
+      "path": "docs/references/revision-v5/full-calibration-client-korean.json",
+      "sha256": "ccc2aa3562de1b5320805d3253189cd2c3954ef1b110a8bf161421a14aa046da",
+      "sourceCommit": "b180f3ea6b6b6a071fa8872f9a2c99f930b26ff9"
+    },
+    {
+      "name": "revision-v5-client-holdout",
+      "path": "docs/references/revision-v5/full-calibration-exposed-client.json",
+      "sha256": "9ec1ffd01fcfae0968eec3491b05eb8e62d1663eb47fc85f7e7464d0f447bfc0",
+      "sourceCommit": "8e292e4ab43f2f3951812a74ba791a8dd755ae8e"
+    }
+  ],
+  "evaluated": 7224,
+  "eligibleCount": 0,
+  "selected": null,
+  "bestPerOrder": {
+    "model": {
+      "floor": 0.5210914611816406,
+      "order": "model",
+      "interval": [
+        0.5169143676757812,
+        0.5252685546875
+      ],
+      "width": 0.00835418701171875,
+      "minHit": 0.75,
+      "maxFalsePositive": 0.25,
+      "meanMrr": 0.6470238095238096,
+      "metrics": [
+        {
+          "fixture": "revision-v1-qrels-v2",
+          "hitRateAt5": 0.9047619047619048,
+          "mrrAt5": 0.7380952380952381,
+          "noAnswerFalsePositiveRate": 0,
+          "forbiddenHits": 0
+        },
+        {
+          "fixture": "revision-v3-validation",
+          "hitRateAt5": 0.8333333333333334,
+          "mrrAt5": 0.4472222222222222,
+          "noAnswerFalsePositiveRate": 0,
+          "forbiddenHits": 0
+        },
+        {
+          "fixture": "revision-v5-client-korean-development",
+          "hitRateAt5": 0.75,
+          "mrrAt5": 0.5277777777777778,
+          "noAnswerFalsePositiveRate": 0,
+          "forbiddenHits": 0
+        },
+        {
+          "fixture": "revision-v5-client-holdout",
+          "hitRateAt5": 1,
+          "mrrAt5": 0.875,
+          "noAnswerFalsePositiveRate": 0.25,
+          "forbiddenHits": 0
+        }
+      ]
+    },
+    "retrieval": {
+      "floor": 3.2979769706726074,
+      "order": "retrieval",
+      "interval": [
+        3.2959728240966797,
+        3.299981117248535
+      ],
+      "width": 0.004008293151855469,
+      "minHit": 0.8333333333333334,
+      "maxFalsePositive": 0,
+      "meanMrr": 0.7092261904761905,
+      "metrics": [
+        {
+          "fixture": "revision-v1-qrels-v2",
+          "hitRateAt5": 0.9523809523809523,
+          "mrrAt5": 0.7063492063492064,
+          "noAnswerFalsePositiveRate": 0,
+          "forbiddenHits": 0
+        },
+        {
+          "fixture": "revision-v3-validation",
+          "hitRateAt5": 1,
+          "mrrAt5": 0.6833333333333332,
+          "noAnswerFalsePositiveRate": 0,
+          "forbiddenHits": 0
+        },
+        {
+          "fixture": "revision-v5-client-korean-development",
+          "hitRateAt5": 0.8333333333333334,
+          "mrrAt5": 0.5861111111111111,
+          "noAnswerFalsePositiveRate": 0,
+          "forbiddenHits": 0
+        },
+        {
+          "fixture": "revision-v5-client-holdout",
+          "hitRateAt5": 0.9166666666666666,
+          "mrrAt5": 0.8611111111111112,
+          "noAnswerFalsePositiveRate": 0,
+          "forbiddenHits": 0
+        }
+      ]
+    },
+    "rrf": {
+      "floor": 0.5210914611816406,
+      "order": "rrf",
+      "interval": [
+        0.5169143676757812,
+        0.5252685546875
+      ],
+      "width": 0.00835418701171875,
+      "minHit": 0.75,
+      "maxFalsePositive": 0.25,
+      "meanMrr": 0.742063492063492,
+      "metrics": [
+        {
+          "fixture": "revision-v1-qrels-v2",
+          "hitRateAt5": 0.9523809523809523,
+          "mrrAt5": 0.8015873015873015,
+          "noAnswerFalsePositiveRate": 0,
+          "forbiddenHits": 0
+        },
+        {
+          "fixture": "revision-v3-validation",
+          "hitRateAt5": 0.8333333333333334,
+          "mrrAt5": 0.6388888888888888,
+          "noAnswerFalsePositiveRate": 0,
+          "forbiddenHits": 0
+        },
+        {
+          "fixture": "revision-v5-client-korean-development",
+          "hitRateAt5": 0.75,
+          "mrrAt5": 0.6527777777777778,
+          "noAnswerFalsePositiveRate": 0,
+          "forbiddenHits": 0
+        },
+        {
+          "fixture": "revision-v5-client-holdout",
+          "hitRateAt5": 0.9166666666666666,
+          "mrrAt5": 0.875,
+          "noAnswerFalsePositiveRate": 0.25,
+          "forbiddenHits": 0
+        }
+      ]
+    }
+  },
+  "limits": "Replay of complete development scores; no new inference. Forbidden hits refer to fixture-labelled sources only. Product/version/ACL and actual answer correctness require product-path validation. Same-author holdout-2 has not been evaluated."
+}
