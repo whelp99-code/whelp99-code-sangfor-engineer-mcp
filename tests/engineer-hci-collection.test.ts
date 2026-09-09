@@ -11,6 +11,7 @@ import {
   isOfficialHciCatalogReadEndpoint,
   isOfficialScpJanusExtrasReadEndpoint,
   janusExtrasLiveCollectRefusal,
+  janusHostsCollectRefusal,
   OFFICIAL_HCI_CATALOG_READ_ENDPOINTS,
   OFFICIAL_SCP_JANUS_HOSTS_ENDPOINT,
   unofficialListKeyEndpoint,
@@ -183,6 +184,22 @@ describe('HCI collection snapshot binding', () => {
       reason: 'JANUS_CAPTURE_GATED',
       endpoint: OFFICIAL_SCP_JANUS_HOSTS_ENDPOINT,
     });
+    expect(janusHostsCollectRefusal()).toEqual({
+      status: 'capture_gated',
+      getCount: 0,
+      reason: 'JANUS_CAPTURE_GATED',
+      endpoint: OFFICIAL_SCP_JANUS_HOSTS_ENDPOINT,
+    });
+  });
+
+  it('does not GET Janus from production collectInventory', async () => {
+    const inventory = await collectInventory(client(), { collectedAt: WHEN });
+    expect(inventory.janusHostsCollect.status).toBe('capture_gated');
+    expect(inventory.janusHostsCollect.getCount).toBe(0);
+    expect(inventory.readRequests.every((read) => !read.path.includes('janus'))).toBe(true);
+    expect(inventory.originalPresentSurfaces?.some((item) => (
+      item.fact.endpoint === OFFICIAL_SCP_JANUS_HOSTS_ENDPOINT
+    ))).toBeFalsy();
   });
 
   it('maps official Janus hosts JSON for a single host and refuses multi-host aggregation', () => {

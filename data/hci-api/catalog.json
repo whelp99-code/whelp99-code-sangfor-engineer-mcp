@@ -43,7 +43,7 @@
     "image": { "base": "{acmp}/openstack/image", "readOnly": ["GET /v2/images"] },
     "scpJanus": {
       "status": "capture_gated",
-      "note": "SCP uses /janus/v2/public-key + /janus/v2/login; DO NOT implement before the M4 real-device capture. Official extras reads below are documented from the 2024 SCP Open-API PDF; live GET stays gated.",
+      "note": "SCP uses /janus/v2/public-key + /janus/v2/login; DO NOT implement login before the M4 real-device capture. Official extras reads below are documented from the 2024 SCP Open-API PDF. Live GET stays gated. A child hosts adapter may GET /janus/20180725/hosts only with an explicit capture grant; production collectInventory does not.",
       "source": {
         "document": "OPEN-API v6.10.0 SCP平台开放API接口说明文档",
         "url": "https://zhuge-puboss.sangfor.com/qiyu/c712a4ec7eb199fbf6dbf0e78a6cc93f.pdf/Open-API-zh_CN-2024-05-15.pdf",
