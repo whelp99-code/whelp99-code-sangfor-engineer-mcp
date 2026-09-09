@@ -8,6 +8,12 @@ import {
   type HciCollectionRequest,
   type HciInventoryCollectedSurface,
 } from './provenance.js';
+import {
+  HCI_E03B_CAPABILITIES,
+  collectRequiredObservations,
+  type HciRequiredObservationAcquisition,
+  type HciRequiredObservationResult,
+} from './required-observations.js';
 
 export const HCI_COLLECTION_DEFAULT_MAX_PAGES = 8;
 export const HCI_COLLECTION_DEFAULT_MAX_PAGE_TIME_MS = 10_000;
@@ -21,6 +27,7 @@ export type HciRequiredFieldStatus = {
   readonly collectionStatus: 'complete' | 'partial' | 'missing' | 'failed' | 'unsupported';
   readonly sourceKind: 'observed' | 'provided' | 'unknown';
   readonly importPath?: 'manual-provided';
+  readonly acquisition?: HciRequiredObservationAcquisition;
 };
 
 export type HciCapabilityRow = {
@@ -59,41 +66,13 @@ export const HCI_E03A_CAPABILITY_MATRIX: readonly HciCapabilityRow[] = [
     transport: 'api',
     surfaces: ['images'],
   },
-  {
-    id: 'hci.collect.host_cpu',
-    title: 'Host CPU collection',
-    support: 'unsupported',
-    transport: 'none',
-    surfaces: [],
-  },
-  {
-    id: 'hci.collect.host_ram',
-    title: 'Host RAM collection',
-    support: 'unsupported',
-    transport: 'none',
-    surfaces: [],
-  },
-  {
-    id: 'hci.collect.storage_usable',
-    title: 'Usable storage capacity collection',
-    support: 'unsupported',
-    transport: 'none',
-    surfaces: [],
-  },
-  {
-    id: 'hci.collect.network_topology',
-    title: 'Network topology collection',
-    support: 'unsupported',
-    transport: 'none',
-    surfaces: [],
-  },
-  {
-    id: 'hci.collect.ha_status',
-    title: 'HA/DRS status collection',
-    support: 'unsupported',
-    transport: 'none',
-    surfaces: [],
-  },
+  ...HCI_E03B_CAPABILITIES.map((row) => ({
+    id: row.id,
+    title: row.title,
+    support: row.support,
+    transport: row.transport,
+    surfaces: row.surfaces,
+  })),
 ];
 
 export const HCI_E03A_REQUIRED_FIELDS = [
@@ -272,6 +251,7 @@ export function fieldStatus(input: {
   collectionStatus: HciRequiredFieldStatus['collectionStatus'];
   sourceKind: HciRequiredFieldStatus['sourceKind'];
   importPath?: 'manual-provided';
+  acquisition?: HciRequiredObservationAcquisition;
 }): HciRequiredFieldStatus {
   return {
     id: input.id,
@@ -280,6 +260,7 @@ export function fieldStatus(input: {
     collectionStatus: input.collectionStatus,
     sourceKind: input.sourceKind,
     ...(input.importPath ? { importPath: input.importPath } : {}),
+    ...(input.acquisition ? { acquisition: input.acquisition } : {}),
   };
 }
 
@@ -295,6 +276,7 @@ function surfaceField(
       reason: 'REST surface returned a complete page set',
       collectionStatus: 'complete',
       sourceKind: 'unknown',
+      acquisition: 'automatic',
     });
   }
   if (status.status === 'partial') {
@@ -304,6 +286,7 @@ function surfaceField(
       reason: status.reason ?? 'PARTIAL',
       collectionStatus: 'partial',
       sourceKind: 'unknown',
+      acquisition: 'automatic',
     });
   }
   if (status.status === 'unsupported') {
@@ -314,6 +297,7 @@ function surfaceField(
       collectionStatus: 'unsupported',
       sourceKind: 'unknown',
       importPath: 'manual-provided',
+      acquisition: 'unsupported',
     });
   }
   return fieldStatus({
@@ -323,6 +307,7 @@ function surfaceField(
     collectionStatus: status.status === 'failed' ? 'failed' : 'missing',
     sourceKind: 'unknown',
     importPath: 'manual-provided',
+    acquisition: 'unsupported',
   });
 }
 
@@ -331,6 +316,9 @@ export function buildRequiredFieldStatuses(input: {
   collectedAt?: string;
   firmwareVersion?: string;
   requested: readonly HciInventoryCollectedSurface[];
+  providedFields?: HciCollectionOptions['providedFields'];
+  attemptedRequiredReads?: HciCollectionOptions['attemptedRequiredReads'];
+  requiredObservations?: HciRequiredObservationResult;
 }): HciRequiredFieldStatus[] {
   const statuses: HciRequiredFieldStatus[] = [];
   for (const surface of HCI_INVENTORY_COLLECTED_SURFACES) {
@@ -342,6 +330,7 @@ export function buildRequiredFieldStatuses(input: {
         collectionStatus: 'missing',
         sourceKind: 'unknown',
         importPath: 'manual-provided',
+        acquisition: 'unsupported',
       }));
       continue;
     }
@@ -354,6 +343,7 @@ export function buildRequiredFieldStatuses(input: {
       reason: 'Collection timestamp recorded for this run',
       collectionStatus: 'complete',
       sourceKind: 'unknown',
+      acquisition: 'automatic',
     })
     : fieldStatus({
       id: 'collectedAt',
@@ -361,6 +351,7 @@ export function buildRequiredFieldStatuses(input: {
       reason: 'COLLECTION_TIME_UNPROVEN',
       collectionStatus: 'missing',
       sourceKind: 'unknown',
+      acquisition: 'unsupported',
     }));
   statuses.push(input.collection.volumes.status === 'complete'
     ? fieldStatus({
@@ -369,6 +360,7 @@ export function buildRequiredFieldStatuses(input: {
       reason: 'Volume list is complete enough for volume-status scope only',
       collectionStatus: 'complete',
       sourceKind: 'unknown',
+      acquisition: 'automatic',
     })
     : fieldStatus({
       id: 'volume_status_health',
@@ -377,6 +369,7 @@ export function buildRequiredFieldStatuses(input: {
       collectionStatus: input.collection.volumes.status === 'failed' ? 'failed' : 'missing',
       sourceKind: 'unknown',
       importPath: 'manual-provided',
+      acquisition: 'unsupported',
     }));
   statuses.push(input.firmwareVersion
     ? fieldStatus({
@@ -385,6 +378,7 @@ export function buildRequiredFieldStatuses(input: {
       reason: 'Firmware was supplied on the collection request, not read from the device',
       collectionStatus: 'complete',
       sourceKind: 'provided',
+      acquisition: 'manual-provided',
     })
     : fieldStatus({
       id: 'firmware',
@@ -393,18 +387,33 @@ export function buildRequiredFieldStatuses(input: {
       collectionStatus: 'unsupported',
       sourceKind: 'unknown',
       importPath: 'manual-provided',
+      acquisition: 'unsupported',
     }));
-  for (const id of ['host_cpu', 'host_ram', 'storage_usable_capacity', 'network_topology', 'ha_status'] as const) {
+  const required = input.requiredObservations ?? collectRequiredObservations({
+    providedFields: input.providedFields,
+    firmwareVersion: input.firmwareVersion,
+    attemptedRequiredReads: input.attemptedRequiredReads,
+  });
+  for (const field of required.fields) {
     statuses.push(fieldStatus({
-      id,
-      availability: 'missing',
-      reason: 'E03B_SURFACE_UNSUPPORTED',
-      collectionStatus: 'unsupported',
-      sourceKind: 'unknown',
-      importPath: 'manual-provided',
+      id: field.id,
+      availability: field.availability,
+      reason: field.reason,
+      collectionStatus: field.collectionStatus,
+      sourceKind: field.sourceKind,
+      importPath: field.importPath,
+      acquisition: field.acquisition,
     }));
   }
   return statuses;
+}
+
+export function requiredObservationsFromOptions(opts: HciCollectionOptions): HciRequiredObservationResult {
+  return collectRequiredObservations({
+    providedFields: opts.providedFields,
+    firmwareVersion: opts.firmwareVersion,
+    attemptedRequiredReads: opts.attemptedRequiredReads,
+  });
 }
 
 export function paginationLimits(request: HciCollectionRequest | undefined): { maxPages: number; maxPageTimeMs: number } {

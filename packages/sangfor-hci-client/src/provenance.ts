@@ -3,6 +3,12 @@
 // locally because both packages are L1 (imports point downward, never sideways).
 // Fail-closed: an observed HCI fact without a complete envelope cannot be built.
 
+import type {
+  HciE03bFieldId,
+  HciProvidedFieldInput,
+  HciRequiredReadAttempt,
+} from './required-observations.js';
+
 /** Version of the HCI REST response → observed fact mappers in this package.
  *  Bump on any mapping change so stored facts stay attributable to their code. */
 export const HCI_MAPPER_VERSION = '1.0.0';
@@ -97,6 +103,8 @@ export interface HciCollectionOptions {
   firmwareVersion?: string;
   authPrincipal?: string;
   request?: HciCollectionRequest;
+  providedFields?: Partial<Record<HciE03bFieldId, HciProvidedFieldInput>>;
+  attemptedRequiredReads?: readonly HciRequiredReadAttempt[];
 }
 
 /** Compose the envelope for one measured REST read. latencyMs is included only

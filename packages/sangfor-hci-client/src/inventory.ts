@@ -16,6 +16,7 @@ import {
   nextPageHref,
   paginationLimits,
   requestedSurfaces,
+  requiredObservationsFromOptions,
   resolveSameOriginPage,
   serviceOriginFor,
   wrapReadOnlyClient,
@@ -24,6 +25,7 @@ import {
   type HciRequiredFieldStatus,
   type InventoryClient,
 } from './collection.js';
+import type { HciRequiredObservationResult } from './required-observations.js';
 
 /** One envelope per collected REST surface. A surface that failed still records
  *  what was called, so an empty list is never mistaken for an observed emptiness. */
@@ -65,6 +67,7 @@ export interface HciInventory {
   persisted: false;
   collectionRevision: string;
   guideReadyGranted: false;
+  requiredObservations: HciRequiredObservationResult;
   manualImport: {
     allowed: true;
     promotesTo: 'provided';
@@ -204,11 +207,15 @@ export async function collectInventory(
     servers: serverRead.collection,
     images: imageRead.collection,
   };
+  const requiredObservations = requiredObservationsFromOptions(opts);
   const fields = buildRequiredFieldStatuses({
     collection,
     collectedAt,
     firmwareVersion: opts.firmwareVersion,
     requested: surfaces,
+    providedFields: opts.providedFields,
+    attemptedRequiredReads: opts.attemptedRequiredReads,
+    requiredObservations,
   });
   const request = {
     ...(opts.request?.target ? { target: opts.request.target } : {}),
@@ -247,6 +254,7 @@ export async function collectInventory(
     persisted: false,
     collectionRevision,
     guideReadyGranted: false,
+    requiredObservations,
     manualImport: { allowed: true, promotesTo: 'provided', neverObserved: true },
   };
 }
