@@ -1,7 +1,20 @@
+import { cleanRetrievalText, retrievalTitle } from './retrieval-text.js';
 import { computeBm25Scores } from './bm25.js';
 import { cosineSimilarity } from './hash-embedding.js';
 import { sameEmbeddingSpace, type EmbeddingSpace } from './embedding-space.js';
 import type { RagDocumentChunk } from './rag-types.js';
+
+const searchViews = new WeakMap<RagDocumentChunk, { title: string; text: string; body: { id: string; text: string }; heading: { id: string; text: string } }>();
+function searchView(chunk: RagDocumentChunk) {
+  let view = searchViews.get(chunk);
+  if (!view || view.text !== chunk.text || view.title !== chunk.title) {
+    view = { title: chunk.title, text: chunk.text,
+      body: { id: chunk.id, text: `${chunk.title}\n${cleanRetrievalText(chunk.text)}` },
+      heading: { id: chunk.id, text: retrievalTitle(chunk.title) } };
+    searchViews.set(chunk, view);
+  }
+  return view;
+}
 
 export function canCompareVector(chunk: RagDocumentChunk, queryVector: number[], querySpace?: EmbeddingSpace): boolean {
   return sameEmbeddingSpace(chunk.embeddingSpace, querySpace)
@@ -35,6 +48,19 @@ export function minMaxNormalizer(values: readonly number[]): (value: number) => 
   return (value: number) => (value - min) / range;
 }
 
+/** RRF only admits positive evidence; incompatible vectors never receive a rank. */
+export function reciprocalRanks(scores: readonly number[]): number[] {
+  const order = scores.map((score, index) => ({ score, index })).filter((row) => row.score > 0)
+    .sort((a, b) => b.score - a.score || a.index - b.index);
+  const ranks = scores.map(() => 0);
+  for (let index = 0; index < order.length; index++) ranks[order[index].index] = 1 / (60 + index + 1);
+  return ranks;
+}
+
+export function hasRetrievalEvidence(hit: { keywordScore: number; cosineScore: number; retrievalMode: string }): boolean {
+  return hit.keywordScore > 0 || (hit.retrievalMode === 'hybrid-semantic' && hit.cosineScore > 0);
+}
+
 export function rankHybrid<T extends RagDocumentChunk>(
   candidates: readonly T[],
   queryVector: number[],
@@ -45,18 +71,22 @@ export function rankHybrid<T extends RagDocumentChunk>(
   const compatible = candidates.map((chunk) => canCompareVector(chunk, queryVector, querySpace));
   const alpha = compatible.some(Boolean) ? resolveHybridAlpha() : 0;
   const cosineScores = candidates.map((chunk, index) => compatible[index] ? cosineSimilarity(queryVector, chunk.vector) : 0);
-  const bm25Scores = computeBm25Scores(query, candidates.map((chunk) => ({
-    id: chunk.id,
-    text: `${chunk.title}\n${chunk.text}`,
-  })));
-  const keywordScores = candidates.map((chunk) => bm25Scores.get(chunk.id) ?? 0);
+  const views = candidates.map(searchView);
+  const bm25Scores = computeBm25Scores(query, views.map((view) => view.body));
+  const titleScores = computeBm25Scores(query, views.map((view) => view.heading));
+  const keywordScores = candidates.map((chunk) => (bm25Scores.get(chunk.id) ?? 0) + 2 * (titleScores.get(chunk.id) ?? 0));
   const normalizeCosine = minMaxNormalizer(cosineScores.filter((_, index) => compatible[index]));
   const normalizeKeyword = minMaxNormalizer(keywordScores);
+  const useRrf = process.env.SANGFOR_RAG_FUSION === 'rrf' && compatible.some(Boolean);
+  const lexicalRanks = useRrf ? reciprocalRanks(keywordScores) : [];
+  const vectorRanks = useRrf ? reciprocalRanks(cosineScores) : [];
   return candidates.map((chunk, index) => {
     const cosineScore = cosineScores[index];
     const keywordScore = keywordScores[index];
     const hitAlpha = compatible[index] ? alpha : 0;
-    const score = hitAlpha * normalizeCosine(cosineScore) + (1 - hitAlpha) * normalizeKeyword(keywordScore);
+    const score = useRrf
+      ? hitAlpha * vectorRanks[index] + (1 - hitAlpha) * lexicalRanks[index]
+      : hitAlpha * normalizeCosine(cosineScore) + (1 - hitAlpha) * normalizeKeyword(keywordScore);
     const vectorScoreUsed = compatible[index] && alpha > 0;
     const retrievalMode = vectorScoreUsed ? querySpace?.model === 'hash' ? 'hybrid-hash' : 'hybrid-semantic' : 'bm25';
     return { ...chunk, score, cosineScore, keywordScore, vectorScoreUsed, retrievalMode };

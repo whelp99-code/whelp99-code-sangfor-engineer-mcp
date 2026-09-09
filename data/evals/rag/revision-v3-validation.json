@@ -1,0 +1,168 @@
+{
+  "name": "revision-v3-additional-source-labelled-validation",
+  "review": {
+    "status": "developer-authored before ranking changes; not independent field validation",
+    "limitations": "English source-navigation questions; titles establish document relevance, not procedure correctness."
+  },
+  "k": 5,
+  "queries": [
+    {
+      "queryId": "v3-validation-01",
+      "query": "How do I take a consistency group snapshot for several virtual machines?",
+      "product": "HCI",
+      "language": "en",
+      "relevantSources": [
+        "data/sources/raw/support_10_1381_2654264.md"
+      ],
+      "evidenceTitle": "Hyper Converged Infrastructure (HCI/aSV) 6.11.3 - User Manual / Virtual Machine Configuration Guidance / Virtual Machine Management / Consistency Group Snapshot",
+      "evidenceExcerpt": "/aSV) Follow Sangfor HCI and aSV provide a unified infrastructure combining compute, storage, networking, and built-in security to simplify deployment, operations, and services. Documents Best Practices Cases Softwares Tools Community Search Product Click to switch product version. Got it Do not remind again. 6.11.3 Release Notes User Manual Product Description Installation And Deployment HCI Cluster Initialization Platform Login Virtual Machine Configuration Guidance New virtual Machine Virtual Machine Management Installing VmTools Uninstall VmTools USB Mapping PCIe Mapping Virtual Machine Disk Capacity Expansion Using Physical Disks (Raw Disk Mapping) Using VHD Disks Virtual Machine Editin"
+    },
+    {
+      "queryId": "v3-validation-02",
+      "query": "Where can I manage virtual machine snapshot policies?",
+      "product": "HCI",
+      "language": "en",
+      "relevantSources": [
+        "data/sources/raw/support_10_1381_2654265.md"
+      ],
+      "evidenceTitle": "Hyper Converged Infrastructure (HCI/aSV) 6.11.3 - User Manual / Virtual Machine Configuration Guidance / Virtual Machine Management / Manage Snapshot Policies",
+      "evidenceExcerpt": "aSV) Follow Sangfor HCI and aSV provide a unified infrastructure combining compute, storage, networking, and built-in security to simplify deployment, operations, and services. Documents Best Practices Cases Softwares Tools Community Search Product Click to switch product version. Got it Do not remind again. 6.11.3 Release Notes User Manual Product Description Installation And Deployment HCI Cluster Initialization Platform Login Virtual Machine Configuration Guidance New virtual Machine Virtual Machine Management Installing VmTools Uninstall VmTools USB Mapping PCIe Mapping Virtual Machine Disk Capacity Expansion Using Physical Disks (Raw Disk Mapping) Using VHD Disks Virtual Machine Editing"
+    },
+    {
+      "queryId": "v3-validation-03",
+      "query": "How do I configure storage snapshot restrictions?",
+      "product": "HCI",
+      "language": "en",
+      "relevantSources": [
+        "data/sources/raw/support_10_1381_2654308.md"
+      ],
+      "evidenceTitle": "Hyper Converged Infrastructure (HCI/aSV) 6.11.3 - User Manual / Storage Configuration Guide / Virtual Storage Configuration Guide / Configuring Snapshot Restriction",
+      "evidenceExcerpt": "(HCI/aSV) Follow Sangfor HCI and aSV provide a unified infrastructure combining compute, storage, networking, and built-in security to simplify deployment, operations, and services. Documents Best Practices Cases Softwares Tools Community Search Product Click to switch product version. Got it Do not remind again. 6.11.3 Release Notes User Manual Product Description Installation And Deployment HCI Cluster Initialization Platform Login Virtual Machine Configuration Guidance Configuring Virtual Network Storage Configuration Guide View Storage Status Virtual Storage Configuration Guide Viewing Virtual Storage Status Creating Storage Modify Fault Domain on Stretched Datastore Deleting Volume (Hig"
+    },
+    {
+      "queryId": "v3-validation-04",
+      "query": "Where are the HCI syslog settings configured?",
+      "product": "HCI",
+      "language": "en",
+      "relevantSources": [
+        "data/sources/raw/support_10_1381_2654412.md"
+      ],
+      "evidenceTitle": "Hyper Converged Infrastructure (HCI/aSV) 6.11.3 - User Manual / HCI Platform Configuration Guide / Syslog Configurations",
+      "evidenceExcerpt": " a unified infrastructure combining compute, storage, networking, and built-in security to simplify deployment, operations, and services. Documents Best Practices Cases Softwares Tools Community Search Product Click to switch product version. Got it Do not remind again. 6.11.3 Release Notes User Manual Product Description Installation And Deployment HCI Cluster Initialization Platform Login Virtual Machine Configuration Guidance Configuring Virtual Network Storage Configuration Guide Reliability Configuration Guide aSecurity Configuration Guide HCI Platform Configuration Guide Viewing Node/Cluster Running Status Port Management Certificate Setting Viewing the Alarm Log Alert Options Syslog C"
+    },
+    {
+      "queryId": "v3-validation-05",
+      "query": "How can an administrator configure password policy?",
+      "product": "HCI",
+      "language": "en",
+      "relevantSources": [
+        "data/sources/raw/support_10_1381_2654417.md"
+      ],
+      "evidenceTitle": "Hyper Converged Infrastructure (HCI/aSV) 6.11.3 - User Manual / HCI Platform Configuration Guide / Administrators and Permission / Password Policy",
+      "evidenceExcerpt": "Sangfor HCI and aSV provide a unified infrastructure combining compute, storage, networking, and built-in security to simplify deployment, operations, and services. Documents Best Practices Cases Softwares Tools Community Search Product Click to switch product version. Got it Do not remind again. 6.11.3 Release Notes User Manual Product Description Installation And Deployment HCI Cluster Initialization Platform Login Virtual Machine Configuration Guidance Configuring Virtual Network Storage Configuration Guide Reliability Configuration Guide aSecurity Configuration Guide HCI Platform Configuration Guide Viewing Node/Cluster Running Status Port Management Certificate Setting Viewing the Alarm"
+    },
+    {
+      "queryId": "v3-validation-06",
+      "query": "How do I configure SNMP monitoring on HCI?",
+      "product": "HCI",
+      "language": "en",
+      "relevantSources": [
+        "data/sources/raw/support_10_1381_2654461.md"
+      ],
+      "evidenceTitle": "Hyper Converged Infrastructure (HCI/aSV) 6.11.3 - User Manual / HCI Platform Configuration Guide / Advanced / SNMP Settings",
+      "evidenceExcerpt": "ide a unified infrastructure combining compute, storage, networking, and built-in security to simplify deployment, operations, and services. Documents Best Practices Cases Softwares Tools Community Search Product Click to switch product version. Got it Do not remind again. 6.11.3 Release Notes User Manual Product Description Installation And Deployment HCI Cluster Initialization Platform Login Virtual Machine Configuration Guidance Configuring Virtual Network Storage Configuration Guide Reliability Configuration Guide aSecurity Configuration Guide HCI Platform Configuration Guide Viewing Node/Cluster Running Status Port Management Certificate Setting Viewing the Alarm Log Alert Options Syslo"
+    },
+    {
+      "queryId": "v3-validation-07",
+      "query": "How does virtual machine live migration work?",
+      "product": "HCI",
+      "language": "en",
+      "relevantSources": [
+        "data/sources/raw/support_10_1381_2662796.md"
+      ],
+      "evidenceTitle": "Hyper Converged Infrastructure (HCI/aSV) 6.11.3 - Technical White Paper / Key Technologies / aSV / Resource Management / VM Live Migration",
+      "evidenceExcerpt": "CI and aSV provide a unified infrastructure combining compute, storage, networking, and built-in security to simplify deployment, operations, and services. Documents Best Practices Cases Softwares Tools Community Search Product Click to switch product version. Got it Do not remind again. 6.11.3 Release Notes User Manual Technical White Paper Product Overview Customer Value Development Path of HCI Cloud Strategy-Orientated HCI Key Technologies aSV Overview Functional Architecture Resource Management Resource Overcommitment System Resource Self-Guarantee Guarantee of Resource Reservation for HA Memory Ballooning KSM Memory Hot Add DRS DRX VM Live Migration Void Detection GPU Virtualization Ext"
+    },
+    {
+      "queryId": "v3-validation-08",
+      "query": "What is the purpose of a memory snapshot?",
+      "product": "HCI",
+      "language": "en",
+      "relevantSources": [
+        "data/sources/raw/support_10_1381_2662826.md"
+      ],
+      "evidenceTitle": "Hyper Converged Infrastructure (HCI/aSV) 6.11.3 - Technical White Paper / Key Technologies / aSV / Fault Prevention and Handling / Memory Snapshot",
+      "evidenceExcerpt": "angfor HCI and aSV provide a unified infrastructure combining compute, storage, networking, and built-in security to simplify deployment, operations, and services. Documents Best Practices Cases Softwares Tools Community Search Product Click to switch product version. Got it Do not remind again. 6.11.3 Release Notes User Manual Technical White Paper Product Overview Customer Value Development Path of HCI Cloud Strategy-Orientated HCI Key Technologies aSV Overview Functional Architecture Resource Management Data Protection Fault Prevention and Handling VM Restart Upon an Error HA Mechanism for VMs Handling of Subhealthy Hosts Monitoring and Handling of External Storage I/O Latency Memory Fail"
+    },
+    {
+      "queryId": "v3-validation-09",
+      "query": "Where do I configure a static route on the firewall?",
+      "product": "NGFW",
+      "language": "en",
+      "relevantSources": [
+        "data/sources/raw/support_21_1095_2647815.md"
+      ],
+      "evidenceTitle": "Athena NGFW (Next-Generation Firewall) 8.0.107 - User Manual / Network / Routes / Static Routes",
+      "evidenceExcerpt": "vides comprehensive protection for every network perimeter, ensuring the safety of your valuable assets, data, and users from emerging threats. Documents Best Practices Cases Softwares Community Search Product Click to switch product version. Got it Do not remind again. 8.0.107 Release Notes Product Overview Deployment User Manual Home SOC Monitor Policies Objects Network Interfaces Zones Routes Static Routes Policy-Based Routes Multicast Routes OSPF RIP BGP All Routes Route Testing Access Lists Route Maps Virtual Wires DNS DHCP ARP Advanced Networking SSL VPN Sangfor/IPSec VPN System O&M Management Product Upgrade Guide Acronym Specs SDKs, APIs Emergency Response Plan Maintenance Guide Athe"
+    },
+    {
+      "queryId": "v3-validation-10",
+      "query": "How do I configure the NTP authentication key?",
+      "product": "NGFW",
+      "language": "en",
+      "relevantSources": [
+        "data/sources/raw/support_21_1095_2647860.md"
+      ],
+      "evidenceTitle": "Athena NGFW (Next-Generation Firewall) 8.0.107 - User Manual / System / General Settings / NTP Key",
+      "evidenceExcerpt": "provides comprehensive protection for every network perimeter, ensuring the safety of your valuable assets, data, and users from emerging threats. Documents Best Practices Cases Softwares Community Search Product Click to switch product version. Got it Do not remind again. 8.0.107 Release Notes Product Overview Deployment User Manual Home SOC Monitor Policies Objects Network System General Settings Web UI Network Email System Time NTP Key Hosts Licensing OOBM Privacy Options Security Capability Update Troubleshooting SNMP Administrator Maintenance High Availability Virtual Systems Device Management O&M Management Product Upgrade Guide Acronym Specs SDKs, APIs Emergency Response Plan Maintena"
+    },
+    {
+      "queryId": "v3-validation-11",
+      "query": "Where are the firewall SNMP settings?",
+      "product": "NGFW",
+      "language": "en",
+      "relevantSources": [
+        "data/sources/raw/support_21_1095_2647700.md"
+      ],
+      "evidenceTitle": "Athena NGFW (Next-Generation Firewall) 8.0.107 - User Manual / System / SNMP",
+      "evidenceExcerpt": " protection for every network perimeter, ensuring the safety of your valuable assets, data, and users from emerging threats. Documents Best Practices Cases Softwares Community Search Product Click to switch product version. Got it Do not remind again. 8.0.107 Release Notes Product Overview Deployment User Manual Home SOC Monitor Policies Objects Network System General Settings Security Capability Update Troubleshooting SNMP Administrator Maintenance High Availability Virtual Systems Device Management O&M Management Product Upgrade Guide Acronym Specs SDKs, APIs Emergency Response Plan Maintenance Guide Athena NGFW (Next-Generation Firewall) Documents User Manual System SNMP SNMP Read Permiss"
+    },
+    {
+      "queryId": "v3-validation-12",
+      "query": "How do I configure high availability link aggregation?",
+      "product": "NGFW",
+      "language": "en",
+      "relevantSources": [
+        "data/sources/raw/support_21_1095_2647879.md"
+      ],
+      "evidenceTitle": "Athena NGFW (Next-Generation Firewall) 8.0.107 - User Manual / System / High Availability / Link Aggregation",
+      "evidenceExcerpt": "k Secure) provides comprehensive protection for every network perimeter, ensuring the safety of your valuable assets, data, and users from emerging threats. Documents Best Practices Cases Softwares Community Search Product Click to switch product version. Got it Do not remind again. 8.0.107 Release Notes Product Overview Deployment User Manual Home SOC Monitor Policies Objects Network System General Settings Security Capability Update Troubleshooting SNMP Administrator Maintenance High Availability Overview HA Policy Settings Sync Options HA Traffic Link Aggregation HA Modes Virtual Systems Device Management O&M Management Product Upgrade Guide Acronym Specs SDKs, APIs Emergency Response Pla"
+    }
+  ],
+  "noAnswerQueries": [
+    {
+      "queryId": "v3-no-01",
+      "query": "quuxzzorbitalflux",
+      "product": "HCI",
+      "language": "en"
+    },
+    {
+      "queryId": "v3-no-02",
+      "query": "플라밍고양자조리법",
+      "product": "NGFW",
+      "language": "ko"
+    },
+    {
+      "queryId": "v3-no-03",
+      "query": "How do I bake a sourdough loaf?",
+      "product": "HCI",
+      "language": "en"
+    },
+    {
+      "queryId": "v3-no-04",
+      "query": "Quantum teleportation configuration",
+      "product": "NGFW",
+      "language": "en"
+    }
+  ]
+}

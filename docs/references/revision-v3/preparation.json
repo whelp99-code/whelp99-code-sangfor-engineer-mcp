@@ -1,0 +1,10 @@
+{
+  "sourceSha256": "1be153bf175c18d344b387148cc97ccdda8a39dcc29f6a1af3a462ba602000ce",
+  "candidateSha256": "55107e56f6ee22845894dcc7d16eb00c5b5c3887af451dd255d1965a7000b294",
+  "chunks": 66767,
+  "cleaned": 18472,
+  "versionsAdded": 42290,
+  "invalidatedVectors": 18472,
+  "promotionAuthorized": false,
+  "outputPath": ".omo/revision-v3/corpus-cleaned.json"
+}
