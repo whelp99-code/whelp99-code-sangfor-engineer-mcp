@@ -28,3 +28,10 @@
 - `SANGFOR_RAG_REQUIRE_SUBJECT_MATCH=1` 실험: 기존 21문항 21/21, 개발 회귀 12문항 12/12 유지. 개발 무응답 오탐 1/4 → 0/4, 기존 무응답 0/4 유지. 요청 표현·제품/버전만 일치하는 결과를 거절한다. 확률 보정된 답변 신뢰도로 해석하면 안 된다. 현재 opt-in 상태이며 최종 승인 전이다.
 - 개발 평가 명령: `SANGFOR_RAG_REQUIRE_SUBJECT_MATCH=1 pnpm run rag:eval:corpus <revision-v3 corpus-cleaned.json> <revision-v1-qrels-v2.json 또는 revision-v3-validation.json>`. 설정이 달라 기존 동일 설정 게이트에 비교 보고서를 넣지 않았다. 원시 결과는 docs/references/revision-v5/subject-*.json.
 - BLRO의 실제 제품 파일 위치는 `/home/blro/orca/projects/sangfor-engineer-mcp`다. Git checkout이 아닌 파일 복사본이며 기본 3502/3600/3700 포트의 listener를 찾지 못했다. `start-mcp.sh`는 로컬 tsx stdio 서버를 실행한다. 현재 배포 여부는 더 검증해야 한다.
+
+## 진행 증거: 구조 청킹 및 장문 모델
+
+- `pnpm run rag:prepare:structured`로 별도 후보 생성 및 read-back 완료. 18,399개 문서/스코프 그룹, 66,767 → 39,789청크, 10,123개 문서에서 확인된 수집기 chrome 제거, 그룹 내 동일 청크 361개 제거. 텍스트가 바뀐 후보 벡터는 모두 무효화. 원본 유지.
+- 구조 후보 개발 실측: 기존 20/21, 추가 12/12, 무응답 각각 0/4. 추가 MRR 0.6597 → 0.8889, 기존 MRR 0.7937 → 0.7222. 기존의 RAID 디스크/노드 격리 라벨 불일치 문항이 top5 밖으로 이동했다. 결과를 숨기거나 qrels를 바꾸지 않았다. 구조 후보 채택은 아직 확정하지 않았다.
+- 구조 청킹 4개 및 주제 일치 4개 테스트 통과, 타입 검사 통과. 전체 CI는 아직 미실행.
+- E5-small의 512토큰 입력과 query/passsage prefix 요구사항을 [공식 모델 카드](https://huggingface.co/intfloat/multilingual-e5-small/raw/main/README.md)에서 확인했다. 고정 revision `614241f622f53c4eeff9890bdc4f31cfecc418b3`, 384차원 실제 로컬 health 확인. 기존 embedForRole의 query/document prefix를 사용해 구조 후보 전체 재임베딩을 시작했다. 실행 결과와 품질은 아직 미확정이다.

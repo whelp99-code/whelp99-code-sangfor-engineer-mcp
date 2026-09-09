@@ -82,7 +82,8 @@
     "tracker": "bash scripts/tracker.sh",
     "tracker:blro": "bash scripts/tracker.sh blro",
     "tracker:open": "bash scripts/tracker.sh open",
-    "rag:prepare:candidate": "tsx scripts/rag-prepare-candidate.ts"
+    "rag:prepare:candidate": "tsx scripts/rag-prepare-candidate.ts",
+    "rag:prepare:structured": "tsx scripts/rag-prepare-structured.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.17.5",
