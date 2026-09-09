@@ -6,7 +6,10 @@
  * mutates a device and never emits approved_for_window or field_accepted.
  */
 import { createHash } from 'node:crypto';
-import { assertEngineerAssessmentScope } from '../../sangfor-config-state/src/engineer-assessment-scope.js';
+import {
+  assertEngineerAssessmentScope,
+  isHciSnapshotSurfaceObservation,
+} from '../../sangfor-config-state/src/engineer-assessment-scope.js';
 import type {
   EngineerAssessment,
   EngineerCalculation,
@@ -16,6 +19,7 @@ import type {
   EngineerGuideReadiness,
   EngineerGuideStep,
   EngineerObservation,
+  EngineerRequirement,
   EngineerSourceKind,
 } from '../../shared/src/engineer-case-contract.js';
 import { assembleEngineerCase, type EngineerCaseAssembly } from './engineer-case.js';
@@ -174,6 +178,30 @@ function evidenceForValue(
   return undefined;
 }
 
+function isCapacityOrHaRequirement(
+  requirement: EngineerRequirement | undefined,
+  assessment: EngineerAssessment,
+): boolean {
+  return CAPACITY_HA_RE.test([
+    assessment.requirementRef,
+    requirement?.id,
+    requirement?.target,
+    requirement?.constraint,
+    requirement?.acceptanceCriterion,
+  ].filter((item): item is string => Boolean(item)).join(' '));
+}
+
+function isSnapshotCurrentRefForCapacityOrHa(
+  assessment: EngineerAssessment,
+  requirement: EngineerRequirement | undefined,
+): boolean {
+  return Boolean(
+    assessment.currentRef
+    && isHciSnapshotSurfaceObservation(assessment.currentRef)
+    && isCapacityOrHaRequirement(requirement, assessment),
+  );
+}
+
 function isProxyCapacityHaPass(assessment: EngineerAssessment): boolean {
   if (assessment.status !== 'satisfied') return false;
   const blob = `${assessment.requirementRef} ${assessment.reasons.join(' ')}`;
@@ -262,6 +290,9 @@ function buildStepView(input: {
   const formula = input.assessment.reasons.find((reason) => reason.startsWith('formula:'));
   const reasons: string[] = [];
   if (input.searchOnly) reasons.push('SEARCH_CITATION_NOT_DEVICE_EVIDENCE');
+  if (isSnapshotCurrentRefForCapacityOrHa(input.assessment, requirement)) {
+    reasons.push('SNAPSHOT_NOT_CAPACITY_OR_HA');
+  }
   if (isProxyCapacityHaPass(input.assessment)) reasons.push('PROXY_PASS_NOT_CAPACITY_OR_HA');
   if (isIndeterminateMarkedSatisfied(input.assessment)) reasons.push('INDETERMINATE_NOT_PASS');
   if (input.assessment.status === 'unresolved') reasons.push('UNRESOLVED_ASSESSMENT');
@@ -281,7 +312,7 @@ function buildStepView(input: {
   let support: EngineerGuideStepSupport = 'blocked';
   let settingKind: EngineerGuideStepView['settingPath']['kind'] = 'none';
   let settingEvidence = 'no verified configure path in-repo';
-  if (input.assessment.status === 'satisfied' && evidenceRefs.length > 0 && reasons.every((reason) => !/PROXY_PASS|INDETERMINATE_NOT_PASS|UNRESOLVED|SEARCH_CITATION/.test(reason))) {
+  if (input.assessment.status === 'satisfied' && evidenceRefs.length > 0 && reasons.every((reason) => !/PROXY_PASS|SNAPSHOT_NOT_CAPACITY_OR_HA|INDETERMINATE_NOT_PASS|UNRESOLVED|SEARCH_CITATION/.test(reason))) {
     support = 'executable';
     settingKind = 'verified_verify';
     settingEvidence = 'bound case evidence and verify-only instruction; not a mutation path';
@@ -392,6 +423,9 @@ export function buildEngineerGuide(request: EngineerGuideBuildRequest): Engineer
     }
     if (assessment.status === 'unresolved') {
       blockers.push(`UNRESOLVED_ASSESSMENT:${requirement.id}`);
+    }
+    if (isSnapshotCurrentRefForCapacityOrHa(assessment, requirement)) {
+      blockers.push(`SNAPSHOT_NOT_CAPACITY_OR_HA:${requirement.id}:${assessment.currentRef}`);
     }
     if (isProxyCapacityHaPass(assessment)) {
       blockers.push(`PROXY_PASS_NOT_CAPACITY_OR_HA:${requirement.id}`);

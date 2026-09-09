@@ -428,6 +428,45 @@ describe('engineer guide grounding (E07)', () => {
     expect(built.stepViews[0]?.executable).toBe(false);
   });
 
+  it('refuses executable review_ready when a crafted HA satisfied row cites a snapshot inventory id', () => {
+    const crafted: EngineerAssessment = {
+      id: 'assess-req-ha',
+      requirementRef: 'req-ha',
+      currentRef: 'obs-volumes',
+      calculationRefs: [],
+      status: 'satisfied',
+      reasons: ['volume status available'],
+      nextAction: 'none',
+    };
+    const document = validGuideCase({
+      observations: [
+        observation({
+          id: 'obs-volumes',
+          sourceKind: 'provided',
+          collectionStatus: 'complete',
+          collectedAt: WHEN,
+          evidenceRef: 'ev-1',
+          value: { presence: 'known', data: { kind: 'integer', integer: 3, unit: 'count' } },
+        }),
+      ],
+      requirements: [haRequirement()],
+      assessments: [crafted],
+      guide: { ...emptyGuide(), requirementRefs: ['req-ha'] },
+    });
+    const built = buildEngineerGuide({ document, auth: AUTH, caseRevision: 'rev-1' });
+    expect(built.ok).toBe(true);
+    if (!built.ok) throw new Error(built.message);
+    expect(built.guideReadyGranted).toBe(false);
+    expect(built.guide.readiness).toBe('blocked');
+    expect(built.blockers.join(' ')).toMatch(/SNAPSHOT_NOT_CAPACITY_OR_HA:req-ha:obs-volumes/);
+    expect(built.stepViews[0]).toMatchObject({ executable: false, support: 'blocked' });
+    expect(built.assembled.ok).toBe(true);
+    if (built.assembled.ok) {
+      expect(built.assembled.guideReadyGranted).toBe(false);
+      expect(built.assembled.value.guide.readiness).not.toBe('review_ready');
+    }
+  });
+
   it('does not grant review_ready from INDETERMINATE or change_needed without a verified path', () => {
     const gap = assessEngineerCase({
       document: validGuideCase({
