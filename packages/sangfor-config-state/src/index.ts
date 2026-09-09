@@ -13,7 +13,10 @@ export {
   MAPPER_VERSION,
   MissingProvenanceError,
   assertFactProvenance,
+  bindObservedFactToCase,
   isFactProvenance,
+  type BoundCaseFact,
+  type CaseFactBinding,
   type FactProvenance,
   type FactTransport,
 } from './provenance.js';

@@ -4,6 +4,11 @@
 // principal. Construction fails closed: a fact without a complete envelope is a fact
 // whose origin cannot be audited, so it must not exist at all.
 
+import {
+  ENGINEER_ID_RE,
+  type EngineerEnvironmentKind,
+} from '../../shared/src/engineer-case-contract.js';
+
 /** Version of the pool→ConfigState mappers in this package. Bump on any mapping
  *  change so stored facts stay attributable to the code that produced them. */
 export const MAPPER_VERSION = '1.0.0';
@@ -68,4 +73,59 @@ export function isFactProvenance(input: unknown): input is FactProvenance {
 export function assertFactProvenance(input: unknown): asserts input is FactProvenance {
   const defect = provenanceDefect(input);
   if (defect) throw new MissingProvenanceError(defect);
+}
+
+/** Case identity that an observed fact may be bound to. */
+export interface CaseFactBinding {
+  readonly caseId: string;
+  readonly projectId: string;
+  readonly observationId: string;
+  readonly environmentKind: EngineerEnvironmentKind;
+  readonly originalPresent: boolean;
+}
+
+export type BoundCaseFact =
+  | {
+      readonly ok: true;
+      readonly sourceKind: 'observed';
+      readonly caseId: string;
+      readonly projectId: string;
+      readonly observationId: string;
+      readonly provenance: FactProvenance;
+    }
+  | { readonly ok: false; readonly reason: string };
+
+function bindingIdDefect(value: string, label: string): string | null {
+  if (!ENGINEER_ID_RE.test(value) || value === '.' || value === '..' || value.includes('..')) {
+    return `INVALID_ID:${label}`;
+  }
+  return null;
+}
+
+/**
+ * Reuse a complete FactProvenance envelope as an engineer-case observation
+ * source. Fixture/historical snapshots and missing originals cannot become
+ * live observed values.
+ */
+export function bindObservedFactToCase(fact: unknown, binding: CaseFactBinding): BoundCaseFact {
+  const defect = provenanceDefect(fact);
+  if (defect) return { ok: false, reason: `INVALID_PROVENANCE:${defect}` };
+  for (const [label, value] of [
+    ['caseId', binding.caseId],
+    ['projectId', binding.projectId],
+    ['observationId', binding.observationId],
+  ] as const) {
+    const idDefect = bindingIdDefect(value, label);
+    if (idDefect) return { ok: false, reason: idDefect };
+  }
+  if (binding.environmentKind !== 'live') return { ok: false, reason: 'FIXTURE_MARKED_OBSERVED' };
+  if (binding.originalPresent !== true) return { ok: false, reason: 'MISSING_ORIGINAL_MARKED_OBSERVED' };
+  return {
+    ok: true,
+    sourceKind: 'observed',
+    caseId: binding.caseId,
+    projectId: binding.projectId,
+    observationId: binding.observationId,
+    provenance: fact as FactProvenance,
+  };
 }
