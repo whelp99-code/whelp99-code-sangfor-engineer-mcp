@@ -1,8 +1,8 @@
 # 엔지니어 업무 재현·위임 개발·독립 인수 상세 계획
 
-**Status: Draft — 개발 계약 초안. 구현·현장 인수 완료 아님.**  
-작성 기준: 2026-09-09, main `cd8e44db41b8fcd7aad4d6c052c3dd008c1e27d4`.  
-상위 프로그램: [#90](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/issues/90). 계획 작성: [#91](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/issues/91).  
+**Status: Draft — 개발 계약 초안. 구현·현장 인수 완료 아님.**
+작성 기준: 2026-09-09, main `cd8e44db41b8fcd7aad4d6c052c3dd008c1e27d4`.
+상위 프로그램: [#90](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/issues/90). 계획 작성: [#91](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/issues/91).
 주관: 현재 작업의 검증·통합 에이전트. 개발: Issue별 지정된 별도 에이전트. 제품 PM 및 실제 장비 변경 승인: 사용자.
 
 ## 1. 목표와 완료의 의미
