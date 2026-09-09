@@ -8,12 +8,12 @@
 - Entry: `src/server.ts` (port 3502, `PORT`/`OPERATOR_CONSOLE_PORT`, `assertBindSafety`). Handlers in `src/api.ts`. (Note: legacy docs say `:3500` — the code is `:3502`.)
 - UI: `src/ui.ts` is the facade (`dashboardHtml`, `buildApiHeaders`, `API_TOKEN_STORAGE_KEY`) and only assembles the document from `src/ui-styles.ts` (stylesheet), `src/ui-layout.ts` (header/nav/panel markup), `src/ui-client-core.ts` (browser runtime: token, `api()`, nav, loaders) and `src/ui-client-actions.ts` (browser panel handlers). Import the facade, never a fragment module.
 - Unlike control-tower/bridge, this app imports domain packages **directly** and runs them in-process — so it must respect the same gates the packages enforce; it does not get to bypass them.
-- Surface: UI at `/`; read `GET /api/summary|products|knowledge|coverage|spec-coverage|diagnoses|health/store|health/embeddings`; write `POST /api/analyze-project|generate-config-plan|rag-search|discover-console|analyze-requirements|import-excel|feedback`. Engineer-case adapter (E09B, no UI): `POST /api/engineer-cases`, resume `GET /api/engineer-cases?caseId=` or `POST /api/engineer-cases/resume`, `POST /api/engineer-cases/compare`, artifact `GET|POST /api/engineer-cases/artifact`.
+- Surface: UI at `/`; read `GET /api/summary|products|knowledge|coverage|spec-coverage|diagnoses|health/store|health/embeddings`; write `POST /api/analyze-project|generate-config-plan|rag-search|discover-console|analyze-requirements|import-excel|feedback`. Engineer-case adapter (E09B): `POST /api/engineer-cases`, resume `GET /api/engineer-cases?caseId=` or `POST /api/engineer-cases/resume`, `POST /api/engineer-cases/compare`, artifact `GET|POST /api/engineer-cases/artifact`. E10A review UI (`사례 검토`) and `POST /api/engineer-cases/review` project saved/draft fields only — they do not recompute assessments, grant `approved` / `guideReadyGranted` / `executionPassGranted`, or offer guide download.
 
 ## Working here
 - Keep it a thin adapter over packages; no device mutation logic here.
 - Run: `pnpm run dev:web` (alias of `dev:operator-console`).
-- Tests: `tests/operator-console-auth.test.ts`, `tests/engineer-case-api.test.ts`, `tests/operator-console-ui.test.ts` (module size/export census, nav↔panel and script↔markup↔route contracts, client script parse guard, `GET /`).
+- Tests: `tests/operator-console-auth.test.ts`, `tests/engineer-case-api.test.ts`, `tests/engineer-case-review-ui.test.ts`, `tests/operator-console-ui.test.ts` (module size/export census, nav↔panel and script↔markup↔route contracts, client script parse guard, `GET /`). UI browser: `tests-ui/operator-console-engineer-case.ui.test.ts`.
 
 ## Dependencies
 - Depends on: `@sangfor/{shared,collector,competency,feedback,knowledge,planner,product-adapters,rag,safety,spec,store,wiki}`.

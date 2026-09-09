@@ -86,6 +86,24 @@ const requestSchemas = {
     caseId: engineerIdSchema,
     artifactId: engineerIdSchema,
   }).strict(),
+  'engineer-cases-review': z.object({
+    caseId: engineerIdSchema.optional(),
+    draft: z.object({
+      caseId: engineerIdSchema.optional(),
+      mode: z.enum(['existing', 'new']),
+      product: shortTextSchema,
+      firmware: shortTextSchema.optional(),
+      revision: engineerIdSchema.optional(),
+      requirementLines: z.array(textSchema).max(256),
+      collections: z.array(z.object({
+        id: engineerIdSchema.optional(),
+        label: shortTextSchema,
+        valueText: shortTextSchema.optional(),
+        unit: shortTextSchema.optional(),
+        collectionStatus: z.enum(['complete', 'partial', 'missing', 'failed', 'unsupported']).optional(),
+      }).strict()).max(64),
+    }).strict().optional(),
+  }).strict(),
 } as const;
 
 export type OperatorRequestRoute = keyof typeof requestSchemas;
@@ -106,6 +124,7 @@ const operatorRequestSchema: z.ZodType<AnyOperatorRequestBody> = z.union([
   requestSchemas['engineer-cases-resume'],
   requestSchemas['engineer-cases-compare'],
   requestSchemas['engineer-cases-artifact'],
+  requestSchemas['engineer-cases-review'],
 ]);
 
 export function decodeOperatorRequestBody<TRoute extends OperatorRequestRoute>(

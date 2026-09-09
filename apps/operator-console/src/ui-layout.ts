@@ -1,4 +1,5 @@
 import { PRODUCTS } from '../../../packages/shared/src/index.js';
+import { ENGINEER_CASE_PANEL } from './ui-engineer-case-layout.js';
 
 const productOptions = PRODUCTS.map(p => `<option value="${p.code}">${p.name} (${p.code})</option>`).join('');
 
@@ -14,6 +15,7 @@ export const DASHBOARD_BODY = `  <header>
   <main>
     <nav id="nav">
       <button data-panel="dashboard" class="active">대시보드</button>
+      <button data-panel="engineer-case">사례 검토</button>
       <button data-panel="analyze">프로젝트 분석</button>
       <button data-panel="plan">설정 플랜</button>
       <button data-panel="rag">RAG 검색</button>
@@ -143,5 +145,6 @@ export const DASHBOARD_BODY = `  <header>
         <button class="primary" id="btn-knowledge">불러오기</button>
         <div class="grid" id="kn-content" style="margin-top:14px"></div>
       </div>
+${ENGINEER_CASE_PANEL}
     </section>
   </main>`;

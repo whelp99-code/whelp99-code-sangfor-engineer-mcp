@@ -9,6 +9,8 @@ import { DASHBOARD_STYLE_BLOCK } from '../apps/operator-console/src/ui-styles.js
 import { DASHBOARD_BODY } from '../apps/operator-console/src/ui-layout.js';
 import { CLIENT_CORE_SCRIPT } from '../apps/operator-console/src/ui-client-core.js';
 import { CLIENT_ACTION_SCRIPT } from '../apps/operator-console/src/ui-client-actions.js';
+import { ENGINEER_CASE_PANEL } from '../apps/operator-console/src/ui-engineer-case-layout.js';
+import { ENGINEER_CASE_ACTION_SCRIPT } from '../apps/operator-console/src/ui-engineer-case-actions.js';
 import { createOperatorServer } from '../apps/operator-console/src/server.js';
 
 const SRC_DIR = fileURLToPath(new URL('../apps/operator-console/src/', import.meta.url));
@@ -19,7 +21,9 @@ const FRAGMENT_OWNERSHIP: Readonly<Record<string, string>> = {
   'ui-styles.ts': DASHBOARD_STYLE_BLOCK,
   'ui-layout.ts': DASHBOARD_BODY,
   'ui-client-core.ts': CLIENT_CORE_SCRIPT,
-  'ui-client-actions.ts': CLIENT_ACTION_SCRIPT
+  'ui-client-actions.ts': CLIENT_ACTION_SCRIPT,
+  'ui-engineer-case-layout.ts': ENGINEER_CASE_PANEL,
+  'ui-engineer-case-actions.ts': ENGINEER_CASE_ACTION_SCRIPT,
 };
 
 const sourceFiles = readdirSync(SRC_DIR).filter((name) => name.endsWith('.ts')).sort();
@@ -125,7 +129,7 @@ describe('dashboardHtml document', () => {
   });
 
   it('renders a panel div for every nav target', () => {
-    expect(navTargets).toEqual(['dashboard', 'analyze', 'plan', 'rag', 'products', 'feedback', 'knowledge', 'automation']);
+    expect(navTargets).toEqual(['dashboard', 'engineer-case', 'analyze', 'plan', 'rag', 'products', 'feedback', 'knowledge', 'automation']);
     const missing = navTargets.filter((target) => !new RegExp(`<div id="${target}" class="panel`).test(html));
     expect(missing, 'nav buttons without a matching panel div').toEqual([]);
   });
@@ -151,6 +155,8 @@ describe('dashboardHtml document', () => {
     expect(unserved, 'client script calls routes the server does not route').toEqual([]);
     expect(scriptRoutes.has('/api/summary')).toBe(true);
     expect(scriptRoutes.has('/api/rag-search')).toBe(true);
+    expect(scriptRoutes.has('/api/engineer-cases')).toBe(true);
+    expect(scriptRoutes.has('/api/engineer-cases/review')).toBe(true);
   });
 
   it('hands the client the same token storage key the module exports', () => {

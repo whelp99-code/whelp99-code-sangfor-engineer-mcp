@@ -79,4 +79,20 @@ describe('route-specific request boundaries', () => {
     );
     expect(parse).toThrow(RuntimeSchemaError);
   });
+
+  it('rejects a tenant authority claim on the engineer-case review route', () => {
+    const parse = () => decodeOperatorRequestBody(
+      parseBoundaryOperatorRequestBodyV1(JSON.stringify({
+        draft: {
+          mode: 'existing',
+          product: 'HCI_SCP',
+          requirementLines: ['여유 용량'],
+          collections: [],
+          tenantId: 'forged',
+        },
+      })),
+      'engineer-cases-review',
+    );
+    expect(parse).toThrow(RuntimeSchemaError);
+  });
 });
