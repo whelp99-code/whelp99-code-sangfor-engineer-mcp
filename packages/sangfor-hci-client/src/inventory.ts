@@ -28,12 +28,15 @@ import {
 import type { HciRequiredObservationResult } from './required-observations.js';
 import {
   applyObservedExtrasToFields,
-  extractOfficialJanusHostExtrasFromPages,
   extractOriginalPresentSurfacesFromPages,
   mergeCollectExtraSurfaces,
   type HciCollectExtraPage,
   type HciInventoryOriginalPresentSurface,
 } from './collect-extras.js';
+import {
+  collectOfficialJanusHostExtras,
+  type JanusHostsCollectReport,
+} from './janus-hosts-adapter.js';
 
 /** One envelope per collected REST surface. A surface that failed still records
  *  what was called, so an empty list is never mistaken for an observed emptiness. */
@@ -81,6 +84,8 @@ export interface HciInventory {
    * Absent when the device/API omitted the explicit keys.
    */
   originalPresentSurfaces?: readonly HciInventoryOriginalPresentSurface[];
+  /** Official Janus hosts GET status. Production collect stays capture_gated. */
+  janusHostsCollect: JanusHostsCollectReport;
   manualImport: {
     allowed: true;
     promotesTo: 'provided';
@@ -265,9 +270,11 @@ export async function collectInventory(
     ...serverRead.extraPages,
     ...imageRead.extraPages,
   ]);
-  // Janus extras stay empty here: scpJanus is capture_gated, so collect does not GET /janus/*.
-  const officialJanusExtras = extractOfficialJanusHostExtrasFromPages([]);
-  const originalPresentSurfaces = mergeCollectExtraSurfaces(officialJanusExtras, unofficialExtras);
+  const janusHosts = await collectOfficialJanusHostExtras({
+    grant: opts.janusHostsCapture,
+    collectedAt,
+  });
+  const originalPresentSurfaces = mergeCollectExtraSurfaces(janusHosts.extras, unofficialExtras);
   const fields = applyObservedExtrasToFields(buildRequiredFieldStatuses({
     collection,
     collectedAt,
@@ -292,6 +299,7 @@ export async function collectInventory(
     images: imageRead.value,
     fields,
     originalPresentSurfaces,
+    janusHostsCollect: janusHosts.report,
   });
 
   return {
@@ -317,6 +325,7 @@ export async function collectInventory(
     guideReadyGranted: false,
     requiredObservations,
     ...(originalPresentSurfaces.length > 0 ? { originalPresentSurfaces } : {}),
+    janusHostsCollect: janusHosts.report,
     manualImport: { allowed: true, promotesTo: 'provided', neverObserved: true },
   };
 }

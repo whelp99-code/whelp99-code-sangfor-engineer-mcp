@@ -1,4 +1,4 @@
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -18,12 +18,14 @@ import {
   isFieldQualifiedDeviceEndpoint,
   isOfficialHciCatalogReadEndpoint,
   isOfficialScpJanusExtrasReadEndpoint,
+  JANUS_HOSTS_PATH,
   OFFICIAL_SCP_JANUS_HOSTS_ENDPOINT,
   isUnofficialListKeyEndpoint,
   unofficialListKeyEndpoint,
   type HciClient,
   type HttpJsonResult,
   type InventoryClient,
+  type JanusHostsCaptureGrant,
 } from '@sangfor/hci-client';
 import {
   ENGINEER_REQUIRED_LIVE_READ_SURFACES,
@@ -592,6 +594,72 @@ describe('HCI collect → authorized-read binder', () => {
     expect(wired.authorized.reason).toBe('REQUIRED_LIVE_SURFACES_NOT_RUN');
     expect(wired.authorized.requiredLiveSurfaces.filter((item) => item.status === 'BOUND_ORIGINAL_PRESENT').map((item) => item.id).sort())
       .toEqual(['host_cpu', 'host_ram', 'images', 'servers', 'volumes']);
+    expect(wired.authorized.requiredLiveSurfaces.filter((item) => item.status === 'NOT_RUN').map((item) => item.id))
+      .toEqual([
+        'collectedAt',
+        'volume_status_health',
+        'firmware',
+        'storage_usable_capacity',
+        'network_topology',
+        'ha_status',
+      ]);
+  });
+
+  it('binds official Janus extras from a gated-on PDF-shaped fixture double and still does not mint', async () => {
+    const payload = JSON.parse(
+      readFileSync('tests/fixtures/engineer-workflow/official-scp-janus-hosts-single.json', 'utf8'),
+    ) as unknown;
+    const counter = { get: 0 };
+    const grant: JanusHostsCaptureGrant = {
+      kind: 'explicit_janus_hosts_capture',
+      client: {
+        async getOfficialHosts(request) {
+          expect(request.method).toBe('GET');
+          expect(request.path).toBe(JANUS_HOSTS_PATH);
+          expect(request.endpoint).toBe(OFFICIAL_SCP_JANUS_HOSTS_ENDPOINT);
+          counter.get += 1;
+          return { status: 200, json: payload, latencyMs: 5 };
+        },
+      },
+    };
+    const inventory = await collectInventory(stubClient(TARGET), {
+      collectedAt: WHEN,
+      request: { target: TARGET },
+      janusHostsCapture: grant,
+    });
+    expect(counter.get).toBe(1);
+    expect(inventory.janusHostsCollect).toEqual({
+      status: 'captured',
+      getCount: 1,
+      endpoint: OFFICIAL_SCP_JANUS_HOSTS_ENDPOINT,
+    });
+    expect(inventory.readRequests.every((read) => !read.path.includes('janus'))).toBe(true);
+    expect(inventory.originalPresentSurfaces?.map((item) => item.surfaceId).sort()).toEqual(['host_cpu', 'host_ram']);
+    expect(inventory.originalPresentSurfaces?.every((item) => item.fact.endpoint === OFFICIAL_SCP_JANUS_HOSTS_ENDPOINT)).toBe(true);
+    expect(inventory.fields.find((field) => field.id === 'ha_status')?.sourceKind).toBe('unknown');
+    expect(inventory.fields.find((field) => field.id === 'network_topology')?.sourceKind).toBe('unknown');
+    expect(inventory.fields.find((field) => field.id === 'storage_usable_capacity')?.sourceKind).toBe('unknown');
+
+    const wired = bindHciCollectAuthorizedDeviceReadEvidence({
+      inventory,
+      caseId: 'case-janus-hosts-adapter',
+      projectId: AUTH.projectId,
+      caseRevision: 'rev-janus-hosts-adapter',
+      guideRevision: 'guide-janus-hosts-adapter',
+      session: authorizedSession(),
+    });
+    expect(wired.collect.ok).toBe(true);
+    if (!wired.collect.ok) throw new Error('expected gated-on Janus extras to bind');
+    expect(wired.collect.observations.map((item) => item.surfaceId).sort()).toEqual([
+      'host_cpu',
+      'host_ram',
+      'images',
+      'servers',
+      'volumes',
+    ]);
+    expect(wired.authorized.ok).toBe(false);
+    if (wired.authorized.ok) throw new Error('gated-on Janus extras must not mint authorized_device_read');
+    expect(wired.authorized.reason).toBe('REQUIRED_LIVE_SURFACES_NOT_RUN');
     expect(wired.authorized.requiredLiveSurfaces.filter((item) => item.status === 'NOT_RUN').map((item) => item.id))
       .toEqual([
         'collectedAt',

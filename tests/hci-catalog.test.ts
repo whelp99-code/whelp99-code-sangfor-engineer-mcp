@@ -14,6 +14,7 @@ describe('hci api catalog', () => {
 
   it('gates janus behind real-device capture', () => {
     expect(catalog.services.scpJanus.status).toBe('capture_gated');
+    expect(catalog.services.scpJanus.note).toMatch(/production collectInventory does not/i);
   });
 
   it('records official SCP Janus extras reads from the retrieved 2024 Open-API PDF', () => {

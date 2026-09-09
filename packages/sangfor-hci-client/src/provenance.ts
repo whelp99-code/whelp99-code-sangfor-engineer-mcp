@@ -3,6 +3,7 @@
 // locally because both packages are L1 (imports point downward, never sideways).
 // Fail-closed: an observed HCI fact without a complete envelope cannot be built.
 
+import type { JanusHostsCaptureGrant } from './janus-hosts-adapter.js';
 import type {
   HciE03bFieldId,
   HciProvidedFieldInput,
@@ -105,6 +106,8 @@ export interface HciCollectionOptions {
   request?: HciCollectionRequest;
   providedFields?: Partial<Record<HciE03bFieldId, HciProvidedFieldInput>>;
   attemptedRequiredReads?: readonly HciRequiredReadAttempt[];
+  /** Explicit Janus hosts capture only. Production collect omits this. */
+  janusHostsCapture?: JanusHostsCaptureGrant;
 }
 
 /** Compose the envelope for one measured REST read. latencyMs is included only

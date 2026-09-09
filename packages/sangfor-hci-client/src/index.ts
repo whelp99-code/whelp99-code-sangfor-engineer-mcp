@@ -2,6 +2,7 @@ export * from './http.js';
 export * from './provenance.js';
 export * from './required-observations.js';
 export * from './collect-extras.js';
+export * from './janus-hosts-adapter.js';
 export * from './collection.js';
 export * from './token-provider.js';
 export * from './client.js';
