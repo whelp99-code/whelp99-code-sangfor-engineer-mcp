@@ -1,0 +1,23 @@
+{
+  "host": "blro01",
+  "python": "3.14.4",
+  "cpuCount": 16,
+  "versions": {
+    "torch": "2.13.0+cpu",
+    "sentence-transformers": "5.7.0",
+    "transformers": "5.15.0",
+    "fastapi": "0.141.1",
+    "uvicorn": "0.52.3"
+  },
+  "files": {
+    "rerank_server.py": "d11d1d96b8eb3c39ef2e3c9ca02a9df7f3617d6709e94da99798b3859e9985e5",
+    "inference_slot.py": "4c7172ebfc21e278e3f5c255dbcf3682c049c93aeb5fc3546356876407d1a9a5",
+    "qwen-model-cache.tar": "45c9d6710416f4977d3267a2667766e11553d1eb10438a5dd762040c414b62a1"
+  },
+  "model": "Qwen/Qwen3-Reranker-0.6B",
+  "revision": "e61197ed45024b0ed8a2d74b80b4d909f1255473",
+  "configuredThreads": 4,
+  "runtimePath": "/home/blro/orca/projects/sangfor-engineer-mcp/experiments/qwen-38214cf",
+  "activation": "isolated-loopback-experiment-only",
+  "verification": "Read remote installed package versions and SHA-256 of actual remote files over authenticated SSH."
+}

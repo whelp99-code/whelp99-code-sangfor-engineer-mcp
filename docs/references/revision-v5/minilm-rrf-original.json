@@ -1,0 +1,1419 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-09T02:26:42.699Z",
+  "indexSha256": "47177f262244ee0765a4faf4348415acaa4305c0bd5dd4217300f37a06d8dd99",
+  "qrelsSha256": "f6e772f55ff326b62673002d2ada3fe437b26d42e0b66396cc4eef0a2f3af1a8",
+  "implementationSha256": "bec954e5cba690a9dbef88fee080fc7bd7f17d0d38b7732a536bf600846f7590",
+  "implementationFiles": [
+    "scripts/rag-corpus-eval.ts",
+    "packages/sangfor-rag/src/corpus-eval-contract.ts",
+    "packages/sangfor-rag/src/rag-search.ts",
+    "packages/sangfor-rag/src/rag-ranking.ts",
+    "packages/sangfor-rag/src/hit-context.ts",
+    "packages/sangfor-rag/src/query-evidence.ts",
+    "packages/sangfor-rag/src/retrieval-text.ts",
+    "packages/sangfor-rag/src/bm25.ts",
+    "packages/sangfor-rag/src/query-normalization.ts",
+    "packages/sangfor-rag/src/retrieval-eval.ts",
+    "packages/sangfor-rag/src/corpus-eval-gate.ts",
+    "packages/sangfor-rag/src/hash-embedding.ts",
+    "packages/sangfor-rag/src/embedding-space.ts",
+    "packages/sangfor-rag/src/embedding-profile.ts",
+    "packages/sangfor-rag/src/rag-product.ts",
+    "packages/sangfor-rag/src/rag-index-store.ts",
+    "packages/sangfor-rag/src/embedding-provider.ts",
+    "packages/sangfor-rag/src/rapid-mlx-provider.ts",
+    "packages/sangfor-rag/src/openai-embeddings-client.ts",
+    "packages/sangfor-rag/src/mimo-rerank-provider.ts",
+    "packages/sangfor-rag/src/local-rerank-provider.ts"
+  ],
+  "settings": {
+    "hybridAlpha": "0.5",
+    "allowCustomer": false,
+    "execution": "async-configured-provider",
+    "embeddingModel": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+    "embeddingRevision": "e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+    "localRerankerEnabled": false,
+    "localRerankerPassages": 1,
+    "localReranker": null,
+    "localRerankerRevision": null,
+    "rerankDisabled": true,
+    "requireSubjectMatch": true,
+    "fusion": "rrf"
+  },
+  "settingsSha256": "dcd4efce660070770d8ef10a1465462d916615cdca3a23f6df349c09f439d4d5",
+  "evaluationOnly": true,
+  "promotionStatus": "NOT_EVALUATED",
+  "missingRelevantSources": [],
+  "positiveQueryCount": 21,
+  "noAnswerQueryCount": 4,
+  "byProduct": {
+    "HCI": {
+      "queryCount": 10,
+      "hitRateAtK": 0.9,
+      "recallAtK": 0.85,
+      "mrrAtK": 0.6833333333333333,
+      "ndcgAtK": 0.7005936453479832
+    },
+    "HCI_SCP": {
+      "queryCount": 4,
+      "hitRateAtK": 0.75,
+      "recallAtK": 0.75,
+      "mrrAtK": 0.3958333333333333,
+      "ndcgAtK": 0.4826691395183483
+    },
+    "IAG": {
+      "queryCount": 1,
+      "hitRateAtK": 1,
+      "recallAtK": 1,
+      "mrrAtK": 1,
+      "ndcgAtK": 1
+    },
+    "NDR": {
+      "queryCount": 3,
+      "hitRateAtK": 1,
+      "recallAtK": 1,
+      "mrrAtK": 0.7777777777777778,
+      "ndcgAtK": 0.8333333333333334
+    },
+    "NGFW": {
+      "queryCount": 2,
+      "hitRateAtK": 1,
+      "recallAtK": 1,
+      "mrrAtK": 0.6666666666666666,
+      "ndcgAtK": 0.75
+    },
+    "SCC": {
+      "queryCount": 1,
+      "hitRateAtK": 1,
+      "recallAtK": 1,
+      "mrrAtK": 0.5,
+      "ndcgAtK": 0.6309297535714575
+    }
+  },
+  "byLanguage": {
+    "en": {
+      "queryCount": 13,
+      "hitRateAtK": 0.9230769230769231,
+      "recallAtK": 0.8846153846153846,
+      "mrrAtK": 0.6923076923076923,
+      "ndcgAtK": 0.7211543615314133
+    },
+    "ko": {
+      "queryCount": 8,
+      "hitRateAtK": 0.875,
+      "recallAtK": 0.875,
+      "mrrAtK": 0.5729166666666666,
+      "ndcgAtK": 0.6490670081520385
+    }
+  },
+  "node": "v24.19.0",
+  "cpu": "AMD EPYC Processor",
+  "chunkCount": 39789,
+  "profile": "async retrieval; actual providers and degradation recorded per query",
+  "k": 5,
+  "coldLoadMs": 1740.317244,
+  "meanLatencyMs": 216.07775175999987,
+  "p50LatencyMs": 258.87849899999947,
+  "p95LatencyMs": 537.9652769999998,
+  "metrics": {
+    "queryCount": 21,
+    "hitRateAtK": 0.9047619047619048,
+    "recallAtK": 0.8809523809523809,
+    "mrrAtK": 0.646825396825397,
+    "ndcgAtK": 0.6936925126249849
+  },
+  "noAnswerFalsePositiveRate": 0,
+  "forbiddenHits": 0,
+  "hardNegativeQueryRate": 0.14285714285714285,
+  "hardNegativeHits": 3,
+  "rows": [
+    {
+      "queryId": "hci-cli-6113",
+      "product": "HCI",
+      "language": "en",
+      "latencyMs": 591.6565059999998,
+      "mode": "hybrid-semantic",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 5199
+        },
+        "embeddingModelCounts": {
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 5199
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "7cdaaa733f5c8b9c7bced76c9895eced5cca4c6f4cc3c0362e4079322b4054a0",
+        "retrievalMode": "hybrid-semantic"
+      },
+      "hits": [
+        {
+          "queryId": "hci-cli-6113",
+          "sourceId": "data/sources/raw/support_10_1381_2654470.md",
+          "rank": 1,
+          "score": 0.015772478887232988
+        },
+        {
+          "queryId": "hci-cli-6113",
+          "sourceId": "data/sources/raw/support_10_1229_2639742.md",
+          "rank": 2,
+          "score": 0.01510676965015902
+        },
+        {
+          "queryId": "hci-cli-6113",
+          "sourceId": "data/sources/raw/support_10_1229_2639984.md",
+          "rank": 3,
+          "score": 0.01510676965015902
+        },
+        {
+          "queryId": "hci-cli-6113",
+          "sourceId": "data/sources/raw/support_10_1381_2654451.md",
+          "rank": 4,
+          "score": 0.015079365079365078
+        },
+        {
+          "queryId": "hci-cli-6113",
+          "sourceId": "data/sources/raw/support_case_2_19403.md",
+          "rank": 5,
+          "score": 0.014087301587301586
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "scp-nbu-xbsa-key",
+      "product": "HCI_SCP",
+      "language": "en",
+      "latencyMs": 537.9652769999998,
+      "mode": "hybrid-semantic",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 5203
+        },
+        "embeddingModelCounts": {
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 5203
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "7cdaaa733f5c8b9c7bced76c9895eced5cca4c6f4cc3c0362e4079322b4054a0",
+        "retrievalMode": "hybrid-semantic"
+      },
+      "hits": [
+        {
+          "queryId": "scp-nbu-xbsa-key",
+          "sourceId": "data/sources/raw/support_45_1388_2656029.md",
+          "rank": 1,
+          "score": 0.015877016129032258
+        },
+        {
+          "queryId": "scp-nbu-xbsa-key",
+          "sourceId": "data/sources/raw/support_45_1388_2656031.md",
+          "rank": 2,
+          "score": 0.01575682382133995
+        },
+        {
+          "queryId": "scp-nbu-xbsa-key",
+          "sourceId": "data/sources/raw/support_45_1364_2636851.md",
+          "rank": 3,
+          "score": 0.01562881562881563
+        },
+        {
+          "queryId": "scp-nbu-xbsa-key",
+          "sourceId": "data/sources/raw/support_45_1364_2636853.md",
+          "rank": 4,
+          "score": 0.015289449112978524
+        },
+        {
+          "queryId": "scp-nbu-xbsa-key",
+          "sourceId": "data/sources/raw/support_45_1388_2656030.md",
+          "rank": 5,
+          "score": 0.015151515151515152
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "scp-rapid-recovery-ko",
+      "product": "HCI_SCP",
+      "language": "ko",
+      "latencyMs": 304.24473499999976,
+      "mode": "hybrid-semantic",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 5203
+        },
+        "embeddingModelCounts": {
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 5203
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "7cdaaa733f5c8b9c7bced76c9895eced5cca4c6f4cc3c0362e4079322b4054a0",
+        "retrievalMode": "hybrid-semantic"
+      },
+      "hits": [
+        {
+          "queryId": "scp-rapid-recovery-ko",
+          "sourceId": "data/sources/raw/support_45_1388_2655932.md",
+          "rank": 1,
+          "score": 0.014242424242424244
+        },
+        {
+          "queryId": "scp-rapid-recovery-ko",
+          "sourceId": "data/sources/raw/hci-scp-api-cli/hci_scp_45_1388_2656005.md",
+          "rank": 2,
+          "score": 0.01422081769701758
+        },
+        {
+          "queryId": "scp-rapid-recovery-ko",
+          "sourceId": "data/sources/raw/support_45_1379_2653098.md",
+          "rank": 3,
+          "score": 0.013791800491214812
+        },
+        {
+          "queryId": "scp-rapid-recovery-ko",
+          "sourceId": "data/sources/raw/hci-scp-api-cli/hci_scp_45_1388_2655988.md",
+          "rank": 4,
+          "score": 0.012531133250311332
+        },
+        {
+          "queryId": "scp-rapid-recovery-ko",
+          "sourceId": "data/sources/raw/hci-scp-api-cli/hci_scp_45_1388_2655987.md",
+          "rank": 5,
+          "score": 0.011944444444444445
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "ndr-3098-preupgrade",
+      "product": "NDR",
+      "language": "en",
+      "latencyMs": 86.04768100000001,
+      "mode": "hybrid-semantic",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 596
+        },
+        "embeddingModelCounts": {
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 596
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "7cdaaa733f5c8b9c7bced76c9895eced5cca4c6f4cc3c0362e4079322b4054a0",
+        "retrievalMode": "hybrid-semantic"
+      },
+      "hits": [
+        {
+          "queryId": "ndr-3098-preupgrade",
+          "sourceId": "data/sources/raw/support_24_1219_2644669.md",
+          "rank": 1,
+          "score": 0.01626123744050767
+        },
+        {
+          "queryId": "ndr-3098-preupgrade",
+          "sourceId": "data/sources/raw/support_24_1078_2630634.md",
+          "rank": 2,
+          "score": 0.015399194503672116
+        },
+        {
+          "queryId": "ndr-3098-preupgrade",
+          "sourceId": "data/sources/raw/support_24_1076_2644504.md",
+          "rank": 3,
+          "score": 0.015388257575757576
+        },
+        {
+          "queryId": "ndr-3098-preupgrade",
+          "sourceId": "data/sources/raw/support_24_1219_2644671.md",
+          "rank": 4,
+          "score": 0.012160326086956521
+        },
+        {
+          "queryId": "ndr-3098-preupgrade",
+          "sourceId": "data/sources/raw/support_24_1076_2644505.md",
+          "rank": 5,
+          "score": 0.01167115557265615
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "ndr-resolved-issues",
+      "product": "NDR",
+      "language": "en",
+      "latencyMs": 51.67707599999994,
+      "mode": "hybrid-semantic",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 596
+        },
+        "embeddingModelCounts": {
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 596
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "7cdaaa733f5c8b9c7bced76c9895eced5cca4c6f4cc3c0362e4079322b4054a0",
+        "retrievalMode": "hybrid-semantic"
+      },
+      "hits": [
+        {
+          "queryId": "ndr-resolved-issues",
+          "sourceId": "data/sources/raw/support_24_1076_2644501.md",
+          "rank": 1,
+          "score": 0.016009221311475412
+        },
+        {
+          "queryId": "ndr-resolved-issues",
+          "sourceId": "data/sources/raw/support_24_1078_2630632.md",
+          "rank": 2,
+          "score": 0.016001024065540194
+        },
+        {
+          "queryId": "ndr-resolved-issues",
+          "sourceId": "data/sources/raw/support_24_1219_2644665.md",
+          "rank": 3,
+          "score": 0.01510676965015902
+        },
+        {
+          "queryId": "ndr-resolved-issues",
+          "sourceId": "data/sources/raw/support_24_1219_2630698.md",
+          "rank": 4,
+          "score": 0.010686319668355596
+        },
+        {
+          "queryId": "ndr-resolved-issues",
+          "sourceId": "data/sources/raw/support_24_1078_2634635.md",
+          "rank": 5,
+          "score": 0.008326516302442445
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "ngfw-80107-guaranteed",
+      "product": "NGFW",
+      "language": "en",
+      "latencyMs": 333.88446099999965,
+      "mode": "hybrid-semantic",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 4147
+        },
+        "embeddingModelCounts": {
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 4147
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "7cdaaa733f5c8b9c7bced76c9895eced5cca4c6f4cc3c0362e4079322b4054a0",
+        "retrievalMode": "hybrid-semantic"
+      },
+      "hits": [
+        {
+          "queryId": "ngfw-80107-guaranteed",
+          "sourceId": "data/sources/raw/support_21_1095_2647990.md",
+          "rank": 1,
+          "score": 0.015141165755919854
+        },
+        {
+          "queryId": "ngfw-80107-guaranteed",
+          "sourceId": "data/sources/raw/support_21_1093_2637279.md",
+          "rank": 2,
+          "score": 0.014913831197525408
+        },
+        {
+          "queryId": "ngfw-80107-guaranteed",
+          "sourceId": "data/sources/raw/support_21_1095_2647991.md",
+          "rank": 3,
+          "score": 0.014525835235526044
+        },
+        {
+          "queryId": "ngfw-80107-guaranteed",
+          "sourceId": "data/sources/raw/support_21_1093_2637280.md",
+          "rank": 4,
+          "score": 0.01452020202020202
+        },
+        {
+          "queryId": "ngfw-80107-guaranteed",
+          "sourceId": "data/sources/raw/support_21_1092_2631593.md",
+          "rank": 5,
+          "score": 0.01450494008829094
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 1
+    },
+    {
+      "queryId": "ngfw-80106-limited",
+      "product": "NGFW",
+      "language": "ko",
+      "latencyMs": 210.42312900000024,
+      "mode": "hybrid-semantic",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 4147
+        },
+        "embeddingModelCounts": {
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 4147
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "7cdaaa733f5c8b9c7bced76c9895eced5cca4c6f4cc3c0362e4079322b4054a0",
+        "retrievalMode": "hybrid-semantic"
+      },
+      "hits": [
+        {
+          "queryId": "ngfw-80106-limited",
+          "sourceId": "data/sources/raw/support_21_1095_2647991.md",
+          "rank": 1,
+          "score": 0.016133229247983348
+        },
+        {
+          "queryId": "ngfw-80106-limited",
+          "sourceId": "data/sources/raw/support_21_1092_2631593.md",
+          "rank": 2,
+          "score": 0.016133229247983348
+        },
+        {
+          "queryId": "ngfw-80106-limited",
+          "sourceId": "data/sources/raw/support_21_1093_2637280.md",
+          "rank": 3,
+          "score": 0.016129032258064516
+        },
+        {
+          "queryId": "ngfw-80106-limited",
+          "sourceId": "data/sources/raw/support_21_1090_2640467.md",
+          "rank": 4,
+          "score": 0.015625
+        },
+        {
+          "queryId": "ngfw-80106-limited",
+          "sourceId": "data/sources/raw/support_21_1088_2639254.md",
+          "rank": 5,
+          "score": 0.014219443323920937
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "iag-vpn-bandwidth-ko",
+      "product": "IAG",
+      "language": "ko",
+      "latencyMs": 112.13549300000022,
+      "mode": "hybrid-semantic",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 952
+        },
+        "embeddingModelCounts": {
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 952
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "7cdaaa733f5c8b9c7bced76c9895eced5cca4c6f4cc3c0362e4079322b4054a0",
+        "retrievalMode": "hybrid-semantic"
+      },
+      "hits": [
+        {
+          "queryId": "iag-vpn-bandwidth-ko",
+          "sourceId": "data/sources/raw/support_case_2_33587.md",
+          "rank": 1,
+          "score": 0.01639344262295082
+        },
+        {
+          "queryId": "iag-vpn-bandwidth-ko",
+          "sourceId": "data/sources/raw/community_thread_752.md",
+          "rank": 2,
+          "score": 0.016001024065540194
+        },
+        {
+          "queryId": "iag-vpn-bandwidth-ko",
+          "sourceId": "data/sources/raw/community_thread_7792.md",
+          "rank": 3,
+          "score": 0.015625
+        },
+        {
+          "queryId": "iag-vpn-bandwidth-ko",
+          "sourceId": "data/sources/raw/community_thread_459.md",
+          "rank": 4,
+          "score": 0.015038444142921756
+        },
+        {
+          "queryId": "iag-vpn-bandwidth-ko",
+          "sourceId": "data/sources/raw/community_thread_9615.md",
+          "rank": 5,
+          "score": 0.015008960573476702
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "hci-overlay-6111",
+      "product": "HCI",
+      "language": "en",
+      "latencyMs": 285.67583899999954,
+      "mode": "hybrid-semantic",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 5199
+        },
+        "embeddingModelCounts": {
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 5199
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "7cdaaa733f5c8b9c7bced76c9895eced5cca4c6f4cc3c0362e4079322b4054a0",
+        "retrievalMode": "hybrid-semantic"
+      },
+      "hits": [
+        {
+          "queryId": "hci-overlay-6111",
+          "sourceId": "data/sources/raw/support_10_1381_2654207.md",
+          "rank": 1,
+          "score": 0.01639344262295082
+        },
+        {
+          "queryId": "hci-overlay-6111",
+          "sourceId": "data/sources/raw/support_10_1229_2639675.md",
+          "rank": 2,
+          "score": 0.016129032258064516
+        },
+        {
+          "queryId": "hci-overlay-6111",
+          "sourceId": "data/sources/raw/support_10_1054_2643813.md",
+          "rank": 3,
+          "score": 0.015873015873015872
+        },
+        {
+          "queryId": "hci-overlay-6111",
+          "sourceId": "data/sources/raw/support_10_1054_2643688.md",
+          "rank": 4,
+          "score": 0.015625
+        },
+        {
+          "queryId": "hci-overlay-6111",
+          "sourceId": "data/sources/raw/support_10_1381_2662891.md",
+          "rank": 5,
+          "score": 0.014605543710021322
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 1
+    },
+    {
+      "queryId": "hci-datastore",
+      "product": "HCI",
+      "language": "en",
+      "latencyMs": 254.381891,
+      "mode": "hybrid-semantic",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 5199
+        },
+        "embeddingModelCounts": {
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 5199
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "7cdaaa733f5c8b9c7bced76c9895eced5cca4c6f4cc3c0362e4079322b4054a0",
+        "retrievalMode": "hybrid-semantic"
+      },
+      "hits": [
+        {
+          "queryId": "hci-datastore",
+          "sourceId": "data/sources/raw/support_10_1054_2643793.md",
+          "rank": 1,
+          "score": 0.01523897483260217
+        },
+        {
+          "queryId": "hci-datastore",
+          "sourceId": "data/sources/raw/support_10_1229_2639923.md",
+          "rank": 2,
+          "score": 0.014756944444444444
+        },
+        {
+          "queryId": "hci-datastore",
+          "sourceId": "data/sources/raw/support_10_1381_2654212.md",
+          "rank": 3,
+          "score": 0.014693264693264693
+        },
+        {
+          "queryId": "hci-datastore",
+          "sourceId": "data/sources/raw/support_10_1229_2639946.md",
+          "rank": 4,
+          "score": 0.013553113553113554
+        },
+        {
+          "queryId": "hci-datastore",
+          "sourceId": "data/sources/raw/support_10_1381_2654301.md",
+          "rank": 5,
+          "score": 0.013496376811594202
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "hci-iscsi-ko",
+      "product": "HCI",
+      "language": "ko",
+      "latencyMs": 263.76981799999976,
+      "mode": "hybrid-semantic",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 5199
+        },
+        "embeddingModelCounts": {
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 5199
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "7cdaaa733f5c8b9c7bced76c9895eced5cca4c6f4cc3c0362e4079322b4054a0",
+        "retrievalMode": "hybrid-semantic"
+      },
+      "hits": [
+        {
+          "queryId": "hci-iscsi-ko",
+          "sourceId": "data/sources/raw/support_10_1054_2643801.md",
+          "rank": 1,
+          "score": 0.015889029003783105
+        },
+        {
+          "queryId": "hci-iscsi-ko",
+          "sourceId": "data/sources/raw/support_10_1381_2654317.md",
+          "rank": 2,
+          "score": 0.015873015873015872
+        },
+        {
+          "queryId": "hci-iscsi-ko",
+          "sourceId": "data/sources/raw/support_10_1381_2662883.md",
+          "rank": 3,
+          "score": 0.01565940787863959
+        },
+        {
+          "queryId": "hci-iscsi-ko",
+          "sourceId": "data/sources/raw/support_10_1229_2639845.md",
+          "rank": 4,
+          "score": 0.0152073732718894
+        },
+        {
+          "queryId": "hci-iscsi-ko",
+          "sourceId": "data/sources/raw/support_10_1229_2639838.md",
+          "rank": 5,
+          "score": 0.014955357142857142
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "backup-space-case",
+      "product": "HCI",
+      "language": "en",
+      "latencyMs": 266.18487599999935,
+      "mode": "hybrid-semantic",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 5199
+        },
+        "embeddingModelCounts": {
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 5199
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "7cdaaa733f5c8b9c7bced76c9895eced5cca4c6f4cc3c0362e4079322b4054a0",
+        "retrievalMode": "hybrid-semantic"
+      },
+      "hits": [
+        {
+          "queryId": "backup-space-case",
+          "sourceId": "data/sources/raw/support_case_2_308958.md",
+          "rank": 1,
+          "score": 0.01639344262295082
+        },
+        {
+          "queryId": "backup-space-case",
+          "sourceId": "data/sources/raw/support_10_1381_2654380.md",
+          "rank": 2,
+          "score": 0.016129032258064516
+        },
+        {
+          "queryId": "backup-space-case",
+          "sourceId": "data/sources/raw/support_10_1229_2639973.md",
+          "rank": 3,
+          "score": 0.015873015873015872
+        },
+        {
+          "queryId": "backup-space-case",
+          "sourceId": "data/sources/raw/support_case_2_308959.md",
+          "rank": 4,
+          "score": 0.015504807692307693
+        },
+        {
+          "queryId": "backup-space-case",
+          "sourceId": "data/sources/raw/support_case_2_34097.md",
+          "rank": 5,
+          "score": 0.014925373134328358
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "scc-tenant-quota",
+      "product": "SCC",
+      "language": "en",
+      "latencyMs": 52.43926400000055,
+      "mode": "hybrid-semantic",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 120
+        },
+        "embeddingModelCounts": {
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 120
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "7cdaaa733f5c8b9c7bced76c9895eced5cca4c6f4cc3c0362e4079322b4054a0",
+        "retrievalMode": "hybrid-semantic"
+      },
+      "hits": [
+        {
+          "queryId": "scc-tenant-quota",
+          "sourceId": "data/sources/raw/support_32_1101_1543200.md",
+          "rank": 1,
+          "score": 0.016133229247983348
+        },
+        {
+          "queryId": "scc-tenant-quota",
+          "sourceId": "data/sources/raw/support_32_1101_1546200.md",
+          "rank": 2,
+          "score": 0.01504603637996856
+        },
+        {
+          "queryId": "scc-tenant-quota",
+          "sourceId": "data/sources/raw/support_32_1101_1540950.md",
+          "rank": 3,
+          "score": 0.014928698752228164
+        },
+        {
+          "queryId": "scc-tenant-quota",
+          "sourceId": "data/sources/raw/support_32_1101_1543500.md",
+          "rank": 4,
+          "score": 0.014925373134328358
+        },
+        {
+          "queryId": "scc-tenant-quota",
+          "sourceId": "data/sources/raw/support_32_1101_1541550.md",
+          "rank": 5,
+          "score": 0.014102564102564103
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "scp-612-scheduled-backup",
+      "product": "HCI_SCP",
+      "language": "ko",
+      "latencyMs": 264.8234429999993,
+      "mode": "hybrid-semantic",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 5203
+        },
+        "embeddingModelCounts": {
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 5203
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "7cdaaa733f5c8b9c7bced76c9895eced5cca4c6f4cc3c0362e4079322b4054a0",
+        "retrievalMode": "hybrid-semantic"
+      },
+      "hits": [
+        {
+          "queryId": "scp-612-scheduled-backup",
+          "sourceId": "data/sources/raw/support_45_1364_2636771.md",
+          "rank": 1,
+          "score": 0.01562881562881563
+        },
+        {
+          "queryId": "scp-612-scheduled-backup",
+          "sourceId": "data/sources/raw/support_45_1379_2652795.md",
+          "rank": 2,
+          "score": 0.015527202696196438
+        },
+        {
+          "queryId": "scp-612-scheduled-backup",
+          "sourceId": "data/sources/raw/support_45_1334_2643467.md",
+          "rank": 3,
+          "score": 0.015504807692307693
+        },
+        {
+          "queryId": "scp-612-scheduled-backup",
+          "sourceId": "data/sources/raw/support_45_1388_2656631.md",
+          "rank": 4,
+          "score": 0.015443098123069612
+        },
+        {
+          "queryId": "scp-612-scheduled-backup",
+          "sourceId": "data/sources/raw/support_45_1364_2645300.md",
+          "rank": 5,
+          "score": 0.01488095238095238
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 1
+    },
+    {
+      "queryId": "hci-system-diagnostics",
+      "product": "HCI",
+      "language": "en",
+      "latencyMs": 263.2052110000004,
+      "mode": "hybrid-semantic",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 5199
+        },
+        "embeddingModelCounts": {
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 5199
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "7cdaaa733f5c8b9c7bced76c9895eced5cca4c6f4cc3c0362e4079322b4054a0",
+        "retrievalMode": "hybrid-semantic"
+      },
+      "hits": [
+        {
+          "queryId": "hci-system-diagnostics",
+          "sourceId": "data/sources/raw/support_10_1054_2643738.md",
+          "rank": 1,
+          "score": 0.01562881562881563
+        },
+        {
+          "queryId": "hci-system-diagnostics",
+          "sourceId": "data/sources/raw/support_10_1229_2639728.md",
+          "rank": 2,
+          "score": 0.01527518656716418
+        },
+        {
+          "queryId": "hci-system-diagnostics",
+          "sourceId": "data/sources/raw/support_10_1381_2654427.md",
+          "rank": 3,
+          "score": 0.015268065268065269
+        },
+        {
+          "queryId": "hci-system-diagnostics",
+          "sourceId": "data/sources/raw/support_10_1229_2639715.md",
+          "rank": 4,
+          "score": 0.014095691880087354
+        },
+        {
+          "queryId": "hci-system-diagnostics",
+          "sourceId": "data/sources/raw/support_10_1381_2654407.md",
+          "rank": 5,
+          "score": 0.013611111111111112
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "hci-raid-ko",
+      "product": "HCI",
+      "language": "ko",
+      "latencyMs": 272.4845780000005,
+      "mode": "hybrid-semantic",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 5199
+        },
+        "embeddingModelCounts": {
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 5199
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "7cdaaa733f5c8b9c7bced76c9895eced5cca4c6f4cc3c0362e4079322b4054a0",
+        "retrievalMode": "hybrid-semantic"
+      },
+      "hits": [
+        {
+          "queryId": "hci-raid-ko",
+          "sourceId": "data/sources/raw/support_10_1381_2654362.md",
+          "rank": 1,
+          "score": 0.016129032258064516
+        },
+        {
+          "queryId": "hci-raid-ko",
+          "sourceId": "data/sources/raw/support_10_1229_2639707.md",
+          "rank": 2,
+          "score": 0.015749007936507936
+        },
+        {
+          "queryId": "hci-raid-ko",
+          "sourceId": "data/sources/raw/support_10_1381_2662816.md",
+          "rank": 3,
+          "score": 0.014605543710021322
+        },
+        {
+          "queryId": "hci-raid-ko",
+          "sourceId": "data/sources/raw/support_case_2_34163.md",
+          "rank": 4,
+          "score": 0.01407907425265188
+        },
+        {
+          "queryId": "hci-raid-ko",
+          "sourceId": "data/sources/raw/support_10_1381_2654452.md",
+          "rank": 5,
+          "score": 0.011330409356725146
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "hci-api-reference",
+      "product": "HCI",
+      "language": "en",
+      "latencyMs": 258.87849899999947,
+      "mode": "hybrid-semantic",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 5199
+        },
+        "embeddingModelCounts": {
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 5199
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "7cdaaa733f5c8b9c7bced76c9895eced5cca4c6f4cc3c0362e4079322b4054a0",
+        "retrievalMode": "hybrid-semantic"
+      },
+      "hits": [
+        {
+          "queryId": "hci-api-reference",
+          "sourceId": "data/sources/raw/support_10_1381_2662748.md",
+          "rank": 1,
+          "score": 0.01626123744050767
+        },
+        {
+          "queryId": "hci-api-reference",
+          "sourceId": "data/sources/raw/support_10_1381_2662678.md",
+          "rank": 2,
+          "score": 0.01422275641025641
+        },
+        {
+          "queryId": "hci-api-reference",
+          "sourceId": "data/sources/raw/support_10_1381_2662700.md",
+          "rank": 3,
+          "score": 0.009920859242509893
+        },
+        {
+          "queryId": "hci-api-reference",
+          "sourceId": "data/sources/raw/support_10_1381_2662773.md",
+          "rank": 4,
+          "score": 0.00907224958949097
+        },
+        {
+          "queryId": "hci-api-reference",
+          "sourceId": "data/sources/raw/support_10_1381_2662956.md",
+          "rank": 5,
+          "score": 0.008853847724025312
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "sfvddk-api",
+      "product": "HCI_SCP",
+      "language": "en",
+      "latencyMs": 280.42613299999994,
+      "mode": "hybrid-semantic",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 5203
+        },
+        "embeddingModelCounts": {
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 5203
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "7cdaaa733f5c8b9c7bced76c9895eced5cca4c6f4cc3c0362e4079322b4054a0",
+        "retrievalMode": "hybrid-semantic"
+      },
+      "hits": [
+        {
+          "queryId": "sfvddk-api",
+          "sourceId": "data/sources/raw/hci-scp-api-cli/hci_scp_45_1388_2655992.md",
+          "rank": 1,
+          "score": 0.01575682382133995
+        },
+        {
+          "queryId": "sfvddk-api",
+          "sourceId": "data/sources/raw/support_45_1379_2653161.md",
+          "rank": 2,
+          "score": 0.01518288474810214
+        },
+        {
+          "queryId": "sfvddk-api",
+          "sourceId": "data/sources/raw/support_45_1388_2655992.md",
+          "rank": 3,
+          "score": 0.01510676965015902
+        },
+        {
+          "queryId": "sfvddk-api",
+          "sourceId": "data/sources/raw/support_45_1379_2653098.md",
+          "rank": 4,
+          "score": 0.012379227053140096
+        },
+        {
+          "queryId": "sfvddk-api",
+          "sourceId": "data/sources/raw/support_45_1388_2655932.md",
+          "rank": 5,
+          "score": 0.012305411415863603
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "hci-dfw-ko",
+      "product": "HCI",
+      "language": "ko",
+      "latencyMs": 259.62571600000047,
+      "mode": "hybrid-semantic",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 5199
+        },
+        "embeddingModelCounts": {
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 5199
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "7cdaaa733f5c8b9c7bced76c9895eced5cca4c6f4cc3c0362e4079322b4054a0",
+        "retrievalMode": "hybrid-semantic"
+      },
+      "hits": [
+        {
+          "queryId": "hci-dfw-ko",
+          "sourceId": "data/sources/raw/support_10_1054_2643702.md",
+          "rank": 1,
+          "score": 0.01639344262295082
+        },
+        {
+          "queryId": "hci-dfw-ko",
+          "sourceId": "data/sources/raw/support_10_1381_2654293.md",
+          "rank": 2,
+          "score": 0.016129032258064516
+        },
+        {
+          "queryId": "hci-dfw-ko",
+          "sourceId": "data/sources/raw/support_10_1229_2639693.md",
+          "rank": 3,
+          "score": 0.015873015873015872
+        },
+        {
+          "queryId": "hci-dfw-ko",
+          "sourceId": "data/sources/raw/support_10_1070_2127450.md",
+          "rank": 4,
+          "score": 0.01527518656716418
+        },
+        {
+          "queryId": "hci-dfw-ko",
+          "sourceId": "data/sources/raw/support_10_1381_2662917.md",
+          "rank": 5,
+          "score": 0.014202256244963738
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "ndr-environment-ko",
+      "product": "NDR",
+      "language": "ko",
+      "latencyMs": 62.86758699999973,
+      "mode": "hybrid-semantic",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 596
+        },
+        "embeddingModelCounts": {
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 596
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "7cdaaa733f5c8b9c7bced76c9895eced5cca4c6f4cc3c0362e4079322b4054a0",
+        "retrievalMode": "hybrid-semantic"
+      },
+      "hits": [
+        {
+          "queryId": "ndr-environment-ko",
+          "sourceId": "data/sources/raw/support_24_1219_2630646.md",
+          "rank": 1,
+          "score": 0.01639344262295082
+        },
+        {
+          "queryId": "ndr-environment-ko",
+          "sourceId": "data/sources/raw/support_24_1219_2630706.md",
+          "rank": 2,
+          "score": 0.014815627743634766
+        },
+        {
+          "queryId": "ndr-environment-ko",
+          "sourceId": "data/sources/raw/support_24_1078_2634583.md",
+          "rank": 3,
+          "score": 0.014314516129032258
+        },
+        {
+          "queryId": "ndr-environment-ko",
+          "sourceId": "data/sources/raw/community_thread_10290.md",
+          "rank": 4,
+          "score": 0.012863005050505052
+        },
+        {
+          "queryId": "ndr-environment-ko",
+          "sourceId": "data/sources/raw/support_24_1078_2634641.md",
+          "rank": 5,
+          "score": 0.01211484593837535
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "vcenter-cert-case",
+      "product": "HCI",
+      "language": "en",
+      "latencyMs": 255.36691500000052,
+      "mode": "hybrid-semantic",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 5199
+        },
+        "embeddingModelCounts": {
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 5199
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "7cdaaa733f5c8b9c7bced76c9895eced5cca4c6f4cc3c0362e4079322b4054a0",
+        "retrievalMode": "hybrid-semantic"
+      },
+      "hits": [
+        {
+          "queryId": "vcenter-cert-case",
+          "sourceId": "data/sources/raw/support_case_2_33867.md",
+          "rank": 1,
+          "score": 0.01639344262295082
+        },
+        {
+          "queryId": "vcenter-cert-case",
+          "sourceId": "data/sources/raw/support_case_2_308964.md",
+          "rank": 2,
+          "score": 0.014087301587301586
+        },
+        {
+          "queryId": "vcenter-cert-case",
+          "sourceId": "data/sources/raw/support_10_1229_2639962.md",
+          "rank": 3,
+          "score": 0.01209231619679381
+        },
+        {
+          "queryId": "vcenter-cert-case",
+          "sourceId": "data/sources/raw/support_10_1381_2654365.md",
+          "rank": 4,
+          "score": 0.01202583837273227
+        },
+        {
+          "queryId": "vcenter-cert-case",
+          "sourceId": "data/sources/raw/support_10_1381_2654366.md",
+          "rank": 5,
+          "score": 0.01196509009009009
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "no-hci-9999",
+      "product": "HCI",
+      "language": "en",
+      "latencyMs": 46.858297999999195,
+      "mode": "bm25",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {},
+        "embeddingModelCounts": {},
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "7cdaaa733f5c8b9c7bced76c9895eced5cca4c6f4cc3c0362e4079322b4054a0",
+        "retrievalMode": "bm25"
+      },
+      "hits": [],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "no-ndr-9999-ko",
+      "product": "NDR",
+      "language": "ko",
+      "latencyMs": 29.94316499999968,
+      "mode": "bm25",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {},
+        "embeddingModelCounts": {},
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "7cdaaa733f5c8b9c7bced76c9895eced5cca4c6f4cc3c0362e4079322b4054a0",
+        "retrievalMode": "bm25"
+      },
+      "hits": [],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "no-ngfw-9999",
+      "product": "OTHER",
+      "language": "en",
+      "latencyMs": 27.363185999999587,
+      "mode": "bm25",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {},
+        "embeddingModelCounts": {},
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "7cdaaa733f5c8b9c7bced76c9895eced5cca4c6f4cc3c0362e4079322b4054a0",
+        "retrievalMode": "bm25"
+      },
+      "hits": [],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "no-scp-9999-ko",
+      "product": "HCI_SCP",
+      "language": "ko",
+      "latencyMs": 29.61501700000008,
+      "mode": "bm25",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {},
+        "embeddingModelCounts": {},
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "7cdaaa733f5c8b9c7bced76c9895eced5cca4c6f4cc3c0362e4079322b4054a0",
+        "retrievalMode": "bm25"
+      },
+      "hits": [],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    }
+  ],
+  "comparison": null,
+  "baselineReportSha256": null
+}

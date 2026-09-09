@@ -49,8 +49,8 @@ export const knowledgeToolCatalog: readonly ToolCatalogEntry[] = [
   }],
   ["sangfor_rag_search", {
     description: 'Search real ingested local RAG index by product/version/query. Supports privacy_mode (summary|structured|raw) to limit returned detail. Hit embedding vectors are omitted by default — pass include_vectors:true to get them back.',
-    inputSchema: { type: 'object', properties: { product: { type: 'string' }, version: { type: 'string' }, sourceType: { type: 'string', enum: ['manual', 'wiki', 'lesson', 'pattern'] }, trustLevel: { type: 'string', enum: ['official', 'internal', 'draft', 'needs_review', 'customer'] }, query: { type: 'string' }, limit: { type: 'number' }, indexPath: { type: 'string' }, privacy_mode: PRIVACY_MODE_SCHEMA, include_vectors: { type: 'boolean', description: 'Include each hit\'s raw embedding vector. Default false — vectors are large and rarely needed by callers.' } }, required: ['query'] },
-    handler: async (args: { query: string; product?: string; version?: string; sourceType?: 'manual' | 'wiki' | 'lesson' | 'pattern'; trustLevel?: 'official' | 'internal' | 'draft' | 'needs_review' | 'customer'; limit?: number; indexPath?: string; privacy_mode?: 'summary' | 'structured' | 'raw'; include_vectors?: boolean }) => {
+    inputSchema: { type: 'object', properties: { product: { type: 'string' }, version: { type: 'string' }, sourceType: { type: 'string', enum: ['manual', 'wiki', 'lesson', 'pattern'] }, trustLevel: { type: 'string', enum: ['official', 'internal', 'draft', 'needs_review', 'customer'] }, query: { type: 'string' }, limit: { type: 'number' }, indexPath: { type: 'string' }, privacy_mode: PRIVACY_MODE_SCHEMA, contextNeighbors: { type: 'integer', minimum: 0, maximum: 2, description: 'Include adjacent passages from the same authorized document; default 0.' }, include_vectors: { type: 'boolean', description: 'Include each hit\'s raw embedding vector. Default false — vectors are large and rarely needed by callers.' } }, required: ['query'] },
+    handler: async (args: { query: string; product?: string; version?: string; sourceType?: 'manual' | 'wiki' | 'lesson' | 'pattern'; trustLevel?: 'official' | 'internal' | 'draft' | 'needs_review' | 'customer'; limit?: number; indexPath?: string; privacy_mode?: 'summary' | 'structured' | 'raw'; contextNeighbors?: number; include_vectors?: boolean }) => {
       if (args.sourceType !== undefined && !['manual', 'wiki', 'lesson', 'pattern'].includes(args.sourceType)) {
         throw new Error(`INVALID_SOURCE_TYPE: ${args.sourceType}`);
       }
@@ -66,7 +66,7 @@ export const knowledgeToolCatalog: readonly ToolCatalogEntry[] = [
       const weakReason: 'no_hits' | 'low_score' | undefined = hits.length === 0
         ? 'no_hits'
         : (topScore !== undefined && topScore < searchGapWeakThreshold() ? 'low_score' : undefined);
-      if (weakReason) {
+      if (weakReason && diagnostics.evidenceRequirement !== 'live-runtime') {
         recordSearchGap({ query: args.query, product: args.product, version: args.version, hitCount: hits.length, topScore, reason: weakReason });
       }
       // privacy_mode=summary already returns an object ({count, hits}) — merge
@@ -77,7 +77,7 @@ export const knowledgeToolCatalog: readonly ToolCatalogEntry[] = [
       // object-shaped response and sangfor_rag_index_summary.
       if (args.privacy_mode === 'summary') {
         const summarized = summarizeSearchHits(hits);
-        return diagnostics.degraded ? { ...summarized, ...diagnostics } : summarized;
+        return diagnostics.degraded || diagnostics.evidenceRequirement ? { ...summarized, ...diagnostics } : summarized;
       }
       return args.include_vectors ? hits : hits.map(omitVectorFromHit);
     }

@@ -78,3 +78,67 @@ failure/timeout. Invalid configuration fails closed before inference. By default
 passage per source (100 total maximum), ranks all local passages, then deduplicates
 to the requested final source count. Local
 reranking is disabled by default; it is not automatically better than lexical search.
+
+The reranker admits one inference request per process and refuses overlapping
+requests with HTTP 503 and `Retry-After: 1`; it does not queue additional model
+work. `/health` exposes `busy` separately from model/configuration identity.
+A disconnected or timed-out client does not cancel CPU inference already running:
+the slot stays busy until prediction finishes, including its exception path.
+This bounds overlap, not the runtime of a single prediction. The client does not
+automatically retry or treat a busy/timeout response as evidence of no answer.
+Run `pnpm run test:reranker:admission` for the dependency-free concurrency checks.
+
+`SANGFOR_RAG_LEXICAL_PROFILE=stem-ancestors` enables the measured candidate
+expansion profile. It uses pinned `stemmer@2.0.1` for plain English tokens of at
+least four letters and scores body + 2×leaf heading + ancestor headings, excluding
+the document root. Paths, dotted names, switches, versions and Korean tokens are
+not stemmed. Original text and embedding vectors remain unchanged. The default
+profile is `exact`; an unknown profile is refused. The existing subject prerequisite
+still uses exact lexical evidence. This profile improved some development recall
+but reduced translated-Korean Hit@5 before reranking, so it is not yet an accepted
+deployment configuration. Reported settings identify the selected profile.
+
+`SANGFOR_LOCAL_RERANK_MIN_SCORE` optionally filters local async search results by
+a finite raw model score. There is no default threshold: establish it on development
+data for the exact scoring configuration before evaluating a new frozen set. The
+floor is separately included in evaluation settings. It requires the local scorer
+to be enabled and configuration-bound. Every selected candidate, including a lone
+candidate, must be scored; rejected passages are not refilled from the original
+retrieval list. Accepted passages retain their actual score in `rerankScore`.
+An incomplete/invalid response, configuration mismatch, busy service or timeout
+throws `RAG_SCORE_GATE_UNAVAILABLE`, rather than returning empty success or lexical
+fallback. An unintended embedding fallback also refuses. Synchronous local search
+entry points refuse while a floor is configured. The floor does not prove that a
+passage answers all requested details or that adjacent context is supported; actual
+answer/citation verification remains required. These settings apply to local RAG,
+not an authorization grant or a replacement for PostgreSQL authority/ACL checks.
+
+With a floor configured, `SANGFOR_LOCAL_RERANK_SCORE_ORDER` separates acceptance
+from ordering: `model` (default) uses the raw model ranking, `retrieval` preserves
+the hybrid retrieval ranking, and `rrf` combines those two ranks with equal weight
+and rank constant 60. All three apply the same floor and keep raw model scores;
+none refills rejected passages. Unknown ordering or ordering without a floor is
+refused. Ordering is part of evaluation settings and must be frozen with the floor.
+
+
+### Reproducible scoring configuration
+
+The client factory and service bind model/revision, maximum input length, dtype,
+batch size, and optional instruction into `configurationSha256`. Set identical
+values on both sides. A missing or different digest refuses scoring; restart an
+older service when upgrading this client. The legacy three-argument adapter
+constructor remains available for model/revision-only integrations.
+
+Defaults are `SANGFOR_LOCAL_RERANK_MAX_LENGTH=512`,
+`SANGFOR_LOCAL_RERANK_DTYPE=auto`, and `SANGFOR_LOCAL_RERANK_BATCH_SIZE=16`.
+An optional `SANGFOR_LOCAL_RERANK_INSTRUCTION` must be nonempty and at most 2,048
+characters. Maximum input length is 128–4,096, batch size 1–32, and their product
+must not exceed 16,384. A context exceeding the model position limit is refused.
+`float32` is the supported explicit CPU dtype override; measure it on the target
+hardware rather than assuming the checkpoint dtype is fastest.
+
+`LocalRerankProvider.rerankScored()` retains finite raw model scores and verified
+candidate IDs. These scores are not calibrated answer probabilities. Raw scoring
+does not apply the optional client floor or grant answer acceptance. The adapter includes
+the full title once and strips only its exact duplicate leading heading from the
+body before selecting the scoring passage. Persisted source text is unchanged.

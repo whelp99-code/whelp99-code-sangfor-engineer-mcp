@@ -1,0 +1,87 @@
+{
+  "policySha256": "7226c45dbec015fae215dc6914537fe6cb70d9bc0d962cfaa351564db346b9aa",
+  "status": "FROZEN_CANDIDATE_PENDING_HOLDOUT",
+  "selected": "BM25",
+  "eligibleRanking": [
+    {
+      "candidate": "BM25",
+      "eligible": true,
+      "minimumHitRate": 0.9166666666666666,
+      "meanMrr": 0.7597883597883598,
+      "maximumP95Ms": 373.87913000000003,
+      "reports": {
+        "original": {
+          "path": "selection-bm25-original.json",
+          "sha256": "8bbbdcca4297903e8c79d2c77789767d54370941900cd145dd6c21e2dc59b770"
+        },
+        "development": {
+          "path": "selection-bm25-development.json",
+          "sha256": "e3e61af9c18233693b4f2d86311aba67ed1497833ec37f4911454aa2d8f38a70"
+        },
+        "client-korean": {
+          "path": "selection-bm25-client-korean.json",
+          "sha256": "c3c51630d32625139b8263c5e379b33aa02cac4cd03aa4c3397dd9a29500656d"
+        }
+      }
+    },
+    {
+      "candidate": "E5 hybrid",
+      "eligible": true,
+      "minimumHitRate": 0.9166666666666666,
+      "meanMrr": 0.674074074074074,
+      "maximumP95Ms": 532.9772409999998,
+      "reports": {
+        "original": {
+          "path": "e5-hybrid-original.json",
+          "sha256": "a68d2d35395b16f2788af6fbbece6c1f29554195a518e9b7f0f5848df6e50396"
+        },
+        "development": {
+          "path": "e5-hybrid-development.json",
+          "sha256": "5390f60268842d656d673cb2b222e1a0c49b6b065a64fc24e3d1f16f4bfbe82a"
+        },
+        "client-korean": {
+          "path": "e5-hybrid-client-korean.json",
+          "sha256": "d04f5f396bffddb326a3e315c48efe2828d281d15c5bd50a2fc22a3b087f1d36"
+        }
+      }
+    },
+    {
+      "candidate": "MiniLM hybrid",
+      "eligible": true,
+      "minimumHitRate": 0.9166666666666666,
+      "meanMrr": 0.6159391534391534,
+      "maximumP95Ms": 543.8669620000001,
+      "reports": {
+        "original": {
+          "path": "selection-minilm-original.json",
+          "sha256": "5ebd316be9757dbd474e66292fe96f1aed41529519efac70d38901c061304b97"
+        },
+        "development": {
+          "path": "selection-minilm-development.json",
+          "sha256": "ea266d35b100564543fa91545b78433dda2a7e188bae7b9c1593f1be2fcff28a"
+        },
+        "client-korean": {
+          "path": "selection-minilm-client-korean.json",
+          "sha256": "cdb7767c4f680fc063986112b94e47d3ad714d7d2813a036919c40fbebb89f65"
+        }
+      }
+    }
+  ],
+  "excluded": "MiniLM/E5 dense and RRF fail original development hit-rate >= .95; see complete available reports, not assumed rankings.",
+  "runtime": {
+    "SANGFOR_EMBEDDING_PROVIDER": "hash",
+    "SANGFOR_RAG_HYBRID_ALPHA": "0",
+    "SANGFOR_RAG_REQUIRE_SUBJECT_MATCH": "1",
+    "SANGFOR_MIMO_RERANK_ENABLED": "0",
+    "SANGFOR_LOCAL_RERANK_ENABLED": "0"
+  },
+  "indexSha256": "ee04fc7a022c3901ce8a7adce3a29c49bc23c8315e613165e035d4754793e8d4",
+  "holdoutSearchExecuted": false,
+  "promotionAuthorized": false,
+  "limitations": [
+    "BM25 original hit rate is 20/21; semantic hybrids reach 21/21. The pre-frozen minimum-slice/MRR policy determines the choice.",
+    "Raw Korean backend recall remains weak. Client translation is an explicit separate workflow.",
+    "Latency is secondary; CPU concurrency differed in older experiments. Refreshed eligible BM25/MiniLM reports and completed E5 runs remove active embedding competition.",
+    "Final held-out retrieval and answer criteria must still pass before deployment."
+  ]
+}

@@ -7,6 +7,8 @@ import { compareCorpusQuality, corpusQualityThresholdsSchema, corpusReportSchema
 import { corpusEvalFixtureSchema } from '../packages/sangfor-rag/src/corpus-eval-contract.js';
 import { loadRagIndex, ragSearch, ragSearchSync, getRagSearchDiagnostics } from '../packages/sangfor-rag/src/index.js';
 import { computeRetrievalMetrics } from '../packages/sangfor-rag/src/retrieval-eval.js';
+import { createLocalRerankFromEnv } from '../packages/sangfor-rag/src/local-rerank-provider.js';
+import { localScoreOrderFromEnv } from '../packages/sangfor-rag/src/local-score-order.js';
 
 async function main(): Promise<void> {
   const [indexPath, fixturePath, baselinePath] = process.argv.slice(2);
@@ -20,6 +22,7 @@ async function main(): Promise<void> {
   const indexBytes = readFileSync(indexPath);
   const settings = {
     hybridAlpha: process.env.SANGFOR_RAG_HYBRID_ALPHA ?? null,
+    ...(process.env.SANGFOR_RAG_LEXICAL_PROFILE ? { lexicalProfile: process.env.SANGFOR_RAG_LEXICAL_PROFILE } : {}),
     allowCustomer: process.env.SANGFOR_ALLOW_CLOUD_RAG_CUSTOMER === '1',
     execution: process.env.SANGFOR_RAG_EVAL_ASYNC === '1' ? 'async-configured-provider' : 'local-sync-no-external-inference',
     ...(process.env.SANGFOR_RAG_EVAL_ASYNC === '1' ? {
@@ -29,20 +32,30 @@ async function main(): Promise<void> {
       localRerankerPassages: process.env.SANGFOR_LOCAL_RERANK_PASSAGES === '2' ? 2 : 1,
       localReranker: process.env.SANGFOR_LOCAL_RERANK_MODEL ?? null,
       localRerankerRevision: process.env.SANGFOR_LOCAL_RERANK_REVISION ?? null,
+      ...(process.env.SANGFOR_LOCAL_RERANK_ENABLED === '1' ? {
+        localRerankerConfigurationSha256: createLocalRerankFromEnv()!.configurationSha256,
+        localRerankerMinimumScore: createLocalRerankFromEnv()!.minimumScore ?? null,
+        ...(process.env.SANGFOR_LOCAL_RERANK_MIN_SCORE !== undefined ? { localRerankerScoreOrder: localScoreOrderFromEnv() } : {}),
+      } : {}),
+      ...(process.env.SANGFOR_LOCAL_RERANK_ENABLED === '1' || process.env.SANGFOR_MIMO_RERANK_ENABLED === '1' ? {
+        rerankCandidates: process.env.SANGFOR_MIMO_RERANK_CANDIDATES ?? '40',
+        rerankTimeoutMs: process.env.SANGFOR_MIMO_RERANK_TIMEOUT_MS ?? '5000',
+      } : {}),
       rerankDisabled: process.env.SANGFOR_MIMO_RERANK_ENABLED === '0',
     } : {}),
+    ...(process.env.SANGFOR_RAG_REQUIRE_SUBJECT_MATCH === '1' ? { requireSubjectMatch: true } : {}),
     ...(process.env.SANGFOR_RAG_FUSION ? { fusion: process.env.SANGFOR_RAG_FUSION } : {}),
   };
   const implementationSha256 = createHash('sha256');
-  const implementationFiles = ['scripts/rag-corpus-eval.ts', 'packages/sangfor-rag/src/corpus-eval-contract.ts',
-    'packages/sangfor-rag/src/rag-search.ts', 'packages/sangfor-rag/src/rag-ranking.ts',
-    'packages/sangfor-rag/src/retrieval-text.ts', 'packages/sangfor-rag/src/bm25.ts', 'packages/sangfor-rag/src/query-normalization.ts',
+  const implementationFiles = ['package.json', 'pnpm-lock.yaml', 'scripts/rag-corpus-eval.ts', 'packages/sangfor-rag/src/corpus-eval-contract.ts',
+    'packages/sangfor-rag/src/rag-search.ts', 'packages/sangfor-rag/src/rag-search-diagnostics.ts', 'packages/sangfor-rag/src/rag-ranking.ts',
+    'packages/sangfor-rag/src/hit-context.ts', 'packages/sangfor-rag/src/query-evidence.ts', 'packages/sangfor-rag/src/query-evidence-requirement.ts', 'packages/sangfor-rag/src/retrieval-text.ts', 'packages/sangfor-rag/src/bm25.ts', 'packages/sangfor-rag/src/query-normalization.ts',
     'packages/sangfor-rag/src/retrieval-eval.ts', 'packages/sangfor-rag/src/corpus-eval-gate.ts',
     'packages/sangfor-rag/src/hash-embedding.ts', 'packages/sangfor-rag/src/embedding-space.ts',
     'packages/sangfor-rag/src/embedding-profile.ts', 'packages/sangfor-rag/src/rag-product.ts',
     'packages/sangfor-rag/src/rag-index-store.ts', 'packages/sangfor-rag/src/embedding-provider.ts',
     'packages/sangfor-rag/src/rapid-mlx-provider.ts', 'packages/sangfor-rag/src/openai-embeddings-client.ts',
-    'packages/sangfor-rag/src/mimo-rerank-provider.ts', 'packages/sangfor-rag/src/local-rerank-provider.ts'];
+    'packages/sangfor-rag/src/mimo-rerank-provider.ts', 'packages/sangfor-rag/src/local-rerank-provider.ts', 'packages/sangfor-rag/src/local-score-order.ts'];
   for (const file of implementationFiles) {
     implementationSha256.update(file).update(readFileSync(new URL('../' + file, import.meta.url)));
   }

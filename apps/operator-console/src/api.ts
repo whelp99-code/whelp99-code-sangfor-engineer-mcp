@@ -98,6 +98,7 @@ export async function postRagSearch(body: { query?: string; product?: string; ve
     diagnostics: {
       searchMode: publicSearchMode(diagnostics.retrievalMode ?? results[0]?.retrievalMode),
       degraded: diagnostics.degraded === true,
+      ...(diagnostics.evidenceRequirement ? { evidenceRequirement: diagnostics.evidenceRequirement } : {}),
     },
   };
 }

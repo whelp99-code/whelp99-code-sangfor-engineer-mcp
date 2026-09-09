@@ -1,0 +1,13 @@
+{
+  "status": "STAGED_NOT_ACTIVATED_QUALITY_REJECTED",
+  "sourceCommit": "5e6f2cb3860a204707ff2bb7614892bd194157fe",
+  "archiveSha256": "d06d51dd1b7a986aed7c36552b350336517922c14d4bce6cda407904c6a4bfc9",
+  "release": "/home/blro/orca/projects/sangfor-engineer-mcp/releases/5e6f2cb",
+  "readback": "Remote archive SHA verified before safe extraction; existing default start-mcp.sh unchanged. No production switch or new release runtime test performed.",
+  "services": {
+    "e5_8104": "responded with pinned model/revision and 384 dimensions",
+    "qwen_8109": "responded with pinned model/revision/configuration",
+    "controlTower_3700": "unavailable; no readiness pass"
+  },
+  "limitation": "Staging is not deployment acceptance. Final retrieval no-answer gate failed."
+}

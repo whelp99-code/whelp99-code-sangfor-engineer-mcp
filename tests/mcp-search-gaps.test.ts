@@ -66,6 +66,13 @@ describe('sangfor_rag_search — search-gap capture (W4 C2)', () => {
     return readFileSync(path, 'utf8').trim().split('\n').filter(Boolean).map((l) => JSON.parse(l));
   }
 
+  it('reports live evidence requirements without queuing customer-instance facts as documentation gaps', async () => {
+    const handler = getToolHandler('sangfor_rag_search')!;
+    const result = await handler({ query: 'What are the current private keys on our customer NGFW?', indexPath, privacy_mode: 'summary' });
+    expect(result).toMatchObject({ count: 0, degraded: false, evidenceRequirement: 'live-runtime' });
+    expect(readGapLines()).toEqual([]);
+  });
+
   it('records a no_hits gap when the index has 0 matches', async () => {
     const handler = getToolHandler('sangfor_rag_search')!;
     const emptyIndexPath = join(workDir, 'does-not-exist.json');

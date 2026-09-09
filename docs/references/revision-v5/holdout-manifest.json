@@ -1,0 +1,131 @@
+{
+  "schemaVersion": 1,
+  "status": "frozen-before-retrieval-changes",
+  "baseCommit": "292eb111a99ee7eb2ddff67b65c0e96cda6fa380",
+  "fixtureSha256": "7c7be3aa0c31a5ff4bd7bea0a626a9dac8b7eece935ad6bfad6d965030224623",
+  "corpusSha256": "55107e56f6ee22845894dcc7d16eb00c5b5c3887af451dd255d1965a7000b294",
+  "positiveQuestions": 12,
+  "noAnswerQuestions": 12,
+  "priorRelevantSourceOverlap": 0,
+  "evidence": [
+    {
+      "queryId": "v5-holdout-01",
+      "source": "data/sources/raw/support_10_1381_2654217.md",
+      "chunkId": "doc_1786665222305_9a999f_chunk_3",
+      "quote": "If one of the nodes is replaced, the license will become invalid.",
+      "quoteStart": 581,
+      "chunkTextSha256": "cb4619f87c521e42284f2bce9c11eddbc273c44072e12156c19e7d753d6f5779",
+      "review": "author checked quote and question against source; no independent human review"
+    },
+    {
+      "queryId": "v5-holdout-02",
+      "source": "data/sources/raw/support_10_1381_2654371.md",
+      "chunkId": "doc_1786665222484_40bdbe_chunk_3",
+      "quote": "the backup will be created in non-quiesced mode and a description will be recorded in the operation log file.",
+      "quoteStart": 587,
+      "chunkTextSha256": "78549513f9043ddc5b420956aeeee815d5fa66d58842f1a4ac11ff444e00a043",
+      "review": "author checked quote and question against source; no independent human review"
+    },
+    {
+      "queryId": "v5-holdout-03",
+      "source": "data/sources/raw/support_10_1381_2654409.md",
+      "chunkId": "doc_1786665222503_0da83b_chunk_3",
+      "quote": "The certificate file currently only supports the .crt format. If there are certificates in other formats, they need to be converted. The upper limit of the key file size is limited to 1MB.",
+      "quoteStart": 544,
+      "chunkTextSha256": "00c0b2d4976f9db043bb190d9c54d63ae8aa923700ef93e3b533a2caf31cc4c8",
+      "review": "author checked quote and question against source; no independent human review"
+    },
+    {
+      "queryId": "v5-holdout-04",
+      "source": "data/sources/raw/support_10_1381_2654378.md",
+      "chunkId": "doc_1786665222487_ae4288_chunk_3",
+      "quote": "The backup health check will be skipped if the last check was performed less than 24 hours ago.",
+      "quoteStart": 194,
+      "chunkTextSha256": "512374e22a7c76616612858c7bf4215fc5c274709b5c4259ce00c45fc18f2baf",
+      "review": "author checked quote and question against source; no independent human review"
+    },
+    {
+      "queryId": "v5-holdout-05",
+      "source": "data/sources/raw/support_10_1070_2125050.md",
+      "chunkId": "doc_1786665223658_da2dd1_chunk_2",
+      "quote": "You can select the NTP server from the list or manually enter the NTP server of the intranet.",
+      "quoteStart": 649,
+      "chunkTextSha256": "44bf3f326354ac98ae7830500150ff17c5aec36b65e947f81b456e23055fe8a0",
+      "review": "author checked quote and question against source; no independent human review"
+    },
+    {
+      "queryId": "v5-holdout-06",
+      "source": "data/sources/raw/support_10_1054_2643820.md",
+      "chunkId": "doc_1786665223882_fdeec7_chunk_2",
+      "quote": "limiting the password minimum length, retry attempts, validity and timeout session.",
+      "quoteStart": 869,
+      "chunkTextSha256": "7cb095d1c4c2b77398518a257854acf5b630ac5d7ca3a0c055e81034dc00fa4f",
+      "review": "author checked quote and question against source; no independent human review"
+    },
+    {
+      "queryId": "v5-holdout-07",
+      "source": "data/sources/raw/support_24_1219_2644670.md",
+      "chunkId": "doc_1786665232102_ba40db_chunk_2",
+      "quote": "It is recommended to use STA 3.0.91 (new structure) or STA 3.0.90 (old structure) to integrate with Athena NDR3.0.98",
+      "quoteStart": 204,
+      "chunkTextSha256": "87e9fc63fcf4e917adc8350dc8be5374fccc1d376478742da2f5bea519e0959b",
+      "review": "author checked quote and question against source; no independent human review"
+    },
+    {
+      "queryId": "v5-holdout-08",
+      "source": "data/sources/raw/support_21_1095_2653564.md",
+      "chunkId": "doc_1786665226991_b79ed1_chunk_2",
+      "quote": "Restarting will disconnect network connections passing through the firewall device for about 20 minutes.",
+      "quoteStart": 422,
+      "chunkTextSha256": "837af54c52528be7f0f9377fd3df2a4a56dce8422b3962e90d263f293023fcb1",
+      "review": "author checked quote and question against source; no independent human review"
+    },
+    {
+      "queryId": "v5-holdout-09",
+      "source": "data/sources/raw/support_32_1101_1539000.md",
+      "chunkId": "doc_1786665235615_538326_chunk_3",
+      "quote": "Displays the monitoring information by protocol, which can be HTTP(S), TCP, or ICMP.",
+      "quoteStart": 450,
+      "chunkTextSha256": "aecd002f6aa8da7dbcaf5a0febfa68a066e3e09cddc12a3232e1d5fb001b7417",
+      "review": "author checked quote and question against source; no independent human review"
+    },
+    {
+      "queryId": "v5-holdout-10",
+      "source": "data/sources/raw/support_45_1388_2655904.md",
+      "chunkId": "doc_1786665236132_06150b_chunk_2",
+      "quote": "After the upgrade is completed, start and verify the SCP services.",
+      "quoteStart": 438,
+      "chunkTextSha256": "4475e6bf2b19ddcdb1cc67ba4cdb9e2d6f395484baff67b9cb3e2596142135d9",
+      "review": "author checked quote and question against source; no independent human review"
+    },
+    {
+      "queryId": "v5-holdout-11",
+      "source": "data/sources/raw/support_case_2_33590.md",
+      "chunkId": "doc_1786665240907_c26d5e_chunk_2",
+      "quote": "Ensure the PC able to communicate with DNS server.",
+      "quoteStart": 249,
+      "chunkTextSha256": "c3698bb558fd86cd48dd7cd74e98cc481dbd8c487b30e69e91bfa0fcecc0098a",
+      "review": "author checked quote and question against source; no independent human review"
+    },
+    {
+      "queryId": "v5-holdout-12",
+      "source": "data/sources/raw/support_case_2_33643.md",
+      "chunkId": "doc_1786665240909_75b731_chunk_1",
+      "quote": "Need to check the routing on the device connected under IAM and see why the request traffic is not going through IAM.",
+      "quoteStart": 923,
+      "chunkTextSha256": "1fc244dcbedc25217e5bef0d0c4e8a175e68eb678565d7f7c5c4858f52cbb370",
+      "review": "author checked quote and question against source; no independent human review"
+    }
+  ],
+  "limitations": [
+    "Author-created source-grounded synthetic holdout, not independent field or human evaluation.",
+    "Negative cases test invented features and unknown versions; do not represent all ambiguous real questions.",
+    "No retrieval outcomes examined before freeze; do not tune on this holdout."
+  ],
+  "acceptance": {
+    "hitRateAt5Min": 0.9,
+    "noAnswerFalsePositiveRateMax": 0.1,
+    "forbiddenHitsMax": 0,
+    "originalRegressionHitRateAt5Min": 0.95
+  }
+}

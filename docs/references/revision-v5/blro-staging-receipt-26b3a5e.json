@@ -1,0 +1,32 @@
+{
+  "releaseCommit": "26b3a5e4f3238aba82ab52d42a38eea0f172627f",
+  "host": "blro01",
+  "path": "/home/blro/orca/projects/sangfor-engineer-mcp/releases/26b3a5e",
+  "sourceArchiveSha256": "03592f08253d19f93437e757e7ebf7166216732dea4d06e7881d5a471076e825",
+  "checks": {
+    "installFrozenLockfile": "PASS",
+    "dbGenerate": "PASS",
+    "lint": "PASS",
+    "build": "PASS",
+    "smokeMcpTools": 118,
+    "browserBoundary": "PASS",
+    "scorecard": 96,
+    "testsPassed": 3259,
+    "testsSkipped": 102,
+    "testsFailed": 0
+  },
+  "testEnvironmentCorrection": "Initial archive had no Git metadata; git check-ignore returned 128. Created empty .git in this isolated release only, without inventing a commit. Reran whole suite successfully; immutable source archive hash remains provenance.",
+  "captureSha256": "d96ba6c98ff1745304330987cc5e6b2cc8c9a2fb83106764e7cc18adad0dfe5c",
+  "indexSha256": "ee04fc7a022c3901ce8a7adce3a29c49bc23c8315e613165e035d4754793e8d4",
+  "captureRows": 16,
+  "negativeRowsWithHits": 0,
+  "actualDeviceExecutionEnabled": false,
+  "runtimeActivated": false,
+  "finalModelSelected": false,
+  "limitations": [
+    "Staged read-only BM25 candidate, not final model deployment",
+    "No running persistent product service or client path cutover",
+    "PostgreSQL-required tests skipped remotely; separate GitHub authority profile passed",
+    "Captured evidence is not a generated final-answer accuracy measurement"
+  ]
+}

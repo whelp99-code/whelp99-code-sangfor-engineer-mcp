@@ -1,0 +1,149 @@
+{
+  "status": "EXPOSED_DEVELOPMENT_DIAGNOSTIC_NOT_ACCEPTANCE",
+  "method": "Same filtered corpus and BM25 ranker; isolated query word-form substitution, not a shipped query rewrite.",
+  "rows": [
+    {
+      "queryId": "v5-holdout-08",
+      "query": "For Athena NGFW 8.0.107, what network interruption should be planned for a restart during upgrade?",
+      "candidateCount": 1098,
+      "sourceCount": 749,
+      "goldRank": 427,
+      "top": [
+        {
+          "source": "data/sources/raw/support_21_1095_2647873.md",
+          "title": "Athena NGFW (Next-Generation Firewall) 8.0.107 - User Manual / System / Maintenance / Restart",
+          "keywordScore": 24.90792118480519
+        },
+        {
+          "source": "data/sources/raw/support_21_1095_2661751.md",
+          "title": "Athena NGFW (Next-Generation Firewall) 8.0.107 - Emergency Response Plan / Emergency Plan / Emergency Response for Network and Service Interruption / Network-Wide or Large-scale Network Interruption",
+          "keywordScore": 23.88668611584982
+        },
+        {
+          "source": "data/sources/raw/support_21_1095_2653608.md",
+          "title": "Athena NGFW (Next-Generation Firewall) 8.0.107 - Release Notes / SP01 Release Note / Upgrade Guide / Notes / Upgrade Recommendations",
+          "keywordScore": 21.656531990215257
+        },
+        {
+          "source": "data/sources/raw/support_21_1095_2661469.md",
+          "title": "Athena NGFW (Next-Generation Firewall) 8.0.107 - Release Notes / SP02 Release Note / Upgrade Guide / Notes / Upgrade Recommendations",
+          "keywordScore": 21.656531990215257
+        },
+        {
+          "source": "data/sources/raw/support_21_1095_2653575.md",
+          "title": "Athena NGFW (Next-Generation Firewall) 8.0.107 - Release Notes / Upgrade Guide / Upgrade Procedures / HA Device Upgrade",
+          "keywordScore": 17.852813100828158
+        }
+      ],
+      "gold": [
+        {
+          "source": "data/sources/raw/support_21_1095_2653564.md",
+          "title": "Athena NGFW (Next-Generation Firewall) 8.0.107 - Release Notes / Overview / Upgrade Impacts / Impacts on Services",
+          "text": "# Athena NGFW (Next-Generation Firewall) 8.0.107 - Release Notes / Overview / Upgrade Impacts / Impacts on Services\n\nRestarting will disconnect network connections passing through the firewall device for about 20 minutes.",
+          "keywordScore": 1.569850280880944,
+          "queryTokens": [
+            "athena",
+            "ngfw",
+            "8.0.107",
+            "network",
+            "interruption",
+            "planned",
+            "restart",
+            "during",
+            "upgrade"
+          ],
+          "bodyTokens": [
+            "restarting",
+            "disconnect",
+            "network",
+            "connections",
+            "passing",
+            "through",
+            "firewall",
+            "device",
+            "about",
+            "20",
+            "minutes."
+          ],
+          "titleTokens": [
+            "impacts",
+            "services"
+          ]
+        }
+      ],
+      "counterfactual": {
+        "query": "For Athena NGFW 8.0.107, what network interruption should be planned for a restarting during upgrade?",
+        "goldRank": 25
+      }
+    },
+    {
+      "queryId": "v5-holdout-10",
+      "query": "What service verification is required after upgrading SCP 6.12.0?",
+      "candidateCount": 1421,
+      "sourceCount": 781,
+      "goldRank": 239,
+      "top": [
+        {
+          "source": "data/sources/raw/support_45_1388_2656550.md",
+          "title": "Sangfor Cloud Platform (SCP) 6.12.0 - Primary-Secondary Disaster Recovery / Installation and Deployment / Cluster Initialization / Time Settings (Required)",
+          "keywordScore": 21.114281068285543
+        },
+        {
+          "source": "data/sources/raw/support_45_1388_2655911.md",
+          "title": "Sangfor Cloud Platform (SCP) 6.12.0 - Release Notes / Upgrade Guide / Upgrade Notes / SCP Upgrade",
+          "keywordScore": 18.424887430258362
+        },
+        {
+          "source": "data/sources/raw/support_45_1388_2656721.md",
+          "title": "Sangfor Cloud Platform (SCP) 6.12.0 - Cluster Management / Cluster Maintenance / Upgrade / SCP Upgrade / SCP Pre-Upgrade Check",
+          "keywordScore": 16.774596919916124
+        },
+        {
+          "source": "data/sources/raw/support_45_1388_2655918.md",
+          "title": "Sangfor Cloud Platform (SCP) 6.12.0 - Release Notes / Upgrade Guide / Pre-upgrade Check / SCP Pre-Upgrade Check",
+          "keywordScore": 16.76378158902871
+        },
+        {
+          "source": "data/sources/raw/hci-scp-api-cli/hci_scp_45_1388_2655981.md",
+          "title": "SCP 6.12.0 - Backup Service / HotAdd / Agentless Backup API 3rd-party Integration User Guide  / Environment Deployment and Configuration / Licensing / SCP",
+          "keywordScore": 15.703498391989708
+        }
+      ],
+      "gold": [
+        {
+          "source": "data/sources/raw/support_45_1388_2655904.md",
+          "title": "Sangfor Cloud Platform (SCP) 6.12.0 - Release Notes / Upgrade Overview / Post Upgrade Check",
+          "text": "# Sangfor Cloud Platform (SCP) 6.12.0 - Release Notes / Upgrade Overview / Post Upgrade Check\n\nAfter the upgrade is completed, start and verify the SCP services.",
+          "keywordScore": 3.41150819748586,
+          "queryTokens": [
+            "service",
+            "verification",
+            "required",
+            "after",
+            "upgrading",
+            "scp",
+            "6.12.0"
+          ],
+          "bodyTokens": [
+            "after",
+            "upgrade",
+            "completed",
+            "start",
+            "verify",
+            "scp",
+            "services."
+          ],
+          "titleTokens": [
+            "post",
+            "upgrade",
+            "check"
+          ]
+        }
+      ],
+      "counterfactual": {
+        "query": "What service verify is required after upgrade SCP 6.12.0?",
+        "goldRank": 9
+      }
+    }
+  ]
+}

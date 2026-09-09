@@ -86,7 +86,9 @@ export const CLIENT_ACTION_SCRIPT = `    $('btn-analyze').onclick = async () => 
         })});
         const items = hits.items || hits.hits || hits.results || (Array.isArray(hits) ? hits : []);
         renderSearchCards($('rag-hits'), items,
-          '결과가 없습니다. 검색어, 제품 또는 버전을 바꿔 다시 검색하세요.');
+          hits.diagnostics?.evidenceRequirement === 'live-runtime'
+            ? '공개 문서로 현재 장비 상태를 확인할 수 없습니다. 권한 있는 장비 조회 결과가 필요합니다.'
+            : '결과가 없습니다. 검색어, 제품 또는 버전을 바꿔 다시 검색하세요.');
         if (hits.diagnostics?.degraded) appendText($('rag-hits'), 'p', '검색 기능 일부를 사용할 수 없어 대체 결과를 표시했습니다. 원문을 확인하세요.', 'meta');
       } catch (e) { renderSearchMessage($('rag-hits'), '오류: ' + String(e.message || e)); }
     };

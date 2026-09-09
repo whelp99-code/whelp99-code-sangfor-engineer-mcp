@@ -1,0 +1,402 @@
+{
+  "status": "SINGLE_EXPOSED_QUERY_CPU_THREADS_DIAGNOSTIC_NOT_COMPLETE_FIXTURE",
+  "cpuThreads": 8,
+  "complete": true,
+  "sourceCommit": "f09528217970c42e0d1a3489e375fefdb443f58b",
+  "fixture": "revision-v5-client-holdout",
+  "fixtureSha256": "14ed95ed68c22a9c6fc81f3d38af0c0ac487ed597f55825ff5ed43c77cac280d",
+  "corpusSha256": "ff1118e44d4c1f21e7e465f6e1d66fcb0f4a08a09e9f1f7fbc098054c3febfa0",
+  "model": "Qwen/Qwen3-Reranker-0.6B",
+  "revision": "e61197ed45024b0ed8a2d74b80b4d909f1255473",
+  "configurationSha256": "05bb2aff6414a543bf32068503f7c953fb9f552a133ce113260241589a85202c",
+  "executionHost": "BLRO isolated port 8109; torch CPU threads 8; same model/configuration; local E5 query retrieval",
+  "retrievalProfile": "E5 alpha=.5 + stem-ancestors + exact subject prerequisite; up to 40 distinct sources; no oracle insertion",
+  "rows": [
+    {
+      "queryId": "v5-holdout-01",
+      "noAnswer": false,
+      "querySha256": "dbefc1359cdd0ab43af0033ab824049316c7bee1f7711f857d3d7875a96702de",
+      "candidateCount": 40,
+      "seconds": 30.708543071,
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 1126
+        },
+        "embeddingModelCounts": {
+          "intfloat/multilingual-e5-small": 1126
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "0c433ea6086f274e850e093398ac0828906b30e2a1fac952de1ca1235ede7142",
+        "retrievalMode": "hybrid-semantic"
+      },
+      "failure": null,
+      "scored": [
+        {
+          "id": "structured_a9d2e12e789df30366a567e358bbd1658ef046d8685c9555e130845fe54a221e",
+          "score": 7.852378845214844,
+          "retrievalRank": 1,
+          "retrievalScore": 1,
+          "source": "data/sources/raw/support_10_1381_2654217.md",
+          "relevant": true,
+          "scoringInputSha256": "f4cf4fc54464a25d0d159fb98ae86b1de6483bd1eedd2d6789f4406044b93671"
+        },
+        {
+          "id": "structured_79ef3a34f4e7912f1c95a8e0da9224dc724c01568908f2fe4703f8a5c5b370e9",
+          "score": 2.070768356323242,
+          "retrievalRank": 2,
+          "retrievalScore": 0.7484992607975545,
+          "source": "data/sources/raw/support_10_1381_2654216.md",
+          "relevant": false,
+          "scoringInputSha256": "b1b945c16c3ff4f3da828b9b31756c3b547e22da8817c40aaff5fd2a849e3884"
+        },
+        {
+          "id": "structured_193334c0d80c4899bbbf96700b9166d3355134138f60fa2545a2fc1624b730dd",
+          "score": 1.1200580596923828,
+          "retrievalRank": 5,
+          "retrievalScore": 0.6002554285094747,
+          "source": "data/sources/raw/support_10_1381_2654493.md",
+          "relevant": false,
+          "scoringInputSha256": "90b2ed708579a5d37c2767724e28e1c6655e1344ba870e45c1bece388b3aed3c"
+        },
+        {
+          "id": "structured_c1dbc4a8652c0d77dd101295651e156e67503cd7e4e5c6d07e6574058bdab7e3",
+          "score": 0.9775066375732422,
+          "retrievalRank": 19,
+          "retrievalScore": 0.4723935578267622,
+          "source": "data/sources/raw/support_10_1381_2654477.md",
+          "relevant": false,
+          "scoringInputSha256": "4972e065591bc9e14ccb38ad4485636d4c2b4bcaef5e32130d2b2879a153cfd0"
+        },
+        {
+          "id": "structured_ec29ff780391acf5a21ecabf0589cb0d85a25c885133ca57c827fe66a411b92d",
+          "score": 0.3457527160644531,
+          "retrievalRank": 3,
+          "retrievalScore": 0.6841659334376062,
+          "source": "data/sources/raw/support_10_1381_2654199.md",
+          "relevant": false,
+          "scoringInputSha256": "d96f1e1bb1f8b5e92f2755b52d934d2b54b68575a51898e8edb9eb3dda014c00"
+        },
+        {
+          "id": "structured_85623d1c7dd5390e19ccef7c2a74e81e5f0f73afd5c25ac58605c5b8c6bcd281",
+          "score": -0.1521472930908203,
+          "retrievalRank": 24,
+          "retrievalScore": 0.46806360946015674,
+          "source": "data/sources/raw/support_10_1381_2654271.md",
+          "relevant": false,
+          "scoringInputSha256": "837bfeee5d1bd7fc86801ebb50d1b992f21037da9327bd0589728383e4839f70"
+        },
+        {
+          "id": "structured_8ff859e07d4ae37f39ad2c3c7b41e3a8f81accddcf4548281a9b3765d0017dc8",
+          "score": -0.3082876205444336,
+          "retrievalRank": 38,
+          "retrievalScore": 0.44278701624369526,
+          "source": "data/sources/raw/support_10_1381_2654154.md",
+          "relevant": false,
+          "scoringInputSha256": "16dcd5a3bb3bf1e68e75ffdfb9075735ee59996728c149eab52b9318d5c98f90"
+        },
+        {
+          "id": "structured_3232c06c5164cd9d7da6d8e2d6ceeae4c1be46c8eace38fab3ce7dfe1f1f336e",
+          "score": -0.5593109130859375,
+          "retrievalRank": 20,
+          "retrievalScore": 0.4717989803403707,
+          "source": "data/sources/raw/support_10_1381_2654430.md",
+          "relevant": false,
+          "scoringInputSha256": "69893e0274966411d6e5cf02d979d423c0d9ff515537d5b673da9ea457b1e477"
+        },
+        {
+          "id": "structured_781a42e53155768b8fb48d6377617e151326b948b6db7e40f627147410d3e832",
+          "score": -0.8262147903442383,
+          "retrievalRank": 29,
+          "retrievalScore": 0.46230749216741995,
+          "source": "data/sources/raw/support_10_1381_2654143.md",
+          "relevant": false,
+          "scoringInputSha256": "80621bc290c8cf28ded509b35667c29640e052e4def396207949214488adc7ef"
+        },
+        {
+          "id": "structured_c6421a1416aa777d91173de0c3632f1d9e6acd8f7850dec9468de5a24a89547a",
+          "score": -1.3395318984985352,
+          "retrievalRank": 27,
+          "retrievalScore": 0.46441508756416355,
+          "source": "data/sources/raw/support_10_1381_2654333.md",
+          "relevant": false,
+          "scoringInputSha256": "9da655d0cd9317598bc5447c0ff9e6d38a579d5b112e8695d531196ee1b26bd1"
+        },
+        {
+          "id": "structured_a9be1fa5136a17227d9363205ff0a68f74d6b4315f855db47d777a71c630b31d",
+          "score": -1.3590412139892578,
+          "retrievalRank": 14,
+          "retrievalScore": 0.4954743385234347,
+          "source": "data/sources/raw/support_10_1381_2654267.md",
+          "relevant": false,
+          "scoringInputSha256": "5467bf90816ceb0cfb29c062a07acc566eb8cc99e5a0849404c2a182aacead6f"
+        },
+        {
+          "id": "structured_f3f7e0a94a74600d34ba044fbcc45b2fc338b12756242f6a91a9a610983baea1",
+          "score": -1.4216575622558594,
+          "retrievalRank": 8,
+          "retrievalScore": 0.5450078240666675,
+          "source": "data/sources/raw/support_10_1381_2654225.md",
+          "relevant": false,
+          "scoringInputSha256": "839844db9c0cd9df0dd697387471dec538cf613b309a8cc59eaa5c6bb3ca365b"
+        },
+        {
+          "id": "structured_26307020410fcb68eacfa4397c4e2d6f143d273b4bc782335d6053a872ef78aa",
+          "score": -1.5143775939941406,
+          "retrievalRank": 37,
+          "retrievalScore": 0.44591314966094264,
+          "source": "data/sources/raw/support_10_1381_2654141.md",
+          "relevant": false,
+          "scoringInputSha256": "5e69bf76cb33025b4df873f6275de41a5cc6ffcb343222c086dbd465b760c30e"
+        },
+        {
+          "id": "structured_b30919a0c6a04176f70bd0a6030ac0128d501c0810a20bf77265b7d07b9b5134",
+          "score": -1.6942644119262695,
+          "retrievalRank": 11,
+          "retrievalScore": 0.5040799867737606,
+          "source": "data/sources/raw/support_10_1381_2654449.md",
+          "relevant": false,
+          "scoringInputSha256": "3eac82b41f07e8b1f5db12251578f9272bdcc7eb1a2c572558c3da9d8e754241"
+        },
+        {
+          "id": "structured_d78f8e3038a37ab8803be73809128e03576fe789fbcf726c5090649e4401156c",
+          "score": -1.786005973815918,
+          "retrievalRank": 39,
+          "retrievalScore": 0.4419422574951957,
+          "source": "data/sources/raw/support_10_1381_2662903.md",
+          "relevant": false,
+          "scoringInputSha256": "b32201b2b1470e9ef606d893f7ae2933f676d3c04dc46ae51c093bfc31b7c9cf"
+        },
+        {
+          "id": "structured_29b1c46d90bcaa55e220d2f784aa742b44e52d9a4ab6aeaa5eadff1a656a2fad",
+          "score": -2.0558881759643555,
+          "retrievalRank": 18,
+          "retrievalScore": 0.4748268285285476,
+          "source": "data/sources/raw/support_10_1381_2654181.md",
+          "relevant": false,
+          "scoringInputSha256": "7e1f68dd8317fa29c6de5c4b5853b68750be2787cc97caa38e467edbd1aa9e55"
+        },
+        {
+          "id": "structured_822bf29250b6b00b133573ffb227a309e5d805c20b2f572bc59059f23a0a66fb",
+          "score": -2.150589942932129,
+          "retrievalRank": 40,
+          "retrievalScore": 0.44111716163863013,
+          "source": "data/sources/raw/support_10_1381_2654294.md",
+          "relevant": false,
+          "scoringInputSha256": "f9baaeb60dc86af5e4d88a5e939be2d3e26722159279edb52e7187b8991cc8fb"
+        },
+        {
+          "id": "structured_66158b80513520382c4c296ff8f1ce47e55f8f7a342d8cf8cb24297e8ed2ca64",
+          "score": -2.471438407897949,
+          "retrievalRank": 31,
+          "retrievalScore": 0.4595403920641547,
+          "source": "data/sources/raw/support_10_1381_2654194.md",
+          "relevant": false,
+          "scoringInputSha256": "81e1f40c5bfdf48d68f975de7224364c4eabf90e16ce7d53089875ffff78951a"
+        },
+        {
+          "id": "structured_7a66f20a07f28b20a7d9f0d4b10ede687c0bf727887674d13f80059a4876f41e",
+          "score": -2.4764442443847656,
+          "retrievalRank": 30,
+          "retrievalScore": 0.4596578013663042,
+          "source": "data/sources/raw/support_10_1381_2662906.md",
+          "relevant": false,
+          "scoringInputSha256": "7c370c0ab2f6028f3a56484eab961f56d0606b2479819f84f9f3eaaf85c8ff34"
+        },
+        {
+          "id": "structured_81a85e4a18851073f9e7a3b1ee77527734bb3f9d69368b4c8a281d46111d3ce6",
+          "score": -2.579604148864746,
+          "retrievalRank": 33,
+          "retrievalScore": 0.4573549857699325,
+          "source": "data/sources/raw/support_10_1381_2654163.md",
+          "relevant": false,
+          "scoringInputSha256": "0359de27b342a67c1f68b0b1fda66740ee04208a2778c01666968805a8879c5d"
+        },
+        {
+          "id": "structured_e7ee8956c445127bd9e5a93b7bcb6b23658368ed8ea6a477ba4ab270ed3b8703",
+          "score": -2.8595457077026367,
+          "retrievalRank": 6,
+          "retrievalScore": 0.5818536101116683,
+          "source": "data/sources/raw/support_10_1381_2654502.md",
+          "relevant": false,
+          "scoringInputSha256": "d8ff64f11a29181d178bbee76621475ec2df78ab9308d324236b022d7f3afb8a"
+        },
+        {
+          "id": "structured_83a4d8ec13b25e1a246cf9e322b2c1c07bfdca88b79416c33b98bd40d84cd979",
+          "score": -3.1624679565429688,
+          "retrievalRank": 7,
+          "retrievalScore": 0.5567709723844787,
+          "source": "data/sources/raw/support_10_1381_2662818.md",
+          "relevant": false,
+          "scoringInputSha256": "911fe218616114c3acc8f591041292ccdfb05222227d1d38c7f4ca9d93c605d0"
+        },
+        {
+          "id": "structured_1026fbea8dfd5b063036757368b0802ac477b96b6d4b32d38e0623cf077fc23d",
+          "score": -3.473456382751465,
+          "retrievalRank": 4,
+          "retrievalScore": 0.6444056809379228,
+          "source": "data/sources/raw/support_10_1381_2662970.md",
+          "relevant": false,
+          "scoringInputSha256": "38fda23d2e52703e507b2efd051b811e166fbb45da6d6845dbcc6ccc31a34e26"
+        },
+        {
+          "id": "structured_99234fa5d8988d2690889c7b42566f6f2841b4b7f66a5081cf525f597f52e868",
+          "score": -3.4983835220336914,
+          "retrievalRank": 10,
+          "retrievalScore": 0.52291490551283,
+          "source": "data/sources/raw/support_10_1381_2654204.md",
+          "relevant": false,
+          "scoringInputSha256": "71c9b569d0909bc1ae7fed21bd15add75b16fc7dd230c8752d82f482b51be603"
+        },
+        {
+          "id": "structured_1214fbf66fd536ba212a6aa2c0d2959e78167fe2999051146b04741264849c11",
+          "score": -3.9688291549682617,
+          "retrievalRank": 22,
+          "retrievalScore": 0.46819402493115964,
+          "source": "data/sources/raw/support_10_1381_2654205.md",
+          "relevant": false,
+          "scoringInputSha256": "e7e36c23abd62f318aa6ba9f9b92cbbd469f515f32cf8526a9787aa8a1f0be3c"
+        },
+        {
+          "id": "structured_4957b8313e25e9e8b309252bf16214baaa6465298c51b700e8823d281e861d2e",
+          "score": -4.123872756958008,
+          "retrievalRank": 9,
+          "retrievalScore": 0.5289849461705705,
+          "source": "data/sources/raw/support_10_1381_2654487.md",
+          "relevant": false,
+          "scoringInputSha256": "ed4435b383610465bf0cf5ce04e79902f0f2a7d6cece08b3d23b0d51f17470c0"
+        },
+        {
+          "id": "structured_9a4377c805b0b57b58af8800344bbdbe1ba8ecc2c3aefde0b059498dacde0483",
+          "score": -4.134328842163086,
+          "retrievalRank": 28,
+          "retrievalScore": 0.4623409190645408,
+          "source": "data/sources/raw/support_10_1381_2654155.md",
+          "relevant": false,
+          "scoringInputSha256": "cfea31b08d5f2ae2d508dc43c8e7ec08a5021bda63e92f36668e6fc8ea588362"
+        },
+        {
+          "id": "structured_9629d2d6a764070d909d45b87652be3b1ebca0d99445fd967410f3e93aba996f",
+          "score": -4.18071174621582,
+          "retrievalRank": 17,
+          "retrievalScore": 0.48799572340763886,
+          "source": "data/sources/raw/support_10_1381_2654149.md",
+          "relevant": false,
+          "scoringInputSha256": "6622915bc18bb85e5a82de22c92d836ce31a9c9b7245e02e12f44bc1999b6027"
+        },
+        {
+          "id": "structured_8d4845b542df36989b83ee298facf889d02f2c3dbf9c181c82b23585d62b1e88",
+          "score": -4.183589935302734,
+          "retrievalRank": 13,
+          "retrievalScore": 0.4966379951673079,
+          "source": "data/sources/raw/support_10_1381_2662678.md",
+          "relevant": false,
+          "scoringInputSha256": "3f1abe4a247bb68dd6d84ecd45b83b00b08f82c34defa22fc0a52e46d0123775"
+        },
+        {
+          "id": "structured_defbe250a465fd742be677acceac556d3659fe64fb0cc598d1835acbd7df0409",
+          "score": -4.779865264892578,
+          "retrievalRank": 25,
+          "retrievalScore": 0.4679275712579924,
+          "source": "data/sources/raw/support_10_1381_2654506.md",
+          "relevant": false,
+          "scoringInputSha256": "483fd155b45c195b1f69d0df445008c27329056a17aa3847c32105bd7be19c7d"
+        },
+        {
+          "id": "structured_15d40bbb5d0f2729281e9c6e19988476ce41c2673d3c9fb816f45a229373d478",
+          "score": -4.819303512573242,
+          "retrievalRank": 34,
+          "retrievalScore": 0.4562294822192527,
+          "source": "data/sources/raw/support_10_1381_2654346.md",
+          "relevant": false,
+          "scoringInputSha256": "1455d959640d73be900d676d443d4877a8c687112260f35cd9573e4801710ed4"
+        },
+        {
+          "id": "structured_bace5cfdf7e0d839ea7d26f11f5f1f7e3920b4fd448cc34ef8a6eddc84333041",
+          "score": -4.824149131774902,
+          "retrievalRank": 26,
+          "retrievalScore": 0.4657664552007501,
+          "source": "data/sources/raw/support_10_1381_2654171.md",
+          "relevant": false,
+          "scoringInputSha256": "7baa9bafbdbb112924965dca1e5e653387797f49bfde9a023586e51b84c90e64"
+        },
+        {
+          "id": "structured_7a3618f01d443557bdd26e7e2d99fb490bd8cefb6bcb1e07e0b6c3dad2582422",
+          "score": -4.849776268005371,
+          "retrievalRank": 12,
+          "retrievalScore": 0.49778796521451396,
+          "source": "data/sources/raw/support_10_1381_2654505.md",
+          "relevant": false,
+          "scoringInputSha256": "54fe3e33007ff6eba233fdb91edf053a1036484c17e1f83130c6c2e387c5807f"
+        },
+        {
+          "id": "structured_d142bd9e511d4d612bd977f677f86fc13a16123b518a1012833eaaced2e4711b",
+          "score": -4.969517707824707,
+          "retrievalRank": 15,
+          "retrievalScore": 0.49285209025067944,
+          "source": "data/sources/raw/support_10_1381_2654503.md",
+          "relevant": false,
+          "scoringInputSha256": "1d3d5c7525fe8f4f83e89f31e173b7428ff6a15f0dde9a0e55f7b53067819b95"
+        },
+        {
+          "id": "structured_d38314c9a43c651049dc92a8f2ce67f944391b6dd310bdd0cd7a73e7e58c5eae",
+          "score": -5.254201889038086,
+          "retrievalRank": 16,
+          "retrievalScore": 0.4909395116670418,
+          "source": "data/sources/raw/support_10_1381_2662845.md",
+          "relevant": false,
+          "scoringInputSha256": "239076e4dcde507145e9313f292ffbc5acc9e2b1addd1f37173ddcd93c316d39"
+        },
+        {
+          "id": "structured_060c447d05a7da3dc2564818553db9d1c5b8f560e07463234cc37744169b1cc9",
+          "score": -5.467480659484863,
+          "retrievalRank": 36,
+          "retrievalScore": 0.4488703312597187,
+          "source": "data/sources/raw/support_10_1381_2654165.md",
+          "relevant": false,
+          "scoringInputSha256": "bbbb44fb7d37a7251b448fe1a9ff2a72d508fad77b5a85d5733e64e9fe9d418b"
+        },
+        {
+          "id": "structured_e01e4b0ee57bd51b5e2ed85e75655aef7fd99b58ac9af708831de1e62dfcc6a1",
+          "score": -5.5222063064575195,
+          "retrievalRank": 35,
+          "retrievalScore": 0.4526995033627855,
+          "source": "data/sources/raw/support_10_1381_2654174.md",
+          "relevant": false,
+          "scoringInputSha256": "1b790a6ce883d3893a4e71ac60f6c72a544733d533dfaaaa5189e574554310f0"
+        },
+        {
+          "id": "structured_d43b821c9a97fd511f38910bea46ddd83c4ed530ef04813424c84819b1204511",
+          "score": -5.596285820007324,
+          "retrievalRank": 21,
+          "retrievalScore": 0.4714973741752203,
+          "source": "data/sources/raw/support_10_1381_2654210.md",
+          "relevant": false,
+          "scoringInputSha256": "cafe5d8563a5b807445a8423cc8bdd7741551eced49eeb07d4a4f33b239a58d7"
+        },
+        {
+          "id": "structured_494d35913db1c14c12ce2a8cdd2f8e6d8f33c65331178c59562a00e379f73642",
+          "score": -5.689074516296387,
+          "retrievalRank": 32,
+          "retrievalScore": 0.4579876735763709,
+          "source": "data/sources/raw/support_10_1381_2654504.md",
+          "relevant": false,
+          "scoringInputSha256": "5a7c55dec81eecc3de593fc9c6f2e273239c75d976870895c2cfa3d61407e49b"
+        },
+        {
+          "id": "structured_32e01fdf0f16b66746b5cac3822349d94d818d070a61de6bcb5205e5123b5c4d",
+          "score": -6.9600510597229,
+          "retrievalRank": 23,
+          "retrievalScore": 0.4680958911275377,
+          "source": "data/sources/raw/support_10_1381_2654377.md",
+          "relevant": false,
+          "scoringInputSha256": "1af5a6a48f7f6019a95b8be353508a8bd038f33259c72e30aec59d7504d45f90"
+        }
+      ]
+    }
+  ]
+}

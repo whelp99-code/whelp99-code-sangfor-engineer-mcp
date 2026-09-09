@@ -1,0 +1,1714 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-09-09T01:45:04.063Z",
+  "indexSha256": "ee04fc7a022c3901ce8a7adce3a29c49bc23c8315e613165e035d4754793e8d4",
+  "fixtureSha256": "85dd4ed04074e3459f0dffb12de56f8002dd62526405e95b42edcab21503630a",
+  "implementationSha256": "0b55d3688110a6db5da421c516002f0ea9c8b7c00e24a28fff8a2641faaa5a6d",
+  "queryCount": 16,
+  "referenceIntegrityFailures": 0,
+  "answerReadyCount": 0,
+  "answerAccuracy": null,
+  "limitation": "This product surface generates configuration templates, not direct Q&A. Answer accuracy is not measured by reference existence or structural validation. Every template remains explicitly unverified.",
+  "rows": [
+    {
+      "queryId": "v3-validation-01",
+      "query": "How do I take a consistency group snapshot for several virtual machines?",
+      "product": "HCI",
+      "latencyMs": 1140.032887,
+      "grounding": {
+        "status": "UNVERIFIED_TEMPLATE",
+        "answerReady": false,
+        "referenceCount": 8,
+        "stepCount": 9,
+        "issues": [],
+        "limitation": "Plan steps are generated from fixed templates. Related references do not establish claim-level support or answer correctness; verify against the requested product and release before use."
+      },
+      "validation": {
+        "ok": true,
+        "errors": [],
+        "grounding": {
+          "status": "UNVERIFIED_TEMPLATE",
+          "answerReady": false,
+          "referenceCount": 8,
+          "stepCount": 9,
+          "issues": [],
+          "limitation": "Plan steps are generated from fixed templates. Related references do not establish claim-level support or answer correctness; verify against the requested product and release before use."
+        }
+      },
+      "referenceIds": [
+        "structured_2a143213e8308c6ddb23f05fa5da01212c66db36732ba6246dd3bd49c777c51d",
+        "structured_24493050cd0675a2bf38de7ff4648760f65ae1f4df745a15593415a1d26a9e0c",
+        "structured_04ac86f0bc9cbbf69a6cc5912c59abf0c4c653b76fe05bbde2fad66afd73d2bf",
+        "structured_1a61ec8b24fc9618bf69327f54a902d885f722aab269b39c0f9dac4349d164e2",
+        "structured_15cef66aa2867fbca9bc2e026dbf7170d8360bc1c08a76a625982f87603cae30",
+        "structured_6373d54e5af9df59a800d06af4f3da321497eabbfdbdab85e7c84c4ae3369e56",
+        "structured_f0fc1eca92dd653ed8eb68a97a7def867dca0eabd38b8b73ab4aaddb40b2ed94",
+        "structured_2e7d6ca6d7c4a7f1fab27ea5d8edbcc8e59329c4181f506ec211b8adfa8658bb"
+      ],
+      "steps": [
+        {
+          "title": "Confirm node and license readiness",
+          "description": "Verify node count, serial/license status, management IPs, DNS/NTP, and hardware health.",
+          "references": [
+            "structured_2a143213e8308c6ddb23f05fa5da01212c66db36732ba6246dd3bd49c777c51d",
+            "structured_24493050cd0675a2bf38de7ff4648760f65ae1f4df745a15593415a1d26a9e0c",
+            "structured_04ac86f0bc9cbbf69a6cc5912c59abf0c4c653b76fe05bbde2fad66afd73d2bf",
+            "structured_1a61ec8b24fc9618bf69327f54a902d885f722aab269b39c0f9dac4349d164e2",
+            "structured_15cef66aa2867fbca9bc2e026dbf7170d8360bc1c08a76a625982f87603cae30",
+            "structured_6373d54e5af9df59a800d06af4f3da321497eabbfdbdab85e7c84c4ae3369e56",
+            "structured_f0fc1eca92dd653ed8eb68a97a7def867dca0eabd38b8b73ab4aaddb40b2ed94",
+            "structured_2e7d6ca6d7c4a7f1fab27ea5d8edbcc8e59329c4181f506ec211b8adfa8658bb"
+          ]
+        },
+        {
+          "title": "Validate management and storage networks",
+          "description": "Verify management reachability, storage network isolation, NIC mapping, link speed, VLAN and MTU consistency.",
+          "references": [
+            "structured_2a143213e8308c6ddb23f05fa5da01212c66db36732ba6246dd3bd49c777c51d",
+            "structured_24493050cd0675a2bf38de7ff4648760f65ae1f4df745a15593415a1d26a9e0c",
+            "structured_04ac86f0bc9cbbf69a6cc5912c59abf0c4c653b76fe05bbde2fad66afd73d2bf",
+            "structured_1a61ec8b24fc9618bf69327f54a902d885f722aab269b39c0f9dac4349d164e2",
+            "structured_15cef66aa2867fbca9bc2e026dbf7170d8360bc1c08a76a625982f87603cae30",
+            "structured_6373d54e5af9df59a800d06af4f3da321497eabbfdbdab85e7c84c4ae3369e56",
+            "structured_f0fc1eca92dd653ed8eb68a97a7def867dca0eabd38b8b73ab4aaddb40b2ed94",
+            "structured_2e7d6ca6d7c4a7f1fab27ea5d8edbcc8e59329c4181f506ec211b8adfa8658bb"
+          ]
+        },
+        {
+          "title": "Confirm source VM migration readiness",
+          "description": "For VMware/Hyper-V/Nutanix source environments, confirm VM inventory, backup state, network mapping, and rollback window.",
+          "references": [
+            "structured_2a143213e8308c6ddb23f05fa5da01212c66db36732ba6246dd3bd49c777c51d",
+            "structured_24493050cd0675a2bf38de7ff4648760f65ae1f4df745a15593415a1d26a9e0c",
+            "structured_04ac86f0bc9cbbf69a6cc5912c59abf0c4c653b76fe05bbde2fad66afd73d2bf",
+            "structured_1a61ec8b24fc9618bf69327f54a902d885f722aab269b39c0f9dac4349d164e2",
+            "structured_15cef66aa2867fbca9bc2e026dbf7170d8360bc1c08a76a625982f87603cae30",
+            "structured_6373d54e5af9df59a800d06af4f3da321497eabbfdbdab85e7c84c4ae3369e56",
+            "structured_f0fc1eca92dd653ed8eb68a97a7def867dca0eabd38b8b73ab4aaddb40b2ed94",
+            "structured_2e7d6ca6d7c4a7f1fab27ea5d8edbcc8e59329c4181f506ec211b8adfa8658bb"
+          ]
+        },
+        {
+          "title": "Prepare cluster configuration draft",
+          "description": "Prepare cluster name, node IP mapping, storage pool design, and VM network mapping in dry-run mode.",
+          "references": [
+            "structured_2a143213e8308c6ddb23f05fa5da01212c66db36732ba6246dd3bd49c777c51d",
+            "structured_24493050cd0675a2bf38de7ff4648760f65ae1f4df745a15593415a1d26a9e0c",
+            "structured_04ac86f0bc9cbbf69a6cc5912c59abf0c4c653b76fe05bbde2fad66afd73d2bf",
+            "structured_1a61ec8b24fc9618bf69327f54a902d885f722aab269b39c0f9dac4349d164e2",
+            "structured_15cef66aa2867fbca9bc2e026dbf7170d8360bc1c08a76a625982f87603cae30",
+            "structured_6373d54e5af9df59a800d06af4f3da321497eabbfdbdab85e7c84c4ae3369e56",
+            "structured_f0fc1eca92dd653ed8eb68a97a7def867dca0eabd38b8b73ab4aaddb40b2ed94",
+            "structured_2e7d6ca6d7c4a7f1fab27ea5d8edbcc8e59329c4181f506ec211b8adfa8658bb"
+          ]
+        },
+        {
+          "title": "Apply cluster/network configuration",
+          "description": "Apply HCI/SCP cluster and network settings only after human approval.",
+          "references": [
+            "structured_2a143213e8308c6ddb23f05fa5da01212c66db36732ba6246dd3bd49c777c51d",
+            "structured_24493050cd0675a2bf38de7ff4648760f65ae1f4df745a15593415a1d26a9e0c",
+            "structured_04ac86f0bc9cbbf69a6cc5912c59abf0c4c653b76fe05bbde2fad66afd73d2bf",
+            "structured_1a61ec8b24fc9618bf69327f54a902d885f722aab269b39c0f9dac4349d164e2",
+            "structured_15cef66aa2867fbca9bc2e026dbf7170d8360bc1c08a76a625982f87603cae30",
+            "structured_6373d54e5af9df59a800d06af4f3da321497eabbfdbdab85e7c84c4ae3369e56",
+            "structured_f0fc1eca92dd653ed8eb68a97a7def867dca0eabd38b8b73ab4aaddb40b2ed94",
+            "structured_2e7d6ca6d7c4a7f1fab27ea5d8edbcc8e59329c4181f506ec211b8adfa8658bb"
+          ]
+        },
+        {
+          "title": "Start migration or DR workflow",
+          "description": "Start VM migration, replication, failover rehearsal, or production cutover only after explicit approval.",
+          "references": [
+            "structured_2a143213e8308c6ddb23f05fa5da01212c66db36732ba6246dd3bd49c777c51d",
+            "structured_24493050cd0675a2bf38de7ff4648760f65ae1f4df745a15593415a1d26a9e0c",
+            "structured_04ac86f0bc9cbbf69a6cc5912c59abf0c4c653b76fe05bbde2fad66afd73d2bf",
+            "structured_1a61ec8b24fc9618bf69327f54a902d885f722aab269b39c0f9dac4349d164e2",
+            "structured_15cef66aa2867fbca9bc2e026dbf7170d8360bc1c08a76a625982f87603cae30",
+            "structured_6373d54e5af9df59a800d06af4f3da321497eabbfdbdab85e7c84c4ae3369e56",
+            "structured_f0fc1eca92dd653ed8eb68a97a7def867dca0eabd38b8b73ab4aaddb40b2ed94",
+            "structured_2e7d6ca6d7c4a7f1fab27ea5d8edbcc8e59329c4181f506ec211b8adfa8658bb"
+          ]
+        },
+        {
+          "title": "Validate cluster health",
+          "description": "Check cluster status, node status, storage pool status, alarms, and NTP synchronization.",
+          "references": [
+            "structured_2a143213e8308c6ddb23f05fa5da01212c66db36732ba6246dd3bd49c777c51d",
+            "structured_24493050cd0675a2bf38de7ff4648760f65ae1f4df745a15593415a1d26a9e0c",
+            "structured_04ac86f0bc9cbbf69a6cc5912c59abf0c4c653b76fe05bbde2fad66afd73d2bf",
+            "structured_1a61ec8b24fc9618bf69327f54a902d885f722aab269b39c0f9dac4349d164e2",
+            "structured_15cef66aa2867fbca9bc2e026dbf7170d8360bc1c08a76a625982f87603cae30",
+            "structured_6373d54e5af9df59a800d06af4f3da321497eabbfdbdab85e7c84c4ae3369e56",
+            "structured_f0fc1eca92dd653ed8eb68a97a7def867dca0eabd38b8b73ab4aaddb40b2ed94",
+            "structured_2e7d6ca6d7c4a7f1fab27ea5d8edbcc8e59329c4181f506ec211b8adfa8658bb"
+          ]
+        },
+        {
+          "title": "Validate VM network and migration result",
+          "description": "Confirm VM connectivity, IP mapping, application check, and rollback readiness.",
+          "references": [
+            "structured_2a143213e8308c6ddb23f05fa5da01212c66db36732ba6246dd3bd49c777c51d",
+            "structured_24493050cd0675a2bf38de7ff4648760f65ae1f4df745a15593415a1d26a9e0c",
+            "structured_04ac86f0bc9cbbf69a6cc5912c59abf0c4c653b76fe05bbde2fad66afd73d2bf",
+            "structured_1a61ec8b24fc9618bf69327f54a902d885f722aab269b39c0f9dac4349d164e2",
+            "structured_15cef66aa2867fbca9bc2e026dbf7170d8360bc1c08a76a625982f87603cae30",
+            "structured_6373d54e5af9df59a800d06af4f3da321497eabbfdbdab85e7c84c4ae3369e56",
+            "structured_f0fc1eca92dd653ed8eb68a97a7def867dca0eabd38b8b73ab4aaddb40b2ed94",
+            "structured_2e7d6ca6d7c4a7f1fab27ea5d8edbcc8e59329c4181f506ec211b8adfa8658bb"
+          ]
+        },
+        {
+          "title": "Return to previous source platform state",
+          "description": "Keep source VM unchanged until final cutover and restore DNS/routing if validation fails.",
+          "references": [
+            "structured_2a143213e8308c6ddb23f05fa5da01212c66db36732ba6246dd3bd49c777c51d",
+            "structured_24493050cd0675a2bf38de7ff4648760f65ae1f4df745a15593415a1d26a9e0c",
+            "structured_04ac86f0bc9cbbf69a6cc5912c59abf0c4c653b76fe05bbde2fad66afd73d2bf",
+            "structured_1a61ec8b24fc9618bf69327f54a902d885f722aab269b39c0f9dac4349d164e2",
+            "structured_15cef66aa2867fbca9bc2e026dbf7170d8360bc1c08a76a625982f87603cae30",
+            "structured_6373d54e5af9df59a800d06af4f3da321497eabbfdbdab85e7c84c4ae3369e56",
+            "structured_f0fc1eca92dd653ed8eb68a97a7def867dca0eabd38b8b73ab4aaddb40b2ed94",
+            "structured_2e7d6ca6d7c4a7f1fab27ea5d8edbcc8e59329c4181f506ec211b8adfa8658bb"
+          ]
+        }
+      ]
+    },
+    {
+      "queryId": "v3-validation-02",
+      "query": "Where can I manage virtual machine snapshot policies?",
+      "product": "HCI",
+      "latencyMs": 234.33985200000006,
+      "grounding": {
+        "status": "UNVERIFIED_TEMPLATE",
+        "answerReady": false,
+        "referenceCount": 8,
+        "stepCount": 9,
+        "issues": [],
+        "limitation": "Plan steps are generated from fixed templates. Related references do not establish claim-level support or answer correctness; verify against the requested product and release before use."
+      },
+      "validation": {
+        "ok": true,
+        "errors": [],
+        "grounding": {
+          "status": "UNVERIFIED_TEMPLATE",
+          "answerReady": false,
+          "referenceCount": 8,
+          "stepCount": 9,
+          "issues": [],
+          "limitation": "Plan steps are generated from fixed templates. Related references do not establish claim-level support or answer correctness; verify against the requested product and release before use."
+        }
+      },
+      "referenceIds": [
+        "structured_6aa3e6dc939c3de3fbdf0962118294aa90751c1804829c21289951283ee44409",
+        "structured_e30f77bd016923f2b5f03deed9eed49fc71bdd40e4ef56680b19dcb1b1ec346e",
+        "structured_8c9fd32be8192bfe48d34ae06cb89477aa8d581839dc10f37b27ab2230807a16",
+        "structured_ac5c84c8378b70219942140259faaf644da9339720263805634c065b08582c72",
+        "structured_43f64ef769fcba577e98bfc18277d263f6caf946889c04a030474f2b4d74878a",
+        "structured_04ac86f0bc9cbbf69a6cc5912c59abf0c4c653b76fe05bbde2fad66afd73d2bf",
+        "structured_eab731ed9c8fc7e7293cf00fcff63e7e9ce661df3378f100fc278fd74bd1a0ba",
+        "structured_199a0b4d9c9e04b80a5f10aa7112cf6dd913822e767252274600eec607d686b2"
+      ],
+      "steps": [
+        {
+          "title": "Confirm node and license readiness",
+          "description": "Verify node count, serial/license status, management IPs, DNS/NTP, and hardware health.",
+          "references": [
+            "structured_6aa3e6dc939c3de3fbdf0962118294aa90751c1804829c21289951283ee44409",
+            "structured_e30f77bd016923f2b5f03deed9eed49fc71bdd40e4ef56680b19dcb1b1ec346e",
+            "structured_8c9fd32be8192bfe48d34ae06cb89477aa8d581839dc10f37b27ab2230807a16",
+            "structured_ac5c84c8378b70219942140259faaf644da9339720263805634c065b08582c72",
+            "structured_43f64ef769fcba577e98bfc18277d263f6caf946889c04a030474f2b4d74878a",
+            "structured_04ac86f0bc9cbbf69a6cc5912c59abf0c4c653b76fe05bbde2fad66afd73d2bf",
+            "structured_eab731ed9c8fc7e7293cf00fcff63e7e9ce661df3378f100fc278fd74bd1a0ba",
+            "structured_199a0b4d9c9e04b80a5f10aa7112cf6dd913822e767252274600eec607d686b2"
+          ]
+        },
+        {
+          "title": "Validate management and storage networks",
+          "description": "Verify management reachability, storage network isolation, NIC mapping, link speed, VLAN and MTU consistency.",
+          "references": [
+            "structured_6aa3e6dc939c3de3fbdf0962118294aa90751c1804829c21289951283ee44409",
+            "structured_e30f77bd016923f2b5f03deed9eed49fc71bdd40e4ef56680b19dcb1b1ec346e",
+            "structured_8c9fd32be8192bfe48d34ae06cb89477aa8d581839dc10f37b27ab2230807a16",
+            "structured_ac5c84c8378b70219942140259faaf644da9339720263805634c065b08582c72",
+            "structured_43f64ef769fcba577e98bfc18277d263f6caf946889c04a030474f2b4d74878a",
+            "structured_04ac86f0bc9cbbf69a6cc5912c59abf0c4c653b76fe05bbde2fad66afd73d2bf",
+            "structured_eab731ed9c8fc7e7293cf00fcff63e7e9ce661df3378f100fc278fd74bd1a0ba",
+            "structured_199a0b4d9c9e04b80a5f10aa7112cf6dd913822e767252274600eec607d686b2"
+          ]
+        },
+        {
+          "title": "Confirm source VM migration readiness",
+          "description": "For VMware/Hyper-V/Nutanix source environments, confirm VM inventory, backup state, network mapping, and rollback window.",
+          "references": [
+            "structured_6aa3e6dc939c3de3fbdf0962118294aa90751c1804829c21289951283ee44409",
+            "structured_e30f77bd016923f2b5f03deed9eed49fc71bdd40e4ef56680b19dcb1b1ec346e",
+            "structured_8c9fd32be8192bfe48d34ae06cb89477aa8d581839dc10f37b27ab2230807a16",
+            "structured_ac5c84c8378b70219942140259faaf644da9339720263805634c065b08582c72",
+            "structured_43f64ef769fcba577e98bfc18277d263f6caf946889c04a030474f2b4d74878a",
+            "structured_04ac86f0bc9cbbf69a6cc5912c59abf0c4c653b76fe05bbde2fad66afd73d2bf",
+            "structured_eab731ed9c8fc7e7293cf00fcff63e7e9ce661df3378f100fc278fd74bd1a0ba",
+            "structured_199a0b4d9c9e04b80a5f10aa7112cf6dd913822e767252274600eec607d686b2"
+          ]
+        },
+        {
+          "title": "Prepare cluster configuration draft",
+          "description": "Prepare cluster name, node IP mapping, storage pool design, and VM network mapping in dry-run mode.",
+          "references": [
+            "structured_6aa3e6dc939c3de3fbdf0962118294aa90751c1804829c21289951283ee44409",
+            "structured_e30f77bd016923f2b5f03deed9eed49fc71bdd40e4ef56680b19dcb1b1ec346e",
+            "structured_8c9fd32be8192bfe48d34ae06cb89477aa8d581839dc10f37b27ab2230807a16",
+            "structured_ac5c84c8378b70219942140259faaf644da9339720263805634c065b08582c72",
+            "structured_43f64ef769fcba577e98bfc18277d263f6caf946889c04a030474f2b4d74878a",
+            "structured_04ac86f0bc9cbbf69a6cc5912c59abf0c4c653b76fe05bbde2fad66afd73d2bf",
+            "structured_eab731ed9c8fc7e7293cf00fcff63e7e9ce661df3378f100fc278fd74bd1a0ba",
+            "structured_199a0b4d9c9e04b80a5f10aa7112cf6dd913822e767252274600eec607d686b2"
+          ]
+        },
+        {
+          "title": "Apply cluster/network configuration",
+          "description": "Apply HCI/SCP cluster and network settings only after human approval.",
+          "references": [
+            "structured_6aa3e6dc939c3de3fbdf0962118294aa90751c1804829c21289951283ee44409",
+            "structured_e30f77bd016923f2b5f03deed9eed49fc71bdd40e4ef56680b19dcb1b1ec346e",
+            "structured_8c9fd32be8192bfe48d34ae06cb89477aa8d581839dc10f37b27ab2230807a16",
+            "structured_ac5c84c8378b70219942140259faaf644da9339720263805634c065b08582c72",
+            "structured_43f64ef769fcba577e98bfc18277d263f6caf946889c04a030474f2b4d74878a",
+            "structured_04ac86f0bc9cbbf69a6cc5912c59abf0c4c653b76fe05bbde2fad66afd73d2bf",
+            "structured_eab731ed9c8fc7e7293cf00fcff63e7e9ce661df3378f100fc278fd74bd1a0ba",
+            "structured_199a0b4d9c9e04b80a5f10aa7112cf6dd913822e767252274600eec607d686b2"
+          ]
+        },
+        {
+          "title": "Start migration or DR workflow",
+          "description": "Start VM migration, replication, failover rehearsal, or production cutover only after explicit approval.",
+          "references": [
+            "structured_6aa3e6dc939c3de3fbdf0962118294aa90751c1804829c21289951283ee44409",
+            "structured_e30f77bd016923f2b5f03deed9eed49fc71bdd40e4ef56680b19dcb1b1ec346e",
+            "structured_8c9fd32be8192bfe48d34ae06cb89477aa8d581839dc10f37b27ab2230807a16",
+            "structured_ac5c84c8378b70219942140259faaf644da9339720263805634c065b08582c72",
+            "structured_43f64ef769fcba577e98bfc18277d263f6caf946889c04a030474f2b4d74878a",
+            "structured_04ac86f0bc9cbbf69a6cc5912c59abf0c4c653b76fe05bbde2fad66afd73d2bf",
+            "structured_eab731ed9c8fc7e7293cf00fcff63e7e9ce661df3378f100fc278fd74bd1a0ba",
+            "structured_199a0b4d9c9e04b80a5f10aa7112cf6dd913822e767252274600eec607d686b2"
+          ]
+        },
+        {
+          "title": "Validate cluster health",
+          "description": "Check cluster status, node status, storage pool status, alarms, and NTP synchronization.",
+          "references": [
+            "structured_6aa3e6dc939c3de3fbdf0962118294aa90751c1804829c21289951283ee44409",
+            "structured_e30f77bd016923f2b5f03deed9eed49fc71bdd40e4ef56680b19dcb1b1ec346e",
+            "structured_8c9fd32be8192bfe48d34ae06cb89477aa8d581839dc10f37b27ab2230807a16",
+            "structured_ac5c84c8378b70219942140259faaf644da9339720263805634c065b08582c72",
+            "structured_43f64ef769fcba577e98bfc18277d263f6caf946889c04a030474f2b4d74878a",
+            "structured_04ac86f0bc9cbbf69a6cc5912c59abf0c4c653b76fe05bbde2fad66afd73d2bf",
+            "structured_eab731ed9c8fc7e7293cf00fcff63e7e9ce661df3378f100fc278fd74bd1a0ba",
+            "structured_199a0b4d9c9e04b80a5f10aa7112cf6dd913822e767252274600eec607d686b2"
+          ]
+        },
+        {
+          "title": "Validate VM network and migration result",
+          "description": "Confirm VM connectivity, IP mapping, application check, and rollback readiness.",
+          "references": [
+            "structured_6aa3e6dc939c3de3fbdf0962118294aa90751c1804829c21289951283ee44409",
+            "structured_e30f77bd016923f2b5f03deed9eed49fc71bdd40e4ef56680b19dcb1b1ec346e",
+            "structured_8c9fd32be8192bfe48d34ae06cb89477aa8d581839dc10f37b27ab2230807a16",
+            "structured_ac5c84c8378b70219942140259faaf644da9339720263805634c065b08582c72",
+            "structured_43f64ef769fcba577e98bfc18277d263f6caf946889c04a030474f2b4d74878a",
+            "structured_04ac86f0bc9cbbf69a6cc5912c59abf0c4c653b76fe05bbde2fad66afd73d2bf",
+            "structured_eab731ed9c8fc7e7293cf00fcff63e7e9ce661df3378f100fc278fd74bd1a0ba",
+            "structured_199a0b4d9c9e04b80a5f10aa7112cf6dd913822e767252274600eec607d686b2"
+          ]
+        },
+        {
+          "title": "Return to previous source platform state",
+          "description": "Keep source VM unchanged until final cutover and restore DNS/routing if validation fails.",
+          "references": [
+            "structured_6aa3e6dc939c3de3fbdf0962118294aa90751c1804829c21289951283ee44409",
+            "structured_e30f77bd016923f2b5f03deed9eed49fc71bdd40e4ef56680b19dcb1b1ec346e",
+            "structured_8c9fd32be8192bfe48d34ae06cb89477aa8d581839dc10f37b27ab2230807a16",
+            "structured_ac5c84c8378b70219942140259faaf644da9339720263805634c065b08582c72",
+            "structured_43f64ef769fcba577e98bfc18277d263f6caf946889c04a030474f2b4d74878a",
+            "structured_04ac86f0bc9cbbf69a6cc5912c59abf0c4c653b76fe05bbde2fad66afd73d2bf",
+            "structured_eab731ed9c8fc7e7293cf00fcff63e7e9ce661df3378f100fc278fd74bd1a0ba",
+            "structured_199a0b4d9c9e04b80a5f10aa7112cf6dd913822e767252274600eec607d686b2"
+          ]
+        }
+      ]
+    },
+    {
+      "queryId": "v3-validation-03",
+      "query": "How do I configure storage snapshot restrictions?",
+      "product": "HCI",
+      "latencyMs": 200.14163599999983,
+      "grounding": {
+        "status": "UNVERIFIED_TEMPLATE",
+        "answerReady": false,
+        "referenceCount": 8,
+        "stepCount": 9,
+        "issues": [],
+        "limitation": "Plan steps are generated from fixed templates. Related references do not establish claim-level support or answer correctness; verify against the requested product and release before use."
+      },
+      "validation": {
+        "ok": true,
+        "errors": [],
+        "grounding": {
+          "status": "UNVERIFIED_TEMPLATE",
+          "answerReady": false,
+          "referenceCount": 8,
+          "stepCount": 9,
+          "issues": [],
+          "limitation": "Plan steps are generated from fixed templates. Related references do not establish claim-level support or answer correctness; verify against the requested product and release before use."
+        }
+      },
+      "referenceIds": [
+        "structured_6345eb0cd3df681268edab602e3bae5d38ab60d6c55c2b49e02b5351219a3614",
+        "structured_3416ec327c90e03758667fa53fe5d2a0db5cdc3b12d830ec142d587d3c74ed5c",
+        "structured_42d98a8aa47e9ae1a4cd5d12cfdea42c6287ee2c92dfd86df649e494ccba5ce7",
+        "structured_0938eeb2fbec3fc7780170542cf8c2d17f42efdcea8e23a76cf8be03d108c748",
+        "structured_1b1360b22c5a1a5b20e5c19b7571e16aa7e975a1dfa73e0bc26082cc052ca9a9",
+        "structured_44d40d7eff93adbeeb2e417c1f41eaa4d2070b4b58dac128f04bc123c6093b57",
+        "structured_8ac51a877294c0e5b0fa7573bdf9cd931db97d1df121c5523794b8cddf1140ec",
+        "structured_6bfbe83c3176277d919fe001168dffe8bb610a8d0e030b8fa8a25b2a3b7c12fd"
+      ],
+      "steps": [
+        {
+          "title": "Confirm node and license readiness",
+          "description": "Verify node count, serial/license status, management IPs, DNS/NTP, and hardware health.",
+          "references": [
+            "structured_6345eb0cd3df681268edab602e3bae5d38ab60d6c55c2b49e02b5351219a3614",
+            "structured_3416ec327c90e03758667fa53fe5d2a0db5cdc3b12d830ec142d587d3c74ed5c",
+            "structured_42d98a8aa47e9ae1a4cd5d12cfdea42c6287ee2c92dfd86df649e494ccba5ce7",
+            "structured_0938eeb2fbec3fc7780170542cf8c2d17f42efdcea8e23a76cf8be03d108c748",
+            "structured_1b1360b22c5a1a5b20e5c19b7571e16aa7e975a1dfa73e0bc26082cc052ca9a9",
+            "structured_44d40d7eff93adbeeb2e417c1f41eaa4d2070b4b58dac128f04bc123c6093b57",
+            "structured_8ac51a877294c0e5b0fa7573bdf9cd931db97d1df121c5523794b8cddf1140ec",
+            "structured_6bfbe83c3176277d919fe001168dffe8bb610a8d0e030b8fa8a25b2a3b7c12fd"
+          ]
+        },
+        {
+          "title": "Validate management and storage networks",
+          "description": "Verify management reachability, storage network isolation, NIC mapping, link speed, VLAN and MTU consistency.",
+          "references": [
+            "structured_6345eb0cd3df681268edab602e3bae5d38ab60d6c55c2b49e02b5351219a3614",
+            "structured_3416ec327c90e03758667fa53fe5d2a0db5cdc3b12d830ec142d587d3c74ed5c",
+            "structured_42d98a8aa47e9ae1a4cd5d12cfdea42c6287ee2c92dfd86df649e494ccba5ce7",
+            "structured_0938eeb2fbec3fc7780170542cf8c2d17f42efdcea8e23a76cf8be03d108c748",
+            "structured_1b1360b22c5a1a5b20e5c19b7571e16aa7e975a1dfa73e0bc26082cc052ca9a9",
+            "structured_44d40d7eff93adbeeb2e417c1f41eaa4d2070b4b58dac128f04bc123c6093b57",
+            "structured_8ac51a877294c0e5b0fa7573bdf9cd931db97d1df121c5523794b8cddf1140ec",
+            "structured_6bfbe83c3176277d919fe001168dffe8bb610a8d0e030b8fa8a25b2a3b7c12fd"
+          ]
+        },
+        {
+          "title": "Confirm source VM migration readiness",
+          "description": "For VMware/Hyper-V/Nutanix source environments, confirm VM inventory, backup state, network mapping, and rollback window.",
+          "references": [
+            "structured_6345eb0cd3df681268edab602e3bae5d38ab60d6c55c2b49e02b5351219a3614",
+            "structured_3416ec327c90e03758667fa53fe5d2a0db5cdc3b12d830ec142d587d3c74ed5c",
+            "structured_42d98a8aa47e9ae1a4cd5d12cfdea42c6287ee2c92dfd86df649e494ccba5ce7",
+            "structured_0938eeb2fbec3fc7780170542cf8c2d17f42efdcea8e23a76cf8be03d108c748",
+            "structured_1b1360b22c5a1a5b20e5c19b7571e16aa7e975a1dfa73e0bc26082cc052ca9a9",
+            "structured_44d40d7eff93adbeeb2e417c1f41eaa4d2070b4b58dac128f04bc123c6093b57",
+            "structured_8ac51a877294c0e5b0fa7573bdf9cd931db97d1df121c5523794b8cddf1140ec",
+            "structured_6bfbe83c3176277d919fe001168dffe8bb610a8d0e030b8fa8a25b2a3b7c12fd"
+          ]
+        },
+        {
+          "title": "Prepare cluster configuration draft",
+          "description": "Prepare cluster name, node IP mapping, storage pool design, and VM network mapping in dry-run mode.",
+          "references": [
+            "structured_6345eb0cd3df681268edab602e3bae5d38ab60d6c55c2b49e02b5351219a3614",
+            "structured_3416ec327c90e03758667fa53fe5d2a0db5cdc3b12d830ec142d587d3c74ed5c",
+            "structured_42d98a8aa47e9ae1a4cd5d12cfdea42c6287ee2c92dfd86df649e494ccba5ce7",
+            "structured_0938eeb2fbec3fc7780170542cf8c2d17f42efdcea8e23a76cf8be03d108c748",
+            "structured_1b1360b22c5a1a5b20e5c19b7571e16aa7e975a1dfa73e0bc26082cc052ca9a9",
+            "structured_44d40d7eff93adbeeb2e417c1f41eaa4d2070b4b58dac128f04bc123c6093b57",
+            "structured_8ac51a877294c0e5b0fa7573bdf9cd931db97d1df121c5523794b8cddf1140ec",
+            "structured_6bfbe83c3176277d919fe001168dffe8bb610a8d0e030b8fa8a25b2a3b7c12fd"
+          ]
+        },
+        {
+          "title": "Apply cluster/network configuration",
+          "description": "Apply HCI/SCP cluster and network settings only after human approval.",
+          "references": [
+            "structured_6345eb0cd3df681268edab602e3bae5d38ab60d6c55c2b49e02b5351219a3614",
+            "structured_3416ec327c90e03758667fa53fe5d2a0db5cdc3b12d830ec142d587d3c74ed5c",
+            "structured_42d98a8aa47e9ae1a4cd5d12cfdea42c6287ee2c92dfd86df649e494ccba5ce7",
+            "structured_0938eeb2fbec3fc7780170542cf8c2d17f42efdcea8e23a76cf8be03d108c748",
+            "structured_1b1360b22c5a1a5b20e5c19b7571e16aa7e975a1dfa73e0bc26082cc052ca9a9",
+            "structured_44d40d7eff93adbeeb2e417c1f41eaa4d2070b4b58dac128f04bc123c6093b57",
+            "structured_8ac51a877294c0e5b0fa7573bdf9cd931db97d1df121c5523794b8cddf1140ec",
+            "structured_6bfbe83c3176277d919fe001168dffe8bb610a8d0e030b8fa8a25b2a3b7c12fd"
+          ]
+        },
+        {
+          "title": "Start migration or DR workflow",
+          "description": "Start VM migration, replication, failover rehearsal, or production cutover only after explicit approval.",
+          "references": [
+            "structured_6345eb0cd3df681268edab602e3bae5d38ab60d6c55c2b49e02b5351219a3614",
+            "structured_3416ec327c90e03758667fa53fe5d2a0db5cdc3b12d830ec142d587d3c74ed5c",
+            "structured_42d98a8aa47e9ae1a4cd5d12cfdea42c6287ee2c92dfd86df649e494ccba5ce7",
+            "structured_0938eeb2fbec3fc7780170542cf8c2d17f42efdcea8e23a76cf8be03d108c748",
+            "structured_1b1360b22c5a1a5b20e5c19b7571e16aa7e975a1dfa73e0bc26082cc052ca9a9",
+            "structured_44d40d7eff93adbeeb2e417c1f41eaa4d2070b4b58dac128f04bc123c6093b57",
+            "structured_8ac51a877294c0e5b0fa7573bdf9cd931db97d1df121c5523794b8cddf1140ec",
+            "structured_6bfbe83c3176277d919fe001168dffe8bb610a8d0e030b8fa8a25b2a3b7c12fd"
+          ]
+        },
+        {
+          "title": "Validate cluster health",
+          "description": "Check cluster status, node status, storage pool status, alarms, and NTP synchronization.",
+          "references": [
+            "structured_6345eb0cd3df681268edab602e3bae5d38ab60d6c55c2b49e02b5351219a3614",
+            "structured_3416ec327c90e03758667fa53fe5d2a0db5cdc3b12d830ec142d587d3c74ed5c",
+            "structured_42d98a8aa47e9ae1a4cd5d12cfdea42c6287ee2c92dfd86df649e494ccba5ce7",
+            "structured_0938eeb2fbec3fc7780170542cf8c2d17f42efdcea8e23a76cf8be03d108c748",
+            "structured_1b1360b22c5a1a5b20e5c19b7571e16aa7e975a1dfa73e0bc26082cc052ca9a9",
+            "structured_44d40d7eff93adbeeb2e417c1f41eaa4d2070b4b58dac128f04bc123c6093b57",
+            "structured_8ac51a877294c0e5b0fa7573bdf9cd931db97d1df121c5523794b8cddf1140ec",
+            "structured_6bfbe83c3176277d919fe001168dffe8bb610a8d0e030b8fa8a25b2a3b7c12fd"
+          ]
+        },
+        {
+          "title": "Validate VM network and migration result",
+          "description": "Confirm VM connectivity, IP mapping, application check, and rollback readiness.",
+          "references": [
+            "structured_6345eb0cd3df681268edab602e3bae5d38ab60d6c55c2b49e02b5351219a3614",
+            "structured_3416ec327c90e03758667fa53fe5d2a0db5cdc3b12d830ec142d587d3c74ed5c",
+            "structured_42d98a8aa47e9ae1a4cd5d12cfdea42c6287ee2c92dfd86df649e494ccba5ce7",
+            "structured_0938eeb2fbec3fc7780170542cf8c2d17f42efdcea8e23a76cf8be03d108c748",
+            "structured_1b1360b22c5a1a5b20e5c19b7571e16aa7e975a1dfa73e0bc26082cc052ca9a9",
+            "structured_44d40d7eff93adbeeb2e417c1f41eaa4d2070b4b58dac128f04bc123c6093b57",
+            "structured_8ac51a877294c0e5b0fa7573bdf9cd931db97d1df121c5523794b8cddf1140ec",
+            "structured_6bfbe83c3176277d919fe001168dffe8bb610a8d0e030b8fa8a25b2a3b7c12fd"
+          ]
+        },
+        {
+          "title": "Return to previous source platform state",
+          "description": "Keep source VM unchanged until final cutover and restore DNS/routing if validation fails.",
+          "references": [
+            "structured_6345eb0cd3df681268edab602e3bae5d38ab60d6c55c2b49e02b5351219a3614",
+            "structured_3416ec327c90e03758667fa53fe5d2a0db5cdc3b12d830ec142d587d3c74ed5c",
+            "structured_42d98a8aa47e9ae1a4cd5d12cfdea42c6287ee2c92dfd86df649e494ccba5ce7",
+            "structured_0938eeb2fbec3fc7780170542cf8c2d17f42efdcea8e23a76cf8be03d108c748",
+            "structured_1b1360b22c5a1a5b20e5c19b7571e16aa7e975a1dfa73e0bc26082cc052ca9a9",
+            "structured_44d40d7eff93adbeeb2e417c1f41eaa4d2070b4b58dac128f04bc123c6093b57",
+            "structured_8ac51a877294c0e5b0fa7573bdf9cd931db97d1df121c5523794b8cddf1140ec",
+            "structured_6bfbe83c3176277d919fe001168dffe8bb610a8d0e030b8fa8a25b2a3b7c12fd"
+          ]
+        }
+      ]
+    },
+    {
+      "queryId": "v3-validation-04",
+      "query": "Where are the HCI syslog settings configured?",
+      "product": "HCI",
+      "latencyMs": 175.47659700000008,
+      "grounding": {
+        "status": "UNVERIFIED_TEMPLATE",
+        "answerReady": false,
+        "referenceCount": 8,
+        "stepCount": 9,
+        "issues": [],
+        "limitation": "Plan steps are generated from fixed templates. Related references do not establish claim-level support or answer correctness; verify against the requested product and release before use."
+      },
+      "validation": {
+        "ok": true,
+        "errors": [],
+        "grounding": {
+          "status": "UNVERIFIED_TEMPLATE",
+          "answerReady": false,
+          "referenceCount": 8,
+          "stepCount": 9,
+          "issues": [],
+          "limitation": "Plan steps are generated from fixed templates. Related references do not establish claim-level support or answer correctness; verify against the requested product and release before use."
+        }
+      },
+      "referenceIds": [
+        "structured_3e571d3830a1d82a46a713d59a952ba4a844929ecaf3e5aeb9fb187cd9bfea95",
+        "structured_c4c72ff442464ca06e08967dbad0a6f47bb30d424ea981eacb0da237d70a34f7",
+        "structured_bddd8f6192e9114af2a32e0ccdf7cd64b58e2a69c29b788274fae9d8eec9db46",
+        "structured_d3276090f57e6df74cb2f78a518e09cf27f4b0ba9c3e11ed694740d672116ba2",
+        "structured_347b9fa2f29fb70bd54f545795ce9c37a6d8b80f29b43d54823446822d5dbf4b",
+        "structured_d0365dd134f7c46807aa194b046bec2cdc21a3093cb9efd04b2a61e391d76432",
+        "structured_1e995db7ee4dcf038fe99c3929187f9b59e47975d3051133cb02898fa8822e4c",
+        "structured_7883e87ea0322da1cc2abab08d969b54c94d3c435200315383f17111897c9e1d"
+      ],
+      "steps": [
+        {
+          "title": "Confirm node and license readiness",
+          "description": "Verify node count, serial/license status, management IPs, DNS/NTP, and hardware health.",
+          "references": [
+            "structured_3e571d3830a1d82a46a713d59a952ba4a844929ecaf3e5aeb9fb187cd9bfea95",
+            "structured_c4c72ff442464ca06e08967dbad0a6f47bb30d424ea981eacb0da237d70a34f7",
+            "structured_bddd8f6192e9114af2a32e0ccdf7cd64b58e2a69c29b788274fae9d8eec9db46",
+            "structured_d3276090f57e6df74cb2f78a518e09cf27f4b0ba9c3e11ed694740d672116ba2",
+            "structured_347b9fa2f29fb70bd54f545795ce9c37a6d8b80f29b43d54823446822d5dbf4b",
+            "structured_d0365dd134f7c46807aa194b046bec2cdc21a3093cb9efd04b2a61e391d76432",
+            "structured_1e995db7ee4dcf038fe99c3929187f9b59e47975d3051133cb02898fa8822e4c",
+            "structured_7883e87ea0322da1cc2abab08d969b54c94d3c435200315383f17111897c9e1d"
+          ]
+        },
+        {
+          "title": "Validate management and storage networks",
+          "description": "Verify management reachability, storage network isolation, NIC mapping, link speed, VLAN and MTU consistency.",
+          "references": [
+            "structured_3e571d3830a1d82a46a713d59a952ba4a844929ecaf3e5aeb9fb187cd9bfea95",
+            "structured_c4c72ff442464ca06e08967dbad0a6f47bb30d424ea981eacb0da237d70a34f7",
+            "structured_bddd8f6192e9114af2a32e0ccdf7cd64b58e2a69c29b788274fae9d8eec9db46",
+            "structured_d3276090f57e6df74cb2f78a518e09cf27f4b0ba9c3e11ed694740d672116ba2",
+            "structured_347b9fa2f29fb70bd54f545795ce9c37a6d8b80f29b43d54823446822d5dbf4b",
+            "structured_d0365dd134f7c46807aa194b046bec2cdc21a3093cb9efd04b2a61e391d76432",
+            "structured_1e995db7ee4dcf038fe99c3929187f9b59e47975d3051133cb02898fa8822e4c",
+            "structured_7883e87ea0322da1cc2abab08d969b54c94d3c435200315383f17111897c9e1d"
+          ]
+        },
+        {
+          "title": "Confirm source VM migration readiness",
+          "description": "For VMware/Hyper-V/Nutanix source environments, confirm VM inventory, backup state, network mapping, and rollback window.",
+          "references": [
+            "structured_3e571d3830a1d82a46a713d59a952ba4a844929ecaf3e5aeb9fb187cd9bfea95",
+            "structured_c4c72ff442464ca06e08967dbad0a6f47bb30d424ea981eacb0da237d70a34f7",
+            "structured_bddd8f6192e9114af2a32e0ccdf7cd64b58e2a69c29b788274fae9d8eec9db46",
+            "structured_d3276090f57e6df74cb2f78a518e09cf27f4b0ba9c3e11ed694740d672116ba2",
+            "structured_347b9fa2f29fb70bd54f545795ce9c37a6d8b80f29b43d54823446822d5dbf4b",
+            "structured_d0365dd134f7c46807aa194b046bec2cdc21a3093cb9efd04b2a61e391d76432",
+            "structured_1e995db7ee4dcf038fe99c3929187f9b59e47975d3051133cb02898fa8822e4c",
+            "structured_7883e87ea0322da1cc2abab08d969b54c94d3c435200315383f17111897c9e1d"
+          ]
+        },
+        {
+          "title": "Prepare cluster configuration draft",
+          "description": "Prepare cluster name, node IP mapping, storage pool design, and VM network mapping in dry-run mode.",
+          "references": [
+            "structured_3e571d3830a1d82a46a713d59a952ba4a844929ecaf3e5aeb9fb187cd9bfea95",
+            "structured_c4c72ff442464ca06e08967dbad0a6f47bb30d424ea981eacb0da237d70a34f7",
+            "structured_bddd8f6192e9114af2a32e0ccdf7cd64b58e2a69c29b788274fae9d8eec9db46",
+            "structured_d3276090f57e6df74cb2f78a518e09cf27f4b0ba9c3e11ed694740d672116ba2",
+            "structured_347b9fa2f29fb70bd54f545795ce9c37a6d8b80f29b43d54823446822d5dbf4b",
+            "structured_d0365dd134f7c46807aa194b046bec2cdc21a3093cb9efd04b2a61e391d76432",
+            "structured_1e995db7ee4dcf038fe99c3929187f9b59e47975d3051133cb02898fa8822e4c",
+            "structured_7883e87ea0322da1cc2abab08d969b54c94d3c435200315383f17111897c9e1d"
+          ]
+        },
+        {
+          "title": "Apply cluster/network configuration",
+          "description": "Apply HCI/SCP cluster and network settings only after human approval.",
+          "references": [
+            "structured_3e571d3830a1d82a46a713d59a952ba4a844929ecaf3e5aeb9fb187cd9bfea95",
+            "structured_c4c72ff442464ca06e08967dbad0a6f47bb30d424ea981eacb0da237d70a34f7",
+            "structured_bddd8f6192e9114af2a32e0ccdf7cd64b58e2a69c29b788274fae9d8eec9db46",
+            "structured_d3276090f57e6df74cb2f78a518e09cf27f4b0ba9c3e11ed694740d672116ba2",
+            "structured_347b9fa2f29fb70bd54f545795ce9c37a6d8b80f29b43d54823446822d5dbf4b",
+            "structured_d0365dd134f7c46807aa194b046bec2cdc21a3093cb9efd04b2a61e391d76432",
+            "structured_1e995db7ee4dcf038fe99c3929187f9b59e47975d3051133cb02898fa8822e4c",
+            "structured_7883e87ea0322da1cc2abab08d969b54c94d3c435200315383f17111897c9e1d"
+          ]
+        },
+        {
+          "title": "Start migration or DR workflow",
+          "description": "Start VM migration, replication, failover rehearsal, or production cutover only after explicit approval.",
+          "references": [
+            "structured_3e571d3830a1d82a46a713d59a952ba4a844929ecaf3e5aeb9fb187cd9bfea95",
+            "structured_c4c72ff442464ca06e08967dbad0a6f47bb30d424ea981eacb0da237d70a34f7",
+            "structured_bddd8f6192e9114af2a32e0ccdf7cd64b58e2a69c29b788274fae9d8eec9db46",
+            "structured_d3276090f57e6df74cb2f78a518e09cf27f4b0ba9c3e11ed694740d672116ba2",
+            "structured_347b9fa2f29fb70bd54f545795ce9c37a6d8b80f29b43d54823446822d5dbf4b",
+            "structured_d0365dd134f7c46807aa194b046bec2cdc21a3093cb9efd04b2a61e391d76432",
+            "structured_1e995db7ee4dcf038fe99c3929187f9b59e47975d3051133cb02898fa8822e4c",
+            "structured_7883e87ea0322da1cc2abab08d969b54c94d3c435200315383f17111897c9e1d"
+          ]
+        },
+        {
+          "title": "Validate cluster health",
+          "description": "Check cluster status, node status, storage pool status, alarms, and NTP synchronization.",
+          "references": [
+            "structured_3e571d3830a1d82a46a713d59a952ba4a844929ecaf3e5aeb9fb187cd9bfea95",
+            "structured_c4c72ff442464ca06e08967dbad0a6f47bb30d424ea981eacb0da237d70a34f7",
+            "structured_bddd8f6192e9114af2a32e0ccdf7cd64b58e2a69c29b788274fae9d8eec9db46",
+            "structured_d3276090f57e6df74cb2f78a518e09cf27f4b0ba9c3e11ed694740d672116ba2",
+            "structured_347b9fa2f29fb70bd54f545795ce9c37a6d8b80f29b43d54823446822d5dbf4b",
+            "structured_d0365dd134f7c46807aa194b046bec2cdc21a3093cb9efd04b2a61e391d76432",
+            "structured_1e995db7ee4dcf038fe99c3929187f9b59e47975d3051133cb02898fa8822e4c",
+            "structured_7883e87ea0322da1cc2abab08d969b54c94d3c435200315383f17111897c9e1d"
+          ]
+        },
+        {
+          "title": "Validate VM network and migration result",
+          "description": "Confirm VM connectivity, IP mapping, application check, and rollback readiness.",
+          "references": [
+            "structured_3e571d3830a1d82a46a713d59a952ba4a844929ecaf3e5aeb9fb187cd9bfea95",
+            "structured_c4c72ff442464ca06e08967dbad0a6f47bb30d424ea981eacb0da237d70a34f7",
+            "structured_bddd8f6192e9114af2a32e0ccdf7cd64b58e2a69c29b788274fae9d8eec9db46",
+            "structured_d3276090f57e6df74cb2f78a518e09cf27f4b0ba9c3e11ed694740d672116ba2",
+            "structured_347b9fa2f29fb70bd54f545795ce9c37a6d8b80f29b43d54823446822d5dbf4b",
+            "structured_d0365dd134f7c46807aa194b046bec2cdc21a3093cb9efd04b2a61e391d76432",
+            "structured_1e995db7ee4dcf038fe99c3929187f9b59e47975d3051133cb02898fa8822e4c",
+            "structured_7883e87ea0322da1cc2abab08d969b54c94d3c435200315383f17111897c9e1d"
+          ]
+        },
+        {
+          "title": "Return to previous source platform state",
+          "description": "Keep source VM unchanged until final cutover and restore DNS/routing if validation fails.",
+          "references": [
+            "structured_3e571d3830a1d82a46a713d59a952ba4a844929ecaf3e5aeb9fb187cd9bfea95",
+            "structured_c4c72ff442464ca06e08967dbad0a6f47bb30d424ea981eacb0da237d70a34f7",
+            "structured_bddd8f6192e9114af2a32e0ccdf7cd64b58e2a69c29b788274fae9d8eec9db46",
+            "structured_d3276090f57e6df74cb2f78a518e09cf27f4b0ba9c3e11ed694740d672116ba2",
+            "structured_347b9fa2f29fb70bd54f545795ce9c37a6d8b80f29b43d54823446822d5dbf4b",
+            "structured_d0365dd134f7c46807aa194b046bec2cdc21a3093cb9efd04b2a61e391d76432",
+            "structured_1e995db7ee4dcf038fe99c3929187f9b59e47975d3051133cb02898fa8822e4c",
+            "structured_7883e87ea0322da1cc2abab08d969b54c94d3c435200315383f17111897c9e1d"
+          ]
+        }
+      ]
+    },
+    {
+      "queryId": "v3-validation-05",
+      "query": "How can an administrator configure password policy?",
+      "product": "HCI",
+      "latencyMs": 154.82629100000008,
+      "grounding": {
+        "status": "UNVERIFIED_TEMPLATE",
+        "answerReady": false,
+        "referenceCount": 8,
+        "stepCount": 9,
+        "issues": [],
+        "limitation": "Plan steps are generated from fixed templates. Related references do not establish claim-level support or answer correctness; verify against the requested product and release before use."
+      },
+      "validation": {
+        "ok": true,
+        "errors": [],
+        "grounding": {
+          "status": "UNVERIFIED_TEMPLATE",
+          "answerReady": false,
+          "referenceCount": 8,
+          "stepCount": 9,
+          "issues": [],
+          "limitation": "Plan steps are generated from fixed templates. Related references do not establish claim-level support or answer correctness; verify against the requested product and release before use."
+        }
+      },
+      "referenceIds": [
+        "structured_f151c86904e2f94f8d8c57aa6876a0e335b6b7560a0a3b40211d5612efddc35d",
+        "structured_88ffc9e5316ef978a12754bb866677b18e5e6a0328a8544b64eac9147a62d2d3",
+        "structured_734219b2c87aa8bc8f3b6b58008132ec735665c7bc9c9af455b2e3c1ec30884b",
+        "structured_5b73139f246837ba46a4496abae9cc85aba86007d29aa65c3e6ce528f21c4fac",
+        "structured_8f0b2a91c7401dcececd619f7cb1f5225f8d7da4d496c26a0f66f2f3f14301e9",
+        "structured_dec74326abd1c126d2fb9a9e67ade74bf4e7cc93ac1fde961be0fafc38886f55",
+        "structured_c5b8bdbed4e631cf3432a6d18746ad4faa38a9962392e22f208fe7c100c93cd3",
+        "structured_943dab1f7d59f4e69f406c6dfad4a0a9ce5ed69165facdb2e04add1cc517729c"
+      ],
+      "steps": [
+        {
+          "title": "Confirm node and license readiness",
+          "description": "Verify node count, serial/license status, management IPs, DNS/NTP, and hardware health.",
+          "references": [
+            "structured_f151c86904e2f94f8d8c57aa6876a0e335b6b7560a0a3b40211d5612efddc35d",
+            "structured_88ffc9e5316ef978a12754bb866677b18e5e6a0328a8544b64eac9147a62d2d3",
+            "structured_734219b2c87aa8bc8f3b6b58008132ec735665c7bc9c9af455b2e3c1ec30884b",
+            "structured_5b73139f246837ba46a4496abae9cc85aba86007d29aa65c3e6ce528f21c4fac",
+            "structured_8f0b2a91c7401dcececd619f7cb1f5225f8d7da4d496c26a0f66f2f3f14301e9",
+            "structured_dec74326abd1c126d2fb9a9e67ade74bf4e7cc93ac1fde961be0fafc38886f55",
+            "structured_c5b8bdbed4e631cf3432a6d18746ad4faa38a9962392e22f208fe7c100c93cd3",
+            "structured_943dab1f7d59f4e69f406c6dfad4a0a9ce5ed69165facdb2e04add1cc517729c"
+          ]
+        },
+        {
+          "title": "Validate management and storage networks",
+          "description": "Verify management reachability, storage network isolation, NIC mapping, link speed, VLAN and MTU consistency.",
+          "references": [
+            "structured_f151c86904e2f94f8d8c57aa6876a0e335b6b7560a0a3b40211d5612efddc35d",
+            "structured_88ffc9e5316ef978a12754bb866677b18e5e6a0328a8544b64eac9147a62d2d3",
+            "structured_734219b2c87aa8bc8f3b6b58008132ec735665c7bc9c9af455b2e3c1ec30884b",
+            "structured_5b73139f246837ba46a4496abae9cc85aba86007d29aa65c3e6ce528f21c4fac",
+            "structured_8f0b2a91c7401dcececd619f7cb1f5225f8d7da4d496c26a0f66f2f3f14301e9",
+            "structured_dec74326abd1c126d2fb9a9e67ade74bf4e7cc93ac1fde961be0fafc38886f55",
+            "structured_c5b8bdbed4e631cf3432a6d18746ad4faa38a9962392e22f208fe7c100c93cd3",
+            "structured_943dab1f7d59f4e69f406c6dfad4a0a9ce5ed69165facdb2e04add1cc517729c"
+          ]
+        },
+        {
+          "title": "Confirm source VM migration readiness",
+          "description": "For VMware/Hyper-V/Nutanix source environments, confirm VM inventory, backup state, network mapping, and rollback window.",
+          "references": [
+            "structured_f151c86904e2f94f8d8c57aa6876a0e335b6b7560a0a3b40211d5612efddc35d",
+            "structured_88ffc9e5316ef978a12754bb866677b18e5e6a0328a8544b64eac9147a62d2d3",
+            "structured_734219b2c87aa8bc8f3b6b58008132ec735665c7bc9c9af455b2e3c1ec30884b",
+            "structured_5b73139f246837ba46a4496abae9cc85aba86007d29aa65c3e6ce528f21c4fac",
+            "structured_8f0b2a91c7401dcececd619f7cb1f5225f8d7da4d496c26a0f66f2f3f14301e9",
+            "structured_dec74326abd1c126d2fb9a9e67ade74bf4e7cc93ac1fde961be0fafc38886f55",
+            "structured_c5b8bdbed4e631cf3432a6d18746ad4faa38a9962392e22f208fe7c100c93cd3",
+            "structured_943dab1f7d59f4e69f406c6dfad4a0a9ce5ed69165facdb2e04add1cc517729c"
+          ]
+        },
+        {
+          "title": "Prepare cluster configuration draft",
+          "description": "Prepare cluster name, node IP mapping, storage pool design, and VM network mapping in dry-run mode.",
+          "references": [
+            "structured_f151c86904e2f94f8d8c57aa6876a0e335b6b7560a0a3b40211d5612efddc35d",
+            "structured_88ffc9e5316ef978a12754bb866677b18e5e6a0328a8544b64eac9147a62d2d3",
+            "structured_734219b2c87aa8bc8f3b6b58008132ec735665c7bc9c9af455b2e3c1ec30884b",
+            "structured_5b73139f246837ba46a4496abae9cc85aba86007d29aa65c3e6ce528f21c4fac",
+            "structured_8f0b2a91c7401dcececd619f7cb1f5225f8d7da4d496c26a0f66f2f3f14301e9",
+            "structured_dec74326abd1c126d2fb9a9e67ade74bf4e7cc93ac1fde961be0fafc38886f55",
+            "structured_c5b8bdbed4e631cf3432a6d18746ad4faa38a9962392e22f208fe7c100c93cd3",
+            "structured_943dab1f7d59f4e69f406c6dfad4a0a9ce5ed69165facdb2e04add1cc517729c"
+          ]
+        },
+        {
+          "title": "Apply cluster/network configuration",
+          "description": "Apply HCI/SCP cluster and network settings only after human approval.",
+          "references": [
+            "structured_f151c86904e2f94f8d8c57aa6876a0e335b6b7560a0a3b40211d5612efddc35d",
+            "structured_88ffc9e5316ef978a12754bb866677b18e5e6a0328a8544b64eac9147a62d2d3",
+            "structured_734219b2c87aa8bc8f3b6b58008132ec735665c7bc9c9af455b2e3c1ec30884b",
+            "structured_5b73139f246837ba46a4496abae9cc85aba86007d29aa65c3e6ce528f21c4fac",
+            "structured_8f0b2a91c7401dcececd619f7cb1f5225f8d7da4d496c26a0f66f2f3f14301e9",
+            "structured_dec74326abd1c126d2fb9a9e67ade74bf4e7cc93ac1fde961be0fafc38886f55",
+            "structured_c5b8bdbed4e631cf3432a6d18746ad4faa38a9962392e22f208fe7c100c93cd3",
+            "structured_943dab1f7d59f4e69f406c6dfad4a0a9ce5ed69165facdb2e04add1cc517729c"
+          ]
+        },
+        {
+          "title": "Start migration or DR workflow",
+          "description": "Start VM migration, replication, failover rehearsal, or production cutover only after explicit approval.",
+          "references": [
+            "structured_f151c86904e2f94f8d8c57aa6876a0e335b6b7560a0a3b40211d5612efddc35d",
+            "structured_88ffc9e5316ef978a12754bb866677b18e5e6a0328a8544b64eac9147a62d2d3",
+            "structured_734219b2c87aa8bc8f3b6b58008132ec735665c7bc9c9af455b2e3c1ec30884b",
+            "structured_5b73139f246837ba46a4496abae9cc85aba86007d29aa65c3e6ce528f21c4fac",
+            "structured_8f0b2a91c7401dcececd619f7cb1f5225f8d7da4d496c26a0f66f2f3f14301e9",
+            "structured_dec74326abd1c126d2fb9a9e67ade74bf4e7cc93ac1fde961be0fafc38886f55",
+            "structured_c5b8bdbed4e631cf3432a6d18746ad4faa38a9962392e22f208fe7c100c93cd3",
+            "structured_943dab1f7d59f4e69f406c6dfad4a0a9ce5ed69165facdb2e04add1cc517729c"
+          ]
+        },
+        {
+          "title": "Validate cluster health",
+          "description": "Check cluster status, node status, storage pool status, alarms, and NTP synchronization.",
+          "references": [
+            "structured_f151c86904e2f94f8d8c57aa6876a0e335b6b7560a0a3b40211d5612efddc35d",
+            "structured_88ffc9e5316ef978a12754bb866677b18e5e6a0328a8544b64eac9147a62d2d3",
+            "structured_734219b2c87aa8bc8f3b6b58008132ec735665c7bc9c9af455b2e3c1ec30884b",
+            "structured_5b73139f246837ba46a4496abae9cc85aba86007d29aa65c3e6ce528f21c4fac",
+            "structured_8f0b2a91c7401dcececd619f7cb1f5225f8d7da4d496c26a0f66f2f3f14301e9",
+            "structured_dec74326abd1c126d2fb9a9e67ade74bf4e7cc93ac1fde961be0fafc38886f55",
+            "structured_c5b8bdbed4e631cf3432a6d18746ad4faa38a9962392e22f208fe7c100c93cd3",
+            "structured_943dab1f7d59f4e69f406c6dfad4a0a9ce5ed69165facdb2e04add1cc517729c"
+          ]
+        },
+        {
+          "title": "Validate VM network and migration result",
+          "description": "Confirm VM connectivity, IP mapping, application check, and rollback readiness.",
+          "references": [
+            "structured_f151c86904e2f94f8d8c57aa6876a0e335b6b7560a0a3b40211d5612efddc35d",
+            "structured_88ffc9e5316ef978a12754bb866677b18e5e6a0328a8544b64eac9147a62d2d3",
+            "structured_734219b2c87aa8bc8f3b6b58008132ec735665c7bc9c9af455b2e3c1ec30884b",
+            "structured_5b73139f246837ba46a4496abae9cc85aba86007d29aa65c3e6ce528f21c4fac",
+            "structured_8f0b2a91c7401dcececd619f7cb1f5225f8d7da4d496c26a0f66f2f3f14301e9",
+            "structured_dec74326abd1c126d2fb9a9e67ade74bf4e7cc93ac1fde961be0fafc38886f55",
+            "structured_c5b8bdbed4e631cf3432a6d18746ad4faa38a9962392e22f208fe7c100c93cd3",
+            "structured_943dab1f7d59f4e69f406c6dfad4a0a9ce5ed69165facdb2e04add1cc517729c"
+          ]
+        },
+        {
+          "title": "Return to previous source platform state",
+          "description": "Keep source VM unchanged until final cutover and restore DNS/routing if validation fails.",
+          "references": [
+            "structured_f151c86904e2f94f8d8c57aa6876a0e335b6b7560a0a3b40211d5612efddc35d",
+            "structured_88ffc9e5316ef978a12754bb866677b18e5e6a0328a8544b64eac9147a62d2d3",
+            "structured_734219b2c87aa8bc8f3b6b58008132ec735665c7bc9c9af455b2e3c1ec30884b",
+            "structured_5b73139f246837ba46a4496abae9cc85aba86007d29aa65c3e6ce528f21c4fac",
+            "structured_8f0b2a91c7401dcececd619f7cb1f5225f8d7da4d496c26a0f66f2f3f14301e9",
+            "structured_dec74326abd1c126d2fb9a9e67ade74bf4e7cc93ac1fde961be0fafc38886f55",
+            "structured_c5b8bdbed4e631cf3432a6d18746ad4faa38a9962392e22f208fe7c100c93cd3",
+            "structured_943dab1f7d59f4e69f406c6dfad4a0a9ce5ed69165facdb2e04add1cc517729c"
+          ]
+        }
+      ]
+    },
+    {
+      "queryId": "v3-validation-06",
+      "query": "How do I configure SNMP monitoring on HCI?",
+      "product": "HCI",
+      "latencyMs": 158.12543400000004,
+      "grounding": {
+        "status": "UNVERIFIED_TEMPLATE",
+        "answerReady": false,
+        "referenceCount": 8,
+        "stepCount": 9,
+        "issues": [],
+        "limitation": "Plan steps are generated from fixed templates. Related references do not establish claim-level support or answer correctness; verify against the requested product and release before use."
+      },
+      "validation": {
+        "ok": true,
+        "errors": [],
+        "grounding": {
+          "status": "UNVERIFIED_TEMPLATE",
+          "answerReady": false,
+          "referenceCount": 8,
+          "stepCount": 9,
+          "issues": [],
+          "limitation": "Plan steps are generated from fixed templates. Related references do not establish claim-level support or answer correctness; verify against the requested product and release before use."
+        }
+      },
+      "referenceIds": [
+        "structured_24b376675bc38c796c2a82ec7e5de940adae2f6612125453989d7b49b5bf36ab",
+        "structured_d47c32890bfd93409eda2205c0833bd51f4690c4f10bf397d80490fc02727b7c",
+        "structured_e459fa478a107fc158e612175029464a213b9d9553a7aeb41f459051f25df3b6",
+        "structured_1b6705480dbf16f8f6d050f8cb1ee49a9dade3c031254d1ecb8348443eaceb9f",
+        "structured_099628873fa9433e5c6ff43ce560a3bb300503baecb2f26a630b20de872e301b",
+        "structured_f2baad2568a942f0195a30af2e27cad7e621295407d6b70849fbde0bf8970af5",
+        "structured_33fb063d4f3635018e8745f13463105c875741ba8fa68e9e2087ef36420ae265",
+        "structured_5669d607b527879edc7292b0e25eade6c79e00ccd51d0ed4daa4fd1304e6c268"
+      ],
+      "steps": [
+        {
+          "title": "Confirm node and license readiness",
+          "description": "Verify node count, serial/license status, management IPs, DNS/NTP, and hardware health.",
+          "references": [
+            "structured_24b376675bc38c796c2a82ec7e5de940adae2f6612125453989d7b49b5bf36ab",
+            "structured_d47c32890bfd93409eda2205c0833bd51f4690c4f10bf397d80490fc02727b7c",
+            "structured_e459fa478a107fc158e612175029464a213b9d9553a7aeb41f459051f25df3b6",
+            "structured_1b6705480dbf16f8f6d050f8cb1ee49a9dade3c031254d1ecb8348443eaceb9f",
+            "structured_099628873fa9433e5c6ff43ce560a3bb300503baecb2f26a630b20de872e301b",
+            "structured_f2baad2568a942f0195a30af2e27cad7e621295407d6b70849fbde0bf8970af5",
+            "structured_33fb063d4f3635018e8745f13463105c875741ba8fa68e9e2087ef36420ae265",
+            "structured_5669d607b527879edc7292b0e25eade6c79e00ccd51d0ed4daa4fd1304e6c268"
+          ]
+        },
+        {
+          "title": "Validate management and storage networks",
+          "description": "Verify management reachability, storage network isolation, NIC mapping, link speed, VLAN and MTU consistency.",
+          "references": [
+            "structured_24b376675bc38c796c2a82ec7e5de940adae2f6612125453989d7b49b5bf36ab",
+            "structured_d47c32890bfd93409eda2205c0833bd51f4690c4f10bf397d80490fc02727b7c",
+            "structured_e459fa478a107fc158e612175029464a213b9d9553a7aeb41f459051f25df3b6",
+            "structured_1b6705480dbf16f8f6d050f8cb1ee49a9dade3c031254d1ecb8348443eaceb9f",
+            "structured_099628873fa9433e5c6ff43ce560a3bb300503baecb2f26a630b20de872e301b",
+            "structured_f2baad2568a942f0195a30af2e27cad7e621295407d6b70849fbde0bf8970af5",
+            "structured_33fb063d4f3635018e8745f13463105c875741ba8fa68e9e2087ef36420ae265",
+            "structured_5669d607b527879edc7292b0e25eade6c79e00ccd51d0ed4daa4fd1304e6c268"
+          ]
+        },
+        {
+          "title": "Confirm source VM migration readiness",
+          "description": "For VMware/Hyper-V/Nutanix source environments, confirm VM inventory, backup state, network mapping, and rollback window.",
+          "references": [
+            "structured_24b376675bc38c796c2a82ec7e5de940adae2f6612125453989d7b49b5bf36ab",
+            "structured_d47c32890bfd93409eda2205c0833bd51f4690c4f10bf397d80490fc02727b7c",
+            "structured_e459fa478a107fc158e612175029464a213b9d9553a7aeb41f459051f25df3b6",
+            "structured_1b6705480dbf16f8f6d050f8cb1ee49a9dade3c031254d1ecb8348443eaceb9f",
+            "structured_099628873fa9433e5c6ff43ce560a3bb300503baecb2f26a630b20de872e301b",
+            "structured_f2baad2568a942f0195a30af2e27cad7e621295407d6b70849fbde0bf8970af5",
+            "structured_33fb063d4f3635018e8745f13463105c875741ba8fa68e9e2087ef36420ae265",
+            "structured_5669d607b527879edc7292b0e25eade6c79e00ccd51d0ed4daa4fd1304e6c268"
+          ]
+        },
+        {
+          "title": "Prepare cluster configuration draft",
+          "description": "Prepare cluster name, node IP mapping, storage pool design, and VM network mapping in dry-run mode.",
+          "references": [
+            "structured_24b376675bc38c796c2a82ec7e5de940adae2f6612125453989d7b49b5bf36ab",
+            "structured_d47c32890bfd93409eda2205c0833bd51f4690c4f10bf397d80490fc02727b7c",
+            "structured_e459fa478a107fc158e612175029464a213b9d9553a7aeb41f459051f25df3b6",
+            "structured_1b6705480dbf16f8f6d050f8cb1ee49a9dade3c031254d1ecb8348443eaceb9f",
+            "structured_099628873fa9433e5c6ff43ce560a3bb300503baecb2f26a630b20de872e301b",
+            "structured_f2baad2568a942f0195a30af2e27cad7e621295407d6b70849fbde0bf8970af5",
+            "structured_33fb063d4f3635018e8745f13463105c875741ba8fa68e9e2087ef36420ae265",
+            "structured_5669d607b527879edc7292b0e25eade6c79e00ccd51d0ed4daa4fd1304e6c268"
+          ]
+        },
+        {
+          "title": "Apply cluster/network configuration",
+          "description": "Apply HCI/SCP cluster and network settings only after human approval.",
+          "references": [
+            "structured_24b376675bc38c796c2a82ec7e5de940adae2f6612125453989d7b49b5bf36ab",
+            "structured_d47c32890bfd93409eda2205c0833bd51f4690c4f10bf397d80490fc02727b7c",
+            "structured_e459fa478a107fc158e612175029464a213b9d9553a7aeb41f459051f25df3b6",
+            "structured_1b6705480dbf16f8f6d050f8cb1ee49a9dade3c031254d1ecb8348443eaceb9f",
+            "structured_099628873fa9433e5c6ff43ce560a3bb300503baecb2f26a630b20de872e301b",
+            "structured_f2baad2568a942f0195a30af2e27cad7e621295407d6b70849fbde0bf8970af5",
+            "structured_33fb063d4f3635018e8745f13463105c875741ba8fa68e9e2087ef36420ae265",
+            "structured_5669d607b527879edc7292b0e25eade6c79e00ccd51d0ed4daa4fd1304e6c268"
+          ]
+        },
+        {
+          "title": "Start migration or DR workflow",
+          "description": "Start VM migration, replication, failover rehearsal, or production cutover only after explicit approval.",
+          "references": [
+            "structured_24b376675bc38c796c2a82ec7e5de940adae2f6612125453989d7b49b5bf36ab",
+            "structured_d47c32890bfd93409eda2205c0833bd51f4690c4f10bf397d80490fc02727b7c",
+            "structured_e459fa478a107fc158e612175029464a213b9d9553a7aeb41f459051f25df3b6",
+            "structured_1b6705480dbf16f8f6d050f8cb1ee49a9dade3c031254d1ecb8348443eaceb9f",
+            "structured_099628873fa9433e5c6ff43ce560a3bb300503baecb2f26a630b20de872e301b",
+            "structured_f2baad2568a942f0195a30af2e27cad7e621295407d6b70849fbde0bf8970af5",
+            "structured_33fb063d4f3635018e8745f13463105c875741ba8fa68e9e2087ef36420ae265",
+            "structured_5669d607b527879edc7292b0e25eade6c79e00ccd51d0ed4daa4fd1304e6c268"
+          ]
+        },
+        {
+          "title": "Validate cluster health",
+          "description": "Check cluster status, node status, storage pool status, alarms, and NTP synchronization.",
+          "references": [
+            "structured_24b376675bc38c796c2a82ec7e5de940adae2f6612125453989d7b49b5bf36ab",
+            "structured_d47c32890bfd93409eda2205c0833bd51f4690c4f10bf397d80490fc02727b7c",
+            "structured_e459fa478a107fc158e612175029464a213b9d9553a7aeb41f459051f25df3b6",
+            "structured_1b6705480dbf16f8f6d050f8cb1ee49a9dade3c031254d1ecb8348443eaceb9f",
+            "structured_099628873fa9433e5c6ff43ce560a3bb300503baecb2f26a630b20de872e301b",
+            "structured_f2baad2568a942f0195a30af2e27cad7e621295407d6b70849fbde0bf8970af5",
+            "structured_33fb063d4f3635018e8745f13463105c875741ba8fa68e9e2087ef36420ae265",
+            "structured_5669d607b527879edc7292b0e25eade6c79e00ccd51d0ed4daa4fd1304e6c268"
+          ]
+        },
+        {
+          "title": "Validate VM network and migration result",
+          "description": "Confirm VM connectivity, IP mapping, application check, and rollback readiness.",
+          "references": [
+            "structured_24b376675bc38c796c2a82ec7e5de940adae2f6612125453989d7b49b5bf36ab",
+            "structured_d47c32890bfd93409eda2205c0833bd51f4690c4f10bf397d80490fc02727b7c",
+            "structured_e459fa478a107fc158e612175029464a213b9d9553a7aeb41f459051f25df3b6",
+            "structured_1b6705480dbf16f8f6d050f8cb1ee49a9dade3c031254d1ecb8348443eaceb9f",
+            "structured_099628873fa9433e5c6ff43ce560a3bb300503baecb2f26a630b20de872e301b",
+            "structured_f2baad2568a942f0195a30af2e27cad7e621295407d6b70849fbde0bf8970af5",
+            "structured_33fb063d4f3635018e8745f13463105c875741ba8fa68e9e2087ef36420ae265",
+            "structured_5669d607b527879edc7292b0e25eade6c79e00ccd51d0ed4daa4fd1304e6c268"
+          ]
+        },
+        {
+          "title": "Return to previous source platform state",
+          "description": "Keep source VM unchanged until final cutover and restore DNS/routing if validation fails.",
+          "references": [
+            "structured_24b376675bc38c796c2a82ec7e5de940adae2f6612125453989d7b49b5bf36ab",
+            "structured_d47c32890bfd93409eda2205c0833bd51f4690c4f10bf397d80490fc02727b7c",
+            "structured_e459fa478a107fc158e612175029464a213b9d9553a7aeb41f459051f25df3b6",
+            "structured_1b6705480dbf16f8f6d050f8cb1ee49a9dade3c031254d1ecb8348443eaceb9f",
+            "structured_099628873fa9433e5c6ff43ce560a3bb300503baecb2f26a630b20de872e301b",
+            "structured_f2baad2568a942f0195a30af2e27cad7e621295407d6b70849fbde0bf8970af5",
+            "structured_33fb063d4f3635018e8745f13463105c875741ba8fa68e9e2087ef36420ae265",
+            "structured_5669d607b527879edc7292b0e25eade6c79e00ccd51d0ed4daa4fd1304e6c268"
+          ]
+        }
+      ]
+    },
+    {
+      "queryId": "v3-validation-07",
+      "query": "How does virtual machine live migration work?",
+      "product": "HCI",
+      "latencyMs": 151.83841399999983,
+      "grounding": {
+        "status": "UNVERIFIED_TEMPLATE",
+        "answerReady": false,
+        "referenceCount": 8,
+        "stepCount": 9,
+        "issues": [],
+        "limitation": "Plan steps are generated from fixed templates. Related references do not establish claim-level support or answer correctness; verify against the requested product and release before use."
+      },
+      "validation": {
+        "ok": true,
+        "errors": [],
+        "grounding": {
+          "status": "UNVERIFIED_TEMPLATE",
+          "answerReady": false,
+          "referenceCount": 8,
+          "stepCount": 9,
+          "issues": [],
+          "limitation": "Plan steps are generated from fixed templates. Related references do not establish claim-level support or answer correctness; verify against the requested product and release before use."
+        }
+      },
+      "referenceIds": [
+        "structured_6b6498415c207615ccc327361efb1829637177d98edb1db5bdf9e8e5fac13e32",
+        "structured_4ce59ce7fca76245a589e6d4d76387ee716d0f35d53a4cffffb3655692da9093",
+        "structured_1048b40e5b7a2564b2efca809a6e019de8ad1c7d4d1cadf3629eeb6f5f9fff4a",
+        "structured_932990b811eafd84bf2063ac52d0e886a2e09ec646888f8e81cb12c9ed639e6d",
+        "structured_58dcd62a46d6676b93bb35597f6c5da742c4fc4718ff75cc26256607da05497c",
+        "structured_3949075ff77252be1799e9975589ab02b47ee1078b930798f9c949d3de143951",
+        "structured_eab731ed9c8fc7e7293cf00fcff63e7e9ce661df3378f100fc278fd74bd1a0ba",
+        "structured_71d19085b909aa194f96cdacc86fc17cc28133c5f39dd524c8daf3ba156b8a7d"
+      ],
+      "steps": [
+        {
+          "title": "Confirm node and license readiness",
+          "description": "Verify node count, serial/license status, management IPs, DNS/NTP, and hardware health.",
+          "references": [
+            "structured_6b6498415c207615ccc327361efb1829637177d98edb1db5bdf9e8e5fac13e32",
+            "structured_4ce59ce7fca76245a589e6d4d76387ee716d0f35d53a4cffffb3655692da9093",
+            "structured_1048b40e5b7a2564b2efca809a6e019de8ad1c7d4d1cadf3629eeb6f5f9fff4a",
+            "structured_932990b811eafd84bf2063ac52d0e886a2e09ec646888f8e81cb12c9ed639e6d",
+            "structured_58dcd62a46d6676b93bb35597f6c5da742c4fc4718ff75cc26256607da05497c",
+            "structured_3949075ff77252be1799e9975589ab02b47ee1078b930798f9c949d3de143951",
+            "structured_eab731ed9c8fc7e7293cf00fcff63e7e9ce661df3378f100fc278fd74bd1a0ba",
+            "structured_71d19085b909aa194f96cdacc86fc17cc28133c5f39dd524c8daf3ba156b8a7d"
+          ]
+        },
+        {
+          "title": "Validate management and storage networks",
+          "description": "Verify management reachability, storage network isolation, NIC mapping, link speed, VLAN and MTU consistency.",
+          "references": [
+            "structured_6b6498415c207615ccc327361efb1829637177d98edb1db5bdf9e8e5fac13e32",
+            "structured_4ce59ce7fca76245a589e6d4d76387ee716d0f35d53a4cffffb3655692da9093",
+            "structured_1048b40e5b7a2564b2efca809a6e019de8ad1c7d4d1cadf3629eeb6f5f9fff4a",
+            "structured_932990b811eafd84bf2063ac52d0e886a2e09ec646888f8e81cb12c9ed639e6d",
+            "structured_58dcd62a46d6676b93bb35597f6c5da742c4fc4718ff75cc26256607da05497c",
+            "structured_3949075ff77252be1799e9975589ab02b47ee1078b930798f9c949d3de143951",
+            "structured_eab731ed9c8fc7e7293cf00fcff63e7e9ce661df3378f100fc278fd74bd1a0ba",
+            "structured_71d19085b909aa194f96cdacc86fc17cc28133c5f39dd524c8daf3ba156b8a7d"
+          ]
+        },
+        {
+          "title": "Confirm source VM migration readiness",
+          "description": "For VMware/Hyper-V/Nutanix source environments, confirm VM inventory, backup state, network mapping, and rollback window.",
+          "references": [
+            "structured_6b6498415c207615ccc327361efb1829637177d98edb1db5bdf9e8e5fac13e32",
+            "structured_4ce59ce7fca76245a589e6d4d76387ee716d0f35d53a4cffffb3655692da9093",
+            "structured_1048b40e5b7a2564b2efca809a6e019de8ad1c7d4d1cadf3629eeb6f5f9fff4a",
+            "structured_932990b811eafd84bf2063ac52d0e886a2e09ec646888f8e81cb12c9ed639e6d",
+            "structured_58dcd62a46d6676b93bb35597f6c5da742c4fc4718ff75cc26256607da05497c",
+            "structured_3949075ff77252be1799e9975589ab02b47ee1078b930798f9c949d3de143951",
+            "structured_eab731ed9c8fc7e7293cf00fcff63e7e9ce661df3378f100fc278fd74bd1a0ba",
+            "structured_71d19085b909aa194f96cdacc86fc17cc28133c5f39dd524c8daf3ba156b8a7d"
+          ]
+        },
+        {
+          "title": "Prepare cluster configuration draft",
+          "description": "Prepare cluster name, node IP mapping, storage pool design, and VM network mapping in dry-run mode.",
+          "references": [
+            "structured_6b6498415c207615ccc327361efb1829637177d98edb1db5bdf9e8e5fac13e32",
+            "structured_4ce59ce7fca76245a589e6d4d76387ee716d0f35d53a4cffffb3655692da9093",
+            "structured_1048b40e5b7a2564b2efca809a6e019de8ad1c7d4d1cadf3629eeb6f5f9fff4a",
+            "structured_932990b811eafd84bf2063ac52d0e886a2e09ec646888f8e81cb12c9ed639e6d",
+            "structured_58dcd62a46d6676b93bb35597f6c5da742c4fc4718ff75cc26256607da05497c",
+            "structured_3949075ff77252be1799e9975589ab02b47ee1078b930798f9c949d3de143951",
+            "structured_eab731ed9c8fc7e7293cf00fcff63e7e9ce661df3378f100fc278fd74bd1a0ba",
+            "structured_71d19085b909aa194f96cdacc86fc17cc28133c5f39dd524c8daf3ba156b8a7d"
+          ]
+        },
+        {
+          "title": "Apply cluster/network configuration",
+          "description": "Apply HCI/SCP cluster and network settings only after human approval.",
+          "references": [
+            "structured_6b6498415c207615ccc327361efb1829637177d98edb1db5bdf9e8e5fac13e32",
+            "structured_4ce59ce7fca76245a589e6d4d76387ee716d0f35d53a4cffffb3655692da9093",
+            "structured_1048b40e5b7a2564b2efca809a6e019de8ad1c7d4d1cadf3629eeb6f5f9fff4a",
+            "structured_932990b811eafd84bf2063ac52d0e886a2e09ec646888f8e81cb12c9ed639e6d",
+            "structured_58dcd62a46d6676b93bb35597f6c5da742c4fc4718ff75cc26256607da05497c",
+            "structured_3949075ff77252be1799e9975589ab02b47ee1078b930798f9c949d3de143951",
+            "structured_eab731ed9c8fc7e7293cf00fcff63e7e9ce661df3378f100fc278fd74bd1a0ba",
+            "structured_71d19085b909aa194f96cdacc86fc17cc28133c5f39dd524c8daf3ba156b8a7d"
+          ]
+        },
+        {
+          "title": "Start migration or DR workflow",
+          "description": "Start VM migration, replication, failover rehearsal, or production cutover only after explicit approval.",
+          "references": [
+            "structured_6b6498415c207615ccc327361efb1829637177d98edb1db5bdf9e8e5fac13e32",
+            "structured_4ce59ce7fca76245a589e6d4d76387ee716d0f35d53a4cffffb3655692da9093",
+            "structured_1048b40e5b7a2564b2efca809a6e019de8ad1c7d4d1cadf3629eeb6f5f9fff4a",
+            "structured_932990b811eafd84bf2063ac52d0e886a2e09ec646888f8e81cb12c9ed639e6d",
+            "structured_58dcd62a46d6676b93bb35597f6c5da742c4fc4718ff75cc26256607da05497c",
+            "structured_3949075ff77252be1799e9975589ab02b47ee1078b930798f9c949d3de143951",
+            "structured_eab731ed9c8fc7e7293cf00fcff63e7e9ce661df3378f100fc278fd74bd1a0ba",
+            "structured_71d19085b909aa194f96cdacc86fc17cc28133c5f39dd524c8daf3ba156b8a7d"
+          ]
+        },
+        {
+          "title": "Validate cluster health",
+          "description": "Check cluster status, node status, storage pool status, alarms, and NTP synchronization.",
+          "references": [
+            "structured_6b6498415c207615ccc327361efb1829637177d98edb1db5bdf9e8e5fac13e32",
+            "structured_4ce59ce7fca76245a589e6d4d76387ee716d0f35d53a4cffffb3655692da9093",
+            "structured_1048b40e5b7a2564b2efca809a6e019de8ad1c7d4d1cadf3629eeb6f5f9fff4a",
+            "structured_932990b811eafd84bf2063ac52d0e886a2e09ec646888f8e81cb12c9ed639e6d",
+            "structured_58dcd62a46d6676b93bb35597f6c5da742c4fc4718ff75cc26256607da05497c",
+            "structured_3949075ff77252be1799e9975589ab02b47ee1078b930798f9c949d3de143951",
+            "structured_eab731ed9c8fc7e7293cf00fcff63e7e9ce661df3378f100fc278fd74bd1a0ba",
+            "structured_71d19085b909aa194f96cdacc86fc17cc28133c5f39dd524c8daf3ba156b8a7d"
+          ]
+        },
+        {
+          "title": "Validate VM network and migration result",
+          "description": "Confirm VM connectivity, IP mapping, application check, and rollback readiness.",
+          "references": [
+            "structured_6b6498415c207615ccc327361efb1829637177d98edb1db5bdf9e8e5fac13e32",
+            "structured_4ce59ce7fca76245a589e6d4d76387ee716d0f35d53a4cffffb3655692da9093",
+            "structured_1048b40e5b7a2564b2efca809a6e019de8ad1c7d4d1cadf3629eeb6f5f9fff4a",
+            "structured_932990b811eafd84bf2063ac52d0e886a2e09ec646888f8e81cb12c9ed639e6d",
+            "structured_58dcd62a46d6676b93bb35597f6c5da742c4fc4718ff75cc26256607da05497c",
+            "structured_3949075ff77252be1799e9975589ab02b47ee1078b930798f9c949d3de143951",
+            "structured_eab731ed9c8fc7e7293cf00fcff63e7e9ce661df3378f100fc278fd74bd1a0ba",
+            "structured_71d19085b909aa194f96cdacc86fc17cc28133c5f39dd524c8daf3ba156b8a7d"
+          ]
+        },
+        {
+          "title": "Return to previous source platform state",
+          "description": "Keep source VM unchanged until final cutover and restore DNS/routing if validation fails.",
+          "references": [
+            "structured_6b6498415c207615ccc327361efb1829637177d98edb1db5bdf9e8e5fac13e32",
+            "structured_4ce59ce7fca76245a589e6d4d76387ee716d0f35d53a4cffffb3655692da9093",
+            "structured_1048b40e5b7a2564b2efca809a6e019de8ad1c7d4d1cadf3629eeb6f5f9fff4a",
+            "structured_932990b811eafd84bf2063ac52d0e886a2e09ec646888f8e81cb12c9ed639e6d",
+            "structured_58dcd62a46d6676b93bb35597f6c5da742c4fc4718ff75cc26256607da05497c",
+            "structured_3949075ff77252be1799e9975589ab02b47ee1078b930798f9c949d3de143951",
+            "structured_eab731ed9c8fc7e7293cf00fcff63e7e9ce661df3378f100fc278fd74bd1a0ba",
+            "structured_71d19085b909aa194f96cdacc86fc17cc28133c5f39dd524c8daf3ba156b8a7d"
+          ]
+        }
+      ]
+    },
+    {
+      "queryId": "v3-validation-08",
+      "query": "What is the purpose of a memory snapshot?",
+      "product": "HCI",
+      "latencyMs": 157.97258499999998,
+      "grounding": {
+        "status": "UNVERIFIED_TEMPLATE",
+        "answerReady": false,
+        "referenceCount": 8,
+        "stepCount": 9,
+        "issues": [],
+        "limitation": "Plan steps are generated from fixed templates. Related references do not establish claim-level support or answer correctness; verify against the requested product and release before use."
+      },
+      "validation": {
+        "ok": true,
+        "errors": [],
+        "grounding": {
+          "status": "UNVERIFIED_TEMPLATE",
+          "answerReady": false,
+          "referenceCount": 8,
+          "stepCount": 9,
+          "issues": [],
+          "limitation": "Plan steps are generated from fixed templates. Related references do not establish claim-level support or answer correctness; verify against the requested product and release before use."
+        }
+      },
+      "referenceIds": [
+        "structured_f5562f2795362ace0a696a2cdbd788a5ec68d6b2b4ab9f92a11f688f275b7d73",
+        "structured_04ac86f0bc9cbbf69a6cc5912c59abf0c4c653b76fe05bbde2fad66afd73d2bf",
+        "structured_8c71665858a22f27019db0d4c7747844631970f49283bde415d154029464e3d2",
+        "structured_bbe5c29156d81fb6e4969639b7d9e5859ea4820d90c66352650082a3736ccc93",
+        "structured_8c9fd32be8192bfe48d34ae06cb89477aa8d581839dc10f37b27ab2230807a16",
+        "structured_ac5c84c8378b70219942140259faaf644da9339720263805634c065b08582c72",
+        "structured_6aa3e6dc939c3de3fbdf0962118294aa90751c1804829c21289951283ee44409",
+        "structured_e30f77bd016923f2b5f03deed9eed49fc71bdd40e4ef56680b19dcb1b1ec346e"
+      ],
+      "steps": [
+        {
+          "title": "Confirm node and license readiness",
+          "description": "Verify node count, serial/license status, management IPs, DNS/NTP, and hardware health.",
+          "references": [
+            "structured_f5562f2795362ace0a696a2cdbd788a5ec68d6b2b4ab9f92a11f688f275b7d73",
+            "structured_04ac86f0bc9cbbf69a6cc5912c59abf0c4c653b76fe05bbde2fad66afd73d2bf",
+            "structured_8c71665858a22f27019db0d4c7747844631970f49283bde415d154029464e3d2",
+            "structured_bbe5c29156d81fb6e4969639b7d9e5859ea4820d90c66352650082a3736ccc93",
+            "structured_8c9fd32be8192bfe48d34ae06cb89477aa8d581839dc10f37b27ab2230807a16",
+            "structured_ac5c84c8378b70219942140259faaf644da9339720263805634c065b08582c72",
+            "structured_6aa3e6dc939c3de3fbdf0962118294aa90751c1804829c21289951283ee44409",
+            "structured_e30f77bd016923f2b5f03deed9eed49fc71bdd40e4ef56680b19dcb1b1ec346e"
+          ]
+        },
+        {
+          "title": "Validate management and storage networks",
+          "description": "Verify management reachability, storage network isolation, NIC mapping, link speed, VLAN and MTU consistency.",
+          "references": [
+            "structured_f5562f2795362ace0a696a2cdbd788a5ec68d6b2b4ab9f92a11f688f275b7d73",
+            "structured_04ac86f0bc9cbbf69a6cc5912c59abf0c4c653b76fe05bbde2fad66afd73d2bf",
+            "structured_8c71665858a22f27019db0d4c7747844631970f49283bde415d154029464e3d2",
+            "structured_bbe5c29156d81fb6e4969639b7d9e5859ea4820d90c66352650082a3736ccc93",
+            "structured_8c9fd32be8192bfe48d34ae06cb89477aa8d581839dc10f37b27ab2230807a16",
+            "structured_ac5c84c8378b70219942140259faaf644da9339720263805634c065b08582c72",
+            "structured_6aa3e6dc939c3de3fbdf0962118294aa90751c1804829c21289951283ee44409",
+            "structured_e30f77bd016923f2b5f03deed9eed49fc71bdd40e4ef56680b19dcb1b1ec346e"
+          ]
+        },
+        {
+          "title": "Confirm source VM migration readiness",
+          "description": "For VMware/Hyper-V/Nutanix source environments, confirm VM inventory, backup state, network mapping, and rollback window.",
+          "references": [
+            "structured_f5562f2795362ace0a696a2cdbd788a5ec68d6b2b4ab9f92a11f688f275b7d73",
+            "structured_04ac86f0bc9cbbf69a6cc5912c59abf0c4c653b76fe05bbde2fad66afd73d2bf",
+            "structured_8c71665858a22f27019db0d4c7747844631970f49283bde415d154029464e3d2",
+            "structured_bbe5c29156d81fb6e4969639b7d9e5859ea4820d90c66352650082a3736ccc93",
+            "structured_8c9fd32be8192bfe48d34ae06cb89477aa8d581839dc10f37b27ab2230807a16",
+            "structured_ac5c84c8378b70219942140259faaf644da9339720263805634c065b08582c72",
+            "structured_6aa3e6dc939c3de3fbdf0962118294aa90751c1804829c21289951283ee44409",
+            "structured_e30f77bd016923f2b5f03deed9eed49fc71bdd40e4ef56680b19dcb1b1ec346e"
+          ]
+        },
+        {
+          "title": "Prepare cluster configuration draft",
+          "description": "Prepare cluster name, node IP mapping, storage pool design, and VM network mapping in dry-run mode.",
+          "references": [
+            "structured_f5562f2795362ace0a696a2cdbd788a5ec68d6b2b4ab9f92a11f688f275b7d73",
+            "structured_04ac86f0bc9cbbf69a6cc5912c59abf0c4c653b76fe05bbde2fad66afd73d2bf",
+            "structured_8c71665858a22f27019db0d4c7747844631970f49283bde415d154029464e3d2",
+            "structured_bbe5c29156d81fb6e4969639b7d9e5859ea4820d90c66352650082a3736ccc93",
+            "structured_8c9fd32be8192bfe48d34ae06cb89477aa8d581839dc10f37b27ab2230807a16",
+            "structured_ac5c84c8378b70219942140259faaf644da9339720263805634c065b08582c72",
+            "structured_6aa3e6dc939c3de3fbdf0962118294aa90751c1804829c21289951283ee44409",
+            "structured_e30f77bd016923f2b5f03deed9eed49fc71bdd40e4ef56680b19dcb1b1ec346e"
+          ]
+        },
+        {
+          "title": "Apply cluster/network configuration",
+          "description": "Apply HCI/SCP cluster and network settings only after human approval.",
+          "references": [
+            "structured_f5562f2795362ace0a696a2cdbd788a5ec68d6b2b4ab9f92a11f688f275b7d73",
+            "structured_04ac86f0bc9cbbf69a6cc5912c59abf0c4c653b76fe05bbde2fad66afd73d2bf",
+            "structured_8c71665858a22f27019db0d4c7747844631970f49283bde415d154029464e3d2",
+            "structured_bbe5c29156d81fb6e4969639b7d9e5859ea4820d90c66352650082a3736ccc93",
+            "structured_8c9fd32be8192bfe48d34ae06cb89477aa8d581839dc10f37b27ab2230807a16",
+            "structured_ac5c84c8378b70219942140259faaf644da9339720263805634c065b08582c72",
+            "structured_6aa3e6dc939c3de3fbdf0962118294aa90751c1804829c21289951283ee44409",
+            "structured_e30f77bd016923f2b5f03deed9eed49fc71bdd40e4ef56680b19dcb1b1ec346e"
+          ]
+        },
+        {
+          "title": "Start migration or DR workflow",
+          "description": "Start VM migration, replication, failover rehearsal, or production cutover only after explicit approval.",
+          "references": [
+            "structured_f5562f2795362ace0a696a2cdbd788a5ec68d6b2b4ab9f92a11f688f275b7d73",
+            "structured_04ac86f0bc9cbbf69a6cc5912c59abf0c4c653b76fe05bbde2fad66afd73d2bf",
+            "structured_8c71665858a22f27019db0d4c7747844631970f49283bde415d154029464e3d2",
+            "structured_bbe5c29156d81fb6e4969639b7d9e5859ea4820d90c66352650082a3736ccc93",
+            "structured_8c9fd32be8192bfe48d34ae06cb89477aa8d581839dc10f37b27ab2230807a16",
+            "structured_ac5c84c8378b70219942140259faaf644da9339720263805634c065b08582c72",
+            "structured_6aa3e6dc939c3de3fbdf0962118294aa90751c1804829c21289951283ee44409",
+            "structured_e30f77bd016923f2b5f03deed9eed49fc71bdd40e4ef56680b19dcb1b1ec346e"
+          ]
+        },
+        {
+          "title": "Validate cluster health",
+          "description": "Check cluster status, node status, storage pool status, alarms, and NTP synchronization.",
+          "references": [
+            "structured_f5562f2795362ace0a696a2cdbd788a5ec68d6b2b4ab9f92a11f688f275b7d73",
+            "structured_04ac86f0bc9cbbf69a6cc5912c59abf0c4c653b76fe05bbde2fad66afd73d2bf",
+            "structured_8c71665858a22f27019db0d4c7747844631970f49283bde415d154029464e3d2",
+            "structured_bbe5c29156d81fb6e4969639b7d9e5859ea4820d90c66352650082a3736ccc93",
+            "structured_8c9fd32be8192bfe48d34ae06cb89477aa8d581839dc10f37b27ab2230807a16",
+            "structured_ac5c84c8378b70219942140259faaf644da9339720263805634c065b08582c72",
+            "structured_6aa3e6dc939c3de3fbdf0962118294aa90751c1804829c21289951283ee44409",
+            "structured_e30f77bd016923f2b5f03deed9eed49fc71bdd40e4ef56680b19dcb1b1ec346e"
+          ]
+        },
+        {
+          "title": "Validate VM network and migration result",
+          "description": "Confirm VM connectivity, IP mapping, application check, and rollback readiness.",
+          "references": [
+            "structured_f5562f2795362ace0a696a2cdbd788a5ec68d6b2b4ab9f92a11f688f275b7d73",
+            "structured_04ac86f0bc9cbbf69a6cc5912c59abf0c4c653b76fe05bbde2fad66afd73d2bf",
+            "structured_8c71665858a22f27019db0d4c7747844631970f49283bde415d154029464e3d2",
+            "structured_bbe5c29156d81fb6e4969639b7d9e5859ea4820d90c66352650082a3736ccc93",
+            "structured_8c9fd32be8192bfe48d34ae06cb89477aa8d581839dc10f37b27ab2230807a16",
+            "structured_ac5c84c8378b70219942140259faaf644da9339720263805634c065b08582c72",
+            "structured_6aa3e6dc939c3de3fbdf0962118294aa90751c1804829c21289951283ee44409",
+            "structured_e30f77bd016923f2b5f03deed9eed49fc71bdd40e4ef56680b19dcb1b1ec346e"
+          ]
+        },
+        {
+          "title": "Return to previous source platform state",
+          "description": "Keep source VM unchanged until final cutover and restore DNS/routing if validation fails.",
+          "references": [
+            "structured_f5562f2795362ace0a696a2cdbd788a5ec68d6b2b4ab9f92a11f688f275b7d73",
+            "structured_04ac86f0bc9cbbf69a6cc5912c59abf0c4c653b76fe05bbde2fad66afd73d2bf",
+            "structured_8c71665858a22f27019db0d4c7747844631970f49283bde415d154029464e3d2",
+            "structured_bbe5c29156d81fb6e4969639b7d9e5859ea4820d90c66352650082a3736ccc93",
+            "structured_8c9fd32be8192bfe48d34ae06cb89477aa8d581839dc10f37b27ab2230807a16",
+            "structured_ac5c84c8378b70219942140259faaf644da9339720263805634c065b08582c72",
+            "structured_6aa3e6dc939c3de3fbdf0962118294aa90751c1804829c21289951283ee44409",
+            "structured_e30f77bd016923f2b5f03deed9eed49fc71bdd40e4ef56680b19dcb1b1ec346e"
+          ]
+        }
+      ]
+    },
+    {
+      "queryId": "v3-validation-09",
+      "query": "Where do I configure a static route on the firewall?",
+      "product": "NGFW",
+      "latencyMs": 255.08261800000037,
+      "grounding": {
+        "status": "UNVERIFIED_TEMPLATE",
+        "answerReady": false,
+        "referenceCount": 8,
+        "stepCount": 0,
+        "issues": [],
+        "limitation": "Plan steps are generated from fixed templates. Related references do not establish claim-level support or answer correctness; verify against the requested product and release before use."
+      },
+      "validation": {
+        "ok": false,
+        "errors": [
+          "precheck is required",
+          "steps are required",
+          "rollbackPlan is required",
+          "validationPlan is required"
+        ],
+        "grounding": {
+          "status": "UNVERIFIED_TEMPLATE",
+          "answerReady": false,
+          "referenceCount": 8,
+          "stepCount": 0,
+          "issues": [],
+          "limitation": "Plan steps are generated from fixed templates. Related references do not establish claim-level support or answer correctness; verify against the requested product and release before use."
+        }
+      },
+      "referenceIds": [
+        "structured_f819d0d64bfc303a2474246adf727be2a3462c67c66bdca00b56e31e9ebd37be",
+        "structured_39b37940f98dd32ead0d366f4c965999b5cba775659d6d63c05a509f30440e9b",
+        "structured_340fc9b12910b9d85d70af4eebe43967acb2086ad57e48d436fea4e61da6a4ff",
+        "structured_79ce6e7485199d58121cc98a18db00b206f289feebce51d36e485b4c09c3a944",
+        "structured_9fb2c927ed544da17bb0ffa2f6bc7632ac54bcd7d293b2a9760d2ecc29bbe3ac",
+        "structured_9d18e76162155484aeb5911d3ab1803d4a3fa9da77e3047c974a7cf779d9298b",
+        "structured_510c64dbf421ae4d76f9b2ff753867e33fd129ca8a1a17fb5bc82cb8634c17ca",
+        "structured_370e0ea20d4bb519652fb20e5a5ad6664b870c4deabe0c6a30f71648f0d139c9"
+      ],
+      "steps": []
+    },
+    {
+      "queryId": "v3-validation-10",
+      "query": "How do I configure the NTP authentication key?",
+      "product": "NGFW",
+      "latencyMs": 135.59067800000003,
+      "grounding": {
+        "status": "UNVERIFIED_TEMPLATE",
+        "answerReady": false,
+        "referenceCount": 8,
+        "stepCount": 0,
+        "issues": [],
+        "limitation": "Plan steps are generated from fixed templates. Related references do not establish claim-level support or answer correctness; verify against the requested product and release before use."
+      },
+      "validation": {
+        "ok": false,
+        "errors": [
+          "precheck is required",
+          "steps are required",
+          "rollbackPlan is required",
+          "validationPlan is required"
+        ],
+        "grounding": {
+          "status": "UNVERIFIED_TEMPLATE",
+          "answerReady": false,
+          "referenceCount": 8,
+          "stepCount": 0,
+          "issues": [],
+          "limitation": "Plan steps are generated from fixed templates. Related references do not establish claim-level support or answer correctness; verify against the requested product and release before use."
+        }
+      },
+      "referenceIds": [
+        "structured_85f7a5236fea822e293f8df0830c8bb702fac554459eff7288fbb1df289bd735",
+        "structured_9d49d87e6922156e786760ee52e07d3e1f387a312ba8f9c05fa8e58ef500681e",
+        "structured_58af43d7ca9830476328b168e75b00129b9aad1d258e5cfe95d5a424e57e0d9c",
+        "structured_891832bd70c1ba791d35b99d6211c1c48d0842cca84411984570e63b78bb1d1f",
+        "structured_ff1301f1e7341e080b8138b83fe8483562c0992e316a660e4edccb021fa77352",
+        "structured_9555629d2ddcaa53f0fbc22fbf3e0a7fc3f39d675ff94f1f9e23d4d6f6928b0a",
+        "structured_536f49b388b11074fcef58f27b53772d120a98162899bf240cc5b9bfa7ef9796",
+        "structured_990e1202856d2709ac30acdf17bbe36aba3e6ea1b5aebd1c254fc052eb4769e7"
+      ],
+      "steps": []
+    },
+    {
+      "queryId": "v3-validation-11",
+      "query": "Where are the firewall SNMP settings?",
+      "product": "NGFW",
+      "latencyMs": 134.58997099999988,
+      "grounding": {
+        "status": "UNVERIFIED_TEMPLATE",
+        "answerReady": false,
+        "referenceCount": 8,
+        "stepCount": 0,
+        "issues": [],
+        "limitation": "Plan steps are generated from fixed templates. Related references do not establish claim-level support or answer correctness; verify against the requested product and release before use."
+      },
+      "validation": {
+        "ok": false,
+        "errors": [
+          "precheck is required",
+          "steps are required",
+          "rollbackPlan is required",
+          "validationPlan is required"
+        ],
+        "grounding": {
+          "status": "UNVERIFIED_TEMPLATE",
+          "answerReady": false,
+          "referenceCount": 8,
+          "stepCount": 0,
+          "issues": [],
+          "limitation": "Plan steps are generated from fixed templates. Related references do not establish claim-level support or answer correctness; verify against the requested product and release before use."
+        }
+      },
+      "referenceIds": [
+        "structured_1b0ffbc04ec5f6cef38d241fae904472e5e03c765a0629e29113dae88f643f4c",
+        "structured_9fe2e2ce50dca0c19581a5e6692417741229d016c6a49ccaddf90e29830ae7f7",
+        "structured_392f697aa863b264259168e935b230e7e474f71c2dfa1651afb661aa70395edb",
+        "structured_cc04171dc5d018e4018635b6c294be51c51fbe19cef0d28c49733fdc6b0d809e",
+        "structured_8ffaf5cfa73ea1b76c649e4103ff5dcffc152c7d5947a6d64308919a3177f336",
+        "structured_d4bcef3dd626f051a5e3a89ce45afb018342b7f3ca3d3c903546750be194f08f",
+        "structured_59ec91e93b02f5ca73ec651875a4d132b7f633764358d82653034f446839fb9c",
+        "structured_7fcb596b55c1f7e717bdd95c79a11a888f43a46a667609d1c47ed505235a58a0"
+      ],
+      "steps": []
+    },
+    {
+      "queryId": "v3-validation-12",
+      "query": "How do I configure high availability link aggregation?",
+      "product": "NGFW",
+      "latencyMs": 126.12787100000014,
+      "grounding": {
+        "status": "UNVERIFIED_TEMPLATE",
+        "answerReady": false,
+        "referenceCount": 8,
+        "stepCount": 0,
+        "issues": [],
+        "limitation": "Plan steps are generated from fixed templates. Related references do not establish claim-level support or answer correctness; verify against the requested product and release before use."
+      },
+      "validation": {
+        "ok": false,
+        "errors": [
+          "precheck is required",
+          "steps are required",
+          "rollbackPlan is required",
+          "validationPlan is required"
+        ],
+        "grounding": {
+          "status": "UNVERIFIED_TEMPLATE",
+          "answerReady": false,
+          "referenceCount": 8,
+          "stepCount": 0,
+          "issues": [],
+          "limitation": "Plan steps are generated from fixed templates. Related references do not establish claim-level support or answer correctness; verify against the requested product and release before use."
+        }
+      },
+      "referenceIds": [
+        "structured_f1a52f90ff661b47d85153766f256b4ec2b21e515d8396c9f659ec6d9e83e13e",
+        "structured_43570db32d8c239872df9266c6f9bad71a39330cfabee517491793dfce1c3784",
+        "structured_d38468f84c9611e8510db7166349e099cc1da652cd0a11fac8e8b98511432f2f",
+        "structured_85ca9ca2a8807cf0bc345047a38038aa1eb0d8462792c54404b36771b6da62db",
+        "structured_6bcc615ec219d6efd9388088038f69ad43536fde3316c7f8b8d052ff9f3b6d7b",
+        "structured_e7833ebc22875857f1c20141e9b528b90add0c954b25a1e06510e07095527350",
+        "structured_31490649a5f910fcea47e97dc7d4fdcd58fcab18010692d712dac3ef942fd28f",
+        "structured_b031ecae33cd274dd3a46b411d1e7260003b682432495b257cfbebdaa5ac19e3"
+      ],
+      "steps": []
+    },
+    {
+      "queryId": "v3-no-01",
+      "query": "quuxzzorbitalflux",
+      "product": "HCI",
+      "latencyMs": 160.1751449999997,
+      "grounding": {
+        "status": "INSUFFICIENT_EVIDENCE",
+        "answerReady": false,
+        "referenceCount": 0,
+        "stepCount": 9,
+        "issues": [],
+        "limitation": "Plan steps are generated from fixed templates. Related references do not establish claim-level support or answer correctness; verify against the requested product and release before use."
+      },
+      "validation": {
+        "ok": false,
+        "errors": [
+          "manual or wiki references are required"
+        ],
+        "grounding": {
+          "status": "INSUFFICIENT_EVIDENCE",
+          "answerReady": false,
+          "referenceCount": 0,
+          "stepCount": 9,
+          "issues": [],
+          "limitation": "Plan steps are generated from fixed templates. Related references do not establish claim-level support or answer correctness; verify against the requested product and release before use."
+        }
+      },
+      "referenceIds": [],
+      "steps": [
+        {
+          "title": "Confirm node and license readiness",
+          "description": "Verify node count, serial/license status, management IPs, DNS/NTP, and hardware health.",
+          "references": []
+        },
+        {
+          "title": "Validate management and storage networks",
+          "description": "Verify management reachability, storage network isolation, NIC mapping, link speed, VLAN and MTU consistency.",
+          "references": []
+        },
+        {
+          "title": "Confirm source VM migration readiness",
+          "description": "For VMware/Hyper-V/Nutanix source environments, confirm VM inventory, backup state, network mapping, and rollback window.",
+          "references": []
+        },
+        {
+          "title": "Prepare cluster configuration draft",
+          "description": "Prepare cluster name, node IP mapping, storage pool design, and VM network mapping in dry-run mode.",
+          "references": []
+        },
+        {
+          "title": "Apply cluster/network configuration",
+          "description": "Apply HCI/SCP cluster and network settings only after human approval.",
+          "references": []
+        },
+        {
+          "title": "Start migration or DR workflow",
+          "description": "Start VM migration, replication, failover rehearsal, or production cutover only after explicit approval.",
+          "references": []
+        },
+        {
+          "title": "Validate cluster health",
+          "description": "Check cluster status, node status, storage pool status, alarms, and NTP synchronization.",
+          "references": []
+        },
+        {
+          "title": "Validate VM network and migration result",
+          "description": "Confirm VM connectivity, IP mapping, application check, and rollback readiness.",
+          "references": []
+        },
+        {
+          "title": "Return to previous source platform state",
+          "description": "Keep source VM unchanged until final cutover and restore DNS/routing if validation fails.",
+          "references": []
+        }
+      ]
+    },
+    {
+      "queryId": "v3-no-02",
+      "query": "플라밍고양자조리법",
+      "product": "NGFW",
+      "latencyMs": 119.49347000000034,
+      "grounding": {
+        "status": "INSUFFICIENT_EVIDENCE",
+        "answerReady": false,
+        "referenceCount": 0,
+        "stepCount": 0,
+        "issues": [],
+        "limitation": "Plan steps are generated from fixed templates. Related references do not establish claim-level support or answer correctness; verify against the requested product and release before use."
+      },
+      "validation": {
+        "ok": false,
+        "errors": [
+          "precheck is required",
+          "steps are required",
+          "rollbackPlan is required",
+          "validationPlan is required",
+          "manual or wiki references are required"
+        ],
+        "grounding": {
+          "status": "INSUFFICIENT_EVIDENCE",
+          "answerReady": false,
+          "referenceCount": 0,
+          "stepCount": 0,
+          "issues": [],
+          "limitation": "Plan steps are generated from fixed templates. Related references do not establish claim-level support or answer correctness; verify against the requested product and release before use."
+        }
+      },
+      "referenceIds": [],
+      "steps": []
+    },
+    {
+      "queryId": "v3-no-03",
+      "query": "How do I bake a sourdough loaf?",
+      "product": "HCI",
+      "latencyMs": 159.79842699999972,
+      "grounding": {
+        "status": "INSUFFICIENT_EVIDENCE",
+        "answerReady": false,
+        "referenceCount": 0,
+        "stepCount": 9,
+        "issues": [],
+        "limitation": "Plan steps are generated from fixed templates. Related references do not establish claim-level support or answer correctness; verify against the requested product and release before use."
+      },
+      "validation": {
+        "ok": false,
+        "errors": [
+          "manual or wiki references are required"
+        ],
+        "grounding": {
+          "status": "INSUFFICIENT_EVIDENCE",
+          "answerReady": false,
+          "referenceCount": 0,
+          "stepCount": 9,
+          "issues": [],
+          "limitation": "Plan steps are generated from fixed templates. Related references do not establish claim-level support or answer correctness; verify against the requested product and release before use."
+        }
+      },
+      "referenceIds": [],
+      "steps": [
+        {
+          "title": "Confirm node and license readiness",
+          "description": "Verify node count, serial/license status, management IPs, DNS/NTP, and hardware health.",
+          "references": []
+        },
+        {
+          "title": "Validate management and storage networks",
+          "description": "Verify management reachability, storage network isolation, NIC mapping, link speed, VLAN and MTU consistency.",
+          "references": []
+        },
+        {
+          "title": "Confirm source VM migration readiness",
+          "description": "For VMware/Hyper-V/Nutanix source environments, confirm VM inventory, backup state, network mapping, and rollback window.",
+          "references": []
+        },
+        {
+          "title": "Prepare cluster configuration draft",
+          "description": "Prepare cluster name, node IP mapping, storage pool design, and VM network mapping in dry-run mode.",
+          "references": []
+        },
+        {
+          "title": "Apply cluster/network configuration",
+          "description": "Apply HCI/SCP cluster and network settings only after human approval.",
+          "references": []
+        },
+        {
+          "title": "Start migration or DR workflow",
+          "description": "Start VM migration, replication, failover rehearsal, or production cutover only after explicit approval.",
+          "references": []
+        },
+        {
+          "title": "Validate cluster health",
+          "description": "Check cluster status, node status, storage pool status, alarms, and NTP synchronization.",
+          "references": []
+        },
+        {
+          "title": "Validate VM network and migration result",
+          "description": "Confirm VM connectivity, IP mapping, application check, and rollback readiness.",
+          "references": []
+        },
+        {
+          "title": "Return to previous source platform state",
+          "description": "Keep source VM unchanged until final cutover and restore DNS/routing if validation fails.",
+          "references": []
+        }
+      ]
+    },
+    {
+      "queryId": "v3-no-04",
+      "query": "Quantum teleportation configuration",
+      "product": "NGFW",
+      "latencyMs": 110.68390999999974,
+      "grounding": {
+        "status": "INSUFFICIENT_EVIDENCE",
+        "answerReady": false,
+        "referenceCount": 0,
+        "stepCount": 0,
+        "issues": [],
+        "limitation": "Plan steps are generated from fixed templates. Related references do not establish claim-level support or answer correctness; verify against the requested product and release before use."
+      },
+      "validation": {
+        "ok": false,
+        "errors": [
+          "precheck is required",
+          "steps are required",
+          "rollbackPlan is required",
+          "validationPlan is required",
+          "manual or wiki references are required"
+        ],
+        "grounding": {
+          "status": "INSUFFICIENT_EVIDENCE",
+          "answerReady": false,
+          "referenceCount": 0,
+          "stepCount": 0,
+          "issues": [],
+          "limitation": "Plan steps are generated from fixed templates. Related references do not establish claim-level support or answer correctness; verify against the requested product and release before use."
+        }
+      },
+      "referenceIds": [],
+      "steps": []
+    }
+  ]
+}

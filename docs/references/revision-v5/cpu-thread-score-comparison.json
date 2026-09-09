@@ -1,0 +1,68 @@
+{
+  "status": "CPU_THREAD_COMPARISON_WITH_CHANGED_INPUTS_EXPLICITLY_EXCLUDED",
+  "beforeSha256": "0ee4823d57a2ac343eaf2bae846e06ee8da93f3fad39447668f383454fe846f4",
+  "afterSha256": "9ec1ffd01fcfae0968eec3491b05eb8e62d1663eb47fc85f7e7464d0f447bfc0",
+  "rows": [
+    {
+      "queryId": "v5-noanswer-01",
+      "verifiedInputCount": 26,
+      "changedInputCount": 14,
+      "strictWholeRequestComparison": false,
+      "maxAbsoluteScoreDifferenceOnMatchingInputs": 0.00001430511474609375,
+      "threads4Seconds": 58.236190025999996,
+      "threads8Seconds": 25.83238308300002,
+      "observedSpeedRatio": 2.2543870551503447
+    },
+    {
+      "queryId": "v5-noanswer-02",
+      "verifiedInputCount": 23,
+      "changedInputCount": 17,
+      "strictWholeRequestComparison": false,
+      "maxAbsoluteScoreDifferenceOnMatchingInputs": 0.0000171661376953125,
+      "threads4Seconds": 59.065037749000005,
+      "threads8Seconds": 25.482915964000043,
+      "observedSpeedRatio": 2.3178288478619065
+    },
+    {
+      "queryId": "v5-noanswer-03",
+      "verifiedInputCount": 9,
+      "changedInputCount": 31,
+      "strictWholeRequestComparison": false,
+      "maxAbsoluteScoreDifferenceOnMatchingInputs": 0.0000133514404296875,
+      "threads4Seconds": 49.65531668799999,
+      "threads8Seconds": 21.696292864000018,
+      "observedSpeedRatio": 2.288654425862379
+    },
+    {
+      "queryId": "v5-noanswer-04",
+      "verifiedInputCount": 2,
+      "changedInputCount": 0,
+      "strictWholeRequestComparison": true,
+      "maxAbsoluteScoreDifferenceOnMatchingInputs": 0,
+      "threads4Seconds": 2.889338758000027,
+      "threads8Seconds": 1.3411162470000564,
+      "observedSpeedRatio": 2.154428271570932
+    },
+    {
+      "queryId": "v5-noanswer-05",
+      "verifiedInputCount": 10,
+      "changedInputCount": 15,
+      "strictWholeRequestComparison": false,
+      "maxAbsoluteScoreDifferenceOnMatchingInputs": 0.00003910064697265625,
+      "threads4Seconds": 36.78665322200002,
+      "threads8Seconds": 16.007541793000012,
+      "observedSpeedRatio": 2.2980825974220833
+    },
+    {
+      "queryId": "v5-noanswer-06",
+      "verifiedInputCount": 5,
+      "changedInputCount": 35,
+      "strictWholeRequestComparison": false,
+      "maxAbsoluteScoreDifferenceOnMatchingInputs": 0.0000324249267578125,
+      "threads4Seconds": 56.80164289399999,
+      "threads8Seconds": 25.745159965,
+      "observedSpeedRatio": 2.2063037468487523
+    }
+  ],
+  "limits": "Six exposed development negative queries on the same BLRO host at different times. Only matching query/document input hashes are included in score differences; changed inputs are excluded and prevent whole-request equivalence claims. This checks the observed inputs and scores; it does not prove identical scores or latency for all future requests."
+}

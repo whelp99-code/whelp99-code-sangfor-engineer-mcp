@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "purpose": "Freeze development-only selection policy before E5 comparison and sealed holdout search",
+  "candidateCorpusSha256": "ee04fc7a022c3901ce8a7adce3a29c49bc23c8315e613165e035d4754793e8d4",
+  "fixtures": {
+    "revision-v1-qrels-v2.json": "f6e772f55ff326b62673002d2ada3fe437b26d42e0b66396cc4eef0a2f3af1a8",
+    "revision-v3-validation.json": "85dd4ed04074e3459f0dffb12de56f8002dd62526405e95b42edcab21503630a",
+    "revision-v5-korean-development.json": "1d7a45de784288b23072727d949d29320e35c83397064b289662f7dc684bc02e",
+    "revision-v5-client-korean-development.json": "177701bbc478fd5f076310e45873249938a6a5d16f8809a6105ef2170011b4b5"
+  },
+  "candidates": [
+    "structured BM25",
+    "structured MiniLM dense alpha=1",
+    "structured MiniLM hybrid alpha=0.5",
+    "structured MiniLM RRF alpha=0.5",
+    "structured E5 dense alpha=1",
+    "structured E5 hybrid alpha=0.5",
+    "structured E5 RRF alpha=0.5"
+  ],
+  "commonSettings": {
+    "requireSubjectMatch": true,
+    "reranker": false,
+    "k": 5,
+    "customerDocumentsAllowed": false
+  },
+  "eligibility": {
+    "originalHitRateMin": 0.95,
+    "englishDevelopmentHitRateMin": 0.9,
+    "clientKoreanDevelopmentHitRateMin": 0.9,
+    "eachNoAnswerFalsePositiveRateMax": 0.1,
+    "forbiddenHitsMax": 0,
+    "semanticCandidatesRequireVerifiedFullCorpusAndActualQueryInference": true
+  },
+  "ordering": [
+    "Highest minimum hit rate across original, English development, client-translated Korean development",
+    "Highest arithmetic mean MRR across those three sets",
+    "Lowest measured p95 latency; prefer BM25 on an exact tie"
+  ],
+  "rawKorean": "Report separately as backend diagnostic. Translated Korean is explicitly an MCP client workflow; never relabel it as raw Korean backend success. A server-only consumer does not receive this translation automatically.",
+  "sealedHoldout": "Unopened. Select and freeze one candidate first, then evaluate original frozen query text without silently replacing questions. Any separately client-translated run must preserve the original, use a frozen pre-search translation manifest, and report its distinct inputs. Do not tune against holdout results while calling them independent."
+}

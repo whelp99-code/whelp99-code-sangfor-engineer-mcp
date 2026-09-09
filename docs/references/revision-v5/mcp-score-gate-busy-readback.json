@@ -1,0 +1,47 @@
+{
+  "status": "ACTUAL_MCP_SCORE_GATE_EMPTY_VERSUS_BUSY_READBACK",
+  "transport": "actual-stdio-mcp",
+  "scorerEndpoint": "http://127.0.0.1:8008",
+  "floor": 3.5,
+  "order": "retrieval",
+  "configurationSha256": "05bb2aff6414a543bf32068503f7c953fb9f552a133ce113260241589a85202c",
+  "limits": "Development diagnostic setting, not selected final floor. No positive answer quality claim. A separate calibration inference was already active.",
+  "absentVersion": {
+    "queryId": "no-hci-9999",
+    "response": {
+      "jsonrpc": "2.0",
+      "id": 2,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "[]"
+          }
+        ],
+        "structuredContent": [],
+        "isError": false
+      }
+    }
+  },
+  "busyInference": {
+    "queryId": "hci-cli-6113",
+    "observedBusyBeforeCall": true,
+    "seconds": 0.803748834,
+    "response": {
+      "jsonrpc": "2.0",
+      "id": 3,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "RAG_SCORE_GATE_UNAVAILABLE"
+          }
+        ],
+        "isError": true
+      }
+    }
+  },
+  "sourceCommit": "f09528217970c42e0d1a3489e375fefdb443f58b",
+  "verificationScriptSha256": "5eb5c3eaf15d7c48b735a2638d7d4562e53fdcb8626a7633710e544176f62f70",
+  "diagnosticCorrection": "An earlier attempt set the unused BASE_URL variable and reached the default scorer endpoint. That attempt is excluded; this run used SANGFOR_LOCAL_RERANK_URL and checked the configured endpoint model/revision and busy state."
+}

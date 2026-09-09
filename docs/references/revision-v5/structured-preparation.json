@@ -1,0 +1,11 @@
+{
+  "sourceSha256": "55107e56f6ee22845894dcc7d16eb00c5b5c3887af451dd255d1965a7000b294",
+  "candidateSha256": "ee04fc7a022c3901ce8a7adce3a29c49bc23c8315e613165e035d4754793e8d4",
+  "sourceChunks": 66767,
+  "candidateChunks": 39789,
+  "documentGroups": 18399,
+  "chromeRemoved": 10123,
+  "duplicatesRemoved": 361,
+  "allVectorsInvalidated": true,
+  "promotionAuthorized": false
+}

@@ -1,0 +1,40 @@
+{
+  "status": "STAGED_NOT_ACTIVATED",
+  "sourceRef": "f630655",
+  "archiveSha256": "7401eca8536a3b74283c7d290e32c526795f478bb7c27b337f74a4bd9fca6644",
+  "path": "/home/blro/orca/projects/sangfor-engineer-mcp/releases/f630655",
+  "provenance": "git archive; remote SHA verified before fresh extraction",
+  "validation": {
+    "install": "corepack pnpm install --frozen-lockfile passed; 10.28.1",
+    "initialFailures": [
+      "Prisma client not generated: lint failed; db:generate resolved",
+      "zip/unzip absent: first full suite failed; official Ubuntu packages extracted into isolated user tool path, no skipped assertions added"
+    ],
+    "lint": "passed after db:generate",
+    "build": "passed",
+    "tests": {
+      "passed": 3332,
+      "skipped": 102,
+      "failed": 0,
+      "testFilesPassed": 430,
+      "testFilesSkipped": 15,
+      "seconds": 35.99,
+      "remoteLog": "/home/blro/orca/projects/sangfor-engineer-mcp/experiments/f630655-tests.log"
+    },
+    "smoke": "118 tools passed",
+    "browserBoundary": "BLRO_READY_BROWSER_BOUNDARY_PASS",
+    "scorecard": "96/100; annotation warning remains"
+  },
+  "operationalState": "start-mcp.sh unchanged; no project user service observed; unrelated evoharvest database not reused",
+  "archiveGitMetadata": "Empty git init only for root-resolution/check-ignore tests; no fabricated commit history",
+  "ci": {
+    "sourceRef": "f630655",
+    "run": 34328491479,
+    "verify": "success",
+    "postgres-authority": "success",
+    "verify-jm-endpoint": "success",
+    "validationRun": 34328491643,
+    "validate": "success"
+  },
+  "limits": "Not activated; independent review, actual operational readiness and runtime cutover remain incomplete."
+}

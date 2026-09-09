@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "status": "DEVELOPMENT_SELECTION_POLICY_BEFORE_FINAL_FLOOR_SELECTION",
+  "independence": "Some development scores were observed before this policy was authored. Holdout-2 remains unopened and is excluded from calibration.",
+  "fixtures": {
+    "revision-v1-qrels-v2": {
+      "sha256": "f6e772f55ff326b62673002d2ada3fe437b26d42e0b66396cc4eef0a2f3af1a8",
+      "hitRateAt5Min": 0.95,
+      "noAnswerFalsePositiveRateMax": 0.1
+    },
+    "revision-v3-validation": {
+      "sha256": "85dd4ed04074e3459f0dffb12de56f8002dd62526405e95b42edcab21503630a",
+      "hitRateAt5Min": 0.9,
+      "noAnswerFalsePositiveRateMax": 0.1
+    },
+    "revision-v5-client-korean-development": {
+      "sha256": "177701bbc478fd5f076310e45873249938a6a5d16f8809a6105ef2170011b4b5",
+      "hitRateAt5Min": 0.9,
+      "noAnswerFalsePositiveRateMax": 0.1
+    },
+    "revision-v5-client-holdout": {
+      "sha256": "14ed95ed68c22a9c6fc81f3d38af0c0ac487ed597f55825ff5ed43c77cac280d",
+      "hitRateAt5Min": 0.9,
+      "noAnswerFalsePositiveRateMax": 0.1
+    }
+  },
+  "model": "Qwen/Qwen3-Reranker-0.6B",
+  "revision": "e61197ed45024b0ed8a2d74b80b4d909f1255473",
+  "configurationSha256": "05bb2aff6414a543bf32068503f7c953fb9f552a133ce113260241589a85202c",
+  "corpusSha256": "ff1118e44d4c1f21e7e465f6e1d66fcb0f4a08a09e9f1f7fbc098054c3febfa0",
+  "requireCompleteScores": true,
+  "requireNoFailuresOrDegradedRetrieval": true,
+  "forbiddenHitsMax": 0,
+  "floorCandidates": "Midpoints between consecutive distinct critical scores: highest relevant score already in top 5 for each positive query; highest score for each no-answer query. These define intervals where the hit/no-answer outcome is unchanged. No unbounded endpoint interval can qualify unless separately justified.",
+  "ordering": [
+    "Highest minimum positive Hit@5 across the four development fixtures",
+    "Lowest maximum no-answer false-positive rate across the four fixtures",
+    "Widest eligible critical-score interval (use its midpoint, not an observed score boundary)",
+    "Highest mean MRR across the four fixtures",
+    "Highest floor as deterministic final tie-break"
+  ],
+  "onNoEligibleFloor": "Do not enable the filter as an accepted candidate or evaluate holdout-2. Preserve failures and improve the development pipeline.",
+  "acceptance": "A selected floor is a development candidate only. Freeze it and the complete runtime configuration before holdout-2 and actual answer/citation evaluation. No threshold change or label replacement after opening that set."
+}

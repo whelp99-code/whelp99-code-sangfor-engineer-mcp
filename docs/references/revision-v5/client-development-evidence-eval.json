@@ -1,0 +1,127 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-09-09T02:12:00.095Z",
+  "contextSha256": "f14745f2ebe56d6a4bf425d7d8f9dbe7e7dfd59ae0eef88160bce727c16bf1cc",
+  "answersSha256": "5cb762e7f56c23996ca19cfcc7445dbac12db5dba968525b2aa74775633ba91c",
+  "queryCount": 16,
+  "citationIntegrityFailures": 0,
+  "answered": 11,
+  "partial": 1,
+  "abstained": 4,
+  "semanticAccuracy": null,
+  "limitation": "Exact captured quotations and product/version integrity do not prove that every answer claim follows from those quotations. Independent semantic review is still required.",
+  "rows": [
+    {
+      "queryId": "v3-validation-01",
+      "status": "answered",
+      "citationCount": 3,
+      "citationIntegrityPass": true,
+      "issues": []
+    },
+    {
+      "queryId": "v3-validation-02",
+      "status": "answered",
+      "citationCount": 1,
+      "citationIntegrityPass": true,
+      "issues": []
+    },
+    {
+      "queryId": "v3-validation-03",
+      "status": "answered",
+      "citationCount": 2,
+      "citationIntegrityPass": true,
+      "issues": []
+    },
+    {
+      "queryId": "v3-validation-04",
+      "status": "answered",
+      "citationCount": 4,
+      "citationIntegrityPass": true,
+      "issues": []
+    },
+    {
+      "queryId": "v3-validation-05",
+      "status": "answered",
+      "citationCount": 2,
+      "citationIntegrityPass": true,
+      "issues": []
+    },
+    {
+      "queryId": "v3-validation-06",
+      "status": "answered",
+      "citationCount": 3,
+      "citationIntegrityPass": true,
+      "issues": []
+    },
+    {
+      "queryId": "v3-validation-07",
+      "status": "answered",
+      "citationCount": 2,
+      "citationIntegrityPass": true,
+      "issues": []
+    },
+    {
+      "queryId": "v3-validation-08",
+      "status": "answered",
+      "citationCount": 1,
+      "citationIntegrityPass": true,
+      "issues": []
+    },
+    {
+      "queryId": "v3-validation-09",
+      "status": "answered",
+      "citationCount": 2,
+      "citationIntegrityPass": true,
+      "issues": []
+    },
+    {
+      "queryId": "v3-validation-10",
+      "status": "partial",
+      "citationCount": 1,
+      "citationIntegrityPass": true,
+      "issues": []
+    },
+    {
+      "queryId": "v3-validation-11",
+      "status": "answered",
+      "citationCount": 2,
+      "citationIntegrityPass": true,
+      "issues": []
+    },
+    {
+      "queryId": "v3-validation-12",
+      "status": "answered",
+      "citationCount": 3,
+      "citationIntegrityPass": true,
+      "issues": []
+    },
+    {
+      "queryId": "v3-no-01",
+      "status": "abstained",
+      "citationCount": 0,
+      "citationIntegrityPass": true,
+      "issues": []
+    },
+    {
+      "queryId": "v3-no-02",
+      "status": "abstained",
+      "citationCount": 0,
+      "citationIntegrityPass": true,
+      "issues": []
+    },
+    {
+      "queryId": "v3-no-03",
+      "status": "abstained",
+      "citationCount": 0,
+      "citationIntegrityPass": true,
+      "issues": []
+    },
+    {
+      "queryId": "v3-no-04",
+      "status": "abstained",
+      "citationCount": 0,
+      "citationIntegrityPass": true,
+      "issues": []
+    }
+  ]
+}

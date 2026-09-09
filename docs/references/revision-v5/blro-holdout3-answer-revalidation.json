@@ -1,0 +1,375 @@
+{
+  "schemaVersion": 1,
+  "contextSha256": "6ceb1439461271c2f0c7a0fa0e5c2b0ab7d86be149090f9ae55c5c0a63652fc6",
+  "generation": "Existing local-client answers revalidated against byte-identical captured BLRO evidence; no new remote LLM generation",
+  "independentReview": false,
+  "modelIdentity": "Not independently observed",
+  "answers": [
+    {
+      "queryId": "v5-holdout3-01",
+      "product": "HCI",
+      "status": "answered",
+      "answer": "Evidence version 6.10.0: 일대일 마이그레이션에는 시스템 관리자에게 저장소 자원을 할당할 필요가 없습니다. 추가할 수 있는 종류는 로컬 저장소와 iSCSI 저장소입니다.",
+      "citations": [
+        {
+          "sourceId": "data/sources/raw/support_10_1070_2126550.md",
+          "chunkId": "structured_de84519bd4bca327d9d67a64832db5caea1a0baeb19504a3b7ef15d7fe5b01bf",
+          "product": "HCI",
+          "quote": "There is no need to allocate storage resources to the system administrator for the point-to-point migration.",
+          "quoteStart": 224,
+          "textSha256": "4d5fe18b140b77aa9228fe65fe36ef7c9afca627356123615c0437b39ed8e649",
+          "version": "6.10.0"
+        },
+        {
+          "sourceId": "data/sources/raw/support_10_1070_2126550.md",
+          "chunkId": "structured_de84519bd4bca327d9d67a64832db5caea1a0baeb19504a3b7ef15d7fe5b01bf",
+          "product": "HCI",
+          "quote": "Currently only supports adding local storage and iSCSI storage.",
+          "quoteStart": 336,
+          "textSha256": "4d5fe18b140b77aa9228fe65fe36ef7c9afca627356123615c0437b39ed8e649",
+          "version": "6.10.0"
+        }
+      ],
+      "evidenceVersion": "6.10.0"
+    },
+    {
+      "queryId": "v5-holdout3-02",
+      "product": "HCI",
+      "status": "answered",
+      "answer": "Evidence version 6.11.1R1: After import, open Compute and select the VM. Choose More > Edit, click eth0, select the corresponding connected device, and click OK. The imported NIC is initially not connected to the switch.",
+      "citations": [
+        {
+          "sourceId": "data/sources/raw/support_10_1229_2639791.md",
+          "chunkId": "structured_b755b375ccd9e71c27ab9245ba2d1a894c1d0370702a5f9f1fd728408733bafd",
+          "product": "HCI",
+          "quote": "At this time, the virtual machine NIC is not connected to the switch. Click Compute and move to the VM. Click More > Edit to enter the VM editing interface. Click eth0, select the corresponding connected device, and click OK.",
+          "quoteStart": 574,
+          "textSha256": "f409f3f8979935b55bcc84822c8fb7d7ade3aabb43b531439290b014db95cea2",
+          "version": "6.11.1R1"
+        }
+      ],
+      "evidenceVersion": "6.11.1R1"
+    },
+    {
+      "queryId": "v5-holdout3-03",
+      "product": "NGFW",
+      "status": "answered",
+      "answer": "Evidence version 8.0.107: 고객이 직접 수행하도록 권장된 작업이 아닙니다. 서비스 제공자 또는 Sangfor 기술지원에 요청해야 하며, 작업은 업무를 중단시킬 수 있습니다. 문서가 제시하는 지원 담당자의 순서는 0001-0004_handle.sh 실행 후 사전 업그레이드 검사 패키지 재설치입니다. 여기서는 작업을 실행하지 않았습니다.",
+      "citations": [
+        {
+          "sourceId": "data/sources/raw/support_21_1095_2653431.md",
+          "chunkId": "structured_6dcb34bbeb32f9189c9a5f7b5c63897dbdf873bb2634d63bd42991c1bd34b1ae",
+          "product": "NGFW",
+          "quote": "The following operations are not recommended for customers. Please contact the service provider or Sangfor technical support to perform these operations. The operations may interrupt customers' business.",
+          "quoteStart": 175,
+          "textSha256": "b539c89f64a4f2c08474bec91195dc743f4c2c844be69a6221c4b2b0a57ee0a2",
+          "version": "8.0.107"
+        },
+        {
+          "sourceId": "data/sources/raw/support_21_1095_2653431.md",
+          "chunkId": "structured_6dcb34bbeb32f9189c9a5f7b5c63897dbdf873bb2634d63bd42991c1bd34b1ae",
+          "product": "NGFW",
+          "quote": "Solution: Run the 0001-0004_handle.sh script, then reinstall the pre-upgrade check package.",
+          "quoteStart": 619,
+          "textSha256": "b539c89f64a4f2c08474bec91195dc743f4c2c844be69a6221c4b2b0a57ee0a2",
+          "version": "8.0.107"
+        }
+      ],
+      "evidenceVersion": "8.0.107"
+    },
+    {
+      "queryId": "v5-holdout3-04",
+      "product": "NGFW",
+      "status": "answered",
+      "answer": "Evidence version 8.0.106: Log in to Central Manager as administrator, open System > Upgrade > Branch Device Upgrade and choose Add Scheduled Upgrade Task. After the initial configuration, click Next to select target devices and the bulk upgrade scope. Click Next again to set the schedule; the task triggers at that time.",
+      "citations": [
+        {
+          "sourceId": "data/sources/raw/support_21_1093_2637203.md",
+          "chunkId": "structured_e0e3cdf9f1c63e828415599769c360dbf490d19e79a9bc8953b11e0f29691335",
+          "product": "NGFW",
+          "quote": "Log in to the Central Manager console as the administrator. Go to System > Upgrade > Branch Device Upgrade, click Add Scheduled Upgrade Task, and complete the configurations.",
+          "quoteStart": 164,
+          "textSha256": "afab38204bf36999a161f5111c13ec2a11187dc75fd46191487111030efd9bb3",
+          "version": "8.0.106"
+        },
+        {
+          "sourceId": "data/sources/raw/support_21_1093_2637203.md",
+          "chunkId": "structured_e0e3cdf9f1c63e828415599769c360dbf490d19e79a9bc8953b11e0f29691335",
+          "product": "NGFW",
+          "quote": "Step 2.Click Next, select the devices to be upgraded, and define the bulk upgrade scope. Step 3.Click Next and configure a scheduled upgrade task. Step 4.The upgrade task will be automatically triggered at the scheduled time.",
+          "quoteStart": 662,
+          "textSha256": "afab38204bf36999a161f5111c13ec2a11187dc75fd46191487111030efd9bb3",
+          "version": "8.0.106"
+        }
+      ],
+      "evidenceVersion": "8.0.106"
+    },
+    {
+      "queryId": "v5-holdout3-05",
+      "product": "NDR",
+      "status": "answered",
+      "answer": "Evidence version 3.0.98: Outbound Traffic에서 오른쪽 위의 Last 24 hours 또는 Last 7 days를 선택합니다. Settings에서 Asset Location을 변경하고 드롭다운에서 필요한 항목을 선택합니다. Src와 Location의 Domestic 또는 Overseas를 선택하면 해당 자산 그룹의 위치별 외부 전송 트래픽을 볼 수 있습니다.",
+      "citations": [
+        {
+          "sourceId": "data/sources/raw/support_24_1219_2630689.md",
+          "chunkId": "structured_9b3997d4302c9f412370499091ba0a2609ff3d6eca91a39211690ed23bd637bf",
+          "product": "NDR",
+          "quote": "You can query outbound traffic within a specific time range by selecting Last 24 hours or Last 7 days in the upper-right corner. Click Settings to change the Asset Location. Select an option from the Asset Location drop-down list as needed. Select Src and Location (valid values: Domestic or Overseas) to view the outbound traffic of the selected asset group in the selected location.",
+          "quoteStart": 150,
+          "textSha256": "3461a0b548deaec80ce9a6a1d368bd759d11ac3fc6ea54952a16ce91b82a6503",
+          "version": "3.0.98"
+        }
+      ],
+      "evidenceVersion": "3.0.98"
+    },
+    {
+      "queryId": "v5-holdout3-06",
+      "product": "NDR",
+      "status": "answered",
+      "answer": "Evidence version 3.0.92: Holistic is displayed only after a branch is configured, so missing branch configuration can explain its absence. Hover the mouse over a configuration icon to see a brief description.",
+      "citations": [
+        {
+          "sourceId": "data/sources/raw/support_24_1078_2634604.md",
+          "chunkId": "structured_b97a07bc743d0a098d04497841a5d6b60330d59e14244ece438a3e81e678a029",
+          "product": "NDR",
+          "quote": "All icons on the configuration page can display a brief description of the current configuration item when the mouse cursor is placed on this icon.",
+          "quoteStart": 382,
+          "textSha256": "ee832a2d52f55d44aed9c9375fe0b393b458a4ee9099900263f819dbc86f76e1",
+          "version": "3.0.92"
+        },
+        {
+          "sourceId": "data/sources/raw/support_24_1078_2634604.md",
+          "chunkId": "structured_b97a07bc743d0a098d04497841a5d6b60330d59e14244ece438a3e81e678a029",
+          "product": "NDR",
+          "quote": "The holistic module is only displayed after the branch is configured.",
+          "quoteStart": 530,
+          "textSha256": "ee832a2d52f55d44aed9c9375fe0b393b458a4ee9099900263f819dbc86f76e1",
+          "version": "3.0.92"
+        }
+      ],
+      "evidenceVersion": "3.0.92"
+    },
+    {
+      "queryId": "v5-holdout3-07",
+      "product": "HCI_SCP",
+      "status": "answered",
+      "answer": "Evidence version 6.11.3: 가능합니다. IP 풀 하나를 여러 리소스 풀에 연결할 수 있고 반대 방향의 다중 연결도 가능합니다. 리소스 풀에 연결된 탄력적 IP 풀은 해당 리소스 풀과 연결된 모든 VPC 네트워크에서 볼 수 있습니다.",
+      "citations": [
+        {
+          "sourceId": "data/sources/raw/support_45_1379_2663166.md",
+          "chunkId": "structured_ca2ba91078fd2988d507ccb6e6f6992e8b8207e2246ca99389c230f3c91ea5c2",
+          "product": "HCI_SCP",
+          "quote": "IP pool can be associated with multiple resource pools and vice versa. Elastic IP pools associated with a resource pool can be viewed in all VPC networks associated with that resource pool.",
+          "quoteStart": 119,
+          "textSha256": "fae9628276ac766ac2c42d46ea42410e50fcaada58b63e69b9cce7d534a1f73d",
+          "version": "6.11.3"
+        }
+      ],
+      "evidenceVersion": "6.11.3"
+    },
+    {
+      "queryId": "v5-holdout3-08",
+      "product": "HCI_SCP",
+      "status": "answered",
+      "answer": "Evidence version 6.12.0: In aDeploy, open Pre-change Check > Pre-expansion Check, enter the cluster information and click Log In. Choose Datastore Expansion. In Select Disk, select the datastore ID and then a disk, and click Start Check.",
+      "citations": [
+        {
+          "sourceId": "data/sources/raw/support_45_1388_2656896.md",
+          "chunkId": "structured_0df15ccccccc281f47cae6d07303f36c6356bc657cefdea4a5d747b03b434306",
+          "product": "HCI_SCP",
+          "quote": "(2) Expand a datastore Enter aDeploy and click the Pre-change Check tab. Then, click Pre-expansion Check. In the pop-up window, enter the cluster information and click Log In. In the Pre-expansion Check pop-up window, select Datastore Expansion. In the Select Disk pop-up window, select a datastore ID. Then, select a disk and click Start Check.",
+          "quoteStart": 550,
+          "textSha256": "cc5153093f516f09f99c5115763ea238194295a0942feac0e739b58b5a7a3d36",
+          "version": "6.12.0"
+        }
+      ],
+      "evidenceVersion": "6.12.0"
+    },
+    {
+      "queryId": "v5-holdout3-09",
+      "product": "IAG",
+      "status": "answered",
+      "answer": "인용 지원 사례의 제품 버전은 명시되지 않았습니다. 지원 사례에서는 Audit Policy의 Access to unidentified applications 옵션을 선택하면 미식별 패킷의 주소·포트를 감사하면서 PC에 UDP 2330 요청을 보내는 것으로 설명합니다. 제시된 조정은 해당 감사 옵션을 해제하는 것입니다. 문서에는 방화벽 신뢰 목록에 이 동작을 추가하는 대안도 있으나 여기서는 설정을 변경하지 않았습니다.",
+      "citations": [
+        {
+          "sourceId": "data/sources/raw/support_case_2_33574.md",
+          "chunkId": "structured_f62fc60e5f16f5c5dc9d47073849256a29f2b8db36a51d3e0147498a28f8e880",
+          "product": "IAG",
+          "quote": "After selecting “ Access to unidentified applications (on which address and port. It incurs massive logs) “, the device will audit the currently unrecognized data packet, record the address and port, and send a packet request to the PC through UDP port 2330.",
+          "quoteStart": 615,
+          "textSha256": "a1234d74251e56fc4504bcf6f17b21c06dc66efe278f45fbc05a3d00db56dfa1"
+        },
+        {
+          "sourceId": "data/sources/raw/support_case_2_33574.md",
+          "chunkId": "structured_f62fc60e5f16f5c5dc9d47073849256a29f2b8db36a51d3e0147498a28f8e880",
+          "product": "IAG",
+          "quote": "The audit policy can be unchecked with the “Access to unidentified applications” option.",
+          "quoteStart": 946,
+          "textSha256": "a1234d74251e56fc4504bcf6f17b21c06dc66efe278f45fbc05a3d00db56dfa1"
+        },
+        {
+          "sourceId": "data/sources/raw/support_case_2_33574.md",
+          "chunkId": "structured_f62fc60e5f16f5c5dc9d47073849256a29f2b8db36a51d3e0147498a28f8e880",
+          "product": "IAG",
+          "quote": "You can try to add this behavior to the trust list on the firewall",
+          "quoteStart": 1035,
+          "textSha256": "a1234d74251e56fc4504bcf6f17b21c06dc66efe278f45fbc05a3d00db56dfa1"
+        }
+      ]
+    },
+    {
+      "queryId": "v5-holdout3-10",
+      "product": "IAG",
+      "status": "answered",
+      "answer": "인용 지원 사례의 제품 버전은 명시되지 않았습니다. In this support case the audit policy was disabled. Create or enable an audit policy so IAM can log Internet traffic. This is the case about only rejection logs, not the separate service-policy cases about missing rejection logs.",
+      "citations": [
+        {
+          "sourceId": "data/sources/raw/support_case_2_33602.md",
+          "chunkId": "structured_1593435ac5bc545d465f490b4f78cfab30bbc9338d07ef9deb211b9dfb075587",
+          "product": "IAG",
+          "quote": "Check on the Audit policy found out the audit policy has been disabled.",
+          "quoteStart": 256,
+          "textSha256": "2396d51937b9c8204ae8f95abc4ea29d9e33d5d21910c2cd9d2163262a8eaaa6"
+        },
+        {
+          "sourceId": "data/sources/raw/support_case_2_33602.md",
+          "chunkId": "structured_1593435ac5bc545d465f490b4f78cfab30bbc9338d07ef9deb211b9dfb075587",
+          "product": "IAG",
+          "quote": "Create or enable audit policy to allow IAM to log the Internet traffic.",
+          "quoteStart": 412,
+          "textSha256": "2396d51937b9c8204ae8f95abc4ea29d9e33d5d21910c2cd9d2163262a8eaaa6"
+        }
+      ]
+    },
+    {
+      "queryId": "v5-holdout3-11",
+      "product": "SCC",
+      "status": "answered",
+      "answer": "Evidence version 2.6.0: 데이터 센터 통신을 중지하면 해당 데이터 센터 객체에 대한 작업이 Managed Cloud Services에 동기화되지 않습니다. 데이터 센터에 이상이나 장애가 있을 때 Managed Cloud Services에 미칠 영향을 피하기 위해 사용하는 기능입니다.",
+      "citations": [
+        {
+          "sourceId": "data/sources/raw/support_32_1101_1540500.md",
+          "chunkId": "structured_fb60745b67f0d5fab7b801405bc3c5c63d380f3533daafa903fb43e2025c9a74",
+          "product": "SCC",
+          "quote": "After communication is stopped, operations on objects in the data center will not be synced to Managed Cloud Services. Users can choose to stop communication when the data center is abnormal or fails to avoid impacts on Managed Cloud Services.",
+          "quoteStart": 182,
+          "textSha256": "843bbdaa1608af71f0e26010a2665e6ac9ac74c4a97805d81e89cb1a25f52732",
+          "version": "2.6.0"
+        }
+      ],
+      "evidenceVersion": "2.6.0"
+    },
+    {
+      "queryId": "v5-holdout3-12",
+      "product": "SCC",
+      "status": "answered",
+      "answer": "Evidence version 2.6.0: A user acting as the fulfillment person cannot send reminders and should fulfill the service as soon as possible. Copy the feedback link to invite customers to provide feedback; feedback is unavailable until the service is complete.",
+      "citations": [
+        {
+          "sourceId": "data/sources/raw/support_32_1101_1541400.md",
+          "chunkId": "structured_91ffd985edb33f3591e759c36e07a8d2f80f80c58c6e3afc7477d2bc661a410b",
+          "product": "SCC",
+          "quote": "Users cannot send reminders when acting as the fulfillment person of a service but need to fulfill the service as soon as possible.",
+          "quoteStart": 915,
+          "textSha256": "0fb79ade766945ce2ca34c0fb076b9cc742b6f7a54e94747230d5084fede9f53",
+          "version": "2.6.0"
+        },
+        {
+          "sourceId": "data/sources/raw/support_32_1101_1541400.md",
+          "chunkId": "structured_91ffd985edb33f3591e759c36e07a8d2f80f80c58c6e3afc7477d2bc661a410b",
+          "product": "SCC",
+          "quote": "Copy feedback link: Users can copy the feedback link and invite customers to give feedback. Note: No feedback can be given if the service is not complete.",
+          "quoteStart": 1047,
+          "textSha256": "0fb79ade766945ce2ca34c0fb076b9cc742b6f7a54e94747230d5084fede9f53",
+          "version": "2.6.0"
+        }
+      ],
+      "evidenceVersion": "2.6.0"
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-01",
+      "product": "HCI",
+      "status": "abstained",
+      "answer": "공개 문서로 현재 고객 장비 상태를 확인할 수 없습니다. 권한 있는 장비 조회 결과가 필요합니다.",
+      "citations": []
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-02",
+      "product": "NGFW",
+      "status": "abstained",
+      "answer": "공개 문서로 현재 고객 장비 상태를 확인할 수 없습니다. 권한 있는 장비 조회 결과가 필요합니다.",
+      "citations": []
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-03",
+      "product": "NDR",
+      "status": "abstained",
+      "answer": "공개 문서로 현재 고객 장비 상태를 확인할 수 없습니다. 권한 있는 장비 조회 결과가 필요합니다.",
+      "citations": []
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-04",
+      "product": "HCI_SCP",
+      "status": "abstained",
+      "answer": "공개 문서로 현재 고객 장비 상태를 확인할 수 없습니다. 권한 있는 장비 조회 결과가 필요합니다.",
+      "citations": []
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-05",
+      "product": "IAG",
+      "status": "abstained",
+      "answer": "공개 문서로 현재 고객 장비 상태를 확인할 수 없습니다. 권한 있는 장비 조회 결과가 필요합니다.",
+      "citations": []
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-06",
+      "product": "SCC",
+      "status": "abstained",
+      "answer": "공개 문서로 현재 고객 장비 상태를 확인할 수 없습니다. 권한 있는 장비 조회 결과가 필요합니다.",
+      "citations": []
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-07",
+      "product": "HCI",
+      "status": "abstained",
+      "answer": "검색된 문서에 요청한 기능을 뒷받침하는 근거가 없어 구성 방법을 제시할 수 없습니다.",
+      "citations": []
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-08",
+      "product": "NGFW",
+      "status": "abstained",
+      "answer": "검색된 문서에 요청한 기능을 뒷받침하는 근거가 없어 구성 방법을 제시할 수 없습니다.",
+      "citations": []
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-09",
+      "product": "NDR",
+      "status": "abstained",
+      "answer": "검색된 문서에 요청한 기능을 뒷받침하는 근거가 없어 구성 방법을 제시할 수 없습니다.",
+      "citations": []
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-10",
+      "product": "HCI_SCP",
+      "status": "abstained",
+      "answer": "검색된 문서에 요청한 기능을 뒷받침하는 근거가 없어 구성 방법을 제시할 수 없습니다.",
+      "citations": []
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-11",
+      "product": "IAG",
+      "status": "abstained",
+      "answer": "검색된 문서에 요청한 기능을 뒷받침하는 근거가 없어 구성 방법을 제시할 수 없습니다.",
+      "citations": []
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-12",
+      "product": "SCC",
+      "status": "abstained",
+      "answer": "검색된 문서에 요청한 기능을 뒷받침하는 근거가 없어 구성 방법을 제시할 수 없습니다.",
+      "citations": []
+    }
+  ],
+  "localContextSha256": "6ceb1439461271c2f0c7a0fa0e5c2b0ab7d86be149090f9ae55c5c0a63652fc6"
+}

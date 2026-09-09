@@ -1,0 +1,56 @@
+{
+  "status": "ACTUAL_MODEL_HTTP_CONCURRENCY_VERIFIED_NOT_QUALITY_ACCEPTANCE",
+  "executionHost": "blro01 through authenticated SSH loopback forwarding",
+  "model": "Qwen/Qwen3-Reranker-0.6B",
+  "revision": "e61197ed45024b0ed8a2d74b80b4d909f1255473",
+  "configurationSha256": "05bb2aff6414a543bf32068503f7c953fb9f552a133ce113260241589a85202c",
+  "scoringInputSha256": "733f9c0c293561982a4a77d4bbcfd3e0a1ecf2df1bc96ad8774d02bdef0445f6",
+  "busyHealth": {
+    "ok": true,
+    "model": "Qwen/Qwen3-Reranker-0.6B",
+    "revision": "e61197ed45024b0ed8a2d74b80b4d909f1255473",
+    "configurationSha256": "05bb2aff6414a543bf32068503f7c953fb9f552a133ce113260241589a85202c",
+    "busy": true
+  },
+  "overlappingRequest": {
+    "status": 503,
+    "retryAfter": "1",
+    "body": {
+      "detail": "Reranker is busy; inference was not started"
+    },
+    "seconds": 0.0022317087277770042
+  },
+  "firstRequestSeconds": 3.0257206787355244,
+  "firstResult": {
+    "model": "Qwen/Qwen3-Reranker-0.6B",
+    "revision": "e61197ed45024b0ed8a2d74b80b4d909f1255473",
+    "configurationSha256": "05bb2aff6414a543bf32068503f7c953fb9f552a133ce113260241589a85202c",
+    "results": [
+      {
+        "index": 0,
+        "score": 0.2785835266113281
+      },
+      {
+        "index": 1,
+        "score": -0.5929079055786133
+      }
+    ]
+  },
+  "subsequentResult": {
+    "model": "Qwen/Qwen3-Reranker-0.6B",
+    "revision": "e61197ed45024b0ed8a2d74b80b4d909f1255473",
+    "configurationSha256": "05bb2aff6414a543bf32068503f7c953fb9f552a133ce113260241589a85202c",
+    "results": [
+      {
+        "index": 0,
+        "score": 0.2785835266113281
+      },
+      {
+        "index": 1,
+        "score": -0.5929079055786133
+      }
+    ]
+  },
+  "serverSourceSha256": "d11d1d96b8eb3c39ef2e3c9ca02a9df7f3617d6709e94da99798b3859e9985e5",
+  "slotSourceSha256": "4c7172ebfc21e278e3f5c255dbcf3682c049c93aeb5fc3546356876407d1a9a5"
+}

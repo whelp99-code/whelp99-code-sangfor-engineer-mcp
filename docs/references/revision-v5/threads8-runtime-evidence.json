@@ -1,0 +1,7 @@
+{
+  "diagnosticSha256": "b8587b0529c9749e26d324ff691f66090d73da3548efc4bad09ba2e15293245e",
+  "threads": 8,
+  "loopbackPort": 8109,
+  "startupScriptSha256": "158000f2d8a5a75b2928d2edc487c10839e81a9dcea0234d1e3952f44dd05636",
+  "priorTimeoutReportSha256": "6b97f89c8dadd367b0efd62a00c89f278c38fef03a28530d3fac82d2dac5bffc"
+}

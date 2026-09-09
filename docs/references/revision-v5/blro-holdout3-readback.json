@@ -1,0 +1,155 @@
+{
+  "status": "STAGED_BLRO_MCP_READBACK_PASS_NOT_OPERATIONAL_ACTIVATION",
+  "release": "f630655",
+  "localContextSha256": "6ceb1439461271c2f0c7a0fa0e5c2b0ab7d86be149090f9ae55c5c0a63652fc6",
+  "remoteContextSha256": "6ceb1439461271c2f0c7a0fa0e5c2b0ab7d86be149090f9ae55c5c0a63652fc6",
+  "fixtureSha256": "ccc088e73edc4f1bb9c7b4cd46dab64c92aadce7d8bcc779ae00cb7b2e82e400",
+  "indexSha256": "ff1118e44d4c1f21e7e465f6e1d66fcb0f4a08a09e9f1f7fbc098054c3febfa0",
+  "rows": [
+    {
+      "queryId": "v5-holdout3-01",
+      "queryMatches": true,
+      "exactEvidenceMatches": true,
+      "hitCount": 3
+    },
+    {
+      "queryId": "v5-holdout3-02",
+      "queryMatches": true,
+      "exactEvidenceMatches": true,
+      "hitCount": 5
+    },
+    {
+      "queryId": "v5-holdout3-03",
+      "queryMatches": true,
+      "exactEvidenceMatches": true,
+      "hitCount": 1
+    },
+    {
+      "queryId": "v5-holdout3-04",
+      "queryMatches": true,
+      "exactEvidenceMatches": true,
+      "hitCount": 5
+    },
+    {
+      "queryId": "v5-holdout3-05",
+      "queryMatches": true,
+      "exactEvidenceMatches": true,
+      "hitCount": 1
+    },
+    {
+      "queryId": "v5-holdout3-06",
+      "queryMatches": true,
+      "exactEvidenceMatches": true,
+      "hitCount": 1
+    },
+    {
+      "queryId": "v5-holdout3-07",
+      "queryMatches": true,
+      "exactEvidenceMatches": true,
+      "hitCount": 5
+    },
+    {
+      "queryId": "v5-holdout3-08",
+      "queryMatches": true,
+      "exactEvidenceMatches": true,
+      "hitCount": 5
+    },
+    {
+      "queryId": "v5-holdout3-09",
+      "queryMatches": true,
+      "exactEvidenceMatches": true,
+      "hitCount": 1
+    },
+    {
+      "queryId": "v5-holdout3-10",
+      "queryMatches": true,
+      "exactEvidenceMatches": true,
+      "hitCount": 5
+    },
+    {
+      "queryId": "v5-holdout3-11",
+      "queryMatches": true,
+      "exactEvidenceMatches": true,
+      "hitCount": 1
+    },
+    {
+      "queryId": "v5-holdout3-12",
+      "queryMatches": true,
+      "exactEvidenceMatches": true,
+      "hitCount": 4
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-01",
+      "queryMatches": true,
+      "exactEvidenceMatches": true,
+      "hitCount": 0
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-02",
+      "queryMatches": true,
+      "exactEvidenceMatches": true,
+      "hitCount": 0
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-03",
+      "queryMatches": true,
+      "exactEvidenceMatches": true,
+      "hitCount": 0
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-04",
+      "queryMatches": true,
+      "exactEvidenceMatches": true,
+      "hitCount": 0
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-05",
+      "queryMatches": true,
+      "exactEvidenceMatches": true,
+      "hitCount": 0
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-06",
+      "queryMatches": true,
+      "exactEvidenceMatches": true,
+      "hitCount": 0
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-07",
+      "queryMatches": true,
+      "exactEvidenceMatches": true,
+      "hitCount": 0
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-08",
+      "queryMatches": true,
+      "exactEvidenceMatches": true,
+      "hitCount": 0
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-09",
+      "queryMatches": true,
+      "exactEvidenceMatches": true,
+      "hitCount": 0
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-10",
+      "queryMatches": true,
+      "exactEvidenceMatches": true,
+      "hitCount": 0
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-11",
+      "queryMatches": true,
+      "exactEvidenceMatches": true,
+      "hitCount": 0
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-12",
+      "queryMatches": true,
+      "exactEvidenceMatches": true,
+      "hitCount": 0
+    }
+  ],
+  "limits": "Actual remote stdio calls against pinned BLRO models and final corpus. Does not establish permanent service lifecycle, authority readiness, human review or operational switch."
+}

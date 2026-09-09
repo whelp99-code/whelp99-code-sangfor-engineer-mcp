@@ -65,6 +65,16 @@ function descriptor(value: unknown): Tool {
   return toolSchema.parse(stripProse(value));
 }
 
+// Revision v5 adds one bounded, optional read-only search input. Keep the
+// immutable baseline and IAG fixtures intact; enumerate the new contract here.
+function withRagContext(tool: Tool): Tool {
+  if (tool.name !== 'sangfor_rag_search') return tool;
+  return { ...tool, inputSchema: { ...tool.inputSchema, properties: {
+    ...(tool.inputSchema.properties as Record<string, unknown>),
+    contextNeighbors: { type: 'integer', minimum: 0, maximum: 2 },
+  } } };
+}
+
 function assertReviewedSurface(tools: readonly Tool[], baseline: Baseline, delta: Delta): void {
   const byName = new Map(tools.map((tool) => [tool.name, tool]));
   const expectedNames = [...baseline.tools.map(({ name }) => name), ...IAG_ADDITIONS].sort();
@@ -72,7 +82,7 @@ function assertReviewedSurface(tools: readonly Tool[], baseline: Baseline, delta
   expect(new Set(expectedNames).size).toBe(delta.finalToolCount);
   expect(delta.reviewedChanges.map(({ name }) => name)).toEqual(['sangfor_evaluate_config']);
   const changes = new Map(delta.reviewedChanges.map((tool) => [tool.name, tool]));
-  for (const expected of baseline.tools) expect(byName.get(expected.name), expected.name).toEqual(changes.get(expected.name) ?? expected);
+  for (const expected of baseline.tools) expect(byName.get(expected.name), expected.name).toEqual(withRagContext(changes.get(expected.name) ?? expected));
   expect(delta.approvedAdditions.map(({ name }) => name).sort()).toEqual([...IAG_ADDITIONS]);
   for (const expected of delta.approvedAdditions) expect(byName.get(expected.name), expected.name).toEqual(expected);
 }
@@ -117,7 +127,14 @@ describe('MCP runtime baseline and reviewed IAG delta', () => {
     expect(actual.resources.resources.map(({ uri, mimeType }) => ({ uri, mimeType }))).toEqual(baseline.resources);
     expect(actual.prompts.prompts.map(({ name, arguments: args = [] }) => ({
       name, arguments: args.map(({ name: argumentName, required }) => ({ name: argumentName, required })),
-    }))).toEqual(baseline.prompts);
+    }))).toEqual([{
+      name: 'sangfor-answer-from-docs',
+      arguments: [
+        { name: 'question', required: true },
+        { name: 'product', required: false },
+        { name: 'version', required: false },
+      ],
+    }, ...baseline.prompts]);
     expect(actual.representative.products.structuredContent.products.map(({ code, priority }) => ({ code, priority })))
       .toEqual(baseline.representative.products);
     expect(actual.representative.scopedRag.structuredContent).toEqual(baseline.representative.scopedRag);
@@ -127,7 +144,8 @@ describe('MCP runtime baseline and reviewed IAG delta', () => {
   });
 
   it('rejects a removed or schema-changed baseline tool and an unexpected fourth addition', () => {
-    const approved = [...baseline.tools.map((tool) => delta.reviewedChanges.find(({ name }) => name === tool.name) ?? tool), ...delta.approvedAdditions];
+    const approved = [...baseline.tools.map((tool) => withRagContext(delta.reviewedChanges.find(({ name }) => name === tool.name) ?? tool)), ...delta.approvedAdditions];
+    assertReviewedSurface(approved, baseline, delta);
     const removed = approved.filter(({ name }) => name !== baseline.tools[0]?.name);
     const changed = approved.map((tool, index) => index === 0 ? { ...tool, inputSchema: {} } : tool);
     const added = [...approved, { ...delta.approvedAdditions[0], name: 'sangfor_iag_unreviewed_fourth_tool' }];
@@ -135,6 +153,12 @@ describe('MCP runtime baseline and reviewed IAG delta', () => {
     expect(() => assertReviewedSurface(removed, baseline, delta)).toThrow();
     expect(() => assertReviewedSurface(changed, baseline, delta)).toThrow();
     expect(() => assertReviewedSurface(added, baseline, delta)).toThrow();
+    const unboundedContext = approved.map((tool) => tool.name === 'sangfor_rag_search'
+      ? { ...tool, inputSchema: { ...tool.inputSchema, properties: {
+        ...(tool.inputSchema.properties as Record<string, unknown>),
+        contextNeighbors: { type: 'integer', minimum: 0, maximum: 3 },
+      } } } : tool);
+    expect(() => assertReviewedSurface(unboundedContext, baseline, delta)).toThrow();
   });
 
   it('authenticates both immutable fixtures independently of candidate output', () => {

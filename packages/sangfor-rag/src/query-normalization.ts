@@ -8,7 +8,9 @@ const BILINGUAL_DOMAIN_TERMS: ReadonlyArray<readonly [RegExp, string]> = [
   [/환경\s*요구사항/iu, 'environment requirements'],
   [/자동\s*격리/iu, 'automatic isolation'],
   [/가상\s*iSCSI/iu, 'virtual iSCSI'],
-  [/상태를?\s*확인/iu, 'status check']
+  [/상태를?\s*확인/iu, 'status check'],
+  // A retrieval alias for log configuration; it does not assert a transport or answer.
+  [/시스템\s*로그|\bsystem\s+logs?\b/iu, 'syslog']
 ];
 
 /**

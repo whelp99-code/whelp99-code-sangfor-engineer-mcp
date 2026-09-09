@@ -70,6 +70,14 @@ describe('toPublicHit', () => {
 });
 
 describe('postRagSearch', () => {
+  it('exposes the reason why public manuals cannot answer a current instance fact', async () => {
+    const actual = await import('../packages/sangfor-rag/src/rag-search.js');
+    vi.mocked(ragSearch).mockImplementationOnce(actual.ragSearch);
+    const response = await postRagSearch({ query: 'What are the current private keys on our customer NGFW?' });
+    expect(response.results).toEqual([]);
+    expect(response.diagnostics).toMatchObject({ degraded: false, evidenceRequirement: 'live-runtime' });
+  });
+
   it('wraps ragSearch hits in a public envelope with safe retrieval diagnostics', async () => {
     const response = await postRagSearch({ query: 'MTU storage', product: 'HCI' });
     expect(Array.isArray(response)).toBe(false);

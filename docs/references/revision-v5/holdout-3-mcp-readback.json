@@ -1,0 +1,251 @@
+{
+  "status": "ACTUAL_MCP_SOURCE_ORDER_READBACK_PASS_ANSWER_REVIEW_PENDING",
+  "contextSha256": "6ceb1439461271c2f0c7a0fa0e5c2b0ab7d86be149090f9ae55c5c0a63652fc6",
+  "fixtureSha256": "ccc088e73edc4f1bb9c7b4cd46dab64c92aadce7d8bcc779ae00cb7b2e82e400",
+  "indexSha256": "ff1118e44d4c1f21e7e465f6e1d66fcb0f4a08a09e9f1f7fbc098054c3febfa0",
+  "rows": [
+    {
+      "queryId": "v5-holdout3-01",
+      "actualSources": [
+        "data/sources/raw/support_10_1070_2126550.md",
+        "data/sources/raw/support_10_1070_2126700.md",
+        "data/sources/raw/support_10_1070_2120250.md"
+      ],
+      "expectedSources": [
+        "data/sources/raw/support_10_1070_2126550.md",
+        "data/sources/raw/support_10_1070_2126700.md",
+        "data/sources/raw/support_10_1070_2120250.md"
+      ],
+      "sourceOrderMatches": true
+    },
+    {
+      "queryId": "v5-holdout3-02",
+      "actualSources": [
+        "data/sources/raw/support_10_1229_2639694.md",
+        "data/sources/raw/support_10_1229_2639791.md",
+        "data/sources/raw/support_10_1229_2639780.md",
+        "data/sources/raw/support_10_1229_2639675.md",
+        "data/sources/raw/support_10_1229_2639682.md"
+      ],
+      "expectedSources": [
+        "data/sources/raw/support_10_1229_2639694.md",
+        "data/sources/raw/support_10_1229_2639791.md",
+        "data/sources/raw/support_10_1229_2639780.md",
+        "data/sources/raw/support_10_1229_2639675.md",
+        "data/sources/raw/support_10_1229_2639682.md"
+      ],
+      "sourceOrderMatches": true
+    },
+    {
+      "queryId": "v5-holdout3-03",
+      "actualSources": [
+        "data/sources/raw/support_21_1095_2653431.md"
+      ],
+      "expectedSources": [
+        "data/sources/raw/support_21_1095_2653431.md"
+      ],
+      "sourceOrderMatches": true
+    },
+    {
+      "queryId": "v5-holdout3-04",
+      "actualSources": [
+        "data/sources/raw/support_21_1093_2637202.md",
+        "data/sources/raw/support_21_1093_2638450.md",
+        "data/sources/raw/support_21_1093_2637203.md",
+        "data/sources/raw/support_21_1093_2638451.md",
+        "data/sources/raw/support_21_1093_2637440.md"
+      ],
+      "expectedSources": [
+        "data/sources/raw/support_21_1093_2637202.md",
+        "data/sources/raw/support_21_1093_2638450.md",
+        "data/sources/raw/support_21_1093_2637203.md",
+        "data/sources/raw/support_21_1093_2638451.md",
+        "data/sources/raw/support_21_1093_2637440.md"
+      ],
+      "sourceOrderMatches": true
+    },
+    {
+      "queryId": "v5-holdout3-05",
+      "actualSources": [
+        "data/sources/raw/support_24_1219_2630689.md"
+      ],
+      "expectedSources": [
+        "data/sources/raw/support_24_1219_2630689.md"
+      ],
+      "sourceOrderMatches": true
+    },
+    {
+      "queryId": "v5-holdout3-06",
+      "actualSources": [
+        "data/sources/raw/support_24_1078_2634604.md"
+      ],
+      "expectedSources": [
+        "data/sources/raw/support_24_1078_2634604.md"
+      ],
+      "sourceOrderMatches": true
+    },
+    {
+      "queryId": "v5-holdout3-07",
+      "actualSources": [
+        "data/sources/raw/support_45_1379_2663166.md",
+        "data/sources/raw/support_45_1379_2652785.md",
+        "data/sources/raw/support_45_1379_2652419.md",
+        "data/sources/raw/support_45_1379_2652421.md",
+        "data/sources/raw/support_45_1379_2652713.md"
+      ],
+      "expectedSources": [
+        "data/sources/raw/support_45_1379_2663166.md",
+        "data/sources/raw/support_45_1379_2652785.md",
+        "data/sources/raw/support_45_1379_2652419.md",
+        "data/sources/raw/support_45_1379_2652421.md",
+        "data/sources/raw/support_45_1379_2652713.md"
+      ],
+      "sourceOrderMatches": true
+    },
+    {
+      "queryId": "v5-holdout3-08",
+      "actualSources": [
+        "data/sources/raw/support_45_1388_2656896.md",
+        "data/sources/raw/support_45_1388_2656883.md",
+        "data/sources/raw/support_45_1388_2656804.md",
+        "data/sources/raw/support_45_1388_2656898.md",
+        "data/sources/raw/support_45_1388_2655918.md"
+      ],
+      "expectedSources": [
+        "data/sources/raw/support_45_1388_2656896.md",
+        "data/sources/raw/support_45_1388_2656883.md",
+        "data/sources/raw/support_45_1388_2656804.md",
+        "data/sources/raw/support_45_1388_2656898.md",
+        "data/sources/raw/support_45_1388_2655918.md"
+      ],
+      "sourceOrderMatches": true
+    },
+    {
+      "queryId": "v5-holdout3-09",
+      "actualSources": [
+        "data/sources/raw/support_case_2_33574.md"
+      ],
+      "expectedSources": [
+        "data/sources/raw/support_case_2_33574.md"
+      ],
+      "sourceOrderMatches": true
+    },
+    {
+      "queryId": "v5-holdout3-10",
+      "actualSources": [
+        "data/sources/raw/support_case_2_33602.md",
+        "data/sources/raw/support_case_2_33549.md",
+        "data/sources/raw/support_case_2_33660.md",
+        "data/sources/raw/support_case_2_33643.md",
+        "data/sources/raw/support_case_2_33619.md"
+      ],
+      "expectedSources": [
+        "data/sources/raw/support_case_2_33602.md",
+        "data/sources/raw/support_case_2_33549.md",
+        "data/sources/raw/support_case_2_33660.md",
+        "data/sources/raw/support_case_2_33643.md",
+        "data/sources/raw/support_case_2_33619.md"
+      ],
+      "sourceOrderMatches": true
+    },
+    {
+      "queryId": "v5-holdout3-11",
+      "actualSources": [
+        "data/sources/raw/support_32_1101_1540500.md"
+      ],
+      "expectedSources": [
+        "data/sources/raw/support_32_1101_1540500.md"
+      ],
+      "sourceOrderMatches": true
+    },
+    {
+      "queryId": "v5-holdout3-12",
+      "actualSources": [
+        "data/sources/raw/support_32_1101_1541400.md",
+        "data/sources/raw/support_32_1101_1544250.md",
+        "data/sources/raw/support_32_1101_1546350.md",
+        "data/sources/raw/support_32_1101_1544700.md"
+      ],
+      "expectedSources": [
+        "data/sources/raw/support_32_1101_1541400.md",
+        "data/sources/raw/support_32_1101_1544250.md",
+        "data/sources/raw/support_32_1101_1546350.md",
+        "data/sources/raw/support_32_1101_1544700.md"
+      ],
+      "sourceOrderMatches": true
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-01",
+      "actualSources": [],
+      "expectedSources": [],
+      "sourceOrderMatches": true
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-02",
+      "actualSources": [],
+      "expectedSources": [],
+      "sourceOrderMatches": true
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-03",
+      "actualSources": [],
+      "expectedSources": [],
+      "sourceOrderMatches": true
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-04",
+      "actualSources": [],
+      "expectedSources": [],
+      "sourceOrderMatches": true
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-05",
+      "actualSources": [],
+      "expectedSources": [],
+      "sourceOrderMatches": true
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-06",
+      "actualSources": [],
+      "expectedSources": [],
+      "sourceOrderMatches": true
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-07",
+      "actualSources": [],
+      "expectedSources": [],
+      "sourceOrderMatches": true
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-08",
+      "actualSources": [],
+      "expectedSources": [],
+      "sourceOrderMatches": true
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-09",
+      "actualSources": [],
+      "expectedSources": [],
+      "sourceOrderMatches": true
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-10",
+      "actualSources": [],
+      "expectedSources": [],
+      "sourceOrderMatches": true
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-11",
+      "actualSources": [],
+      "expectedSources": [],
+      "sourceOrderMatches": true
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-12",
+      "actualSources": [],
+      "expectedSources": [],
+      "sourceOrderMatches": true
+    }
+  ],
+  "limits": "Actual MCP retrieval and scope checks; does not prove answer semantic correctness or deployment."
+}

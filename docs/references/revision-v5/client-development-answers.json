@@ -1,0 +1,391 @@
+{
+  "schemaVersion": 1,
+  "contextSha256": "f14745f2ebe56d6a4bf425d7d8f9dbe7e7dfd59ae0eef88160bce727c16bf1cc",
+  "generation": "Current Codex client authored answers from actual stdio MCP capture; not a simulated server LLM",
+  "modelIdentity": "not independently observed",
+  "independentReview": false,
+  "answers": [
+    {
+      "queryId": "v3-validation-01",
+      "status": "answered",
+      "product": "HCI",
+      "evidenceVersion": "6.11.3",
+      "answer": "문서 버전 6.11.3: Reliability > Snapshots에서 일관성 그룹을 만들고 대상 VM을 추가한 뒤, 선택한 그룹에 Take Snapshots를 실행합니다.",
+      "citations": [
+        {
+          "sourceId": "data/sources/raw/support_10_1381_2654264.md",
+          "chunkId": "structured_2a143213e8308c6ddb23f05fa5da01212c66db36732ba6246dd3bd49c777c51d",
+          "product": "HCI",
+          "version": "6.11.3",
+          "quote": "Click Reliability > Snapshots to enter the consistency group snapshot.",
+          "quoteStart": 1043,
+          "textSha256": "a15e7c1f7275bf3355417db451c857b576a7fb79d729eb5c86a8e42324c7bd99"
+        },
+        {
+          "sourceId": "data/sources/raw/support_10_1381_2654264.md",
+          "chunkId": "structured_2a143213e8308c6ddb23f05fa5da01212c66db36732ba6246dd3bd49c777c51d",
+          "product": "HCI",
+          "version": "6.11.3",
+          "quote": "Add a consistency group, select the associated virtual machines, and add them to the consistency group.",
+          "quoteStart": 1114,
+          "textSha256": "a15e7c1f7275bf3355417db451c857b576a7fb79d729eb5c86a8e42324c7bd99"
+        },
+        {
+          "sourceId": "data/sources/raw/support_10_1381_2654264.md",
+          "chunkId": "structured_2a143213e8308c6ddb23f05fa5da01212c66db36732ba6246dd3bd49c777c51d",
+          "product": "HCI",
+          "version": "6.11.3",
+          "quote": "Take Snapshots: Take snapshots for the selected consistency group.",
+          "quoteStart": 1608,
+          "textSha256": "a15e7c1f7275bf3355417db451c857b576a7fb79d729eb5c86a8e42324c7bd99"
+        }
+      ],
+      "semanticReview": "author checked claims against captured quotations; not independent human review"
+    },
+    {
+      "queryId": "v3-validation-02",
+      "status": "answered",
+      "product": "HCI",
+      "evidenceVersion": "6.11.3",
+      "answer": "문서 버전 6.11.3: Reliability > Snapshots > Snapshot Policy에서 VM 스냅샷 정책을 관리합니다.",
+      "citations": [
+        {
+          "sourceId": "data/sources/raw/support_10_1381_2654265.md",
+          "chunkId": "structured_6aa3e6dc939c3de3fbdf0962118294aa90751c1804829c21289951283ee44409",
+          "product": "HCI",
+          "version": "6.11.3",
+          "quote": "Go to Reliability > Snapshots > Snapshot Policy.",
+          "quoteStart": 1443,
+          "textSha256": "9df7790c6b904bb00ded6e4285885fa6788549fa429ede4b826bd754d42a9130"
+        }
+      ],
+      "semanticReview": "author checked claims against captured quotations; not independent human review"
+    },
+    {
+      "queryId": "v3-validation-03",
+      "status": "answered",
+      "product": "HCI",
+      "evidenceVersion": "6.11.3",
+      "answer": "문서 버전 6.11.3: Storage에서 Virtual Storage를 선택하고 Advanced를 연 다음, Intelligent Rate Restriction의 Snapshot Restriction을 Enabled로 설정합니다. 문서는 예약 스냅샷을 보호에 사용하는 경우에만 활성화하도록 권고합니다.",
+      "citations": [
+        {
+          "sourceId": "data/sources/raw/support_10_1381_2654308.md",
+          "chunkId": "structured_6345eb0cd3df681268edab602e3bae5d38ab60d6c55c2b49e02b5351219a3614",
+          "product": "HCI",
+          "version": "6.11.3",
+          "quote": "Navigate to Storage > select Virtual Storage > click Advanced. Select Intelligent Rate Restriction, and set Snapshot Restriction to Enabled.",
+          "quoteStart": 698,
+          "textSha256": "6ae8a3add6e7c5c4f6e17f8699aa6b685410569a28d26be0d24700690b3c6646"
+        },
+        {
+          "sourceId": "data/sources/raw/support_10_1381_2654308.md",
+          "chunkId": "structured_6345eb0cd3df681268edab602e3bae5d38ab60d6c55c2b49e02b5351219a3614",
+          "product": "HCI",
+          "version": "6.11.3",
+          "quote": "It is recommended to enable it only in scenarios where scheduled snapshots are used for security protection.",
+          "quoteStart": 565,
+          "textSha256": "6ae8a3add6e7c5c4f6e17f8699aa6b685410569a28d26be0d24700690b3c6646"
+        }
+      ],
+      "semanticReview": "author checked claims against captured quotations; not independent human review"
+    },
+    {
+      "queryId": "v3-validation-04",
+      "status": "answered",
+      "product": "HCI",
+      "evidenceVersion": "6.11.3",
+      "answer": "문서 버전 6.11.3: System > Log Export and Cleanup에서 Enable Syslog를 선택하고 서버 IP·포트·프로토콜을 지정합니다. 연결을 시험한 뒤 저장합니다.",
+      "citations": [
+        {
+          "sourceId": "data/sources/raw/support_10_1381_2654412.md",
+          "chunkId": "structured_3e571d3830a1d82a46a713d59a952ba4a844929ecaf3e5aeb9fb187cd9bfea95",
+          "product": "HCI",
+          "version": "6.11.3",
+          "quote": "Go to System > Log Export and Cleanup in the console.",
+          "quoteStart": 316,
+          "textSha256": "b63050fbec1ae0ea9624d086380a103643b374857c3d4ced57a1e7ed53a02d97"
+        },
+        {
+          "sourceId": "data/sources/raw/support_10_1381_2654412.md",
+          "chunkId": "structured_3e571d3830a1d82a46a713d59a952ba4a844929ecaf3e5aeb9fb187cd9bfea95",
+          "product": "HCI",
+          "version": "6.11.3",
+          "quote": "Select Enable Syslog in the Enable Syslog area and configure the IP address, port, and protocol of the syslog server.",
+          "quoteStart": 370,
+          "textSha256": "b63050fbec1ae0ea9624d086380a103643b374857c3d4ced57a1e7ed53a02d97"
+        },
+        {
+          "sourceId": "data/sources/raw/support_10_1381_2654412.md",
+          "chunkId": "structured_3e571d3830a1d82a46a713d59a952ba4a844929ecaf3e5aeb9fb187cd9bfea95",
+          "product": "HCI",
+          "version": "6.11.3",
+          "quote": "Then, click Test Connectivity to check whether the syslog server is well connected.",
+          "quoteStart": 488,
+          "textSha256": "b63050fbec1ae0ea9624d086380a103643b374857c3d4ced57a1e7ed53a02d97"
+        },
+        {
+          "sourceId": "data/sources/raw/support_10_1381_2654412.md",
+          "chunkId": "structured_3e571d3830a1d82a46a713d59a952ba4a844929ecaf3e5aeb9fb187cd9bfea95",
+          "product": "HCI",
+          "version": "6.11.3",
+          "quote": "After verifying the connection, click Save so that the selected logs can be uploaded to the syslog server automatically.",
+          "quoteStart": 572,
+          "textSha256": "b63050fbec1ae0ea9624d086380a103643b374857c3d4ced57a1e7ed53a02d97"
+        }
+      ],
+      "semanticReview": "author checked claims against captured quotations; not independent human review"
+    },
+    {
+      "queryId": "v3-validation-05",
+      "status": "answered",
+      "product": "HCI",
+      "evidenceVersion": "6.11.3",
+      "answer": "문서 버전 6.11.3: admin으로 로그인해 System > Administrator and Permissions > Administrator의 Login & Password Policy를 엽니다. 최소 길이·복잡도·유효기간·최대 재시도 등의 값을 설정하고 OK를 누릅니다.",
+      "citations": [
+        {
+          "sourceId": "data/sources/raw/support_10_1381_2654417.md",
+          "chunkId": "structured_f151c86904e2f94f8d8c57aa6876a0e335b6b7560a0a3b40211d5612efddc35d",
+          "product": "HCI",
+          "version": "6.11.3",
+          "quote": "Use admin to log in to the console, navigate to System > Administrator and Permissions > Administrator, click Login & Password Policy.",
+          "quoteStart": 528,
+          "textSha256": "f24232906251275a1b912fb6fd647cb9587d06bf63133878937ad91b0a1815a5"
+        },
+        {
+          "sourceId": "data/sources/raw/support_10_1381_2654417.md",
+          "chunkId": "structured_f151c86904e2f94f8d8c57aa6876a0e335b6b7560a0a3b40211d5612efddc35d",
+          "product": "HCI",
+          "version": "6.11.3",
+          "quote": "Set Minimum Length, Password Complexity, Validity, Max Password Retry Attempts, and Password Setting, and click OK.",
+          "quoteStart": 662,
+          "textSha256": "f24232906251275a1b912fb6fd647cb9587d06bf63133878937ad91b0a1815a5"
+        }
+      ],
+      "semanticReview": "author checked claims against captured quotations; not independent human review"
+    },
+    {
+      "queryId": "v3-validation-06",
+      "status": "answered",
+      "product": "HCI",
+      "evidenceVersion": "6.11.3",
+      "answer": "문서 버전 6.11.3: System > Port Management에서 SNMP 서비스를 켭니다. SNMP Transmission의 Configure에서 접근 매개변수를 설정하고, SNMP Trap의 New에서 알림 대상을 구성합니다.",
+      "citations": [
+        {
+          "sourceId": "data/sources/raw/support_10_1381_2654461.md",
+          "chunkId": "structured_24b376675bc38c796c2a82ec7e5de940adae2f6612125453989d7b49b5bf36ab",
+          "product": "HCI",
+          "version": "6.11.3",
+          "quote": "Go to System > Port Management and enable the SNMP service.",
+          "quoteStart": 1518,
+          "textSha256": "ff91c8c062e946b5a3d5981ebfddf4624055801909ebabeac357bdaeeee7052f"
+        },
+        {
+          "sourceId": "data/sources/raw/support_10_1381_2654461.md",
+          "chunkId": "structured_24b376675bc38c796c2a82ec7e5de940adae2f6612125453989d7b49b5bf36ab",
+          "product": "HCI",
+          "version": "6.11.3",
+          "quote": "In the SNMP Transmission section, click Configure and set parameters",
+          "quoteStart": 1578,
+          "textSha256": "ff91c8c062e946b5a3d5981ebfddf4624055801909ebabeac357bdaeeee7052f"
+        },
+        {
+          "sourceId": "data/sources/raw/support_10_1381_2654461.md",
+          "chunkId": "structured_fff789729d9614a6593d40b99404fa00d56c29a93296e8c15d2819af8ef973c4",
+          "product": "HCI",
+          "version": "6.11.3",
+          "quote": "In the SNMP Trap section, click New and configure a trap.",
+          "quoteStart": 207,
+          "textSha256": "fad0bf908de9026ec640553e1d9ba341abdfe6a8219ad7dc0958b4ca976ef21c"
+        }
+      ],
+      "semanticReview": "author checked claims against captured quotations; not independent human review"
+    },
+    {
+      "queryId": "v3-validation-07",
+      "status": "answered",
+      "product": "HCI",
+      "evidenceVersion": "6.11.3",
+      "answer": "문서 버전 6.11.3: 전체 데이터 전송, 증분 전송, 최종 전환의 단계로 이동합니다. 반복 복사 후 남은 차이가 임계값에 이르면 원본 VM을 잠시 중지하고 나머지 데이터를 대상 VM으로 전송합니다.",
+      "citations": [
+        {
+          "sourceId": "data/sources/raw/support_10_1381_2662796.md",
+          "chunkId": "structured_f59b43ec4703a8b69f04d0b7785fe78f50fa3f7d6cfed0ef2952219df8d7f55b",
+          "product": "HCI",
+          "version": "6.11.3",
+          "quote": "The data transfer during migration has the following three stages: full data transfer, incremental data transfer, and switching after shutdown.",
+          "quoteStart": 382,
+          "textSha256": "3a260532ea456175cf201c730d81329cf697e06f14a99bd05b49c9aa7d9d42d6"
+        },
+        {
+          "sourceId": "data/sources/raw/support_10_1381_2662796.md",
+          "chunkId": "structured_f59b43ec4703a8b69f04d0b7785fe78f50fa3f7d6cfed0ef2952219df8d7f55b",
+          "product": "HCI",
+          "version": "6.11.3",
+          "quote": "When the data to be transmitted reaches the threshold, the source VM is suspended to migrate the remaining data to the destination VM at a time.",
+          "quoteStart": 642,
+          "textSha256": "3a260532ea456175cf201c730d81329cf697e06f14a99bd05b49c9aa7d9d42d6"
+        }
+      ],
+      "semanticReview": "author checked claims against captured quotations; not independent human review"
+    },
+    {
+      "queryId": "v3-validation-08",
+      "status": "answered",
+      "product": "HCI",
+      "evidenceVersion": "6.11.3",
+      "answer": "문서 버전 6.11.3: 메모리와 CPU 등 VM 상태를 파일로 저장해, 복구 시 스냅샷 생성 시점의 실행 상태를 다시 이어갈 수 있게 하는 기능입니다.",
+      "citations": [
+        {
+          "sourceId": "data/sources/raw/support_10_1381_2662826.md",
+          "chunkId": "structured_f5562f2795362ace0a696a2cdbd788a5ec68d6b2b4ab9f92a11f688f275b7d73",
+          "product": "HCI",
+          "version": "6.11.3",
+          "quote": "VM status information (including memory, CPU, and other devices) is saved to a memory snapshot file, from which the information is loaded into memory to recover the VM to continue running in the status it was in at the time the snapshot was created.",
+          "quoteStart": 311,
+          "textSha256": "0722a8284465cdd223194a8102e4cbc39ec22fcfb747819736eea2bd3e467812"
+        }
+      ],
+      "semanticReview": "author checked claims against captured quotations; not independent human review"
+    },
+    {
+      "queryId": "v3-validation-09",
+      "status": "answered",
+      "product": "NGFW",
+      "evidenceVersion": "8.0.47",
+      "answer": "문서 버전 8.0.47: 문서의 Network > Routes > Static Routes 절에서 정적 경로를 다룹니다. 해당 페이지에서 Add를 눌러 경로를 추가합니다.",
+      "citations": [
+        {
+          "sourceId": "data/sources/raw/support_21_1088_2639184.md",
+          "chunkId": "structured_f819d0d64bfc303a2474246adf727be2a3462c67c66bdca00b56e31e9ebd37be",
+          "product": "NGFW",
+          "version": "8.0.47",
+          "quote": "Network / Routes / Static Routes",
+          "quoteStart": 64,
+          "textSha256": "68648dbe571e1e836600f2e0ccdb1c6c5a5787a46bfbf5f16dcf77ba60670c56"
+        },
+        {
+          "sourceId": "data/sources/raw/support_21_1088_2639184.md",
+          "chunkId": "structured_f819d0d64bfc303a2474246adf727be2a3462c67c66bdca00b56e31e9ebd37be",
+          "product": "NGFW",
+          "version": "8.0.47",
+          "quote": "Click Add to create a static route.",
+          "quoteStart": 762,
+          "textSha256": "68648dbe571e1e836600f2e0ccdb1c6c5a5787a46bfbf5f16dcf77ba60670c56"
+        }
+      ],
+      "semanticReview": "author checked claims against captured quotations; not independent human review"
+    },
+    {
+      "queryId": "v3-validation-10",
+      "status": "partial",
+      "product": "NGFW",
+      "evidenceVersion": "8.0.107",
+      "answer": "문서 버전 8.0.107: NTP Key 페이지에서 Add를 누르면 키 추가 대화상자가 열립니다. 제공된 본문에는 개별 입력 필드의 값이나 형식이 없어 그 부분은 추가 문서 확인이 필요합니다.",
+      "citations": [
+        {
+          "sourceId": "data/sources/raw/support_21_1095_2647860.md",
+          "chunkId": "structured_85f7a5236fea822e293f8df0830c8bb702fac554459eff7288fbb1df289bd735",
+          "product": "NGFW",
+          "version": "8.0.107",
+          "quote": "On the NTP Key page, click Add. The Add NTP Key dialog box appears, as shown in the following figure.",
+          "quoteStart": 159,
+          "textSha256": "b9f9bd3193ff8540def8b7330fe209b941c3e2fa275b99fce57b0d22e615433b"
+        }
+      ],
+      "semanticReview": "author checked claims against captured quotations; not independent human review"
+    },
+    {
+      "queryId": "v3-validation-11",
+      "status": "answered",
+      "product": "NGFW",
+      "evidenceVersion": "8.0.47",
+      "answer": "문서 버전 8.0.47: 문서의 System > SNMP 절에서 설정을 다룹니다. Enable SNMP를 선택하면 다른 관리 장치나 소프트웨어가 SNMP로 장치 정보를 읽을 수 있습니다.",
+      "citations": [
+        {
+          "sourceId": "data/sources/raw/support_21_1088_2639130.md",
+          "chunkId": "structured_1b0ffbc04ec5f6cef38d241fae904472e5e03c765a0629e29113dae88f643f4c",
+          "product": "NGFW",
+          "version": "8.0.47",
+          "quote": "System / SNMP",
+          "quoteStart": 64,
+          "textSha256": "79b4efd885545c8160b5b3b2cd9c78d82f8a282d50721ad34b0d8b686999a730"
+        },
+        {
+          "sourceId": "data/sources/raw/support_21_1088_2639130.md",
+          "chunkId": "structured_1b0ffbc04ec5f6cef38d241fae904472e5e03c765a0629e29113dae88f643f4c",
+          "product": "NGFW",
+          "version": "8.0.47",
+          "quote": "If you select Enable SNMP, other devices and management software can read the device information through SNMP.",
+          "quoteStart": 375,
+          "textSha256": "79b4efd885545c8160b5b3b2cd9c78d82f8a282d50721ad34b0d8b686999a730"
+        }
+      ],
+      "semanticReview": "author checked claims against captured quotations; not independent human review"
+    },
+    {
+      "queryId": "v3-validation-12",
+      "status": "answered",
+      "product": "NGFW",
+      "evidenceVersion": "8.0.106",
+      "answer": "문서 버전 8.0.106: HA 정책, active/active Layer 2, 데이터 동기화 인터페이스와 최소 두 개의 Layer 2 인터페이스가 필요합니다. Enable로 링크 집계를 켜고 로컬·피어의 LAN 및 WAN 인터페이스를 지정합니다.",
+      "citations": [
+        {
+          "sourceId": "data/sources/raw/support_21_1093_2638442.md",
+          "chunkId": "structured_6bcc615ec219d6efd9388088038f69ad43536fde3316c7f8b8d052ff9f3b6d7b",
+          "product": "NGFW",
+          "version": "8.0.106",
+          "quote": "Enable: Check Enable to enable link aggregation.",
+          "quoteStart": 1356,
+          "textSha256": "9dd60b8c3e88b2185c88c3300beef63a105156aca0181ca4e8fba6079d6bb0d8"
+        },
+        {
+          "sourceId": "data/sources/raw/support_21_1093_2638442.md",
+          "chunkId": "structured_6bcc615ec219d6efd9388088038f69ad43536fde3316c7f8b8d052ff9f3b6d7b",
+          "product": "NGFW",
+          "version": "8.0.106",
+          "quote": "Conditions for enabling link aggregation: HA policy is enabled; the active/active Layer 2 is used; interfaces for data synchronization are set; and at least two Layer 2 interfaces are available.",
+          "quoteStart": 1405,
+          "textSha256": "9dd60b8c3e88b2185c88c3300beef63a105156aca0181ca4e8fba6079d6bb0d8"
+        },
+        {
+          "sourceId": "data/sources/raw/support_21_1093_2638442.md",
+          "chunkId": "structured_6bcc615ec219d6efd9388088038f69ad43536fde3316c7f8b8d052ff9f3b6d7b",
+          "product": "NGFW",
+          "version": "8.0.106",
+          "quote": "LAN Interfaces: Specify the downstream LAN interfaces for the local and peer devices. WAN Interfaces: Specify the upstream WAN interfaces for the local and peer devices.",
+          "quoteStart": 1600,
+          "textSha256": "9dd60b8c3e88b2185c88c3300beef63a105156aca0181ca4e8fba6079d6bb0d8"
+        }
+      ],
+      "semanticReview": "author checked claims against captured quotations; not independent human review"
+    },
+    {
+      "queryId": "v3-no-01",
+      "status": "abstained",
+      "product": "HCI",
+      "answer": "검색된 근거가 없어 답변할 수 없습니다.",
+      "citations": []
+    },
+    {
+      "queryId": "v3-no-02",
+      "status": "abstained",
+      "product": "NGFW",
+      "answer": "검색된 근거가 없어 답변할 수 없습니다.",
+      "citations": []
+    },
+    {
+      "queryId": "v3-no-03",
+      "status": "abstained",
+      "product": "HCI",
+      "answer": "검색된 근거가 없어 답변할 수 없습니다.",
+      "citations": []
+    },
+    {
+      "queryId": "v3-no-04",
+      "status": "abstained",
+      "product": "NGFW",
+      "answer": "검색된 근거가 없어 답변할 수 없습니다.",
+      "citations": []
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "status": "FROZEN_CLIENT_HOLDOUT_RETRIEVAL_PASS_ANSWER_AND_DEPLOYMENT_PENDING",
+  "frozenCandidateSha256": "fe8fe78378deafe558525ebf149b112a919bf80fbad287dbaabd62be81b6046f",
+  "reportSha256": "33b218f84bc91589841ce80281fec3ce6d0ae7851944e453a06c38eee77595bc",
+  "checks": {
+    "hitRateAt5": true,
+    "noAnswerFalsePositiveRate": true,
+    "forbiddenHits": true,
+    "missingRelevantSources": true,
+    "noDegradedQueries": true
+  },
+  "hitRateAt5": 0.9166666666666666,
+  "noAnswerFalsePositiveRate": 0,
+  "forbiddenHits": 0,
+  "degradedQueries": [],
+  "p50LatencyMs": 22221.169469,
+  "p95LatencyMs": 27551.083819,
+  "limits": "Same-author synthetic holdout; client workflow includes frozen translation. This checks retrieval, not semantic answer correctness, independent human review, or deployed readiness."
+}

@@ -1,0 +1,183 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-09-09T08:26:37.513Z",
+  "contextSha256": "6ceb1439461271c2f0c7a0fa0e5c2b0ab7d86be149090f9ae55c5c0a63652fc6",
+  "answersSha256": "98fb84f1b648970ab6c8c82404015129ca8fef42031a29e10de9d64f33e1edd7",
+  "queryCount": 24,
+  "citationIntegrityFailures": 0,
+  "answered": 12,
+  "partial": 0,
+  "abstained": 12,
+  "semanticAccuracy": null,
+  "limitation": "Exact captured quotations and product/version integrity do not prove that every answer claim follows from those quotations. Independent semantic review is still required.",
+  "rows": [
+    {
+      "queryId": "v5-holdout3-01",
+      "status": "answered",
+      "citationCount": 2,
+      "citationIntegrityPass": true,
+      "issues": []
+    },
+    {
+      "queryId": "v5-holdout3-02",
+      "status": "answered",
+      "citationCount": 1,
+      "citationIntegrityPass": true,
+      "issues": []
+    },
+    {
+      "queryId": "v5-holdout3-03",
+      "status": "answered",
+      "citationCount": 2,
+      "citationIntegrityPass": true,
+      "issues": []
+    },
+    {
+      "queryId": "v5-holdout3-04",
+      "status": "answered",
+      "citationCount": 2,
+      "citationIntegrityPass": true,
+      "issues": []
+    },
+    {
+      "queryId": "v5-holdout3-05",
+      "status": "answered",
+      "citationCount": 1,
+      "citationIntegrityPass": true,
+      "issues": []
+    },
+    {
+      "queryId": "v5-holdout3-06",
+      "status": "answered",
+      "citationCount": 2,
+      "citationIntegrityPass": true,
+      "issues": []
+    },
+    {
+      "queryId": "v5-holdout3-07",
+      "status": "answered",
+      "citationCount": 1,
+      "citationIntegrityPass": true,
+      "issues": []
+    },
+    {
+      "queryId": "v5-holdout3-08",
+      "status": "answered",
+      "citationCount": 1,
+      "citationIntegrityPass": true,
+      "issues": []
+    },
+    {
+      "queryId": "v5-holdout3-09",
+      "status": "answered",
+      "citationCount": 3,
+      "citationIntegrityPass": true,
+      "issues": []
+    },
+    {
+      "queryId": "v5-holdout3-10",
+      "status": "answered",
+      "citationCount": 2,
+      "citationIntegrityPass": true,
+      "issues": []
+    },
+    {
+      "queryId": "v5-holdout3-11",
+      "status": "answered",
+      "citationCount": 1,
+      "citationIntegrityPass": true,
+      "issues": []
+    },
+    {
+      "queryId": "v5-holdout3-12",
+      "status": "answered",
+      "citationCount": 2,
+      "citationIntegrityPass": true,
+      "issues": []
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-01",
+      "status": "abstained",
+      "citationCount": 0,
+      "citationIntegrityPass": true,
+      "issues": []
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-02",
+      "status": "abstained",
+      "citationCount": 0,
+      "citationIntegrityPass": true,
+      "issues": []
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-03",
+      "status": "abstained",
+      "citationCount": 0,
+      "citationIntegrityPass": true,
+      "issues": []
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-04",
+      "status": "abstained",
+      "citationCount": 0,
+      "citationIntegrityPass": true,
+      "issues": []
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-05",
+      "status": "abstained",
+      "citationCount": 0,
+      "citationIntegrityPass": true,
+      "issues": []
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-06",
+      "status": "abstained",
+      "citationCount": 0,
+      "citationIntegrityPass": true,
+      "issues": []
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-07",
+      "status": "abstained",
+      "citationCount": 0,
+      "citationIntegrityPass": true,
+      "issues": []
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-08",
+      "status": "abstained",
+      "citationCount": 0,
+      "citationIntegrityPass": true,
+      "issues": []
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-09",
+      "status": "abstained",
+      "citationCount": 0,
+      "citationIntegrityPass": true,
+      "issues": []
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-10",
+      "status": "abstained",
+      "citationCount": 0,
+      "citationIntegrityPass": true,
+      "issues": []
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-11",
+      "status": "abstained",
+      "citationCount": 0,
+      "citationIntegrityPass": true,
+      "issues": []
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-12",
+      "status": "abstained",
+      "citationCount": 0,
+      "citationIntegrityPass": true,
+      "issues": []
+    }
+  ]
+}

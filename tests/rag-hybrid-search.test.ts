@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { computeBm25Scores } from '../packages/sangfor-rag/src/bm25.js';
+import { computeBm25Scores, tokenize } from '../packages/sangfor-rag/src/bm25.js';
 import { ingestDocument, minMaxNormalizer, ragSearchSync } from '../packages/sangfor-rag/src/index.js';
 
 const dirs: string[] = [];
@@ -15,6 +15,18 @@ afterEach(() => {
 const mk = () => { const d = mkdtempSync(join(tmpdir(), 'rag-hybrid-')); dirs.push(d); return d; };
 
 describe('computeBm25Scores — exact-term-match ranks above a non-matching doc', () => {
+  it('finds sentence-final words and applies stop words/plurals after punctuation removal', () => {
+    expect(tokenize('Verify routes. 상태. the.')).toEqual(['verify', 'route', '상태']);
+    const docs = [{ id: 'plain', text: 'Check quorum' }, { id: 'sentence', text: 'Check quorum.' }];
+    const scores = computeBm25Scores('quorum', docs);
+    expect(scores.get('sentence')).toBeGreaterThan(0);
+    expect(scores.get('sentence')).toBe(scores.get('plain'));
+    expect(computeBm25Scores('quorum.', docs).get('plain')).toBe(scores.get('plain'));
+  });
+  it('preserves technical dots, paths, versions and switches', () => {
+    expect(tokenize('eth0.routes node.example.com /api/routes. ./routes --routes. 6.12.0 a.b routes_1.'))
+      .toEqual(['eth0.routes', 'node.example.com', '/api/routes.', './routes', '--routes.', '6.12.0', 'a.b', 'routes_1.']);
+  });
   it('scores a document containing the rare query term above one that does not', () => {
     const docs = [
       { id: 'a', text: 'zookeeper cluster failover replication log compaction node quorum' },

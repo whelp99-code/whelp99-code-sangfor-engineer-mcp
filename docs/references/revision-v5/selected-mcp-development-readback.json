@@ -1,0 +1,74 @@
+{
+  "status": "ACTUAL_MCP_MATCHES_SELECTED_COMPLETE_SCORE_REPLAY",
+  "contextSha256": "d29ea29b929fc296483c49baf70672459db41aaa983fcdf5f41be8a39f534704",
+  "fixtureSha256": "9d1fd8885c495bf87cbf2ced9de59cf11265306b2eec59689ed7d7e9d4ec3b07",
+  "floor": 3.666952610015869,
+  "order": "retrieval",
+  "rows": [
+    {
+      "queryId": "hci-cli-6113",
+      "noAnswer": false,
+      "expectedIds": [
+        "structured_7bd9da632e3c21cb0835c121e3c32dc015f94e864f93f9076f4d36055778661b",
+        "structured_c5a322c649922017ee752e21cd19ddf25c9b6d29e0799226c7a4e1a7562c779a",
+        "structured_be205db09f15aea85f05f529e8fd0726b78dabff23db8de66080e1052207977b"
+      ],
+      "actualIds": [
+        "structured_7bd9da632e3c21cb0835c121e3c32dc015f94e864f93f9076f4d36055778661b",
+        "structured_c5a322c649922017ee752e21cd19ddf25c9b6d29e0799226c7a4e1a7562c779a",
+        "structured_be205db09f15aea85f05f529e8fd0726b78dabff23db8de66080e1052207977b"
+      ],
+      "exactOrderMatch": true,
+      "goldRank": 1
+    },
+    {
+      "queryId": "ko-v3-validation-04",
+      "noAnswer": false,
+      "expectedIds": [
+        "structured_3e571d3830a1d82a46a713d59a952ba4a844929ecaf3e5aeb9fb187cd9bfea95",
+        "structured_c4c72ff442464ca06e08967dbad0a6f47bb30d424ea981eacb0da237d70a34f7",
+        "structured_d3276090f57e6df74cb2f78a518e09cf27f4b0ba9c3e11ed694740d672116ba2",
+        "structured_bddd8f6192e9114af2a32e0ccdf7cd64b58e2a69c29b788274fae9d8eec9db46",
+        "structured_774f3120af68de7b34dd85c57221fa772fc647af9749a745a5febfae7559c777"
+      ],
+      "actualIds": [
+        "structured_3e571d3830a1d82a46a713d59a952ba4a844929ecaf3e5aeb9fb187cd9bfea95",
+        "structured_c4c72ff442464ca06e08967dbad0a6f47bb30d424ea981eacb0da237d70a34f7",
+        "structured_d3276090f57e6df74cb2f78a518e09cf27f4b0ba9c3e11ed694740d672116ba2",
+        "structured_bddd8f6192e9114af2a32e0ccdf7cd64b58e2a69c29b788274fae9d8eec9db46",
+        "structured_774f3120af68de7b34dd85c57221fa772fc647af9749a745a5febfae7559c777"
+      ],
+      "exactOrderMatch": true,
+      "goldRank": 1
+    },
+    {
+      "queryId": "v5-holdout-01",
+      "noAnswer": false,
+      "expectedIds": [
+        "structured_a9d2e12e789df30366a567e358bbd1658ef046d8685c9555e130845fe54a221e"
+      ],
+      "actualIds": [
+        "structured_a9d2e12e789df30366a567e358bbd1658ef046d8685c9555e130845fe54a221e"
+      ],
+      "exactOrderMatch": true,
+      "goldRank": 1
+    },
+    {
+      "queryId": "v5-noanswer-05",
+      "noAnswer": true,
+      "expectedIds": [],
+      "actualIds": [],
+      "exactOrderMatch": true,
+      "goldRank": 0
+    },
+    {
+      "queryId": "no-hci-9999",
+      "noAnswer": true,
+      "expectedIds": [],
+      "actualIds": [],
+      "exactOrderMatch": true,
+      "goldRank": 0
+    }
+  ],
+  "limits": "Five development questions only; confirms actual MCP ordering/abstention and source scope, not final holdout or semantic answer correctness."
+}
