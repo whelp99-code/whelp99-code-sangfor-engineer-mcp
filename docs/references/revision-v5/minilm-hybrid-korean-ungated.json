@@ -1,0 +1,1009 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-09T02:28:19.755Z",
+  "indexSha256": "47177f262244ee0765a4faf4348415acaa4305c0bd5dd4217300f37a06d8dd99",
+  "qrelsSha256": "1d7a45de784288b23072727d949d29320e35c83397064b289662f7dc684bc02e",
+  "implementationSha256": "bec954e5cba690a9dbef88fee080fc7bd7f17d0d38b7732a536bf600846f7590",
+  "implementationFiles": [
+    "scripts/rag-corpus-eval.ts",
+    "packages/sangfor-rag/src/corpus-eval-contract.ts",
+    "packages/sangfor-rag/src/rag-search.ts",
+    "packages/sangfor-rag/src/rag-ranking.ts",
+    "packages/sangfor-rag/src/hit-context.ts",
+    "packages/sangfor-rag/src/query-evidence.ts",
+    "packages/sangfor-rag/src/retrieval-text.ts",
+    "packages/sangfor-rag/src/bm25.ts",
+    "packages/sangfor-rag/src/query-normalization.ts",
+    "packages/sangfor-rag/src/retrieval-eval.ts",
+    "packages/sangfor-rag/src/corpus-eval-gate.ts",
+    "packages/sangfor-rag/src/hash-embedding.ts",
+    "packages/sangfor-rag/src/embedding-space.ts",
+    "packages/sangfor-rag/src/embedding-profile.ts",
+    "packages/sangfor-rag/src/rag-product.ts",
+    "packages/sangfor-rag/src/rag-index-store.ts",
+    "packages/sangfor-rag/src/embedding-provider.ts",
+    "packages/sangfor-rag/src/rapid-mlx-provider.ts",
+    "packages/sangfor-rag/src/openai-embeddings-client.ts",
+    "packages/sangfor-rag/src/mimo-rerank-provider.ts",
+    "packages/sangfor-rag/src/local-rerank-provider.ts"
+  ],
+  "settings": {
+    "hybridAlpha": "0.5",
+    "allowCustomer": false,
+    "execution": "async-configured-provider",
+    "embeddingModel": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+    "embeddingRevision": "e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+    "localRerankerEnabled": false,
+    "localRerankerPassages": 1,
+    "localReranker": null,
+    "localRerankerRevision": null,
+    "rerankDisabled": true
+  },
+  "settingsSha256": "9351aad2980190aad5e44c63809b196bdf36456ccafe43a447528b966da00f7a",
+  "evaluationOnly": true,
+  "promotionStatus": "NOT_EVALUATED",
+  "missingRelevantSources": [],
+  "positiveQueryCount": 12,
+  "noAnswerQueryCount": 4,
+  "byProduct": {
+    "HCI": {
+      "queryCount": 8,
+      "hitRateAtK": 0.75,
+      "recallAtK": 0.75,
+      "mrrAtK": 0.28125,
+      "ndcgAtK": 0.39906700815203855
+    },
+    "NGFW": {
+      "queryCount": 4,
+      "hitRateAtK": 0.5,
+      "recallAtK": 0.5,
+      "mrrAtK": 0.20833333333333331,
+      "ndcgAtK": 0.2827324383928644
+    }
+  },
+  "byLanguage": {
+    "ko": {
+      "queryCount": 12,
+      "hitRateAtK": 0.6666666666666666,
+      "recallAtK": 0.6666666666666666,
+      "mrrAtK": 0.2569444444444445,
+      "ndcgAtK": 0.36028881823231385
+    }
+  },
+  "node": "v24.19.0",
+  "cpu": "AMD EPYC Processor",
+  "chunkCount": 39789,
+  "profile": "async retrieval; actual providers and degradation recorded per query",
+  "k": 5,
+  "coldLoadMs": 1796.2542119999998,
+  "meanLatencyMs": 109.22227906250002,
+  "p50LatencyMs": 79.57854999999972,
+  "p95LatencyMs": 388.1469760000002,
+  "metrics": {
+    "queryCount": 12,
+    "hitRateAtK": 0.6666666666666666,
+    "recallAtK": 0.6666666666666666,
+    "mrrAtK": 0.2569444444444445,
+    "ndcgAtK": 0.36028881823231385
+  },
+  "noAnswerFalsePositiveRate": 1,
+  "forbiddenHits": 0,
+  "hardNegativeQueryRate": 0,
+  "hardNegativeHits": 0,
+  "rows": [
+    {
+      "queryId": "ko-v3-validation-01",
+      "product": "HCI",
+      "language": "ko",
+      "latencyMs": 388.1469760000002,
+      "mode": "hybrid-semantic",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 5199
+        },
+        "embeddingModelCounts": {
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 5199
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "7cdaaa733f5c8b9c7bced76c9895eced5cca4c6f4cc3c0362e4079322b4054a0",
+        "retrievalMode": "hybrid-semantic"
+      },
+      "hits": [
+        {
+          "queryId": "ko-v3-validation-01",
+          "sourceId": "/Volumes/DevSpace/Projects/ITAC-security-essentials/findings/00-\uc791\uc5c5\uacc4\ud68d\uc11c.md",
+          "rank": 1,
+          "score": 0.7573732924059597
+        },
+        {
+          "queryId": "ko-v3-validation-01",
+          "sourceId": "data/sources/raw/support_10_1229_2639807.md",
+          "rank": 2,
+          "score": 0.5
+        },
+        {
+          "queryId": "ko-v3-validation-01",
+          "sourceId": "data/sources/raw/support_10_1381_2654264.md",
+          "rank": 3,
+          "score": 0.4899322307923431
+        },
+        {
+          "queryId": "ko-v3-validation-01",
+          "sourceId": "data/sources/raw/support_10_1381_2654263.md",
+          "rank": 4,
+          "score": 0.47267900892575526
+        },
+        {
+          "queryId": "ko-v3-validation-01",
+          "sourceId": "data/sources/raw/support_10_1229_2639806.md",
+          "rank": 5,
+          "score": 0.46552844966247536
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "ko-v3-validation-02",
+      "product": "HCI",
+      "language": "ko",
+      "latencyMs": 161.4938400000001,
+      "mode": "hybrid-semantic",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 5199
+        },
+        "embeddingModelCounts": {
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 5199
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "7cdaaa733f5c8b9c7bced76c9895eced5cca4c6f4cc3c0362e4079322b4054a0",
+        "retrievalMode": "hybrid-semantic"
+      },
+      "hits": [
+        {
+          "queryId": "ko-v3-validation-02",
+          "sourceId": "/Volumes/DevSpace/Projects/ITAC-security-essentials/findings/00-\uc791\uc5c5\uacc4\ud68d\uc11c.md",
+          "rank": 1,
+          "score": 0.715700158056048
+        },
+        {
+          "queryId": "ko-v3-validation-02",
+          "sourceId": "data/sources/raw/support_10_1381_2654263.md",
+          "rank": 2,
+          "score": 0.5
+        },
+        {
+          "queryId": "ko-v3-validation-02",
+          "sourceId": "data/sources/raw/support_10_1229_2639808.md",
+          "rank": 3,
+          "score": 0.49925777165502006
+        },
+        {
+          "queryId": "ko-v3-validation-02",
+          "sourceId": "data/sources/raw/support_10_1381_2654265.md",
+          "rank": 4,
+          "score": 0.49664628097629654
+        },
+        {
+          "queryId": "ko-v3-validation-02",
+          "sourceId": "data/sources/raw/support_10_1229_2639806.md",
+          "rank": 5,
+          "score": 0.4919384630743931
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "ko-v3-validation-03",
+      "product": "HCI",
+      "language": "ko",
+      "latencyMs": 109.04437899999994,
+      "mode": "hybrid-semantic",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 5199
+        },
+        "embeddingModelCounts": {
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 5199
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "7cdaaa733f5c8b9c7bced76c9895eced5cca4c6f4cc3c0362e4079322b4054a0",
+        "retrievalMode": "hybrid-semantic"
+      },
+      "hits": [
+        {
+          "queryId": "ko-v3-validation-03",
+          "sourceId": "data/sources/raw/support_10_1229_2639829.md",
+          "rank": 1,
+          "score": 0.5
+        },
+        {
+          "queryId": "ko-v3-validation-03",
+          "sourceId": "data/sources/raw/support_10_1381_2654308.md",
+          "rank": 2,
+          "score": 0.4970670433697716
+        },
+        {
+          "queryId": "ko-v3-validation-03",
+          "sourceId": "/Volumes/DevSpace/Projects/ITAC-security-essentials/findings/00-\uc791\uc5c5\uacc4\ud68d\uc11c.md",
+          "rank": 3,
+          "score": 0.4583962899685575
+        },
+        {
+          "queryId": "ko-v3-validation-03",
+          "sourceId": "data/sources/raw/community_thread_8566.md",
+          "rank": 4,
+          "score": 0.4570281150983575
+        },
+        {
+          "queryId": "ko-v3-validation-03",
+          "sourceId": "data/sources/raw/support_10_1381_2654313.md",
+          "rank": 5,
+          "score": 0.4523462665021959
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "ko-v3-validation-04",
+      "product": "HCI",
+      "language": "ko",
+      "latencyMs": 86.56931900000018,
+      "mode": "hybrid-semantic",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 5199
+        },
+        "embeddingModelCounts": {
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 5199
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "7cdaaa733f5c8b9c7bced76c9895eced5cca4c6f4cc3c0362e4079322b4054a0",
+        "retrievalMode": "hybrid-semantic"
+      },
+      "hits": [
+        {
+          "queryId": "ko-v3-validation-04",
+          "sourceId": "/Volumes/DevSpace/Projects/ITAC-security-essentials/findings/00-\uc791\uc5c5\uacc4\ud68d\uc11c.md",
+          "rank": 1,
+          "score": 0.7795767778820601
+        },
+        {
+          "queryId": "ko-v3-validation-04",
+          "sourceId": "data/sources/raw/support_10_1381_2654133.md",
+          "rank": 2,
+          "score": 0.689628058655554
+        },
+        {
+          "queryId": "ko-v3-validation-04",
+          "sourceId": "data/sources/raw/support_10_1373_2646636.md",
+          "rank": 3,
+          "score": 0.6891969455448546
+        },
+        {
+          "queryId": "ko-v3-validation-04",
+          "sourceId": "data/sources/raw/support_10_1229_2646072.md",
+          "rank": 4,
+          "score": 0.6884620292973214
+        },
+        {
+          "queryId": "ko-v3-validation-04",
+          "sourceId": "data/sources/raw/support_10_1067_2645563.md",
+          "rank": 5,
+          "score": 0.6884085663960212
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "ko-v3-validation-05",
+      "product": "HCI",
+      "language": "ko",
+      "latencyMs": 85.19717499999979,
+      "mode": "hybrid-semantic",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 5199
+        },
+        "embeddingModelCounts": {
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 5199
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "7cdaaa733f5c8b9c7bced76c9895eced5cca4c6f4cc3c0362e4079322b4054a0",
+        "retrievalMode": "hybrid-semantic"
+      },
+      "hits": [
+        {
+          "queryId": "ko-v3-validation-05",
+          "sourceId": "/Volumes/DevSpace/Projects/ITAC-security-essentials/findings/00-\uc791\uc5c5\uacc4\ud68d\uc11c.md",
+          "rank": 1,
+          "score": 0.8394368927744046
+        },
+        {
+          "queryId": "ko-v3-validation-05",
+          "sourceId": "data/sources/raw/support_10_1229_2639882.md",
+          "rank": 2,
+          "score": 0.5
+        },
+        {
+          "queryId": "ko-v3-validation-05",
+          "sourceId": "data/sources/raw/support_10_1381_2654417.md",
+          "rank": 3,
+          "score": 0.497023655859668
+        },
+        {
+          "queryId": "ko-v3-validation-05",
+          "sourceId": "data/sources/raw/community_thread_12150.md",
+          "rank": 4,
+          "score": 0.4930434259018005
+        },
+        {
+          "queryId": "ko-v3-validation-05",
+          "sourceId": "data/sources/raw/support_10_1381_2654294.md",
+          "rank": 5,
+          "score": 0.4742041372535363
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "ko-v3-validation-06",
+      "product": "HCI",
+      "language": "ko",
+      "latencyMs": 79.57854999999972,
+      "mode": "hybrid-semantic",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 5199
+        },
+        "embeddingModelCounts": {
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 5199
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "7cdaaa733f5c8b9c7bced76c9895eced5cca4c6f4cc3c0362e4079322b4054a0",
+        "retrievalMode": "hybrid-semantic"
+      },
+      "hits": [
+        {
+          "queryId": "ko-v3-validation-06",
+          "sourceId": "data/sources/raw/support_10_1229_2639894.md",
+          "rank": 1,
+          "score": 0.9463240775623085
+        },
+        {
+          "queryId": "ko-v3-validation-06",
+          "sourceId": "data/sources/raw/support_10_1381_2654461.md",
+          "rank": 2,
+          "score": 0.9450804650238546
+        },
+        {
+          "queryId": "ko-v3-validation-06",
+          "sourceId": "data/sources/raw/community_thread_11573.md",
+          "rank": 3,
+          "score": 0.6915732382483646
+        },
+        {
+          "queryId": "ko-v3-validation-06",
+          "sourceId": "data/sources/raw/community_thread_11340.md",
+          "rank": 4,
+          "score": 0.6506239043936046
+        },
+        {
+          "queryId": "ko-v3-validation-06",
+          "sourceId": "data/sources/raw/community_thread_10380.md",
+          "rank": 5,
+          "score": 0.635298025459522
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "ko-v3-validation-07",
+      "product": "HCI",
+      "language": "ko",
+      "latencyMs": 87.97622200000023,
+      "mode": "hybrid-semantic",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 5199
+        },
+        "embeddingModelCounts": {
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 5199
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "7cdaaa733f5c8b9c7bced76c9895eced5cca4c6f4cc3c0362e4079322b4054a0",
+        "retrievalMode": "hybrid-semantic"
+      },
+      "hits": [
+        {
+          "queryId": "ko-v3-validation-07",
+          "sourceId": "data/sources/raw/support_10_1054_2643772.md",
+          "rank": 1,
+          "score": 0.5
+        },
+        {
+          "queryId": "ko-v3-validation-07",
+          "sourceId": "data/sources/raw/support_10_1381_2654242.md",
+          "rank": 2,
+          "score": 0.4987160920443246
+        },
+        {
+          "queryId": "ko-v3-validation-07",
+          "sourceId": "data/sources/raw/support_10_1229_2639928.md",
+          "rank": 3,
+          "score": 0.4971131755874586
+        },
+        {
+          "queryId": "ko-v3-validation-07",
+          "sourceId": "data/sources/raw/support_10_1381_2654239.md",
+          "rank": 4,
+          "score": 0.49702437138178757
+        },
+        {
+          "queryId": "ko-v3-validation-07",
+          "sourceId": "data/sources/raw/support_10_1229_2639927.md",
+          "rank": 5,
+          "score": 0.4942923829975799
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "ko-v3-validation-08",
+      "product": "HCI",
+      "language": "ko",
+      "latencyMs": 76.87698199999977,
+      "mode": "hybrid-semantic",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 5199
+        },
+        "embeddingModelCounts": {
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 5199
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "7cdaaa733f5c8b9c7bced76c9895eced5cca4c6f4cc3c0362e4079322b4054a0",
+        "retrievalMode": "hybrid-semantic"
+      },
+      "hits": [
+        {
+          "queryId": "ko-v3-validation-08",
+          "sourceId": "data/sources/raw/community_thread_8566.md",
+          "rank": 1,
+          "score": 0.5
+        },
+        {
+          "queryId": "ko-v3-validation-08",
+          "sourceId": "data/sources/raw/support_10_1381_2662801.md",
+          "rank": 2,
+          "score": 0.42142506897435084
+        },
+        {
+          "queryId": "ko-v3-validation-08",
+          "sourceId": "data/sources/raw/support_10_1381_2662826.md",
+          "rank": 3,
+          "score": 0.37956253688620933
+        },
+        {
+          "queryId": "ko-v3-validation-08",
+          "sourceId": "data/sources/raw/support_10_1381_2662866.md",
+          "rank": 4,
+          "score": 0.3696992655424073
+        },
+        {
+          "queryId": "ko-v3-validation-08",
+          "sourceId": "/Volumes/DevSpace/Projects/ITAC-security-essentials/findings/00-\uc791\uc5c5\uacc4\ud68d\uc11c.md",
+          "rank": 5,
+          "score": 0.3618277163797606
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "ko-v3-validation-09",
+      "product": "NGFW",
+      "language": "ko",
+      "latencyMs": 167.1060950000001,
+      "mode": "hybrid-semantic",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 4147
+        },
+        "embeddingModelCounts": {
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 4147
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "7cdaaa733f5c8b9c7bced76c9895eced5cca4c6f4cc3c0362e4079322b4054a0",
+        "retrievalMode": "hybrid-semantic"
+      },
+      "hits": [
+        {
+          "queryId": "ko-v3-validation-09",
+          "sourceId": "data/sources/raw/support_21_1090_2640205.md",
+          "rank": 1,
+          "score": 0.5
+        },
+        {
+          "queryId": "ko-v3-validation-09",
+          "sourceId": "data/sources/raw/support_21_1088_2639098.md",
+          "rank": 2,
+          "score": 0.49442913666473387
+        },
+        {
+          "queryId": "ko-v3-validation-09",
+          "sourceId": "data/sources/raw/support_21_1092_2631321.md",
+          "rank": 3,
+          "score": 0.49411954183876233
+        },
+        {
+          "queryId": "ko-v3-validation-09",
+          "sourceId": "data/sources/raw/support_21_1087_2642386.md",
+          "rank": 4,
+          "score": 0.49269654995279527
+        },
+        {
+          "queryId": "ko-v3-validation-09",
+          "sourceId": "data/sources/raw/support_21_1093_2637007.md",
+          "rank": 5,
+          "score": 0.4908908783488828
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "ko-v3-validation-10",
+      "product": "NGFW",
+      "language": "ko",
+      "latencyMs": 73.99844699999994,
+      "mode": "hybrid-semantic",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 4147
+        },
+        "embeddingModelCounts": {
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 4147
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "7cdaaa733f5c8b9c7bced76c9895eced5cca4c6f4cc3c0362e4079322b4054a0",
+        "retrievalMode": "hybrid-semantic"
+      },
+      "hits": [
+        {
+          "queryId": "ko-v3-validation-10",
+          "sourceId": "data/sources/raw/support_21_1090_2640341.md",
+          "rank": 1,
+          "score": 1
+        },
+        {
+          "queryId": "ko-v3-validation-10",
+          "sourceId": "data/sources/raw/support_21_1095_2647860.md",
+          "rank": 2,
+          "score": 0.9998338366285546
+        },
+        {
+          "queryId": "ko-v3-validation-10",
+          "sourceId": "data/sources/raw/support_21_1093_2637150.md",
+          "rank": 3,
+          "score": 0.99958735951493
+        },
+        {
+          "queryId": "ko-v3-validation-10",
+          "sourceId": "data/sources/raw/support_21_1092_2631462.md",
+          "rank": 4,
+          "score": 0.9978791376229419
+        },
+        {
+          "queryId": "ko-v3-validation-10",
+          "sourceId": "data/sources/raw/support_21_1092_2631662.md",
+          "rank": 5,
+          "score": 0.3541233463044543
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "ko-v3-validation-11",
+      "product": "NGFW",
+      "language": "ko",
+      "latencyMs": 66.51659999999993,
+      "mode": "hybrid-semantic",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 4147
+        },
+        "embeddingModelCounts": {
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 4147
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "7cdaaa733f5c8b9c7bced76c9895eced5cca4c6f4cc3c0362e4079322b4054a0",
+        "retrievalMode": "hybrid-semantic"
+      },
+      "hits": [
+        {
+          "queryId": "ko-v3-validation-11",
+          "sourceId": "data/sources/raw/support_21_1088_2639130.md",
+          "rank": 1,
+          "score": 1
+        },
+        {
+          "queryId": "ko-v3-validation-11",
+          "sourceId": "data/sources/raw/support_21_1087_2642416.md",
+          "rank": 2,
+          "score": 0.996955779242769
+        },
+        {
+          "queryId": "ko-v3-validation-11",
+          "sourceId": "data/sources/raw/support_21_1095_2647700.md",
+          "rank": 3,
+          "score": 0.9846514432527294
+        },
+        {
+          "queryId": "ko-v3-validation-11",
+          "sourceId": "data/sources/raw/support_21_1093_2636990.md",
+          "rank": 4,
+          "score": 0.9836671923828468
+        },
+        {
+          "queryId": "ko-v3-validation-11",
+          "sourceId": "data/sources/raw/support_21_1092_2631304.md",
+          "rank": 5,
+          "score": 0.9833466374075053
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "ko-v3-validation-12",
+      "product": "NGFW",
+      "language": "ko",
+      "latencyMs": 67.52866399999994,
+      "mode": "hybrid-semantic",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 4147
+        },
+        "embeddingModelCounts": {
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 4147
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "7cdaaa733f5c8b9c7bced76c9895eced5cca4c6f4cc3c0362e4079322b4054a0",
+        "retrievalMode": "hybrid-semantic"
+      },
+      "hits": [
+        {
+          "queryId": "ko-v3-validation-12",
+          "sourceId": "data/sources/raw/support_21_1093_2637104.md",
+          "rank": 1,
+          "score": 0.5
+        },
+        {
+          "queryId": "ko-v3-validation-12",
+          "sourceId": "data/sources/raw/support_21_1090_2640296.md",
+          "rank": 2,
+          "score": 0.49919684259942854
+        },
+        {
+          "queryId": "ko-v3-validation-12",
+          "sourceId": "data/sources/raw/support_21_1092_2631417.md",
+          "rank": 3,
+          "score": 0.4989980521783787
+        },
+        {
+          "queryId": "ko-v3-validation-12",
+          "sourceId": "data/sources/raw/support_21_1092_2631631.md",
+          "rank": 4,
+          "score": 0.49725814389155726
+        },
+        {
+          "queryId": "ko-v3-validation-12",
+          "sourceId": "data/sources/raw/support_21_1093_2637284.md",
+          "rank": 5,
+          "score": 0.4908418020957708
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "ko-v3-no-01",
+      "product": "HCI",
+      "language": "ko",
+      "latencyMs": 87.06433700000025,
+      "mode": "hybrid-semantic",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 5199
+        },
+        "embeddingModelCounts": {
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 5199
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "7cdaaa733f5c8b9c7bced76c9895eced5cca4c6f4cc3c0362e4079322b4054a0",
+        "retrievalMode": "hybrid-semantic"
+      },
+      "hits": [
+        {
+          "queryId": "ko-v3-no-01",
+          "sourceId": "data/sources/raw/support_case_2_308972.md",
+          "rank": 1,
+          "score": 0.5
+        },
+        {
+          "queryId": "ko-v3-no-01",
+          "sourceId": "data/sources/raw/support_case_2_308928.md",
+          "rank": 2,
+          "score": 0.48330073971732634
+        },
+        {
+          "queryId": "ko-v3-no-01",
+          "sourceId": "data/sources/raw/community_thread_10824.md",
+          "rank": 3,
+          "score": 0.4765760147953429
+        },
+        {
+          "queryId": "ko-v3-no-01",
+          "sourceId": "data/sources/raw/support_case_2_33987.md",
+          "rank": 4,
+          "score": 0.469397046614833
+        },
+        {
+          "queryId": "ko-v3-no-01",
+          "sourceId": "data/sources/raw/community_thread_11221.md",
+          "rank": 5,
+          "score": 0.4685580146976527
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "ko-v3-no-02",
+      "product": "NGFW",
+      "language": "ko",
+      "latencyMs": 61.628241000000344,
+      "mode": "hybrid-semantic",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 4147
+        },
+        "embeddingModelCounts": {
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 4147
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "7cdaaa733f5c8b9c7bced76c9895eced5cca4c6f4cc3c0362e4079322b4054a0",
+        "retrievalMode": "hybrid-semantic"
+      },
+      "hits": [
+        {
+          "queryId": "ko-v3-no-02",
+          "sourceId": "data/sources/raw/support_21_1087_2642570.md",
+          "rank": 1,
+          "score": 0.5
+        },
+        {
+          "queryId": "ko-v3-no-02",
+          "sourceId": "data/sources/raw/support_21_1088_2639306.md",
+          "rank": 2,
+          "score": 0.4972684222981545
+        },
+        {
+          "queryId": "ko-v3-no-02",
+          "sourceId": "data/sources/raw/support_21_1090_2640385.md",
+          "rank": 3,
+          "score": 0.49295799494894854
+        },
+        {
+          "queryId": "ko-v3-no-02",
+          "sourceId": "data/sources/raw/support_21_1092_2631506.md",
+          "rank": 4,
+          "score": 0.48932390101058687
+        },
+        {
+          "queryId": "ko-v3-no-02",
+          "sourceId": "data/sources/raw/support_21_1093_2637192.md",
+          "rank": 5,
+          "score": 0.4890491019345085
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "ko-v3-no-03",
+      "product": "HCI",
+      "language": "ko",
+      "latencyMs": 74.64059300000008,
+      "mode": "hybrid-semantic",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 5199
+        },
+        "embeddingModelCounts": {
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 5199
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "7cdaaa733f5c8b9c7bced76c9895eced5cca4c6f4cc3c0362e4079322b4054a0",
+        "retrievalMode": "hybrid-semantic"
+      },
+      "hits": [
+        {
+          "queryId": "ko-v3-no-03",
+          "sourceId": "data/sources/raw/support_practice_10_1137300.md",
+          "rank": 1,
+          "score": 0.5
+        },
+        {
+          "queryId": "ko-v3-no-03",
+          "sourceId": "data/sources/raw/support_practice_10_1129950.md",
+          "rank": 2,
+          "score": 0.4763637145118317
+        },
+        {
+          "queryId": "ko-v3-no-03",
+          "sourceId": "data/sources/raw/community_thread_9440.md",
+          "rank": 3,
+          "score": 0.4706152610534865
+        },
+        {
+          "queryId": "ko-v3-no-03",
+          "sourceId": "data/sources/raw/support_practice_10_1129200.md",
+          "rank": 4,
+          "score": 0.44041910449587907
+        },
+        {
+          "queryId": "ko-v3-no-03",
+          "sourceId": "data/sources/raw/support_10_1381_2662859.md",
+          "rank": 5,
+          "score": 0.43369355145947075
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "ko-v3-no-04",
+      "product": "NGFW",
+      "language": "ko",
+      "latencyMs": 74.19004499999983,
+      "mode": "hybrid-semantic",
+      "diagnostics": {
+        "degraded": false,
+        "queryBackend": "rapid-mlx",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "384": 4147
+        },
+        "embeddingModelCounts": {
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 4147
+        },
+        "vectorDimensionMismatches": 0,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 0,
+        "queryEmbeddingSpaceId": "7cdaaa733f5c8b9c7bced76c9895eced5cca4c6f4cc3c0362e4079322b4054a0",
+        "retrievalMode": "hybrid-semantic"
+      },
+      "hits": [
+        {
+          "queryId": "ko-v3-no-04",
+          "sourceId": "data/sources/raw/support_21_1092_2631461.md",
+          "rank": 1,
+          "score": 0.5
+        },
+        {
+          "queryId": "ko-v3-no-04",
+          "sourceId": "data/sources/raw/support_21_1090_2640340.md",
+          "rank": 2,
+          "score": 0.4992952168770827
+        },
+        {
+          "queryId": "ko-v3-no-04",
+          "sourceId": "data/sources/raw/support_21_1093_2637149.md",
+          "rank": 3,
+          "score": 0.49863931730217387
+        },
+        {
+          "queryId": "ko-v3-no-04",
+          "sourceId": "data/sources/raw/support_21_1087_2642539.md",
+          "rank": 4,
+          "score": 0.49162062744296897
+        },
+        {
+          "queryId": "ko-v3-no-04",
+          "sourceId": "data/sources/raw/support_21_1088_2639275.md",
+          "rank": 5,
+          "score": 0.4865757736363531
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    }
+  ],
+  "comparison": null,
+  "baselineReportSha256": null
+}

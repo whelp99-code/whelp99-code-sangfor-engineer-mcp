@@ -10,3 +10,5 @@
 - `plan-development.json`: 실제 구성 계획 템플릿의 인용 검증 결과. 구조적으로 완전해도 검증된 Q&A 답변이 아니다.
 
 큰 후보 인덱스·모델 가중치·체크포인트는 `.omo/revision-v5`에 보관하며 커밋하지 않는다. 운영 승격/실행 승인을 이 자료에서 추론하면 안 된다.
+
+MiniLM 동일 코퍼스 개발 비교는 `minilm-{dense,hybrid,rrf}-{original,development}.json`에 기록했다. `minilm-hybrid-korean*.json`은 기존 개발 질문의 한국어 번역 실험이며 독립 holdout이 아니다. 주제 일치 조건은 한국어 적중률과 무응답 오탐 사이의 미해결 문제를 보였으므로 최종 채택으로 해석하지 않는다.
