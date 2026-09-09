@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { MAPPER_VERSION, bindObservedFactToCase } from '../packages/sangfor-config-state/src/provenance.js';
-import { ENGINEER_CASE_SCHEMA_VERSION, type EngineerCaseDocument } from '../packages/shared/src/engineer-case-contract.js';
+import { computeEngineerGuideDigest, ENGINEER_CASE_SCHEMA_VERSION, type EngineerCaseDocument } from '../packages/shared/src/engineer-case-contract.js';
 import { assembleEngineerCase } from '../packages/sangfor-planner/src/engineer-case.js';
 import { BlroAuthorityStore } from '../packages/sangfor-authority/src/authority-store.js';
 import {
@@ -116,7 +116,7 @@ describe('engineer case persistence', () => {
     expect(loaded.ok).toBe(true);
     if (!loaded.ok) throw new Error('expected reload');
     expect(loaded.revision).toBe('rev-1');
-    expect(loaded.guideDigest).toBe(DIGEST);
+    expect(loaded.guideDigest).toBe((loaded.document as EngineerCaseDocument).guide.digest);
     expect(loaded.evidenceRefs).toEqual(['ev-1']);
     const artifact = await restarted.loadEngineerCaseArtifact({ ...AUTH, caseId: 'case-existing-1', artifactId: 'art-1' });
     expect(artifact.ok).toBe(true);
@@ -147,6 +147,34 @@ describe('engineer case persistence', () => {
     expect(document.guide.readiness).toBe(assembled.value.guide.readiness);
     expect(document.guide.readiness).not.toBe('review_ready');
     expect(document.execution.result).not.toBe('pass');
+  });
+
+  it('recomputes guide digest after persist rewrites review_ready', async () => {
+    const db = new FakeEngineerCaseAuthorityDatabase();
+    const store = storeFor(db);
+    const incoming = fixtureCase();
+    expect(incoming.guide.readiness).toBe('review_ready');
+    expect(incoming.guide.digest).toBe(DIGEST);
+
+    const saved = await store.saveEngineerCase({ auth: AUTH, document: incoming, requestId: 'req-digest' });
+    expect(saved).toMatchObject({
+      ok: true, status: 'saved', approved: false, guideReadyGranted: false, executionPassGranted: false,
+    });
+    expect(saved).not.toHaveProperty('field_accepted');
+    if (!saved.ok) throw new Error('expected save');
+    expect(saved.guideDigest).not.toBe(incoming.guide.digest);
+
+    const loaded = await store.loadEngineerCase({ ...AUTH, caseId: 'case-existing-1' });
+    expect(loaded.ok).toBe(true);
+    if (!loaded.ok) throw new Error('expected load');
+    expect(loaded.guideReadyGranted).toBe(false);
+    expect(loaded).not.toHaveProperty('field_accepted');
+    const document = loaded.document as EngineerCaseDocument;
+    expect(document.guide.readiness).not.toBe('review_ready');
+    const { digest, ...guideFields } = document.guide;
+    expect(digest).toBe(computeEngineerGuideDigest(guideFields));
+    expect(digest).not.toBe(incoming.guide.digest);
+    expect(loaded.guideDigest).toBe(digest);
   });
 
   it('refuses fixture snapshots persisted as observed', async () => {

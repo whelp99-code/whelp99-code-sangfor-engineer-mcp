@@ -177,12 +177,14 @@ describe('engineer case API', () => {
     const resumed = await call(restarted, 'GET', '/api/engineer-cases?caseId=case-existing-1');
     expect(resumed.status).toBe(200);
     expect(resumed.body).toMatchObject({
-      ok: true, status: 'saved', revision: 'rev-1', guideDigest: DIGEST,
+      ok: true, status: 'saved', revision: 'rev-1',
       approved: false, guideReadyGranted: false, executionPassGranted: false,
     });
     const document = resumed.body.document as EngineerCaseDocument;
     expect(document.guide.readiness).not.toBe('review_ready');
     expect(document.execution.result).not.toBe('pass');
+    expect(resumed.body.guideDigest).toBe(document.guide.digest);
+    expect(resumed.body.guideDigest).not.toBe(DIGEST);
 
     const compared = await call(restarted, 'POST', '/api/engineer-cases/compare', {
       caseId: 'case-existing-1', revision: 'rev-1',
