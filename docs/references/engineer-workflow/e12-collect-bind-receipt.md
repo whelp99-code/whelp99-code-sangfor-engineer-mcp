@@ -21,7 +21,7 @@ Secret-free evidence for [#105](https://github.com/whelp99-code/whelp99-code-san
 
 Missing on `c728e2f`: `runEngineerWorkflow` always snapshotted collect as `fixture` and called the grant sibling without `boundObservations`.
 
-This increment adds `bindHciCollectToFieldAcceptanceObservations`. When collect actually executes and a declared target matches the in-process `endpointFor` identity origin, volumes/servers/images facts with `originalPresent === true` are usable by `bindEngineerAuthorizedDeviceReadEvidence`. E03B / firmware / collectedAt are not invented. Mock `:3400`, historical session kinds, fixture inventory without a verified target, and invented collector bytes cannot mint `authorized_device_read`. The fixture workflow path still does not pass `boundObservations` and stays `fieldAccepted: false` / `liveRead: not_run`.
+This increment adds `bindHciCollectToFieldAcceptanceObservations`. When collect actually executes and a declared target matches the in-process `endpointFor` identity origin, volumes/servers/images facts with `originalPresent === true` are usable by `bindEngineerAuthorizedDeviceReadEvidence`. If collect also returns firmware, collectedAt, volume_status_health, and E03B required observations as `originalPresent === true` facts that bind through `bindObservedFactToCase`, those pass through to the same binder. They are not invented from the collect timestamp, a `firmwareVersion` option, volume status, or provided-only E03B fields. Current `collectInventory` still does not emit those extra facts, so an authorized REST-only stub stays `REQUIRED_LIVE_SURFACES_NOT_RUN`. A synthetic authorized stub that includes those bound facts can mint `authorized_device_read`; that is not a live device read and not `field_accepted`. Mock `:3400`, historical session kinds, fixture inventory without a verified target, and invented collector bytes cannot mint `authorized_device_read`. The fixture workflow path still does not pass `boundObservations` and stays `fieldAccepted: false` / `liveRead: not_run`.
 
 A stub client with a matching example.test origin can exercise the wire. That is not a live device read.
 
@@ -41,12 +41,12 @@ Exact blocker still needed from the user/PM: product, firmware, read-only collec
 
 | commandOrProcedure | exitCode | pass/fail/not_run |
 | --- | --- | --- |
-| `TMPDIR=/home/jm/.cache/sangfor-e12 pnpm exec vitest run --config vitest.config.ts tests/engineer-field-acceptance.test.ts tests/engineer-workflow-e2e.test.ts tests/engineer-collect-bind.test.ts tests/engineer-hci-collection.test.ts` | 0 | pass (38) |
+| `TMPDIR=/home/jm/.cache/sangfor-e12 pnpm exec vitest run --config vitest.config.ts tests/engineer-field-acceptance.test.ts tests/engineer-workflow-e2e.test.ts tests/engineer-collect-bind.test.ts tests/engineer-hci-collection.test.ts` | 0 | pass (41) |
 | `pnpm run lint` (after `pnpm run db:generate` in this worktree) | 0 | pass |
 | `pnpm run build` | 0 | pass |
 | live HCI read collect | — | **NOT_RUN**. not_run ≠ PASS |
 | `pnpm run test:postgres:mandatory` | — | **NOT_RUN** (no isolation `DATABASE_URL` / `BLRO_OWNER_DATABASE_URL`). not_run ≠ PASS |
-| historical 26-item xlsx | 0 | **ran** inside `tests/engineer-workflow-e2e.test.ts` (manifest sha256 present under `.hermes/`) |
+| historical 26-item xlsx | 0 | **ran** inside `tests/engineer-workflow-e2e.test.ts` after discover read a hash-matching `.xlsx` from repo-root documented paths (`20e99de99a04b349a4ec82bad18c383eddb869973498ba11aeb729ac2e4eda79`, 22547 bytes). Hermes-path presence or a digest file alone is not replay. |
 | `pnpm run jm:endpoint:doctor` | 1 | **NOT_READY** (`BROWSER_EXECUTABLE_UNSET`). not a live HCI target |
 
 ## Explicit no

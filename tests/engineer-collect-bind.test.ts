@@ -7,8 +7,14 @@ import {
   bindHciCollectAuthorizedDeviceReadEvidence,
   bindHciCollectToFieldAcceptanceObservations,
   isMockConsoleOrigin,
+  MAPPER_VERSION,
+  type HciCollectOriginalPresentSurface,
 } from '../packages/sangfor-config-state/src/index.js';
 import { collectInventory, type HciClient, type HttpJsonResult, type InventoryClient } from '@sangfor/hci-client';
+import {
+  ENGINEER_REQUIRED_LIVE_READ_SURFACES,
+  type EngineerRequiredLiveReadSurfaceId,
+} from '../packages/shared/src/engineer-field-acceptance.js';
 import { BlroAuthorityStore } from '../packages/sangfor-authority/src/authority-store.js';
 import {
   ENGINEER_CASE_READ_PERMISSION,
@@ -44,6 +50,40 @@ async function collectAuthorized(origin = TARGET) {
     collectedAt: WHEN,
     request: { target: origin },
   });
+}
+
+const SYNTHETIC_COLLECTOR = 'e12-collect-bind-synthetic-not-a-device';
+const REST_SURFACE_IDS = new Set<EngineerRequiredLiveReadSurfaceId>(['volumes', 'servers', 'images']);
+
+function syntheticOriginalPresentSurfaces(): HciCollectOriginalPresentSurface[] {
+  return ENGINEER_REQUIRED_LIVE_READ_SURFACES
+    .map((surface) => surface.id)
+    .filter((surfaceId) => !REST_SURFACE_IDS.has(surfaceId))
+    .map((surfaceId) => ({
+      surfaceId,
+      originalPresent: true as const,
+      fact: {
+        transport: 'api' as const,
+        endpoint: `GET /e12-synthetic/${surfaceId}`,
+        mapperVersion: MAPPER_VERSION,
+        collectedAt: WHEN,
+        collector: SYNTHETIC_COLLECTOR,
+      },
+      payload: {
+        kind: 'e12-collect-bind-synthetic',
+        surfaceId,
+        deviceCollect: false,
+      },
+    }));
+}
+
+function authorizedSession(origin = TARGET) {
+  return {
+    kind: 'authorized_device_collect' as const,
+    declaredTarget: origin,
+    measuredIdentityOrigin: origin,
+    collectExecuted: true as const,
+  };
 }
 
 describe('HCI collect → authorized-read binder', () => {
@@ -237,5 +277,112 @@ describe('HCI collect → authorized-read binder', () => {
     expect(result.document?.observations.filter((item) => item.sourceKind === 'observed').map((item) => item.id))
       .toEqual(['obs-volumes', 'obs-servers', 'obs-images']);
     expect(result.liveProof).toBe(false);
+  });
+
+  it('mints authorized_device_read only when collect also binds firmware, collectedAt, and E03B originalPresent facts', async () => {
+    const inventory = await collectAuthorized();
+    const extras = syntheticOriginalPresentSurfaces();
+    expect(extras.map((item) => item.surfaceId)).toEqual([
+      'collectedAt',
+      'volume_status_health',
+      'firmware',
+      'host_cpu',
+      'host_ram',
+      'storage_usable_capacity',
+      'network_topology',
+      'ha_status',
+    ]);
+    const wired = bindHciCollectAuthorizedDeviceReadEvidence({
+      inventory: { ...inventory, originalPresentSurfaces: extras },
+      caseId: 'case-collect-bind-full',
+      projectId: AUTH.projectId,
+      caseRevision: 'rev-collect-bind-full',
+      guideRevision: 'guide-collect-bind-full',
+      session: authorizedSession(),
+    });
+    expect(wired.collect.ok).toBe(true);
+    if (!wired.collect.ok) throw new Error('expected synthetic originalPresent extras to pass through');
+    expect(wired.collect.observations).toHaveLength(ENGINEER_REQUIRED_LIVE_READ_SURFACES.length);
+    expect(wired.authorized.ok).toBe(true);
+    if (!wired.authorized.ok) throw new Error(`expected binder mint after originalPresent extras: ${wired.authorized.reason}`);
+    expect(wired.authorized.sourceKind).toBe('authorized_device_read');
+    expect(wired.authorized.bound.map((item) => item.surfaceId).sort()).toEqual(
+      ENGINEER_REQUIRED_LIVE_READ_SURFACES.map((surface) => surface.id).sort(),
+    );
+    expect(wired.authorized.requiredLiveSurfaces.every((item) => item.status === 'BOUND_ORIGINAL_PRESENT')).toBe(true);
+  });
+
+  it('does not invent collectedAt, firmware, volume_status_health, or E03B from timestamps, options, or provided fields', async () => {
+    const inventory = await collectInventory(stubClient(TARGET), {
+      collectedAt: WHEN,
+      firmwareVersion: 'e12-option-is-not-a-device-read',
+      request: { target: TARGET },
+      providedFields: {
+        host_cpu: { presence: 'known', data: { kind: 'integer', integer: 16, unit: 'cores' } },
+        ha_status: { presence: 'known', data: { kind: 'boolean', boolean: true } },
+      },
+    });
+    expect(inventory.fields.find((field) => field.id === 'firmware')?.sourceKind).toBe('provided');
+    expect(inventory.requiredObservations.fields.find((field) => field.id === 'host_cpu')?.sourceKind).toBe('provided');
+    const wired = bindHciCollectAuthorizedDeviceReadEvidence({
+      inventory,
+      caseId: 'case-collect-bind-no-invent',
+      projectId: AUTH.projectId,
+      caseRevision: 'rev-collect-bind-no-invent',
+      guideRevision: 'guide-collect-bind-no-invent',
+      session: authorizedSession(),
+    });
+    expect(wired.collect.ok).toBe(true);
+    if (!wired.collect.ok) throw new Error('expected REST surfaces to bind');
+    expect(wired.collect.observations.map((item) => item.surfaceId)).toEqual(['volumes', 'servers', 'images']);
+    expect(wired.authorized.ok).toBe(false);
+    if (wired.authorized.ok) throw new Error('option/provided collect must not mint authorized_device_read');
+    expect(wired.authorized.reason).toBe('REQUIRED_LIVE_SURFACES_NOT_RUN');
+    const bound = wired.authorized.requiredLiveSurfaces
+      .filter((item) => item.status === 'BOUND_ORIGINAL_PRESENT')
+      .map((item) => item.id);
+    expect(bound).toEqual(['volumes', 'servers', 'images']);
+    expect(bound).not.toContain('collectedAt');
+    expect(bound).not.toContain('firmware');
+    expect(bound).not.toContain('volume_status_health');
+    expect(bound).not.toContain('host_cpu');
+    expect(wired.authorized.requiredLiveSurfaces.filter((item) => item.layer === 'E03B').every((item) => item.status === 'NOT_RUN')).toBe(true);
+  });
+
+  it('still refuses fixture and mock when synthetic originalPresent extras are attached', async () => {
+    const extras = syntheticOriginalPresentSurfaces();
+    const mock = bindHciCollectAuthorizedDeviceReadEvidence({
+      inventory: { ...(await collectAuthorized(MOCK)), originalPresentSurfaces: extras },
+      caseId: 'case-collect-bind-mock-extras',
+      projectId: AUTH.projectId,
+      caseRevision: 'rev-collect-bind-mock-extras',
+      guideRevision: 'guide-collect-bind-mock-extras',
+      session: authorizedSession(MOCK),
+    });
+    expect(mock.collect.ok).toBe(false);
+    if (mock.collect.ok) throw new Error('mock :3400 plus extras must not bind');
+    expect(mock.collect.reason).toBe('MOCK_CONSOLE_IS_NOT_FIELD_ACCEPTED');
+    expect(mock.authorized.ok).toBe(false);
+
+    const fixtureInventory = await collectInventory({
+      async request(service) {
+        if (service === 'volume') return response({ volumes: [volume] });
+        if (service === 'compute') return response({ servers: [{ id: 's1' }] });
+        return response({ images: [] });
+      },
+    } satisfies Pick<HciClient, 'request'>, { collectedAt: WHEN });
+    const fixture = bindHciCollectAuthorizedDeviceReadEvidence({
+      inventory: { ...fixtureInventory, originalPresentSurfaces: extras },
+      caseId: 'case-collect-bind-fixture-extras',
+      projectId: AUTH.projectId,
+      caseRevision: 'rev-collect-bind-fixture-extras',
+      guideRevision: 'guide-collect-bind-fixture-extras',
+      session: authorizedSession(),
+    });
+    expect(fixture.collect.ok).toBe(false);
+    if (fixture.collect.ok) throw new Error('fixture inventory plus extras must not bind');
+    expect(fixture.collect.reason).toBe('TARGET_UNVERIFIED');
+    expect(fixture.authorized.ok).toBe(false);
+    if (fixture.authorized.ok) throw new Error('fixture plus extras must not mint authorized_device_read');
   });
 });

@@ -27,6 +27,7 @@ export {
   type HciCollectionSnapshot,
   type HciCollectionSnapshotBinding,
   type HciCollectionSnapshotInventory,
+  type HciCollectOriginalPresentSurface,
 } from './hci-collection-snapshot.js';
 
 export {

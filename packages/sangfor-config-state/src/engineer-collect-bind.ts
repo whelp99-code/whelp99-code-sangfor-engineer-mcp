@@ -9,6 +9,7 @@
 
 import { canonicalizeUrlOrigin } from '../../shared/src/origin.js';
 import {
+  ENGINEER_REQUIRED_LIVE_READ_SURFACES,
   type EngineerBoundObservationInput,
   type EngineerRequiredLiveReadSurfaceId,
 } from '../../shared/src/engineer-field-acceptance.js';
@@ -16,7 +17,12 @@ import {
   bindEngineerAuthorizedDeviceReadEvidence,
   type EngineerAuthorizedDeviceReadBindResult,
 } from './engineer-field-acceptance-bind.js';
-import type { HciCollectionSnapshotInventory, HciCollectionSnapshotSurface } from './hci-collection-snapshot.js';
+import { bindObservedFactToCase, isFactProvenance } from './provenance.js';
+import type {
+  HciCollectOriginalPresentSurface,
+  HciCollectionSnapshotInventory,
+  HciCollectionSnapshotSurface,
+} from './hci-collection-snapshot.js';
 
 /** Must match `@sangfor/hci-client` `HCI_COLLECTOR`. Imported as a string so L1 packages do not import sideways. */
 const HCI_REST_COLLECTOR = 'hci-rest-collector';
@@ -106,6 +112,31 @@ export function authorizedCollectTargetsMatch(declared: string, measured: string
   return Boolean(declaredHost && measuredHost && declaredHost === measuredHost);
 }
 
+const REQUIRED_SURFACE_IDS = new Set<EngineerRequiredLiveReadSurfaceId>(
+  ENGINEER_REQUIRED_LIVE_READ_SURFACES.map((surface) => surface.id),
+);
+const REST_SURFACE_IDS = new Set<string>(REST_SURFACES);
+const REST_ENDPOINT_VALUES = new Set<string>(Object.values(REST_ENDPOINTS));
+
+function extraSurfaceBindable(
+  item: HciCollectOriginalPresentSurface,
+  caseId: string,
+  projectId: string,
+): boolean {
+  if (item.originalPresent !== true) return false;
+  if (!REQUIRED_SURFACE_IDS.has(item.surfaceId)) return false;
+  if (REST_SURFACE_IDS.has(item.surfaceId)) return false;
+  if (!isFactProvenance(item.fact)) return false;
+  if (REST_ENDPOINT_VALUES.has(item.fact.endpoint)) return false;
+  return bindObservedFactToCase(item.fact, {
+    caseId,
+    projectId,
+    observationId: `obs-${item.surfaceId}`,
+    environmentKind: 'live',
+    originalPresent: true,
+  }).ok;
+}
+
 function surfaceBindable(
   inventory: HciCollectionSnapshotInventory,
   surface: HciCollectionSnapshotSurface,
@@ -149,7 +180,11 @@ function sessionDefect(session: CollectBindSessionInput, inventory: HciCollectio
 
 /**
  * Emit grant-usable bound inputs from this collect only.
- * Unsupported E03B / firmware / collectedAt surfaces stay omitted (NOT_RUN later).
+ * REST volumes/servers/images come from inventory provenance.
+ * firmware / collectedAt / volume_status_health / E03B pass through only when
+ * collect returned them as originalPresent facts that bind through
+ * bindObservedFactToCase. Timestamps, firmwareVersion options, volume status,
+ * and provided-only E03B fields are not promoted.
  */
 export function bindHciCollectToFieldAcceptanceObservations(input: {
   readonly inventory: HciCollectionSnapshotInventory;
@@ -180,6 +215,21 @@ export function bindHciCollectToFieldAcceptanceObservations(input: {
         status: input.inventory.collection[surface].status,
         items: input.inventory[surface],
       },
+    });
+  }
+
+  for (const item of input.inventory.originalPresentSurfaces ?? []) {
+    if (!extraSurfaceBindable(item, input.caseId, input.projectId)) continue;
+    if (observations.some((observation) => observation.surfaceId === item.surfaceId)) continue;
+    observations.push({
+      surfaceId: item.surfaceId,
+      fact: item.fact,
+      caseId: input.caseId,
+      projectId: input.projectId,
+      observationId: `obs-${item.surfaceId}`,
+      environmentKind: 'live',
+      originalPresent: true,
+      payload: item.payload,
     });
   }
 
