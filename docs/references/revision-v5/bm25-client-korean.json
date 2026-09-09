@@ -1,0 +1,895 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-09T02:33:22.718Z",
+  "indexSha256": "ee04fc7a022c3901ce8a7adce3a29c49bc23c8315e613165e035d4754793e8d4",
+  "qrelsSha256": "177701bbc478fd5f076310e45873249938a6a5d16f8809a6105ef2170011b4b5",
+  "implementationSha256": "bec954e5cba690a9dbef88fee080fc7bd7f17d0d38b7732a536bf600846f7590",
+  "implementationFiles": [
+    "scripts/rag-corpus-eval.ts",
+    "packages/sangfor-rag/src/corpus-eval-contract.ts",
+    "packages/sangfor-rag/src/rag-search.ts",
+    "packages/sangfor-rag/src/rag-ranking.ts",
+    "packages/sangfor-rag/src/hit-context.ts",
+    "packages/sangfor-rag/src/query-evidence.ts",
+    "packages/sangfor-rag/src/retrieval-text.ts",
+    "packages/sangfor-rag/src/bm25.ts",
+    "packages/sangfor-rag/src/query-normalization.ts",
+    "packages/sangfor-rag/src/retrieval-eval.ts",
+    "packages/sangfor-rag/src/corpus-eval-gate.ts",
+    "packages/sangfor-rag/src/hash-embedding.ts",
+    "packages/sangfor-rag/src/embedding-space.ts",
+    "packages/sangfor-rag/src/embedding-profile.ts",
+    "packages/sangfor-rag/src/rag-product.ts",
+    "packages/sangfor-rag/src/rag-index-store.ts",
+    "packages/sangfor-rag/src/embedding-provider.ts",
+    "packages/sangfor-rag/src/rapid-mlx-provider.ts",
+    "packages/sangfor-rag/src/openai-embeddings-client.ts",
+    "packages/sangfor-rag/src/mimo-rerank-provider.ts",
+    "packages/sangfor-rag/src/local-rerank-provider.ts"
+  ],
+  "settings": {
+    "hybridAlpha": null,
+    "allowCustomer": false,
+    "execution": "local-sync-no-external-inference",
+    "requireSubjectMatch": true
+  },
+  "settingsSha256": "0c4d346de18c3b0eae5c357925d0fd3d99b7eb4cdc22086aa066ce094c093a8d",
+  "evaluationOnly": true,
+  "promotionStatus": "NOT_EVALUATED",
+  "missingRelevantSources": [],
+  "positiveQueryCount": 12,
+  "noAnswerQueryCount": 4,
+  "byProduct": {
+    "HCI": {
+      "queryCount": 8,
+      "hitRateAtK": 0.875,
+      "recallAtK": 0.875,
+      "mrrAtK": 0.875,
+      "ndcgAtK": 0.875
+    },
+    "NGFW": {
+      "queryCount": 4,
+      "hitRateAtK": 1,
+      "recallAtK": 1,
+      "mrrAtK": 0.4666666666666666,
+      "ndcgAtK": 0.5967132018086354
+    }
+  },
+  "byLanguage": {
+    "ko": {
+      "queryCount": 12,
+      "hitRateAtK": 0.9166666666666666,
+      "recallAtK": 0.9166666666666666,
+      "mrrAtK": 0.7388888888888888,
+      "ndcgAtK": 0.7822377339362118
+    }
+  },
+  "node": "v24.19.0",
+  "cpu": "AMD EPYC Processor",
+  "chunkCount": 39789,
+  "profile": "local sync retrieval; legacy/unpinned vectors disabled; no reranker or external inference",
+  "k": 5,
+  "coldLoadMs": 746.809864,
+  "meanLatencyMs": 216.90291156249998,
+  "p50LatencyMs": 206.35662700000012,
+  "p95LatencyMs": 400.35603100000003,
+  "metrics": {
+    "queryCount": 12,
+    "hitRateAtK": 0.9166666666666666,
+    "recallAtK": 0.9166666666666666,
+    "mrrAtK": 0.7388888888888888,
+    "ndcgAtK": 0.7822377339362118
+  },
+  "noAnswerFalsePositiveRate": 0,
+  "forbiddenHits": 0,
+  "hardNegativeQueryRate": 0,
+  "hardNegativeHits": 0,
+  "rows": [
+    {
+      "queryId": "ko-v3-validation-01",
+      "product": "HCI",
+      "language": "ko",
+      "latencyMs": 400.35603100000003,
+      "mode": "bm25",
+      "diagnostics": {
+        "degraded": true,
+        "queryBackend": "hash",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "0": 5199
+        },
+        "embeddingModelCounts": {
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 5199
+        },
+        "vectorDimensionMismatches": 5199,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 5199,
+        "queryEmbeddingSpaceId": "2c97a6d4b1fe1835817a72af6b2c0760ce70971e4cb59b122402240090b05890",
+        "retrievalMode": "bm25",
+        "degradedReason": "5199 chunks have no matching verified embedding space; their vector scores are disabled; 5199 indexed chunks have vector dimensions that do not match the query vector"
+      },
+      "hits": [
+        {
+          "queryId": "ko-v3-validation-01",
+          "sourceId": "data/sources/raw/support_10_1381_2654264.md",
+          "rank": 1,
+          "score": 1
+        },
+        {
+          "queryId": "ko-v3-validation-01",
+          "sourceId": "data/sources/raw/support_10_1229_2639807.md",
+          "rank": 2,
+          "score": 1
+        },
+        {
+          "queryId": "ko-v3-validation-01",
+          "sourceId": "data/sources/raw/support_10_1054_2643765.md",
+          "rank": 3,
+          "score": 0.5660910068738296
+        },
+        {
+          "queryId": "ko-v3-validation-01",
+          "sourceId": "data/sources/raw/support_10_1381_2662866.md",
+          "rank": 4,
+          "score": 0.50064255380429
+        },
+        {
+          "queryId": "ko-v3-validation-01",
+          "sourceId": "data/sources/raw/support_10_1381_2654263.md",
+          "rank": 5,
+          "score": 0.459671185686315
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "ko-v3-validation-02",
+      "product": "HCI",
+      "language": "ko",
+      "latencyMs": 232.2117609999998,
+      "mode": "bm25",
+      "diagnostics": {
+        "degraded": true,
+        "queryBackend": "hash",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "0": 5199
+        },
+        "embeddingModelCounts": {
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 5199
+        },
+        "vectorDimensionMismatches": 5199,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 5199,
+        "queryEmbeddingSpaceId": "2c97a6d4b1fe1835817a72af6b2c0760ce70971e4cb59b122402240090b05890",
+        "retrievalMode": "bm25",
+        "degradedReason": "5199 chunks have no matching verified embedding space; their vector scores are disabled; 5199 indexed chunks have vector dimensions that do not match the query vector"
+      },
+      "hits": [
+        {
+          "queryId": "ko-v3-validation-02",
+          "sourceId": "data/sources/raw/support_10_1381_2654265.md",
+          "rank": 1,
+          "score": 1
+        },
+        {
+          "queryId": "ko-v3-validation-02",
+          "sourceId": "data/sources/raw/support_10_1229_2639808.md",
+          "rank": 2,
+          "score": 1
+        },
+        {
+          "queryId": "ko-v3-validation-02",
+          "sourceId": "data/sources/raw/support_10_1381_2654263.md",
+          "rank": 3,
+          "score": 0.7933486288073723
+        },
+        {
+          "queryId": "ko-v3-validation-02",
+          "sourceId": "data/sources/raw/support_10_1229_2639806.md",
+          "rank": 4,
+          "score": 0.7933486288073723
+        },
+        {
+          "queryId": "ko-v3-validation-02",
+          "sourceId": "data/sources/raw/support_case_2_34083.md",
+          "rank": 5,
+          "score": 0.5642914571707283
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "ko-v3-validation-03",
+      "product": "HCI",
+      "language": "ko",
+      "latencyMs": 262.23723500000006,
+      "mode": "bm25",
+      "diagnostics": {
+        "degraded": true,
+        "queryBackend": "hash",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "0": 5199
+        },
+        "embeddingModelCounts": {
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 5199
+        },
+        "vectorDimensionMismatches": 5199,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 5199,
+        "queryEmbeddingSpaceId": "2c97a6d4b1fe1835817a72af6b2c0760ce70971e4cb59b122402240090b05890",
+        "retrievalMode": "bm25",
+        "degradedReason": "5199 chunks have no matching verified embedding space; their vector scores are disabled; 5199 indexed chunks have vector dimensions that do not match the query vector"
+      },
+      "hits": [
+        {
+          "queryId": "ko-v3-validation-03",
+          "sourceId": "data/sources/raw/support_10_1381_2654308.md",
+          "rank": 1,
+          "score": 1
+        },
+        {
+          "queryId": "ko-v3-validation-03",
+          "sourceId": "data/sources/raw/support_10_1229_2639829.md",
+          "rank": 2,
+          "score": 1
+        },
+        {
+          "queryId": "ko-v3-validation-03",
+          "sourceId": "data/sources/raw/support_10_1381_2654418.md",
+          "rank": 3,
+          "score": 0.5570854045223904
+        },
+        {
+          "queryId": "ko-v3-validation-03",
+          "sourceId": "data/sources/raw/support_10_1229_2639883.md",
+          "rank": 4,
+          "score": 0.5570854045223904
+        },
+        {
+          "queryId": "ko-v3-validation-03",
+          "sourceId": "data/sources/raw/support_10_1381_2654265.md",
+          "rank": 5,
+          "score": 0.50950111256332
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "ko-v3-validation-04",
+      "product": "HCI",
+      "language": "ko",
+      "latencyMs": 251.24534399999993,
+      "mode": "bm25",
+      "diagnostics": {
+        "degraded": true,
+        "queryBackend": "hash",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "0": 5199
+        },
+        "embeddingModelCounts": {
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 5199
+        },
+        "vectorDimensionMismatches": 5199,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 5199,
+        "queryEmbeddingSpaceId": "2c97a6d4b1fe1835817a72af6b2c0760ce70971e4cb59b122402240090b05890",
+        "retrievalMode": "bm25",
+        "degradedReason": "5199 chunks have no matching verified embedding space; their vector scores are disabled; 5199 indexed chunks have vector dimensions that do not match the query vector"
+      },
+      "hits": [
+        {
+          "queryId": "ko-v3-validation-04",
+          "sourceId": "data/sources/raw/support_10_1381_2654397.md",
+          "rank": 1,
+          "score": 1
+        },
+        {
+          "queryId": "ko-v3-validation-04",
+          "sourceId": "data/sources/raw/support_10_1229_2639713.md",
+          "rank": 2,
+          "score": 1
+        },
+        {
+          "queryId": "ko-v3-validation-04",
+          "sourceId": "data/sources/raw/support_10_1054_2643825.md",
+          "rank": 3,
+          "score": 0.9090271170856743
+        },
+        {
+          "queryId": "ko-v3-validation-04",
+          "sourceId": "data/sources/raw/support_case_2_309038.md",
+          "rank": 4,
+          "score": 0.8583446152884989
+        },
+        {
+          "queryId": "ko-v3-validation-04",
+          "sourceId": "data/sources/raw/support_case_2_34122.md",
+          "rank": 5,
+          "score": 0.8412269955598556
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "ko-v3-validation-05",
+      "product": "HCI",
+      "language": "ko",
+      "latencyMs": 206.35662700000012,
+      "mode": "bm25",
+      "diagnostics": {
+        "degraded": true,
+        "queryBackend": "hash",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "0": 5199
+        },
+        "embeddingModelCounts": {
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 5199
+        },
+        "vectorDimensionMismatches": 5199,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 5199,
+        "queryEmbeddingSpaceId": "2c97a6d4b1fe1835817a72af6b2c0760ce70971e4cb59b122402240090b05890",
+        "retrievalMode": "bm25",
+        "degradedReason": "5199 chunks have no matching verified embedding space; their vector scores are disabled; 5199 indexed chunks have vector dimensions that do not match the query vector"
+      },
+      "hits": [
+        {
+          "queryId": "ko-v3-validation-05",
+          "sourceId": "data/sources/raw/support_10_1381_2654417.md",
+          "rank": 1,
+          "score": 1
+        },
+        {
+          "queryId": "ko-v3-validation-05",
+          "sourceId": "data/sources/raw/support_10_1229_2639882.md",
+          "rank": 2,
+          "score": 1
+        },
+        {
+          "queryId": "ko-v3-validation-05",
+          "sourceId": "data/sources/raw/support_10_1054_2643820.md",
+          "rank": 3,
+          "score": 0.7597990140133102
+        },
+        {
+          "queryId": "ko-v3-validation-05",
+          "sourceId": "data/sources/raw/support_10_1070_2129250.md",
+          "rank": 4,
+          "score": 0.6929984860738857
+        },
+        {
+          "queryId": "ko-v3-validation-05",
+          "sourceId": "data/sources/raw/support_10_1054_2643819.md",
+          "rank": 5,
+          "score": 0.6123229917848165
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "ko-v3-validation-06",
+      "product": "HCI",
+      "language": "ko",
+      "latencyMs": 201.8086669999998,
+      "mode": "bm25",
+      "diagnostics": {
+        "degraded": true,
+        "queryBackend": "hash",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "0": 5199
+        },
+        "embeddingModelCounts": {
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 5199
+        },
+        "vectorDimensionMismatches": 5199,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 5199,
+        "queryEmbeddingSpaceId": "2c97a6d4b1fe1835817a72af6b2c0760ce70971e4cb59b122402240090b05890",
+        "retrievalMode": "bm25",
+        "degradedReason": "5199 chunks have no matching verified embedding space; their vector scores are disabled; 5199 indexed chunks have vector dimensions that do not match the query vector"
+      },
+      "hits": [
+        {
+          "queryId": "ko-v3-validation-06",
+          "sourceId": "data/sources/raw/support_10_1381_2654461.md",
+          "rank": 1,
+          "score": 1
+        },
+        {
+          "queryId": "ko-v3-validation-06",
+          "sourceId": "data/sources/raw/support_10_1229_2639894.md",
+          "rank": 2,
+          "score": 1
+        },
+        {
+          "queryId": "ko-v3-validation-06",
+          "sourceId": "data/sources/raw/community_thread_11340.md",
+          "rank": 3,
+          "score": 0.44773124031713574
+        },
+        {
+          "queryId": "ko-v3-validation-06",
+          "sourceId": "data/sources/raw/community_thread_10380.md",
+          "rank": 4,
+          "score": 0.44729935278918675
+        },
+        {
+          "queryId": "ko-v3-validation-06",
+          "sourceId": "data/sources/raw/community_thread_11573.md",
+          "rank": 5,
+          "score": 0.4320089846317763
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "ko-v3-validation-07",
+      "product": "HCI",
+      "language": "ko",
+      "latencyMs": 211.3312759999999,
+      "mode": "bm25",
+      "diagnostics": {
+        "degraded": true,
+        "queryBackend": "hash",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "0": 5199
+        },
+        "embeddingModelCounts": {
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 5199
+        },
+        "vectorDimensionMismatches": 5199,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 5199,
+        "queryEmbeddingSpaceId": "2c97a6d4b1fe1835817a72af6b2c0760ce70971e4cb59b122402240090b05890",
+        "retrievalMode": "bm25",
+        "degradedReason": "5199 chunks have no matching verified embedding space; their vector scores are disabled; 5199 indexed chunks have vector dimensions that do not match the query vector"
+      },
+      "hits": [
+        {
+          "queryId": "ko-v3-validation-07",
+          "sourceId": "data/sources/raw/support_10_1381_2662796.md",
+          "rank": 1,
+          "score": 1
+        },
+        {
+          "queryId": "ko-v3-validation-07",
+          "sourceId": "data/sources/raw/support_10_1229_2639804.md",
+          "rank": 2,
+          "score": 0.8447403388751147
+        },
+        {
+          "queryId": "ko-v3-validation-07",
+          "sourceId": "data/sources/raw/support_10_1381_2654261.md",
+          "rank": 3,
+          "score": 0.8442388253742416
+        },
+        {
+          "queryId": "ko-v3-validation-07",
+          "sourceId": "data/sources/raw/support_10_1054_2643752.md",
+          "rank": 4,
+          "score": 0.7567412348415256
+        },
+        {
+          "queryId": "ko-v3-validation-07",
+          "sourceId": "data/sources/raw/support_10_1381_2654232.md",
+          "rank": 5,
+          "score": 0.7052190739883699
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "ko-v3-validation-08",
+      "product": "HCI",
+      "language": "ko",
+      "latencyMs": 194.76176099999975,
+      "mode": "bm25",
+      "diagnostics": {
+        "degraded": true,
+        "queryBackend": "hash",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "0": 5199
+        },
+        "embeddingModelCounts": {
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 5199
+        },
+        "vectorDimensionMismatches": 5199,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 5199,
+        "queryEmbeddingSpaceId": "2c97a6d4b1fe1835817a72af6b2c0760ce70971e4cb59b122402240090b05890",
+        "retrievalMode": "bm25",
+        "degradedReason": "5199 chunks have no matching verified embedding space; their vector scores are disabled; 5199 indexed chunks have vector dimensions that do not match the query vector"
+      },
+      "hits": [
+        {
+          "queryId": "ko-v3-validation-08",
+          "sourceId": "data/sources/raw/support_10_1381_2662826.md",
+          "rank": 1,
+          "score": 1
+        },
+        {
+          "queryId": "ko-v3-validation-08",
+          "sourceId": "data/sources/raw/support_10_1381_2662801.md",
+          "rank": 2,
+          "score": 0.5848297904489215
+        },
+        {
+          "queryId": "ko-v3-validation-08",
+          "sourceId": "data/sources/raw/support_10_1381_2662866.md",
+          "rank": 3,
+          "score": 0.5568934319828227
+        },
+        {
+          "queryId": "ko-v3-validation-08",
+          "sourceId": "data/sources/raw/support_10_1381_2654263.md",
+          "rank": 4,
+          "score": 0.5530729076067581
+        },
+        {
+          "queryId": "ko-v3-validation-08",
+          "sourceId": "data/sources/raw/support_10_1229_2639806.md",
+          "rank": 5,
+          "score": 0.5530729076067581
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "ko-v3-validation-09",
+      "product": "NGFW",
+      "language": "ko",
+      "latencyMs": 285.35104,
+      "mode": "bm25",
+      "diagnostics": {
+        "degraded": true,
+        "queryBackend": "hash",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "0": 4147
+        },
+        "embeddingModelCounts": {
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 4147
+        },
+        "vectorDimensionMismatches": 4147,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 4147,
+        "queryEmbeddingSpaceId": "2c97a6d4b1fe1835817a72af6b2c0760ce70971e4cb59b122402240090b05890",
+        "retrievalMode": "bm25",
+        "degradedReason": "4147 chunks have no matching verified embedding space; their vector scores are disabled; 4147 indexed chunks have vector dimensions that do not match the query vector"
+      },
+      "hits": [
+        {
+          "queryId": "ko-v3-validation-09",
+          "sourceId": "data/sources/raw/support_21_1088_2639184.md",
+          "rank": 1,
+          "score": 1
+        },
+        {
+          "queryId": "ko-v3-validation-09",
+          "sourceId": "data/sources/raw/support_21_1087_2642470.md",
+          "rank": 2,
+          "score": 1
+        },
+        {
+          "queryId": "ko-v3-validation-09",
+          "sourceId": "data/sources/raw/support_21_1095_2647815.md",
+          "rank": 3,
+          "score": 0.9990134717402364
+        },
+        {
+          "queryId": "ko-v3-validation-09",
+          "sourceId": "data/sources/raw/support_21_1093_2637105.md",
+          "rank": 4,
+          "score": 0.9990134717402364
+        },
+        {
+          "queryId": "ko-v3-validation-09",
+          "sourceId": "data/sources/raw/support_21_1092_2631418.md",
+          "rank": 5,
+          "score": 0.9990134717402364
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "ko-v3-validation-10",
+      "product": "NGFW",
+      "language": "ko",
+      "latencyMs": 156.37220400000024,
+      "mode": "bm25",
+      "diagnostics": {
+        "degraded": true,
+        "queryBackend": "hash",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "0": 4147
+        },
+        "embeddingModelCounts": {
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 4147
+        },
+        "vectorDimensionMismatches": 4147,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 4147,
+        "queryEmbeddingSpaceId": "2c97a6d4b1fe1835817a72af6b2c0760ce70971e4cb59b122402240090b05890",
+        "retrievalMode": "bm25",
+        "degradedReason": "4147 chunks have no matching verified embedding space; their vector scores are disabled; 4147 indexed chunks have vector dimensions that do not match the query vector"
+      },
+      "hits": [
+        {
+          "queryId": "ko-v3-validation-10",
+          "sourceId": "data/sources/raw/support_21_1095_2647860.md",
+          "rank": 1,
+          "score": 1
+        },
+        {
+          "queryId": "ko-v3-validation-10",
+          "sourceId": "data/sources/raw/support_21_1093_2637150.md",
+          "rank": 2,
+          "score": 1
+        },
+        {
+          "queryId": "ko-v3-validation-10",
+          "sourceId": "data/sources/raw/support_21_1092_2631462.md",
+          "rank": 3,
+          "score": 1
+        },
+        {
+          "queryId": "ko-v3-validation-10",
+          "sourceId": "data/sources/raw/support_21_1090_2640341.md",
+          "rank": 4,
+          "score": 1
+        },
+        {
+          "queryId": "ko-v3-validation-10",
+          "sourceId": "data/sources/raw/support_21_1095_2648086.md",
+          "rank": 5,
+          "score": 0.27905471932154485
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "ko-v3-validation-11",
+      "product": "NGFW",
+      "language": "ko",
+      "latencyMs": 171.79630300000008,
+      "mode": "bm25",
+      "diagnostics": {
+        "degraded": true,
+        "queryBackend": "hash",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "0": 4147
+        },
+        "embeddingModelCounts": {
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 4147
+        },
+        "vectorDimensionMismatches": 4147,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 4147,
+        "queryEmbeddingSpaceId": "2c97a6d4b1fe1835817a72af6b2c0760ce70971e4cb59b122402240090b05890",
+        "retrievalMode": "bm25",
+        "degradedReason": "4147 chunks have no matching verified embedding space; their vector scores are disabled; 4147 indexed chunks have vector dimensions that do not match the query vector"
+      },
+      "hits": [
+        {
+          "queryId": "ko-v3-validation-11",
+          "sourceId": "data/sources/raw/support_21_1088_2639130.md",
+          "rank": 1,
+          "score": 1
+        },
+        {
+          "queryId": "ko-v3-validation-11",
+          "sourceId": "data/sources/raw/support_21_1087_2642416.md",
+          "rank": 2,
+          "score": 1
+        },
+        {
+          "queryId": "ko-v3-validation-11",
+          "sourceId": "data/sources/raw/support_21_1095_2647700.md",
+          "rank": 3,
+          "score": 0.9950058233827667
+        },
+        {
+          "queryId": "ko-v3-validation-11",
+          "sourceId": "data/sources/raw/support_21_1093_2636990.md",
+          "rank": 4,
+          "score": 0.9950058233827667
+        },
+        {
+          "queryId": "ko-v3-validation-11",
+          "sourceId": "data/sources/raw/support_21_1092_2631304.md",
+          "rank": 5,
+          "score": 0.9950058233827667
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "ko-v3-validation-12",
+      "product": "NGFW",
+      "language": "ko",
+      "latencyMs": 152.94048899999962,
+      "mode": "bm25",
+      "diagnostics": {
+        "degraded": true,
+        "queryBackend": "hash",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "0": 4147
+        },
+        "embeddingModelCounts": {
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 4147
+        },
+        "vectorDimensionMismatches": 4147,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 4147,
+        "queryEmbeddingSpaceId": "2c97a6d4b1fe1835817a72af6b2c0760ce70971e4cb59b122402240090b05890",
+        "retrievalMode": "bm25",
+        "degradedReason": "4147 chunks have no matching verified embedding space; their vector scores are disabled; 4147 indexed chunks have vector dimensions that do not match the query vector"
+      },
+      "hits": [
+        {
+          "queryId": "ko-v3-validation-12",
+          "sourceId": "data/sources/raw/support_21_1093_2638442.md",
+          "rank": 1,
+          "score": 1
+        },
+        {
+          "queryId": "ko-v3-validation-12",
+          "sourceId": "data/sources/raw/support_21_1093_2637169.md",
+          "rank": 2,
+          "score": 0.9980795501393258
+        },
+        {
+          "queryId": "ko-v3-validation-12",
+          "sourceId": "data/sources/raw/support_21_1092_2631481.md",
+          "rank": 3,
+          "score": 0.9980795501393258
+        },
+        {
+          "queryId": "ko-v3-validation-12",
+          "sourceId": "data/sources/raw/support_21_1090_2640360.md",
+          "rank": 4,
+          "score": 0.9980795501393258
+        },
+        {
+          "queryId": "ko-v3-validation-12",
+          "sourceId": "data/sources/raw/support_21_1095_2647879.md",
+          "rank": 5,
+          "score": 0.9966549795383526
+        }
+      ],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "ko-v3-no-01",
+      "product": "HCI",
+      "language": "ko",
+      "latencyMs": 216.79223000000002,
+      "mode": "bm25",
+      "diagnostics": {
+        "degraded": true,
+        "queryBackend": "hash",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "0": 5199
+        },
+        "embeddingModelCounts": {
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 5199
+        },
+        "vectorDimensionMismatches": 5199,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 5199,
+        "queryEmbeddingSpaceId": "2c97a6d4b1fe1835817a72af6b2c0760ce70971e4cb59b122402240090b05890",
+        "retrievalMode": "bm25",
+        "degradedReason": "5199 chunks have no matching verified embedding space; their vector scores are disabled; 5199 indexed chunks have vector dimensions that do not match the query vector"
+      },
+      "hits": [],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "ko-v3-no-02",
+      "product": "NGFW",
+      "language": "ko",
+      "latencyMs": 159.9538660000003,
+      "mode": "bm25",
+      "diagnostics": {
+        "degraded": true,
+        "queryBackend": "hash",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "0": 4147
+        },
+        "embeddingModelCounts": {
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 4147
+        },
+        "vectorDimensionMismatches": 4147,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 4147,
+        "queryEmbeddingSpaceId": "2c97a6d4b1fe1835817a72af6b2c0760ce70971e4cb59b122402240090b05890",
+        "retrievalMode": "bm25",
+        "degradedReason": "4147 chunks have no matching verified embedding space; their vector scores are disabled; 4147 indexed chunks have vector dimensions that do not match the query vector"
+      },
+      "hits": [],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "ko-v3-no-03",
+      "product": "HCI",
+      "language": "ko",
+      "latencyMs": 207.32199300000002,
+      "mode": "bm25",
+      "diagnostics": {
+        "degraded": true,
+        "queryBackend": "hash",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "0": 5199
+        },
+        "embeddingModelCounts": {
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 5199
+        },
+        "vectorDimensionMismatches": 5199,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 5199,
+        "queryEmbeddingSpaceId": "2c97a6d4b1fe1835817a72af6b2c0760ce70971e4cb59b122402240090b05890",
+        "retrievalMode": "bm25",
+        "degradedReason": "5199 chunks have no matching verified embedding space; their vector scores are disabled; 5199 indexed chunks have vector dimensions that do not match the query vector"
+      },
+      "hits": [],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    },
+    {
+      "queryId": "ko-v3-no-04",
+      "product": "NGFW",
+      "language": "ko",
+      "latencyMs": 159.6097579999996,
+      "mode": "bm25",
+      "diagnostics": {
+        "degraded": true,
+        "queryBackend": "hash",
+        "queryVectorDims": 384,
+        "indexVectorDims": {
+          "0": 4147
+        },
+        "embeddingModelCounts": {
+          "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 4147
+        },
+        "vectorDimensionMismatches": 4147,
+        "mixedEmbeddingModels": false,
+        "incompatibleEmbeddingSpaces": 4147,
+        "queryEmbeddingSpaceId": "2c97a6d4b1fe1835817a72af6b2c0760ce70971e4cb59b122402240090b05890",
+        "retrievalMode": "bm25",
+        "degradedReason": "4147 chunks have no matching verified embedding space; their vector scores are disabled; 4147 indexed chunks have vector dimensions that do not match the query vector"
+      },
+      "hits": [],
+      "forbiddenHits": 0,
+      "hardNegativeHits": 0
+    }
+  ],
+  "comparison": null,
+  "baselineReportSha256": null
+}
