@@ -43,10 +43,8 @@ import {
   type EngineerObservation,
   type EngineerRequirement,
 } from '../../packages/shared/src/engineer-case-contract.js';
-import {
-  evaluateEngineerFieldAcceptance,
-  type EngineerFieldAcceptanceDecision,
-} from '../../packages/shared/src/engineer-field-acceptance.js';
+import { evaluateEngineerFieldAcceptanceGrant } from '../../packages/sangfor-approval/src/engineer-field-acceptance-grant.js';
+import type { EngineerFieldAcceptanceDecision } from '../../packages/shared/src/engineer-field-acceptance.js';
 import type { ProductCode } from '../../packages/shared/src/index.js';
 
 const WHEN = '2026-09-09T00:00:00.000Z';
@@ -299,7 +297,7 @@ function trackRequiredFields(input: {
   ];
 }
 
-function baseResult(partial: {
+async function baseResult(partial: {
   steps: EngineerWorkflowStep[];
   collectFailed: boolean;
   inventory?: HciInventory;
@@ -314,19 +312,22 @@ function baseResult(partial: {
   coverage?: EngineerCaseCoverage;
   tracking?: EngineerWorkflowResult['tracking'];
   unresolved?: readonly string[];
-}): EngineerWorkflowResult {
+}): Promise<EngineerWorkflowResult> {
   const document = partial.document;
   return {
     fabricatedPass: false,
     fieldAccepted: false,
     liveProof: false,
-    fieldAcceptance: evaluateEngineerFieldAcceptance({
+    fieldAcceptance: await evaluateEngineerFieldAcceptanceGrant({
       environmentKind: document?.environmentKind,
       synthetic: document?.synthetic,
       originalPresent: document?.originalPresent,
       guideReadiness: document?.guide.readiness,
       wordExportOk: partial.export?.ok === true,
       workflowCompletedNormally: false,
+      caseId: document?.caseId,
+      caseRevision: document?.revision,
+      guideRevision: document?.guide.revision,
     }),
     completedNormally: false,
     collectFailed: partial.collectFailed,
@@ -387,7 +388,7 @@ export async function runEngineerWorkflow(input: EngineerWorkflowInput): Promise
   });
   if (!ingested.ok) {
     steps.push(step('requirements', 'ingestEngineerRequirements', 'refused', ingested.code));
-    return baseResult({ steps, collectFailed, inventory, healthScope, healthVerdict });
+    return await baseResult({ steps, collectFailed, inventory, healthScope, healthVerdict });
   }
   steps.push(step('requirements', 'ingestEngineerRequirements', 'ran'));
   const requirements: readonly EngineerRequirement[] = ingested.requirements;
@@ -500,11 +501,11 @@ export async function runEngineerWorkflow(input: EngineerWorkflowInput): Promise
     });
   } catch (error) {
     steps.push(step('assess', 'assessEngineerCase', 'failed', error instanceof Error ? error.message : 'assess threw'));
-    return baseResult({ steps, collectFailed, inventory, healthScope, healthVerdict });
+    return await baseResult({ steps, collectFailed, inventory, healthScope, healthVerdict });
   }
   if (!assessed.ok) {
     steps.push(step('assess', 'assessEngineerCase', 'failed', assessed.code));
-    return baseResult({ steps, collectFailed, inventory, healthScope, healthVerdict });
+    return await baseResult({ steps, collectFailed, inventory, healthScope, healthVerdict });
   }
   steps.push(step('assess', 'assessEngineerCase', 'ran'));
 
@@ -529,7 +530,7 @@ export async function runEngineerWorkflow(input: EngineerWorkflowInput): Promise
     });
   } catch (error) {
     steps.push(step('guide', 'buildEngineerGuide', 'failed', error instanceof Error ? error.message : 'guide threw'));
-    return baseResult({
+    return await baseResult({
       steps,
       collectFailed,
       inventory,
@@ -540,7 +541,7 @@ export async function runEngineerWorkflow(input: EngineerWorkflowInput): Promise
   }
   if (!built.ok) {
     steps.push(step('guide', 'buildEngineerGuide', 'failed', built.code));
-    return baseResult({
+    return await baseResult({
       steps,
       collectFailed,
       inventory,
@@ -575,7 +576,7 @@ export async function runEngineerWorkflow(input: EngineerWorkflowInput): Promise
   const assembled = assembleEngineerCase(guideDocument, input.auth);
   if (!assembled.ok) {
     steps.push(step('persist', 'saveEngineerCase', 'refused', assembled.issues.map((item) => item.code).join(',')));
-    return baseResult({
+    return await baseResult({
       steps,
       collectFailed,
       inventory,
@@ -589,7 +590,7 @@ export async function runEngineerWorkflow(input: EngineerWorkflowInput): Promise
   const prepared = prepareEngineerCaseForPersistence(guideDocument, input.auth);
   if (!prepared.ok) {
     steps.push(step('persist', 'saveEngineerCase', 'refused', prepared.issues.map((item) => item.code).join(',')));
-    return baseResult({
+    return await baseResult({
       steps,
       collectFailed,
       inventory,
@@ -602,7 +603,7 @@ export async function runEngineerWorkflow(input: EngineerWorkflowInput): Promise
 
   if (!input.persist) {
     steps.push(step('persist', 'saveEngineerCase', 'unavailable', 'PERSIST_INJECT_REQUIRED'));
-    return baseResult({
+    return await baseResult({
       steps,
       collectFailed,
       inventory,
@@ -665,13 +666,16 @@ export async function runEngineerWorkflow(input: EngineerWorkflowInput): Promise
     && persist.guideReadyGranted === false
     && persistedDocument.guide.readiness !== 'review_ready';
 
-  const fieldAcceptance = evaluateEngineerFieldAcceptance({
+  const fieldAcceptance = await evaluateEngineerFieldAcceptanceGrant({
     environmentKind: persistedDocument.environmentKind,
     synthetic: persistedDocument.synthetic,
     originalPresent: persistedDocument.originalPresent,
     guideReadiness: persistedDocument.guide.readiness,
     wordExportOk: exported?.ok === true,
     workflowCompletedNormally: completedNormally,
+    caseId: persistedDocument.caseId,
+    caseRevision: persistedDocument.revision,
+    guideRevision: persistedDocument.guide.revision,
   });
 
   return {

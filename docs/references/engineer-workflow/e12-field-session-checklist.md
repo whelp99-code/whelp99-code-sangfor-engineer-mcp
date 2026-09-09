@@ -6,7 +6,18 @@ Do not put passwords, cookies, session material, or customer host addresses in g
 
 ## Gate
 
-`evaluateEngineerFieldAcceptance` can grant `field_accepted` only through an explicit human/PM `pm_live_read_review` after a live read that actually ran. Fixture PASS, `review_ready`, Word download, and e2e PASS cannot set `field_accepted`. This tree has not run a live read.
+`evaluateEngineerFieldAcceptance` records refusals only. It never grants.
+
+`evaluateEngineerFieldAcceptanceGrant` may set `field_accepted` only when all of the following hold together:
+
+1. A live read actually executed, with `originalPresent === true` facts that went through `bindObservedFactToCase` / collect. HMAC binds the observation digest of those bound facts, not caller-chosen `executed` / `originalPresent` / `environmentKind` / `sourceKind` labels. `sourceKind: authorized_device_read` is derived only by the collect binder after every required surface binds. Fixture, synthetic live-shaped fixture, mock console, historical records, and attestation strings are not a live read.
+2. A structured PM grant verifies with the existing `@sangfor/approval` HMAC primitive (`signDomainApproval` / `verifyDomainApprovalSignature`) over the grant domain, case/guide revision, and that observation digest, keyed only by the process environment `SANGFOR_ENGINEER_FIELD_ACCEPTANCE_SECRET`. A request-supplied secret is not read. Missing or empty secret fails closed. A raw string `pm_live_read_review` or a boolean JSON claim is not a grant. This is not a device-write approval and does not use `SANGFOR_OPERATOR_APPROVAL_SECRET`.
+3. Case revision and guide revision on the grant, the live read, and the case under review are identical (matching revision). Mismatch refuses.
+4. The grant nonce is consumed through the existing single-use nonce store. Replay refuses. A missing or corrupt nonce store fails closed.
+
+Required conjunction: live originalPresent bound facts + structured HMAC PM grant + matching revision + consumed nonce.
+
+Fixture PASS, `review_ready`, Word download, e2e PASS, developer tests, and `SANGFOR_ALLOW_REAL_EXECUTION` cannot set `field_accepted`. Required surfaces with no bound originalPresent facts stay `NOT_RUN` and refuse the grant; `NOT_RUN` is not PASS. A refused grant does not report `liveRead: executed` merely because the caller claimed it. This tree has not run a live HCI collect. A unit-test binder path can exercise the sibling true path; that path is not a production default and is not `field_accepted` for a real case. A real grant still cannot happen until a real collect produces those facts.
 
 ## What the user / PM must provide before a live read starts
 
@@ -45,7 +56,7 @@ Provided specifications and proposed settings stay `provided` / `proposed`. They
 
 1. Recalculate remaining / utilization / headroom from the live operands. Independent oracle for the fixture numbers remains 60 GiB / 40 percent / 40 GiB from 100/40/20; live numbers must be re-derived from that session.
 2. Track every requirement as satisfied, change_needed, unresolved, or not_applicable. Unresolved stays unresolved.
-3. PM reads the guide: missing values, risks, verify/stop/recovery. Record accept or change-request. That record is the only path that may later set `field_accepted`.
+3. PM reads the guide: missing values, risks, verify/stop/recovery. Record accept or change-request as a structured HMAC grant bound to the same live read and revisions. An attestation kind name alone cannot grant.
 4. Do not apply a setting. E13/E14 stay closed until separately approved.
 
 ## Explicit no

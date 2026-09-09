@@ -2,12 +2,19 @@
  * Fail-closed field-acceptance recording for E12.
  *
  * `field_accepted` is not a document claim, not a fixture/e2e/Word result, and
- * not an execution-gate flag. This increment has no live read, so the only
- * honest grant path is none. Unknown stays unknown. This module does not
- * collect, mutate, or persist.
+ * not an execution-gate flag. This module records refusals only. It does not
+ * verify HMAC, collect, mutate, or persist. The return type is `fieldAccepted:
+ * false` / `grantPath: none` because this function cannot grant. A grant
+ * requires the sibling recorder in `@sangfor/approval` plus bound live
+ * originalPresent facts, a structured PM grant, a matching revision, and a
+ * consumed nonce. Unknown stays unknown.
  */
 
 export const ENGINEER_FIELD_ACCEPTANCE_GRANT_KIND = 'pm_live_read_review' as const;
+export const ENGINEER_FIELD_ACCEPTANCE_APPROVAL_DOMAIN =
+  'engineer.field_acceptance.pm_live_read_review.v1' as const;
+export const ENGINEER_FIELD_ACCEPTANCE_SECRET_ENV =
+  'SANGFOR_ENGINEER_FIELD_ACCEPTANCE_SECRET' as const;
 
 export const ENGINEER_REQUIRED_LIVE_READ_SURFACES = [
   { id: 'volumes', layer: 'E03A', acquisition: 'automatic-when-live' },
@@ -28,11 +35,55 @@ export type EngineerRequiredLiveReadSurfaceId =
 
 export type EngineerFieldAcceptanceEnvironment = 'fixture' | 'historical_record' | 'live';
 export type EngineerFieldAcceptanceReadiness = 'draft' | 'blocked' | 'review_ready';
+export type EngineerFieldAcceptanceGrantPath = 'none' | typeof ENGINEER_FIELD_ACCEPTANCE_GRANT_KIND;
+export type EngineerFieldAcceptanceLiveReadStatus = 'not_run' | 'refused' | 'executed';
+export type EngineerLiveReadSourceKind =
+  | 'authorized_device_read'
+  | 'fixture'
+  | 'mock_console'
+  | 'historical_record'
+  | 'attestation';
 
 export type EngineerPmLiveReadAttestation = {
   readonly actorId?: string;
   readonly decision?: string;
   readonly liveCollectStatus?: string;
+};
+
+export type EngineerLiveReadEvidence = {
+  readonly executed: boolean;
+  readonly environmentKind: EngineerFieldAcceptanceEnvironment;
+  readonly originalPresent: boolean;
+  readonly synthetic: boolean;
+  readonly sourceKind: EngineerLiveReadSourceKind;
+  readonly caseRevision: string;
+  readonly guideRevision: string;
+};
+
+/**
+ * Raw fact + case binding that must be re-run through `bindObservedFactToCase`.
+ * Caller-chosen `sourceKind` / `environmentKind` labels are not proof.
+ */
+export type EngineerBoundObservationInput = {
+  readonly surfaceId: EngineerRequiredLiveReadSurfaceId;
+  readonly fact: unknown;
+  readonly caseId: string;
+  readonly projectId: string;
+  readonly observationId: string;
+  readonly environmentKind: EngineerFieldAcceptanceEnvironment;
+  readonly originalPresent: boolean;
+  readonly payload: unknown;
+};
+
+export type EngineerPmLiveReadGrant = {
+  readonly approvedBy: string;
+  readonly decision: 'accept_after_live_read';
+  readonly caseId: string;
+  readonly caseRevision: string;
+  readonly guideRevision: string;
+  readonly nonce: string;
+  readonly expiresAt: string;
+  readonly approvalToken: string;
 };
 
 export type EngineerFieldAcceptanceInput = {
@@ -48,32 +99,61 @@ export type EngineerFieldAcceptanceInput = {
   readonly grantKind?: string;
   readonly pmAttestation?: EngineerPmLiveReadAttestation;
   readonly allowRealExecution?: boolean;
+  readonly caseId?: string;
+  readonly caseRevision?: string;
+  readonly guideRevision?: string;
+  readonly liveRead?: EngineerLiveReadEvidence;
+  readonly pmGrant?: EngineerPmLiveReadGrant;
+  readonly boundObservations?: readonly EngineerBoundObservationInput[];
 };
 
 export type EngineerLiveReadSurfaceStatus = {
   readonly id: EngineerRequiredLiveReadSurfaceId;
   readonly layer: 'E03A' | 'E03B';
   readonly acquisition: (typeof ENGINEER_REQUIRED_LIVE_READ_SURFACES)[number]['acquisition'];
-  readonly status: 'NOT_RUN';
+  readonly status: 'NOT_RUN' | 'BOUND_ORIGINAL_PRESENT';
 };
 
-export type EngineerFieldAcceptanceDecision = {
+export type EngineerFieldAcceptanceRefusal = {
   readonly fieldAccepted: false;
   readonly grantPath: 'none';
-  readonly liveRead: 'not_run';
+  readonly liveRead: EngineerFieldAcceptanceLiveReadStatus;
   readonly reasonCode: string;
   readonly refusedReasons: readonly string[];
   readonly requiredLiveSurfaces: readonly EngineerLiveReadSurfaceStatus[];
   readonly mutationDispatchCount: 0;
 };
 
+export type EngineerFieldAcceptanceGranted = {
+  readonly fieldAccepted: true;
+  readonly grantPath: typeof ENGINEER_FIELD_ACCEPTANCE_GRANT_KIND;
+  readonly liveRead: 'executed';
+  readonly reasonCode: 'PM_LIVE_READ_REVIEW_GRANTED';
+  readonly refusedReasons: readonly [];
+  readonly requiredLiveSurfaces: readonly EngineerLiveReadSurfaceStatus[];
+  readonly mutationDispatchCount: 0;
+};
+
+export type EngineerFieldAcceptanceDecision =
+  | EngineerFieldAcceptanceRefusal
+  | EngineerFieldAcceptanceGranted;
+
 function uniqueReasons(reasons: readonly string[]): string[] {
   return [...new Set(reasons)];
 }
 
-export function evaluateEngineerFieldAcceptance(
+function notRunSurfaces(): EngineerLiveReadSurfaceStatus[] {
+  return ENGINEER_REQUIRED_LIVE_READ_SURFACES.map((surface) => ({
+    id: surface.id,
+    layer: surface.layer,
+    acquisition: surface.acquisition,
+    status: 'NOT_RUN',
+  }));
+}
+
+export function collectEngineerFieldAcceptanceRefusals(
   input: EngineerFieldAcceptanceInput = {},
-): EngineerFieldAcceptanceDecision {
+): string[] {
   const refused: string[] = [];
 
   if (input.environmentKind === 'fixture' || input.synthetic === true) {
@@ -109,6 +189,9 @@ export function evaluateEngineerFieldAcceptance(
   if (input.grantKind !== ENGINEER_FIELD_ACCEPTANCE_GRANT_KIND) {
     refused.push('PM_LIVE_READ_REVIEW_REQUIRED');
   }
+  if (input.grantKind === ENGINEER_FIELD_ACCEPTANCE_GRANT_KIND && input.pmGrant === undefined) {
+    refused.push('ATTESTATION_STRING_IS_NOT_A_GRANT');
+  }
   if (input.pmAttestation?.decision !== 'accept_after_live_read') {
     refused.push('PM_ATTESTATION_REQUIRED');
   }
@@ -116,20 +199,20 @@ export function evaluateEngineerFieldAcceptance(
     refused.push('ATTESTED_LIVE_COLLECT_WITHOUT_IN_PROCESS_READ');
   }
   refused.push('LIVE_READ_NOT_RUN');
+  return uniqueReasons(refused);
+}
 
-  const refusedReasons = uniqueReasons(refused);
+export function evaluateEngineerFieldAcceptance(
+  input: EngineerFieldAcceptanceInput = {},
+): EngineerFieldAcceptanceRefusal {
+  const refusedReasons = collectEngineerFieldAcceptanceRefusals(input);
   return {
     fieldAccepted: false,
     grantPath: 'none',
     liveRead: 'not_run',
     reasonCode: refusedReasons[0] ?? 'FIELD_ACCEPTED_REQUIRES_PM_LIVE_READ',
     refusedReasons,
-    requiredLiveSurfaces: ENGINEER_REQUIRED_LIVE_READ_SURFACES.map((surface) => ({
-      id: surface.id,
-      layer: surface.layer,
-      acquisition: surface.acquisition,
-      status: 'NOT_RUN',
-    })),
+    requiredLiveSurfaces: notRunSurfaces(),
     mutationDispatchCount: 0,
   };
 }
