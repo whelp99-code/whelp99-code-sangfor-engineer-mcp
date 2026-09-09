@@ -4,6 +4,17 @@ import { parseRuntimeJson } from '../../../packages/shared/src/runtime-schema.js
 
 const textSchema = z.string().max(1_000_000);
 const shortTextSchema = z.string().max(4_096);
+const engineerIdSchema = z.string().regex(/^[A-Za-z0-9._-]{1,64}$/u).refine(
+  (value) => value !== '.' && value !== '..' && !value.includes('..'),
+);
+const engineerArtifactSchema = z.object({
+  id: engineerIdSchema,
+  digest: z.string().regex(/^[a-f0-9]{64}$/u),
+  mediaType: shortTextSchema,
+  payload: textSchema,
+  sanitized: z.boolean(),
+  retention: engineerIdSchema,
+}).strict();
 const projectSchema = z.object({
   customerName: textSchema,
   product: shortTextSchema.optional(),
@@ -58,6 +69,23 @@ const requestSchemas = {
     feedbackText: textSchema,
     sourceRole: z.enum(['user', 'engineer', 'codex', 'verifier', 'customer']),
   }).strict(),
+  'engineer-cases': z.object({
+    requestId: engineerIdSchema,
+    document: runtimeJsonObjectSchema,
+    expectedRevision: engineerIdSchema.optional(),
+    artifacts: z.array(engineerArtifactSchema).max(64).optional(),
+  }).strict(),
+  'engineer-cases-resume': z.object({
+    caseId: engineerIdSchema,
+  }).strict(),
+  'engineer-cases-compare': z.object({
+    caseId: engineerIdSchema,
+    revision: engineerIdSchema,
+  }).strict(),
+  'engineer-cases-artifact': z.object({
+    caseId: engineerIdSchema,
+    artifactId: engineerIdSchema,
+  }).strict(),
 } as const;
 
 export type OperatorRequestRoute = keyof typeof requestSchemas;
@@ -74,6 +102,10 @@ const operatorRequestSchema: z.ZodType<AnyOperatorRequestBody> = z.union([
   requestSchemas['analyze-requirements'],
   requestSchemas['import-excel'],
   requestSchemas.feedback,
+  requestSchemas['engineer-cases'],
+  requestSchemas['engineer-cases-resume'],
+  requestSchemas['engineer-cases-compare'],
+  requestSchemas['engineer-cases-artifact'],
 ]);
 
 export function decodeOperatorRequestBody<TRoute extends OperatorRequestRoute>(

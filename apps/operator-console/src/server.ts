@@ -26,6 +26,17 @@ import {
   getDiagnoses
 } from './api.js';
 import { postCaseResolution } from './case-resolution.js';
+import {
+  defaultEngineerCaseStore,
+  getEngineerCaseArtifact,
+  getResumeEngineerCase,
+  postCompareEngineerCase,
+  postEngineerCaseArtifact,
+  postResumeEngineerCase,
+  postSaveEngineerCase,
+  resolveEngineerCaseApiAuth,
+  type OperatorServerOptions,
+} from './engineer-case-api.js';
 import { dashboardHtml } from './ui.js';
 import {
   decodeOperatorRequestBody,
@@ -54,8 +65,10 @@ async function readJsonBody<TRoute extends OperatorRequestRoute>(
   return decodeOperatorRequestBody(body, route);
 }
 
-export function createOperatorServer(): http.Server {
+export function createOperatorServer(options: OperatorServerOptions = {}): http.Server {
   const apiToken = process.env.SANGFOR_API_TOKEN;
+  const caseStore = options.engineerCase?.store ?? defaultEngineerCaseStore();
+  const caseAuth = () => resolveEngineerCaseApiAuth(options.engineerCase?.env ?? process.env, options.engineerCase?.auth);
 
   return http.createServer(async (req, res) => {
     const url = new URL(req.url ?? '/', 'http://localhost');
@@ -141,6 +154,49 @@ export function createOperatorServer(): http.Server {
       if (method === 'POST' && url.pathname === '/api/feedback') {
         const body = await readJsonBody(req, 'feedback');
         return json(res, await postFeedback(body));
+      }
+
+      if (method === 'POST' && url.pathname === '/api/engineer-cases') {
+        const body = await readJsonBody(req, 'engineer-cases');
+        const result = await postSaveEngineerCase(body, caseStore, caseAuth());
+        return json(res, result.body, result.status);
+      }
+
+      if (method === 'GET' && url.pathname === '/api/engineer-cases') {
+        const result = await getResumeEngineerCase(
+          url.searchParams.get('caseId'),
+          caseStore,
+          caseAuth(),
+        );
+        return json(res, result.body, result.status);
+      }
+
+      if (method === 'POST' && url.pathname === '/api/engineer-cases/resume') {
+        const body = await readJsonBody(req, 'engineer-cases-resume');
+        const result = await postResumeEngineerCase(body, caseStore, caseAuth());
+        return json(res, result.body, result.status);
+      }
+
+      if (method === 'POST' && url.pathname === '/api/engineer-cases/compare') {
+        const body = await readJsonBody(req, 'engineer-cases-compare');
+        const result = await postCompareEngineerCase(body, caseStore, caseAuth());
+        return json(res, result.body, result.status);
+      }
+
+      if (method === 'POST' && url.pathname === '/api/engineer-cases/artifact') {
+        const body = await readJsonBody(req, 'engineer-cases-artifact');
+        const result = await postEngineerCaseArtifact(body, caseStore, caseAuth());
+        return json(res, result.body, result.status);
+      }
+
+      if (method === 'GET' && url.pathname === '/api/engineer-cases/artifact') {
+        const result = await getEngineerCaseArtifact(
+          url.searchParams.get('caseId'),
+          url.searchParams.get('artifactId'),
+          caseStore,
+          caseAuth(),
+        );
+        return json(res, result.body, result.status);
       }
 
       if (method === 'GET' && (url.pathname === '/' || url.pathname === '/index.html')) {
