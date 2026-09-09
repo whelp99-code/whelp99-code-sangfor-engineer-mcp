@@ -41,6 +41,14 @@ export type HciCollectExtraPage = {
   readonly collectedAt: string;
 };
 
+/** Official Janus extras page. Payload may be a JSON array (hosts list). */
+export type HciOfficialJanusExtraPage = {
+  readonly endpoint: string;
+  readonly payload: unknown;
+  readonly latencyMs: number;
+  readonly collectedAt: string;
+};
+
 const EXTRA_SURFACE_SET = new Set<string>(HCI_COLLECT_EXTRA_SURFACE_IDS);
 const ENGINEER_UNIT_SET = new Set<string>(ENGINEER_UNITS);
 const ISO_OFFSET_DATE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$/u;
@@ -143,6 +151,27 @@ export const OFFICIAL_HCI_CATALOG_READ_ENDPOINTS = [
 
 const OFFICIAL_HCI_CATALOG_READ_ENDPOINT_SET = new Set<string>(OFFICIAL_HCI_CATALOG_READ_ENDPOINTS);
 
+/**
+ * Official SCP Janus extras reads from the retrieved 2024 Open-API PDF.
+ * These are not Keystone/OpenStack catalog paths. Live GET stays capture_gated.
+ * GET /os-hypervisors is not in that document.
+ */
+export const OFFICIAL_SCP_JANUS_HOSTS_ENDPOINT = 'GET /janus/20180725/hosts' as const;
+
+export const OFFICIAL_SCP_JANUS_EXTRAS_READ_ENDPOINTS = [
+  OFFICIAL_SCP_JANUS_HOSTS_ENDPOINT,
+] as const;
+
+export const OFFICIAL_SCP_JANUS_VERSION_READ_ENDPOINTS = [
+  'GET /janus/20180725/system/version',
+  'GET /janus/20180725/platform',
+  'GET /janus/20180725/clusters',
+] as const;
+
+export const SCP_JANUS_EXTRAS_COLLECT_STATUS = 'capture_gated' as const;
+
+const OFFICIAL_SCP_JANUS_EXTRAS_READ_ENDPOINT_SET = new Set<string>(OFFICIAL_SCP_JANUS_EXTRAS_READ_ENDPOINTS);
+
 /** Unofficial extra-key provenance. Not a device URL and not a catalog path. */
 export const UNOFFICIAL_LIST_KEY_KIND = 'unofficial_list_key' as const;
 
@@ -158,6 +187,22 @@ export function isUnofficialListKeyEndpoint(endpoint: string): boolean {
 
 export function isOfficialHciCatalogReadEndpoint(endpoint: string): boolean {
   return OFFICIAL_HCI_CATALOG_READ_ENDPOINT_SET.has(endpoint.trim());
+}
+
+export function isOfficialScpJanusExtrasReadEndpoint(endpoint: string): boolean {
+  return OFFICIAL_SCP_JANUS_EXTRAS_READ_ENDPOINT_SET.has(endpoint.trim());
+}
+
+export function janusExtrasLiveCollectRefusal(): {
+  readonly status: typeof SCP_JANUS_EXTRAS_COLLECT_STATUS;
+  readonly reason: 'JANUS_CAPTURE_GATED';
+  readonly endpoint: typeof OFFICIAL_SCP_JANUS_HOSTS_ENDPOINT;
+} {
+  return {
+    status: SCP_JANUS_EXTRAS_COLLECT_STATUS,
+    reason: 'JANUS_CAPTURE_GATED',
+    endpoint: OFFICIAL_SCP_JANUS_HOSTS_ENDPOINT,
+  };
 }
 
 export function isFieldQualifiedDeviceEndpoint(endpoint: string): boolean {
@@ -176,6 +221,104 @@ function extraProvenance(
     collector: HCI_COLLECTOR,
     ...(page.latencyMs > 0 ? { latencyMs: page.latencyMs } : {}),
   };
+}
+
+function officialJanusExtraProvenance(page: HciOfficialJanusExtraPage): HciFactProvenance {
+  return {
+    transport: 'api',
+    endpoint: OFFICIAL_SCP_JANUS_HOSTS_ENDPOINT,
+    mapperVersion: HCI_MAPPER_VERSION,
+    collectedAt: page.collectedAt,
+    collector: HCI_COLLECTOR,
+    ...(page.latencyMs > 0 ? { latencyMs: page.latencyMs } : {}),
+  };
+}
+
+function parseHostCpu(cpu: unknown): EngineerValue | undefined {
+  if (!isRecord(cpu)) return undefined;
+  const coreCount = cpu.core_count;
+  if (typeof coreCount !== 'number' || !Number.isInteger(coreCount) || !Number.isSafeInteger(coreCount)) {
+    return undefined;
+  }
+  return { presence: 'known', data: { kind: 'integer', integer: coreCount, unit: 'cores' } };
+}
+
+function parseHostRam(memory: unknown): EngineerValue | undefined {
+  if (!isRecord(memory) || !isFiniteNumber(memory.total_mb)) return undefined;
+  const totalMb = memory.total_mb;
+  if (Number.isInteger(totalMb) && Number.isSafeInteger(totalMb)) {
+    return { presence: 'known', data: { kind: 'integer', integer: totalMb, unit: 'MB' } };
+  }
+  return { presence: 'known', data: { kind: 'number', number: totalMb, unit: 'MB' } };
+}
+
+function hostsFromOfficialJanusPayload(payload: unknown): readonly Record<string, unknown>[] | undefined {
+  if (!Array.isArray(payload)) return undefined;
+  const hosts: Record<string, unknown>[] = [];
+  for (const item of payload) {
+    if (!isRecord(item)) return undefined;
+    hosts.push(item);
+  }
+  return hosts;
+}
+
+/**
+ * Map official `GET /janus/20180725/hosts` JSON from the 2024 SCP Open-API PDF.
+ * Single host only: a list is per-host cpu/memory, and summing would invent
+ * cluster extras. storage.total_mb is 总大小, not usable capacity. Version
+ * reads and NIC lists are not firmware / network_topology / HA.
+ */
+export function extractOfficialJanusHostExtrasFromPages(
+  pages: readonly HciOfficialJanusExtraPage[],
+): readonly HciInventoryOriginalPresentSurface[] {
+  const chosen = new Map<HciCollectExtraSurfaceId, { page: HciOfficialJanusExtraPage; payload: unknown }>();
+  const conflicts = new Set<HciCollectExtraSurfaceId>();
+
+  for (const page of pages) {
+    if (!isOfficialScpJanusExtrasReadEndpoint(page.endpoint)) continue;
+    const hosts = hostsFromOfficialJanusPayload(page.payload);
+    if (!hosts || hosts.length !== 1) continue;
+    const hostCpu = parseHostCpu(hosts[0]?.cpu);
+    const hostRam = parseHostRam(hosts[0]?.memory);
+    const mapped: Partial<Record<'host_cpu' | 'host_ram', EngineerValue>> = {
+      ...(hostCpu ? { host_cpu: hostCpu } : {}),
+      ...(hostRam ? { host_ram: hostRam } : {}),
+    };
+    for (const surfaceId of ['host_cpu', 'host_ram'] as const) {
+      const parsed = mapped[surfaceId];
+      if (parsed === undefined) continue;
+      const prior = chosen.get(surfaceId);
+      if (prior && stableJson(prior.payload) !== stableJson(parsed)) {
+        conflicts.add(surfaceId);
+        chosen.delete(surfaceId);
+        continue;
+      }
+      if (!conflicts.has(surfaceId) && !prior) {
+        chosen.set(surfaceId, { page, payload: parsed });
+      }
+    }
+  }
+
+  return (['host_cpu', 'host_ram'] as const)
+    .filter((surfaceId) => chosen.has(surfaceId) && !conflicts.has(surfaceId))
+    .map((surfaceId) => {
+      const selected = chosen.get(surfaceId);
+      if (!selected) throw new Error('official janus extra selection invariant');
+      return {
+        surfaceId,
+        originalPresent: true as const,
+        fact: officialJanusExtraProvenance(selected.page),
+        payload: selected.payload,
+      };
+    });
+}
+
+export function mergeCollectExtraSurfaces(
+  official: readonly HciInventoryOriginalPresentSurface[],
+  unofficial: readonly HciInventoryOriginalPresentSurface[],
+): readonly HciInventoryOriginalPresentSurface[] {
+  const officialIds = new Set(official.map((item) => item.surfaceId));
+  return [...official, ...unofficial.filter((item) => !officialIds.has(item.surfaceId))];
 }
 
 /**

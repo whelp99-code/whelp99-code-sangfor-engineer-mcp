@@ -6,9 +6,13 @@ import {
 } from '../packages/sangfor-config-state/src/index.js';
 import {
   collectInventory,
+  extractOfficialJanusHostExtrasFromPages,
   isFieldQualifiedDeviceEndpoint,
   isOfficialHciCatalogReadEndpoint,
+  isOfficialScpJanusExtrasReadEndpoint,
+  janusExtrasLiveCollectRefusal,
   OFFICIAL_HCI_CATALOG_READ_ENDPOINTS,
+  OFFICIAL_SCP_JANUS_HOSTS_ENDPOINT,
   unofficialListKeyEndpoint,
   type HciClient,
   type HttpJsonResult,
@@ -172,6 +176,58 @@ describe('HCI collection snapshot binding', () => {
     expect(isOfficialHciCatalogReadEndpoint('GET /volumes/detail field:firmware')).toBe(false);
     expect(isFieldQualifiedDeviceEndpoint('GET /volumes/detail field:firmware')).toBe(true);
     expect(isOfficialHciCatalogReadEndpoint('GET /os-hypervisors')).toBe(false);
+    expect(isOfficialScpJanusExtrasReadEndpoint('GET /os-hypervisors')).toBe(false);
+    expect(isOfficialScpJanusExtrasReadEndpoint(OFFICIAL_SCP_JANUS_HOSTS_ENDPOINT)).toBe(true);
+    expect(janusExtrasLiveCollectRefusal()).toEqual({
+      status: 'capture_gated',
+      reason: 'JANUS_CAPTURE_GATED',
+      endpoint: OFFICIAL_SCP_JANUS_HOSTS_ENDPOINT,
+    });
+  });
+
+  it('maps official Janus hosts JSON for a single host and refuses multi-host aggregation', () => {
+    const officialPage = {
+      endpoint: OFFICIAL_SCP_JANUS_HOSTS_ENDPOINT,
+      payload: [{
+        id: 'host-a0369f033a73',
+        cpu: { core_count: 4, total_mhz: 26408.0, type: 'Intel(R) Xeon(R) CPU E3-1230 v3 @ 3.30GHz' },
+        memory: { total_mb: 32768.0, used_mb: 17039.36 },
+        storage: { total_mb: 4105435.9936523438 },
+      }],
+      latencyMs: 12,
+      collectedAt: WHEN,
+    };
+    const extras = extractOfficialJanusHostExtrasFromPages([officialPage]);
+    expect(extras.map((item) => item.surfaceId).sort()).toEqual(['host_cpu', 'host_ram']);
+    expect(extras.every((item) => item.originalPresent === true)).toBe(true);
+    expect(extras.every((item) => item.fact.endpoint === OFFICIAL_SCP_JANUS_HOSTS_ENDPOINT)).toBe(true);
+    expect(extras.every((item) => isOfficialScpJanusExtrasReadEndpoint(item.fact.endpoint))).toBe(true);
+    expect(extras.every((item) => !isOfficialHciCatalogReadEndpoint(item.fact.endpoint))).toBe(true);
+    expect(extras.find((item) => item.surfaceId === 'host_cpu')?.payload).toEqual({
+      presence: 'known',
+      data: { kind: 'integer', integer: 4, unit: 'cores' },
+    });
+    expect(extras.find((item) => item.surfaceId === 'host_ram')?.payload).toEqual({
+      presence: 'known',
+      data: { kind: 'integer', integer: 32768, unit: 'MB' },
+    });
+    expect(extras.some((item) => item.surfaceId === 'storage_usable_capacity')).toBe(false);
+    expect(extras.some((item) => item.surfaceId === 'firmware')).toBe(false);
+    expect(extras.some((item) => item.surfaceId === 'ha_status')).toBe(false);
+
+    const twoHosts = extractOfficialJanusHostExtrasFromPages([{
+      ...officialPage,
+      payload: [officialPage.payload[0], { ...officialPage.payload[0], id: 'host-other' }],
+    }]);
+    expect(twoHosts).toEqual([]);
+
+    const forged = extractOfficialJanusHostExtrasFromPages([{
+      endpoint: 'GET /os-hypervisors',
+      payload: officialPage.payload,
+      latencyMs: 12,
+      collectedAt: WHEN,
+    }]);
+    expect(forged).toEqual([]);
   });
 
   it('imports a manual field as provided and refuses to mark it observed', () => {

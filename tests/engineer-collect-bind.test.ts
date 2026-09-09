@@ -13,9 +13,12 @@ import {
 } from '../packages/sangfor-config-state/src/index.js';
 import {
   collectInventory,
+  extractOfficialJanusHostExtrasFromPages,
   HCI_COLLECT_EXTRA_SURFACE_IDS,
   isFieldQualifiedDeviceEndpoint,
   isOfficialHciCatalogReadEndpoint,
+  isOfficialScpJanusExtrasReadEndpoint,
+  OFFICIAL_SCP_JANUS_HOSTS_ENDPOINT,
   isUnofficialListKeyEndpoint,
   unofficialListKeyEndpoint,
   type HciClient,
@@ -545,6 +548,61 @@ describe('HCI collect → authorized-read binder', () => {
     expect(minted.reason).toBe('UNOFFICIAL_LIST_KEY_IS_NOT_AUTHORIZED_DEVICE_READ');
   });
 
+  it('binds official Janus hosts extras through bindObservedFactToCase and does not mint without the remaining surfaces', async () => {
+    const inventory = await collectAuthorized();
+    const extras = extractOfficialJanusHostExtrasFromPages([{
+      endpoint: OFFICIAL_SCP_JANUS_HOSTS_ENDPOINT,
+      payload: [{
+        id: 'host-official-1',
+        cpu: { core_count: 4, total_mhz: 26408.0 },
+        memory: { total_mb: 32768.0 },
+      }],
+      latencyMs: 12,
+      collectedAt: WHEN,
+    }]);
+    expect(extras).toHaveLength(2);
+    expect(extras.every((item) => item.fact.endpoint === OFFICIAL_SCP_JANUS_HOSTS_ENDPOINT)).toBe(true);
+    expect(bindObservedFactToCase(extras[0]?.fact, {
+      caseId: 'case-official-janus-hosts',
+      projectId: AUTH.projectId,
+      observationId: 'obs-host_cpu',
+      environmentKind: 'live',
+      originalPresent: true,
+    }).ok).toBe(true);
+
+    const wired = bindHciCollectAuthorizedDeviceReadEvidence({
+      inventory: { ...inventory, originalPresentSurfaces: extras },
+      caseId: 'case-official-janus-hosts',
+      projectId: AUTH.projectId,
+      caseRevision: 'rev-official-janus-hosts',
+      guideRevision: 'guide-official-janus-hosts',
+      session: authorizedSession(),
+    });
+    expect(wired.collect.ok).toBe(true);
+    if (!wired.collect.ok) throw new Error('expected official Janus extras to bind');
+    expect(wired.collect.observations.map((item) => item.surfaceId).sort()).toEqual([
+      'host_cpu',
+      'host_ram',
+      'images',
+      'servers',
+      'volumes',
+    ]);
+    expect(wired.authorized.ok).toBe(false);
+    if (wired.authorized.ok) throw new Error('partial official Janus extras must not mint authorized_device_read');
+    expect(wired.authorized.reason).toBe('REQUIRED_LIVE_SURFACES_NOT_RUN');
+    expect(wired.authorized.requiredLiveSurfaces.filter((item) => item.status === 'BOUND_ORIGINAL_PRESENT').map((item) => item.id).sort())
+      .toEqual(['host_cpu', 'host_ram', 'images', 'servers', 'volumes']);
+    expect(wired.authorized.requiredLiveSurfaces.filter((item) => item.status === 'NOT_RUN').map((item) => item.id))
+      .toEqual([
+        'collectedAt',
+        'volume_status_health',
+        'firmware',
+        'storage_usable_capacity',
+        'network_topology',
+        'ha_status',
+      ]);
+  });
+
   it('keeps extras NOT_RUN when the API omits them', async () => {
     const inventory = await collectAuthorized();
     expect(inventory.originalPresentSurfaces).toBeUndefined();
@@ -657,6 +715,8 @@ describe('HCI collect → authorized-read binder', () => {
     expect(isUnofficialListKeyEndpoint(unofficialListKeyEndpoint('firmware'))).toBe(true);
     expect(isOfficialHciCatalogReadEndpoint('GET /volumes/detail')).toBe(true);
     expect(isOfficialHciCatalogReadEndpoint('GET /os-hypervisors')).toBe(false);
+    expect(isOfficialScpJanusExtrasReadEndpoint('GET /os-hypervisors')).toBe(false);
+    expect(isOfficialScpJanusExtrasReadEndpoint(OFFICIAL_SCP_JANUS_HOSTS_ENDPOINT)).toBe(true);
 
     expect(bindObservedFactToCase({
       transport: 'api',
