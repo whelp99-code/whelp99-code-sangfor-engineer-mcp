@@ -7,6 +7,19 @@ export {
   buildSettingGuideDocx,
 } from './docx-builder.js';
 export type { DocxBuilderInput, DocxBuilderResult } from './docx-builder.js';
+export {
+  ENGINEER_GUIDE_EXPORT_MAX_DOCX_BYTES,
+  ENGINEER_GUIDE_EXPORT_MAX_JSON_BYTES,
+  ENGINEER_GUIDE_REVIEW_SCHEMA,
+  exportEngineerGuide,
+  formatStoredEngineerValue,
+} from './engineer-guide-export.js';
+export type {
+  EngineerGuideExportFailure,
+  EngineerGuideExportRequest,
+  EngineerGuideExportResult,
+  EngineerGuideExportSuccess,
+} from './engineer-guide-export.js';
 export * from './apply/index.js';
 export * from './types.js';
 export {

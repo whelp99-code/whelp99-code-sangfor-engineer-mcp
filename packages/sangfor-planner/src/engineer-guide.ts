@@ -5,25 +5,27 @@
  * Catalog menu claims are not verified firmware paths. This module never
  * mutates a device and never emits approved_for_window or field_accepted.
  */
-import { createHash } from 'node:crypto';
 import {
   assertEngineerAssessmentScope,
   isHciSnapshotSurfaceObservation,
 } from '../../sangfor-config-state/src/engineer-assessment-scope.js';
-import type {
-  EngineerAssessment,
-  EngineerCalculation,
-  EngineerCase,
-  EngineerCaseDocument,
-  EngineerGuide,
-  EngineerGuideReadiness,
-  EngineerGuideStep,
-  EngineerObservation,
-  EngineerRequirement,
-  EngineerSourceKind,
+import {
+  computeEngineerGuideDigest,
+  type EngineerAssessment,
+  type EngineerCalculation,
+  type EngineerCase,
+  type EngineerCaseDocument,
+  type EngineerGuide,
+  type EngineerGuideReadiness,
+  type EngineerGuideStep,
+  type EngineerObservation,
+  type EngineerRequirement,
+  type EngineerSourceKind,
 } from '../../shared/src/engineer-case-contract.js';
 import { assembleEngineerCase, type EngineerCaseAssembly } from './engineer-case.js';
 import { assessEngineerGuideGrounding, type EngineerGuideGrounding } from './grounding-assessment.js';
+
+export { computeEngineerGuideDigest };
 
 export type EngineerGuideStepSupport = 'executable' | 'blocked' | 'unsupported';
 
@@ -121,23 +123,6 @@ function clip(text: string, max: number): string {
 
 function clipList(items: readonly string[], maxItems: number, maxLen: number): string[] {
   return [...new Set(items.map((item) => clip(item, maxLen)).filter((item) => item.length > 0))].slice(0, maxItems);
-}
-
-function canonicalJson(value: unknown): string {
-  if (value === null || typeof value === 'boolean' || typeof value === 'number') return JSON.stringify(value);
-  if (typeof value === 'string') return JSON.stringify(value);
-  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
-  if (typeof value === 'object') {
-    const entries = Object.entries(value as Record<string, unknown>)
-      .filter(([, child]) => child !== undefined)
-      .sort(([left], [right]) => left.localeCompare(right));
-    return `{${entries.map(([key, child]) => `${JSON.stringify(key)}:${canonicalJson(child)}`).join(',')}}`;
-  }
-  throw new Error('GUIDE_CANONICAL_NON_JSON');
-}
-
-export function computeEngineerGuideDigest(guide: Omit<EngineerGuide, 'digest'>): string {
-  return createHash('sha256').update(canonicalJson(guide)).digest('hex');
 }
 
 function guideRevision(document: EngineerCaseDocument): string {

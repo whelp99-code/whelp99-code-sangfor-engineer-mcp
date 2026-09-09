@@ -18,7 +18,13 @@ export type { EngineerRequirementCompareResult, EngineerParsedConstraint } from 
 export { evaluateDerivedFitness } from './derived-fitness.js';
 export type { DerivedFitnessResult, SourcedCalculationBaseline } from './derived-fitness.js';
 export { renderAdvisoryReport } from './report-markdown.js';
-export { renderAdvisoryReportDocx } from './report-docx.js';
+export {
+  renderAdvisoryReportDocx,
+  resolveConfinedDocxOutputPath,
+  resolveDocxOutputRoot,
+  writeConfinedDocxArchive,
+} from './report-docx.js';
+export type { ConfinedDocxArchiveInput, ConfinedDocxArchiveResult } from './report-docx.js';
 export type {
   Category,
   ActionableReason,
