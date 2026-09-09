@@ -13,6 +13,7 @@ Indexed architectural decisions for sangfor-engineer-mcp. Status: `verified` = o
 | [blro-separation-and-operations](blro-separation-and-operations.md) | draft | Phased work plan to separate BLRO from JM and operate it: endpoint installability, job envelope, authoritative stores, enrollment/transport, shadow-then-migrate, operations. |
 | [realtime-product-monitoring-first-response](realtime-product-monitoring-first-response.md) | draft | Product-specific telemetry, incident, first-response, safety, UX, and readiness-gated rollout research. |
 | [product-engineer-card](product-engineer-card.md) | draft | New product = thin registry-pointing card + two session roles (collector/operator); evaluate and report stay deterministic. Frozen pending #28. |
+| [engineer-case-authority-store](engineer-case-authority-store.md) | draft | E09A: case aggregate needs its own RLS tables; run/evidence/RAG stores are the wrong boundary. |
 
 To add a decision: copy the shape of an existing doc (Context → Decision → Rationale → Consequences), set a Status, and add a row here.
 

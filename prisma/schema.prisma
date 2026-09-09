@@ -247,6 +247,8 @@ model BlroTenant {
   ragEmbeddings             BlroRagEmbedding[]
   ragIndexPromotions        BlroRagIndexPromotion[]
   ragIndexPromotionEvidence BlroRagIndexPromotionEvidence[]
+  engineerCases             BlroEngineerCase[]
+  engineerCaseArtifacts     BlroEngineerCaseArtifact[]
 }
 
 model BlroProject {
@@ -294,6 +296,8 @@ model BlroProject {
   ragEmbeddings             BlroRagEmbedding[]
   ragIndexPromotions        BlroRagIndexPromotion[]
   ragIndexPromotionEvidence BlroRagIndexPromotionEvidence[]
+  engineerCases             BlroEngineerCase[]
+  engineerCaseArtifacts     BlroEngineerCaseArtifact[]
 
   @@unique([id, tenantId])
   @@unique([tenantId, id])
@@ -1038,4 +1042,53 @@ model BlroRagEmbedding {
   @@id([tenantId, projectId, chunkId, cohortId])
   @@index([tenantId, projectId, cohortId])
   @@index([tenantId, projectId, cohortId, product, version, sourceType, trustLevel])
+}
+
+model BlroEngineerCase {
+  id                 String                     @id
+  tenantId           String
+  projectId          String
+  actorId            String
+  revision           String
+  guideRevision      String
+  guideDigest        String
+  observationDigest  String
+  requirementDigest  String
+  requestId          String
+  requestDigest      String
+  environmentKind    String
+  originalPresent    Boolean?
+  document           Json
+  createdAt          DateTime                   @default(now())
+  updatedAt          DateTime                   @updatedAt
+  tenant             BlroTenant                 @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  project            BlroProject                @relation(fields: [tenantId, projectId], references: [tenantId, id], onDelete: Restrict)
+  artifacts          BlroEngineerCaseArtifact[]
+
+  @@unique([id, projectId])
+  @@unique([projectId, requestId])
+  @@index([projectId, revision])
+  @@index([projectId])
+}
+
+model BlroEngineerCaseArtifact {
+  id          String            @id
+  tenantId    String
+  projectId   String
+  actorId     String
+  caseId      String
+  digest      String
+  mediaType   String
+  payload     String
+  sanitized   Boolean
+  retention   String
+  createdAt   DateTime          @default(now())
+  tenant      BlroTenant        @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  project     BlroProject       @relation(fields: [tenantId, projectId], references: [tenantId, id], onDelete: Restrict)
+  case        BlroEngineerCase  @relation(fields: [caseId, projectId], references: [id, projectId], onDelete: Restrict)
+
+  @@unique([id, projectId])
+  @@unique([projectId, caseId, digest])
+  @@index([projectId, caseId])
+  @@index([projectId])
 }

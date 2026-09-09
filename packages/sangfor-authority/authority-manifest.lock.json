@@ -29,16 +29,17 @@
     "m026-spec-registry",
     "m027-jm-refusal-journal",
     "m028-rag-embeddings-pgvector-index",
-    "m029-rag-index-promotion"
+    "m029-rag-index-promotion",
+    "m030-engineer-case-aggregate"
   ],
   "classCounts": {
-    "authoritative": 19,
+    "authoritative": 20,
     "derived": 8,
     "credential_local": 1,
     "curated_seed": 1
   },
-  "manifestSemanticSha256": "1487a9e1c67f58bee3861192951e466bb031a451c8c5f85be227f6ea365a0c59",
-  "repositoryCensusDigest": "17e3e17701a0207a27fbf938b9e9bcb87059d80b9e9c529a3ea0662bfd226a32",
+  "manifestSemanticSha256": "32e808d7a48a4ae32a6c8a707cfc3e9ac4bac182315de9f14dc529c5f04da1ce",
+  "repositoryCensusDigest": "4cfb9c9a2095442dc4e776feec41301babfd58f526e3d30d0d9caa26898cd6d0",
   "sourceOnlyRefs": [
     "m026-spec-registry:data/specs#curated-seed:v1"
   ]
