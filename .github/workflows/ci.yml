@@ -37,6 +37,9 @@ jobs:
       - name: Test
         run: pnpm test
 
+      - name: Reranker admission safety
+        run: pnpm run test:reranker:admission
+
       - name: Build
         run: pnpm run build
 

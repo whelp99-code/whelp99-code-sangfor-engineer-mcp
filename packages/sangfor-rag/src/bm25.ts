@@ -4,6 +4,8 @@
  * apply only to BM25; they do not alter the persisted hash embedding contract.
  */
 
+import { stemmer } from 'stemmer';
+
 const TOKEN_RE = /[a-z0-9가-힣._/-]+/g;
 const STOP_WORDS = new Set('a an the is are was were be been being do does did how what where which when who why can could should would will to of for in on at by with from and or as it its this that these those i we you your my need needs please'.split(' '));
 // Technical noun inflections only: never stem CLI switches, paths, identifiers,
@@ -16,7 +18,7 @@ const TECHNICAL_PLURALS = new Map([
   ['adapters', 'adapter'], ['interfaces', 'interface'], ['volumes', 'volume'], ['networks', 'network'],
   ['clusters', 'cluster'], ['backups', 'backup'], ['certificates', 'certificate'], ['permissions', 'permission'],
 ]);
-const tokenCache = new WeakMap<object, { text: string; counts: Map<string, number>; length: number }>();
+const tokenCache = new WeakMap<object, { text: string; stemming: boolean; counts: Map<string, number>; length: number }>();
 
 export function tokenize(text: string): string[] {
   return (text.toLowerCase().match(TOKEN_RE) ?? [])
@@ -29,6 +31,13 @@ export function tokenize(text: string): string[] {
 export interface Bm25Options {
   k1?: number;
   b?: number;
+  /** Optional English search view; never changes source or embedding tokens. */
+  stemming?: boolean;
+}
+
+function searchTokens(text: string, stemming: boolean): string[] {
+  const tokens = tokenize(text);
+  return stemming ? tokens.map((term) => /^[a-z]{4,}$/.test(term) ? stemmer(term) : term) : tokens;
 }
 
 /**
@@ -46,7 +55,8 @@ export function computeBm25Scores(
   const k1 = options.k1 ?? 1.2;
   const b = options.b ?? 0.75;
   const scores = new Map<string, number>();
-  const queryTerms = tokenize(query);
+  const stemming = options.stemming === true;
+  const queryTerms = searchTokens(query, stemming);
   if (queryTerms.length === 0 || docs.length === 0) {
     for (const doc of docs) scores.set(doc.id, 0);
     return scores;
@@ -59,11 +69,11 @@ export function computeBm25Scores(
 
   for (const doc of docs) {
     let prepared = tokenCache.get(doc);
-    if (!prepared || prepared.text !== doc.text) {
-      const tokens = tokenize(doc.text);
+    if (!prepared || prepared.text !== doc.text || prepared.stemming !== stemming) {
+      const tokens = searchTokens(doc.text, stemming);
       const counts = new Map<string, number>();
       for (const token of tokens) counts.set(token, (counts.get(token) ?? 0) + 1);
-      prepared = { text: doc.text, counts, length: tokens.length };
+      prepared = { text: doc.text, stemming, counts, length: tokens.length };
       tokenCache.set(doc, prepared);
     }
     const { counts, length } = prepared;

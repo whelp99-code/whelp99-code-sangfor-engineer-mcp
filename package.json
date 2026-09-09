@@ -21,6 +21,7 @@
     "dev:web": "tsx apps/operator-console/src/server.ts",
     "dev:control-tower": "tsx apps/control-tower/src/server.ts",
     "test": "vitest run --config vitest.config.ts",
+    "test:reranker:admission": "python3 -m unittest discover -s automation/embedding-server -p test_inference_slot.py",
     "test:ui": "vitest run --config vitest.ui.config.ts",
     "test:observer:e2e": "tsx scripts/test-observer-e2e.ts",
     "test:postgres:mandatory": "tsx scripts/run-mandatory-postgres-tests.ts --require",
@@ -94,6 +95,7 @@
     "@prisma/client": "^6.19.3",
     "pdf-parse": "^1.1.1",
     "playwright": "^1.60.0",
+    "stemmer": "2.0.1",
     "tsx": "^4.19.2",
     "zod": "^3.25.76"
   },

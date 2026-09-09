@@ -1,17 +1,18 @@
-import { retrievalBody, retrievalTitle } from './retrieval-text.js';
+import { retrievalAncestors, retrievalBody, retrievalTitle } from './retrieval-text.js';
 import { computeBm25Scores } from './bm25.js';
 import { querySubjectTerms } from './query-evidence.js';
 import { cosineSimilarity } from './hash-embedding.js';
 import { sameEmbeddingSpace, type EmbeddingSpace } from './embedding-space.js';
 import type { RagDocumentChunk } from './rag-types.js';
 
-const searchViews = new WeakMap<RagDocumentChunk, { title: string; text: string; body: { id: string; text: string }; heading: { id: string; text: string } }>();
+const searchViews = new WeakMap<RagDocumentChunk, { title: string; text: string; body: { id: string; text: string }; heading: { id: string; text: string }; ancestor: { id: string; text: string } }>();
 function searchView(chunk: RagDocumentChunk) {
   let view = searchViews.get(chunk);
   if (!view || view.text !== chunk.text || view.title !== chunk.title) {
     view = { title: chunk.title, text: chunk.text,
       body: { id: chunk.id, text: retrievalBody(chunk.text, chunk.title) },
-      heading: { id: chunk.id, text: retrievalTitle(chunk.title) } };
+      heading: { id: chunk.id, text: retrievalTitle(chunk.title) },
+      ancestor: { id: chunk.id, text: retrievalAncestors(chunk.title) } };
     searchViews.set(chunk, view);
   }
   return view;
@@ -74,11 +75,16 @@ export function rankHybrid<T extends RagDocumentChunk>(
   const alpha = compatible.some(Boolean) ? resolveHybridAlpha() : 0;
   const cosineScores = candidates.map((chunk, index) => compatible[index] ? cosineSimilarity(queryVector, chunk.vector) : 0);
   const views = candidates.map(searchView);
-  const bm25Scores = computeBm25Scores(query, views.map((view) => view.body));
-  const titleScores = computeBm25Scores(query, views.map((view) => view.heading));
+  const lexicalProfile = process.env.SANGFOR_RAG_LEXICAL_PROFILE ?? 'exact';
+  if (!['exact', 'stem-ancestors'].includes(lexicalProfile)) throw new Error('RAG_LEXICAL_PROFILE_INVALID');
+  const stemming = lexicalProfile === 'stem-ancestors';
+  const bm25Scores = computeBm25Scores(query, views.map((view) => view.body), { stemming });
+  const titleScores = computeBm25Scores(query, views.map((view) => view.heading), { stemming });
+  const ancestorScores = stemming ? computeBm25Scores(query, views.map((view) => view.ancestor), { stemming }) : undefined;
   const subjectScores = process.env.SANGFOR_RAG_REQUIRE_SUBJECT_MATCH === '1'
     ? computeBm25Scores(querySubjectTerms(query).join(' '), views.map((view) => ({ id: view.body.id, text: `${view.heading.text}\n${view.body.text}` }))) : undefined;
-  const keywordScores = candidates.map((chunk) => (bm25Scores.get(chunk.id) ?? 0) + 2 * (titleScores.get(chunk.id) ?? 0));
+  const keywordScores = candidates.map((chunk) => (bm25Scores.get(chunk.id) ?? 0) + 2 * (titleScores.get(chunk.id) ?? 0)
+    + (ancestorScores?.get(chunk.id) ?? 0));
   const normalizeCosine = minMaxNormalizer(cosineScores.filter((_, index) => compatible[index]));
   const normalizeKeyword = minMaxNormalizer(keywordScores);
   const useRrf = process.env.SANGFOR_RAG_FUSION === 'rrf' && compatible.some(Boolean);

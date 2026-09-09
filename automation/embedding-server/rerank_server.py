@@ -7,6 +7,7 @@ import torch
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from sentence_transformers import CrossEncoder
+from inference_slot import InferenceBusy, InferenceSlot
 
 MODEL = os.environ['SANGFOR_LOCAL_RERANK_MODEL']
 REVISION = os.environ['SANGFOR_LOCAL_RERANK_REVISION']
@@ -35,6 +36,7 @@ position_limit = getattr(model.model.config, 'max_position_embeddings', None)
 if isinstance(position_limit, int) and MAX_LENGTH > position_limit:
     raise RuntimeError('Reranker context exceeds the pinned model position limit')
 app = FastAPI(title='sangfor-local-reranker')
+inference_slot = InferenceSlot()
 
 class Request(BaseModel):
     model: str
@@ -44,7 +46,8 @@ class Request(BaseModel):
 
 @app.get('/health')
 def health():
-    return {'ok': True, 'model': MODEL, 'revision': REVISION, 'configurationSha256': CONFIGURATION_SHA256}
+    return {'ok': True, 'model': MODEL, 'revision': REVISION, 'configurationSha256': CONFIGURATION_SHA256,
+            'busy': inference_slot.busy}
 
 @app.post('/rerank')
 def rerank(req: Request):
@@ -54,7 +57,11 @@ def rerank(req: Request):
         raise HTTPException(400, 'Invalid candidate count or top_n')
     if len(req.query) > 32000 or any(len(doc) > 32000 for doc in req.documents):
         raise HTTPException(413, 'Input too large')
-    scores = model.predict([(req.query, doc) for doc in req.documents], batch_size=BATCH_SIZE, show_progress_bar=False)
+    try:
+        with inference_slot.reserve():
+            scores = model.predict([(req.query, doc) for doc in req.documents], batch_size=BATCH_SIZE, show_progress_bar=False)
+    except InferenceBusy:
+        raise HTTPException(503, 'Reranker is busy; inference was not started', headers={'Retry-After': '1'})
     ranked = sorted(enumerate(scores), key=lambda item: (-float(item[1]), item[0]))
     return {'model': MODEL, 'revision': REVISION, 'configurationSha256': CONFIGURATION_SHA256,
             'results': [{'index': index, 'score': float(score)} for index, score in ranked[:req.top_n]]}

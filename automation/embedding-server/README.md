@@ -79,6 +79,25 @@ passage per source (100 total maximum), ranks all local passages, then deduplica
 to the requested final source count. Local
 reranking is disabled by default; it is not automatically better than lexical search.
 
+The reranker admits one inference request per process and refuses overlapping
+requests with HTTP 503 and `Retry-After: 1`; it does not queue additional model
+work. `/health` exposes `busy` separately from model/configuration identity.
+A disconnected or timed-out client does not cancel CPU inference already running:
+the slot stays busy until prediction finishes, including its exception path.
+This bounds overlap, not the runtime of a single prediction. The client does not
+automatically retry or treat a busy/timeout response as evidence of no answer.
+Run `pnpm run test:reranker:admission` for the dependency-free concurrency checks.
+
+`SANGFOR_RAG_LEXICAL_PROFILE=stem-ancestors` enables the measured candidate
+expansion profile. It uses pinned `stemmer@2.0.1` for plain English tokens of at
+least four letters and scores body + 2×leaf heading + ancestor headings, excluding
+the document root. Paths, dotted names, switches, versions and Korean tokens are
+not stemmed. Original text and embedding vectors remain unchanged. The default
+profile is `exact`; an unknown profile is refused. The existing subject prerequisite
+still uses exact lexical evidence. This profile improved some development recall
+but reduced translated-Korean Hit@5 before reranking, so it is not yet an accepted
+deployment configuration. Reported settings identify the selected profile.
+
 
 ### Reproducible scoring configuration
 

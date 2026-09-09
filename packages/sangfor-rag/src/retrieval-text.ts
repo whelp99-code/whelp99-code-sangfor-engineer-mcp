@@ -22,9 +22,14 @@ export function documentVersionFromTitle(title: string): string | undefined {
   return new Set(matches).size === 1 ? matches[0] : undefined;
 }
 
-/** Prefer the most specific breadcrumb; the full heading remains in body search. */
+/** The most specific breadcrumb is scored separately from the body. */
 export function retrievalTitle(title: string): string {
   return title.split(/\s+\/\s+/).at(-1)?.trim() || title;
+}
+
+/** Ancestors excluding the document root and separately scored leaf heading. */
+export function retrievalAncestors(title: string): string {
+  return title.split(/\s+\/\s+/).slice(1, -1).map((part) => part.trim()).join(' / ');
 }
 
 export function selectRetrievalSnippet(query: string, text: string, maxChars = 1200): string {

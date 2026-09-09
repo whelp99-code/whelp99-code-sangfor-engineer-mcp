@@ -21,6 +21,7 @@ async function main(): Promise<void> {
   const indexBytes = readFileSync(indexPath);
   const settings = {
     hybridAlpha: process.env.SANGFOR_RAG_HYBRID_ALPHA ?? null,
+    ...(process.env.SANGFOR_RAG_LEXICAL_PROFILE ? { lexicalProfile: process.env.SANGFOR_RAG_LEXICAL_PROFILE } : {}),
     allowCustomer: process.env.SANGFOR_ALLOW_CLOUD_RAG_CUSTOMER === '1',
     execution: process.env.SANGFOR_RAG_EVAL_ASYNC === '1' ? 'async-configured-provider' : 'local-sync-no-external-inference',
     ...(process.env.SANGFOR_RAG_EVAL_ASYNC === '1' ? {
@@ -43,7 +44,7 @@ async function main(): Promise<void> {
     ...(process.env.SANGFOR_RAG_FUSION ? { fusion: process.env.SANGFOR_RAG_FUSION } : {}),
   };
   const implementationSha256 = createHash('sha256');
-  const implementationFiles = ['scripts/rag-corpus-eval.ts', 'packages/sangfor-rag/src/corpus-eval-contract.ts',
+  const implementationFiles = ['package.json', 'pnpm-lock.yaml', 'scripts/rag-corpus-eval.ts', 'packages/sangfor-rag/src/corpus-eval-contract.ts',
     'packages/sangfor-rag/src/rag-search.ts', 'packages/sangfor-rag/src/rag-ranking.ts',
     'packages/sangfor-rag/src/hit-context.ts', 'packages/sangfor-rag/src/query-evidence.ts', 'packages/sangfor-rag/src/retrieval-text.ts', 'packages/sangfor-rag/src/bm25.ts', 'packages/sangfor-rag/src/query-normalization.ts',
     'packages/sangfor-rag/src/retrieval-eval.ts', 'packages/sangfor-rag/src/corpus-eval-gate.ts',
