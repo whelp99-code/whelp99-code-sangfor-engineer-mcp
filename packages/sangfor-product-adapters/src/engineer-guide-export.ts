@@ -10,12 +10,12 @@ import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { isOfficeCliAvailable, validateOfficeDocument, type ValidateOfficeDocumentResult } from '@sangfor/office';
-import { computeEngineerGuideDigest } from '../../sangfor-planner/src/engineer-guide.js';
 import {
   writeConfinedDocxArchive,
   type ConfinedDocxArchiveResult,
 } from '../../sangfor-spec/src/report-docx.js';
 import {
+  computeEngineerGuideDigest,
   isEngineerCaseAuthContext,
   parseEngineerCaseDocument,
   runtimeSchemaIssueCode,

@@ -618,3 +618,5 @@ export function runtimeSchemaIssueCode(error: unknown): string | undefined {
   if (!(error instanceof RuntimeSchemaError)) return undefined;
   return error.issues[0]?.code;
 }
+
+export { computeEngineerGuideDigest } from './engineer-guide-digest.js';
