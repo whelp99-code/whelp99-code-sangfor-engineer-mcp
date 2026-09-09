@@ -28,7 +28,9 @@ import {
 import type { HciRequiredObservationResult } from './required-observations.js';
 import {
   applyObservedExtrasToFields,
+  extractOfficialJanusHostExtrasFromPages,
   extractOriginalPresentSurfacesFromPages,
+  mergeCollectExtraSurfaces,
   type HciCollectExtraPage,
   type HciInventoryOriginalPresentSurface,
 } from './collect-extras.js';
@@ -258,11 +260,14 @@ export async function collectInventory(
     images: imageRead.collection,
   };
   const requiredObservations = requiredObservationsFromOptions(opts);
-  const originalPresentSurfaces = extractOriginalPresentSurfacesFromPages([
+  const unofficialExtras = extractOriginalPresentSurfacesFromPages([
     ...volumeRead.extraPages,
     ...serverRead.extraPages,
     ...imageRead.extraPages,
   ]);
+  // Janus extras stay empty here: scpJanus is capture_gated, so collect does not GET /janus/*.
+  const officialJanusExtras = extractOfficialJanusHostExtrasFromPages([]);
+  const originalPresentSurfaces = mergeCollectExtraSurfaces(officialJanusExtras, unofficialExtras);
   const fields = applyObservedExtrasToFields(buildRequiredFieldStatuses({
     collection,
     collectedAt,

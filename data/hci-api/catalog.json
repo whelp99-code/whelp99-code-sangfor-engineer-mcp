@@ -43,7 +43,25 @@
     "image": { "base": "{acmp}/openstack/image", "readOnly": ["GET /v2/images"] },
     "scpJanus": {
       "status": "capture_gated",
-      "note": "SCP uses /janus/v2/public-key + /janus/v2/login; DO NOT implement before the M4 real-device capture"
+      "note": "SCP uses /janus/v2/public-key + /janus/v2/login; DO NOT implement before the M4 real-device capture. Official extras reads below are documented from the 2024 SCP Open-API PDF; live GET stays gated.",
+      "source": {
+        "document": "OPEN-API v6.10.0 SCP平台开放API接口说明文档",
+        "url": "https://zhuge-puboss.sangfor.com/qiyu/c712a4ec7eb199fbf6dbf0e78a6cc93f.pdf/Open-API-zh_CN-2024-05-15.pdf",
+        "retrievedAt": "2026-09-10",
+        "sha256": "d5ed777aa32339d86f647bb27c02cc0559be46af160c1bd22989d7755d5c8635"
+      },
+      "extrasReadOnly": ["GET /janus/20180725/hosts"],
+      "documentedVersionReads": [
+        "GET /janus/20180725/system/version",
+        "GET /janus/20180725/platform",
+        "GET /janus/20180725/clusters"
+      ],
+      "documentedNetworkReads": ["GET /janus/20180725/hosts/{host_id}/interfaces"],
+      "extrasFieldMap": {
+        "host_cpu": "GET /janus/20180725/hosts",
+        "host_ram": "GET /janus/20180725/hosts"
+      },
+      "notDocumented": ["ha_status", "collectedAt", "network_topology", "GET /os-hypervisors"]
     }
   }
 }

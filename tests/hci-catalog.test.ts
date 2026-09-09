@@ -15,4 +15,25 @@ describe('hci api catalog', () => {
   it('gates janus behind real-device capture', () => {
     expect(catalog.services.scpJanus.status).toBe('capture_gated');
   });
+
+  it('records official SCP Janus extras reads from the retrieved 2024 Open-API PDF', () => {
+    expect(catalog.services.scpJanus.source.url).toBe(
+      'https://zhuge-puboss.sangfor.com/qiyu/c712a4ec7eb199fbf6dbf0e78a6cc93f.pdf/Open-API-zh_CN-2024-05-15.pdf',
+    );
+    expect(catalog.services.scpJanus.extrasReadOnly).toEqual(['GET /janus/20180725/hosts']);
+    expect(catalog.services.scpJanus.extrasFieldMap).toEqual({
+      host_cpu: 'GET /janus/20180725/hosts',
+      host_ram: 'GET /janus/20180725/hosts',
+    });
+    expect(catalog.services.scpJanus.notDocumented).toEqual(expect.arrayContaining([
+      'ha_status',
+      'collectedAt',
+      'network_topology',
+      'GET /os-hypervisors',
+    ]));
+    const services = catalog.services as Record<string, { readOnly?: readonly string[] }>;
+    const catalogReads = Object.values(services).flatMap((service) => service.readOnly ?? []);
+    expect(catalogReads).not.toContain('GET /os-hypervisors');
+    expect(catalog.services.scpJanus.extrasReadOnly).not.toContain('GET /os-hypervisors');
+  });
 });
