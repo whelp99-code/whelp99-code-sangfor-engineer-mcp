@@ -146,3 +146,18 @@ export function parseBoundaryOperatorRequestBodyV1(source: string): AnyOperatorR
     policy: 'deny',
   });
 }
+
+const storedGuideDocxSchema = z.object({
+  encoding: z.literal('base64'),
+  bytes: z.string().min(1),
+  fileName: z.string().regex(/^[A-Za-z0-9._-]+\.docx$/u),
+}).strict();
+
+/** Stored Word artifact payload. Not a parseBoundary*V1 lock entry; parseRuntimeJson owns the JSON. */
+export function parseStoredGuideDocxPayload(source: string): z.output<typeof storedGuideDocxSchema> {
+  return parseRuntimeJson(source, {
+    schema: storedGuideDocxSchema,
+    schemaName: 'operator-console.guide-docx.v1',
+    policy: 'deny',
+  });
+}

@@ -1,7 +1,11 @@
 import { afterEach, describe, expect, it } from 'vitest';
+import { execFileSync } from 'node:child_process';
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import type { AddressInfo } from 'node:net';
 import http from 'node:http';
-import { ENGINEER_CASE_SCHEMA_VERSION, type EngineerCaseAuthContext, type EngineerCaseDocument } from '../packages/shared/src/engineer-case-contract.js';
+import { computeEngineerGuideDigest, ENGINEER_CASE_SCHEMA_VERSION, type EngineerCaseAuthContext, type EngineerCaseDocument, type EngineerGuide } from '../packages/shared/src/engineer-case-contract.js';
 import { BlroAuthorityStore } from '../packages/sangfor-authority/src/authority-store.js';
 import {
   ENGINEER_CASE_READ_PERMISSION,
@@ -141,6 +145,121 @@ async function call(
     body: JSON.stringify(body),
   });
   return { status: response.status, body: await response.json() as Record<string, unknown> };
+}
+
+function withGuideDigest(guide: Omit<EngineerGuide, 'digest'>): EngineerGuide {
+  return { ...guide, digest: computeEngineerGuideDigest(guide) };
+}
+
+/** E08-style review_ready guide whose digest matches the incoming fields. Persist must rewrite readiness and refresh digest. */
+function e08ReviewReadyCase(): EngineerCaseDocument {
+  return {
+    schemaVersion: ENGINEER_CASE_SCHEMA_VERSION,
+    caseId: 'case-e08-ready-1',
+    mode: 'existing',
+    product: 'HCI_SCP',
+    firmware: '6.7.0',
+    revision: 'rev-1',
+    progress: 'draft',
+    environmentKind: 'fixture',
+    synthetic: true,
+    originalPresent: false,
+    observations: [
+      {
+        id: 'obs-total',
+        sourceKind: 'provided',
+        collectionStatus: 'complete',
+        collectedAt: WHEN,
+        evidenceRef: 'ev-1',
+        value: { presence: 'known', data: { kind: 'number', number: 100, unit: 'GiB' } },
+      },
+      {
+        id: 'obs-used',
+        sourceKind: 'provided',
+        collectionStatus: 'complete',
+        collectedAt: WHEN,
+        evidenceRef: 'ev-1',
+        value: { presence: 'known', data: { kind: 'number', number: 40, unit: 'GiB' } },
+      },
+      {
+        id: 'obs-fraction',
+        sourceKind: 'provided',
+        collectionStatus: 'complete',
+        collectedAt: WHEN,
+        evidenceRef: 'ev-1',
+        value: { presence: 'known', data: { kind: 'number', number: 12.25, unit: 'GiB' } },
+      },
+    ],
+    requirements: [
+      {
+        id: 'req-remaining',
+        sourceKind: 'provided',
+        sourceRef: 'excel-row-1',
+        constraint: 'remaining >= 20 GiB',
+        priority: 'high',
+        confirmationState: 'confirmed',
+        acceptanceCriterion: 'remaining >= 20 GiB',
+        revision: 'req-rev-1',
+      },
+      {
+        id: 'req-ha',
+        sourceKind: 'provided',
+        sourceRef: 'excel-row-2',
+        constraint: 'HA enabled',
+        priority: 'high',
+        confirmationState: 'confirmed',
+        acceptanceCriterion: 'HA enabled',
+        revision: 'req-rev-1',
+      },
+    ],
+    calculations: [{
+      id: 'calc-remaining',
+      sourceKind: 'derived',
+      formulaId: 'remaining-capacity',
+      formulaVersion: '1.0.0',
+      inputRefs: ['obs-total', 'obs-used'],
+      assumptions: ['usable capacity is the provided fixture value'],
+      result: { presence: 'known', data: { kind: 'number', number: 60, unit: 'GiB' } },
+    }],
+    assessments: [{
+      id: 'assess-remaining',
+      requirementRef: 'req-remaining',
+      currentRef: 'calc-remaining',
+      calculationRefs: ['calc-remaining'],
+      status: 'unresolved',
+      reasons: ['usable capacity is provided, not observed'],
+      nextAction: 'recollect',
+    }],
+    guide: withGuideDigest({
+      revision: 'guide-rev-1',
+      requirementRefs: ['req-remaining', 'req-ha'],
+      steps: [{
+        id: 'step-1',
+        order: 1,
+        title: 'Confirm remaining capacity',
+        requirementRefs: ['req-remaining'],
+        currentRef: 'obs-total',
+        proposedRef: 'calc-remaining',
+        evidenceRefs: ['ev-1'],
+        citations: ['ev-1'],
+        verify: 'Read remaining after change',
+        stop: 'Stop if remaining is unknown',
+        recovery: 'Do not apply a guessed value',
+      }],
+      prerequisites: ['saved case'],
+      unresolved: ['usable capacity is provided, not observed'],
+      readiness: 'review_ready',
+    }),
+    evidence: [{
+      id: 'ev-1',
+      owner: { tenantId: AUTH.tenantId, projectId: AUTH.projectId, caseId: 'case-e08-ready-1' },
+      digest: DIGEST,
+      mediaType: 'application/json',
+      sanitized: true,
+      retention: 'case-revision',
+    }],
+    execution: { result: 'not_started' },
+  };
 }
 
 const draft = {
@@ -324,6 +443,52 @@ describe('engineer case review UI contract', () => {
 
     const traversal = await fetch(`${base}/api/engineer-cases/guide-download?caseId=case-guide-1&artifactId=../secret`);
     expect(traversal.status).toBe(400);
+  });
+
+  it('exports and downloads a saved E08 review_ready guide after persist rewrites readiness', async () => {
+    const incoming = e08ReviewReadyCase();
+    expect(incoming.guide.readiness).toBe('review_ready');
+    const base = await listen(storeFor(new FakeEngineerCaseAuthorityDatabase()));
+    const saved = await call(base, '/api/engineer-cases', {
+      requestId: 'req-e08-1',
+      document: incoming,
+    });
+    expect(saved.body).toMatchObject({ ok: true, status: 'saved', approved: false, guideReadyGranted: false });
+    const resumed = await call(base, '/api/engineer-cases/review', { caseId: incoming.caseId });
+    const stored = resumed.body.document as EngineerCaseDocument;
+    const { digest: storedDigest, ...storedFields } = stored.guide;
+    expect(stored.guide.readiness).toBe('blocked');
+    expect(stored.guide.readiness).not.toBe('review_ready');
+    expect(storedDigest).toBe(computeEngineerGuideDigest(storedFields));
+    expect(storedDigest).not.toBe(incoming.guide.digest);
+
+    const exported = await call(base, '/api/engineer-cases/guide-export', { caseId: incoming.caseId });
+    expect(exported.status).toBe(200);
+    expect(exported.body).toMatchObject({
+      ok: true,
+      status: 'exported',
+      downloadComplete: true,
+      artifactId: 'gdocx-1',
+      approved: false,
+      guideReadyGranted: false,
+      executionPassGranted: false,
+      fieldAccepted: false,
+      recomputed: false,
+    });
+
+    const file = await fetch(`${base}/api/engineer-cases/guide-download?caseId=${incoming.caseId}&artifactId=gdocx-1`);
+    expect(file.status).toBe(200);
+    const bytes = Buffer.from(await file.arrayBuffer());
+    expect(bytes.subarray(0, 2).toString()).toBe('PK');
+    const extract = mkdtempSync(join(tmpdir(), 'e10b-e08-docx-'));
+    const docxPath = join(extract, 'saved-e08.docx');
+    writeFileSync(docxPath, bytes);
+    const xml = execFileSync('unzip', ['-p', docxPath, 'word/document.xml'], { encoding: 'utf8', maxBuffer: 10_000_000 });
+    expect(xml).toContain('60 GiB');
+    expect(xml).toContain('12.25 GiB');
+    expect(xml).toContain('초안');
+    expect(xml).toContain('blocked');
+    expect(xml).not.toContain('문서 상태: review_ready');
   });
 
   it('keeps the generated document revision when the stored case changes during export', async () => {

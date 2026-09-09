@@ -16,6 +16,7 @@ import {
   readEngineerCaseId,
   type EngineerCaseApiPort,
 } from './engineer-case-api.js';
+import { parseStoredGuideDocxPayload } from './runtime-boundaries.js';
 
 export type EngineerGuideExportBody = {
   readonly caseId: string;
@@ -90,10 +91,7 @@ function safeFileName(caseId: string, guideRevision: string): string {
 
 function parseStoredDocx(payload: string): { bytes: Buffer; fileName: string } | undefined {
   try {
-    const parsed = JSON.parse(payload) as { encoding?: unknown; bytes?: unknown; fileName?: unknown };
-    if (parsed.encoding !== 'base64' || typeof parsed.bytes !== 'string' || typeof parsed.fileName !== 'string') {
-      return undefined;
-    }
+    const parsed = parseStoredGuideDocxPayload(payload);
     if (!FILE_NAME_RE.test(parsed.fileName)) return undefined;
     return { bytes: Buffer.from(parsed.bytes, 'base64'), fileName: parsed.fileName };
   } catch {
