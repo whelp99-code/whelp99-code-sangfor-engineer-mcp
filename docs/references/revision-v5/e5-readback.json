@@ -1,0 +1,32 @@
+{
+  "sourceSha256": "ee04fc7a022c3901ce8a7adce3a29c49bc23c8315e613165e035d4754793e8d4",
+  "candidateSha256": "ff1118e44d4c1f21e7e465f6e1d66fcb0f4a08a09e9f1f7fbc098054c3febfa0",
+  "chunks": 39789,
+  "model": "intfloat/multilingual-e5-small",
+  "embeddingSpace": {
+    "schemaVersion": 1,
+    "model": "intfloat/multilingual-e5-small",
+    "revision": "614241f622f53c4eeff9890bdc4f31cfecc418b3",
+    "dimensions": 384,
+    "normalization": "cosine-l2-at-search-v1",
+    "preprocessing": "rag-text-role-prefix-v1",
+    "queryPrefix": "query: ",
+    "documentPrefix": "passage: "
+  },
+  "minNorm": 0.9999998577643748,
+  "maxNorm": 1.0000001641930245,
+  "spotCheckPositions": [
+    0,
+    13263,
+    26526,
+    39788
+  ],
+  "spotCheckCosines": [
+    1.0000000178946162,
+    1.000000014174144,
+    0.9999999380886935,
+    1.000000046718967
+  ],
+  "sourceMetadataPreserved": true,
+  "promotionAuthorized": false
+}
