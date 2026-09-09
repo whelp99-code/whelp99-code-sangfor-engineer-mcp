@@ -11,7 +11,7 @@ Re-read from live GitHub issue/PR bodies and `git ls-remote origin` on this date
 | Pin | SHA (verified `ls-remote`) | Note |
 | --- | --- | --- |
 | `origin/main` | `cd8e44db41b8fcd7aad4d6c052c3dd008c1e27d4` | Plan PR #110 base. Do not merge the stack here. |
-| Plan PR [#110](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/110) | this branch; map recorded after runtime-host isolation `BLRO_STORE=PASS` | Refs #90 only on the map commit. Do not close #90/#91/#102/#108/#105 from a status update. |
+| Plan PR [#110](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/110) | this branch; parent `62abaee` recorded coordinator isolation `BLRO_STORE=PASS`; this increment appends the independent isolation re-run | Refs #90 only on the map commit. Do not close #90/#91/#102/#108/#105 from a status update. |
 | Stack tip / persist-census-RLS leftover PR [#133](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/133) | `10ec2ef075e4b9687cb5fd97a28823c23c2ca850` | Independent **ACCEPT** (self-APPROVE blocked; [comment review](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/133#pullrequestreview-5160905394)). Stacked on #132 / `3cfdf69`, not on `main`. Local isolation store only. |
 | Janus adapter PR [#132](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/132) | `3cfdf69335a6f9906bfddabbf754d296825416a2` | Independent **ACCEPT**. Production collect does not GET Janus. |
 | Janus extras catalog PR [#131](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/131) | `8ae2839e23ff3665125a469d1117fe3fdafac34c` | **ACCEPT WITH FOLLOW-UPS** (not merge-blocking). |
@@ -68,9 +68,10 @@ No leftover **code** unit is unblocked without a user-supplied read-only HCI tar
 
 Docs/map leftovers recorded here:
 
-- This HANDOFF / `plan-index.json` update.
+- This HANDOFF append after `62abaee` (independent isolation re-run + live-path hunt). `plan-index.json` unit table was already accurate and was not rewritten.
 - Reviewer note on #133 (not reject): the new migration is replay-safe but is not itself listed in `tests/mandatory-postgres/migration-replay-postgres.test.ts`. Todo24 replay is listed and independently passed with zero catalog drift. Do not start a feature PR for that.
 - Dual Prisma-named and `t24_tp_*` FKs remain; census 134 is honest, not a lowered bar.
+- Re-inspected fail-closed leftovers that do **not** fail a real future-read gate: unofficial `unofficial_list_key:<id>` extras still cannot mint (intentional); official Janus `GET /janus/20180725/hosts` already binds `host_cpu`/`host_ram` when a capture grant + injected client exists; remaining E03B (`storage_usable_capacity`, `network_topology`, `ha_status`) stay unsupported without an official read (do not invent endpoints); 2024 SCP Open-API PDF is in cache only and is **not** vendored. No stacked leftover PR from this hunt.
 
 ### Production / runtime BLRO store
 
@@ -90,11 +91,35 @@ This coordinator session (after the prior reachability-only `NOT_RUN`):
 
 Live app DB `blro` remains uncutover to the #133 schema. **#102 / #108 stay OPEN / not done.**
 
+### Independent isolation re-run (after `62abaee`)
+
+Recorded from the independent reviewer comment on this PR (not a second coordinator run, not a live cutover):
+
+- Comment: https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/110#issuecomment-5610402914
+- Same #133 SHA `10ec2ef075e4b9687cb5fd97a28823c23c2ca850` against a **new** dedicated isolation DB `blro_isolation_e12_indeprev` (not live `blro`, not the earlier `blro_isolation_e12_review`).
+- Independent verdict: **ACCEPT** on the runtime-host *isolation* store claim. `pnpm run test:postgres:mandatory` exit 0. `MANDATORY_POSTGRES_PASS` 30 files / 167 tests / 0 skipped. `BLRO_RLS_ISOLATION_PASS` 41 tables / 693 cells. Isolation after migrate: 63/134. Isolation DB then dropped.
+- Live `blro` stayed **61/127**, no engineer-case tables, 21 migrations, 1 tenant / 1 project / 1 actor before, after, and after DROP.
+- Isolation `BLRO_STORE=PASS` remains **not** a live-app-DB cutover and **not** `field_accepted`. **#102 / #108 / #105 / #90 stay OPEN / not done.**
+
+### Live-path input hunt (after `62abaee`)
+
+No newly authorized read-only collect path. No sanitized Janus capture. No E02 operational confirmation. No customer-requirements / new-build spec drop. No stacked leftover PR.
+
+Checked this turn (names / classes only; no secret values printed; historical cleanup host not contacted):
+
+- `git ls-remote`: `origin/main` `cd8e44db`, #110 `62abaee`, #132 `3cfdf69`, #133 `10ec2ef` — pins unchanged.
+- Issues #90–#109 still OPEN. No new user/PM comments or attachments supplying a target, locator, HAR/JSON, or requirements.
+- Process env: no `SANGFOR_HCI_*` / `SANGFOR_ALLOW_REAL_EXECUTION` names present.
+- `TMPDIR=/home/jm/.cache/sangfor-e12-review` and `/home/jm/.cache/sangfor-e12`: no sanitized public-key/login HAR/pcap/JSON. Cache still holds a 2024 SCP Open-API PDF (not vendored). Janus files there are independent probe tests, not captures.
+- Local gitignored `.env` still lists HCI *names* whose identity URL class matches the **historical cleanup host** (empty identity path, empty tenant). E02 forbids reuse. Not contacted.
+- No `*2020*.docx`. No new private-store locator after rotation/leak-response (those remain **NOT_RUN**).
+- Untracked `tests/support/remote-mtls-fixture.ts` in the dirty Cursor workspace is a localhost mTLS test CA generator, not a device capture.
+
 ### User / PM artifacts still required
 
 Do not paste secrets. Do not set `SANGFOR_ALLOW_REAL_EXECUTION`. Do not reuse Git-history passwords. Do not contact the historical cleanup host.
 
-1. **Sanitized Janus auth capture**, or an explicit confirmation that the live path is `/janus/authenticate` instead. In-repo catalog / M4 runbook still name `/janus/v2/public-key` + `/janus/v2/login`. `/janus/authenticate` is **unconfirmed** on this machine. No sanitized public-key/login HAR/pcap was found under `TMPDIR=/home/jm/.cache/sangfor-e12`. Do not invent login shapes.
+1. **Sanitized Janus auth capture**, or an explicit confirmation that the live path is `/janus/authenticate` instead. In-repo catalog / M4 runbook still name `/janus/v2/public-key` + `/janus/v2/login`. `/janus/authenticate` is **unconfirmed** on this machine. No sanitized public-key/login HAR/pcap was found under `TMPDIR=/home/jm/.cache/sangfor-e12` or `/home/jm/.cache/sangfor-e12-review`. Do not invent login shapes. Do not attach live HTTP to `explicit_janus_hosts_capture` without that capture.
 2. **Authorized read-only target** that is not the historical cleanup host (product, firmware, collection scope). Past write approval is not reusable.
 3. **E02 read-account locator** in the approved private store after operational confirmation (rotation/leak-response still **NOT_RUN**).
 4. **Retention / sanitization scope** for any live evidence.
