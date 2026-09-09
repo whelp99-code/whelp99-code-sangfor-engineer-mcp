@@ -52,6 +52,10 @@ The sole pre-promotion exception is the internal O1 IAG evidence campaign bootst
 - `maskSecrets` redacts `password|secret|token|authorization|cookie` → `***` **before** anything is written to a run ledger, audit ledger, or console.
 - Fine-tune datasets run a secret-blocking regex (`validateFineTuneDataset`); collection sanitizes PII (email/phone/password/OTP/MFA/license) before export.
 - `.env` is gitignored; `.env.example` documents vars without values. Never commit real credentials or lab tokens.
+- **Documents, plans, and fixtures** use placeholders and env-var names only. Live host/account/password pairs belong in the approved private store (or the process environment that store injects). Do not copy historical values into new files, issues, or chat.
+- **Changed-file secret check:** scan only the files in the change set. Report `path` + finding class (`password-assignment`, `secret-assignment`, `token-assignment`, `private-key`, `lab-credential-class`, `historical-host-copy`, `credential-pair`). Never print, log, or quote the matched text. The regression is `tests/engineer-secret-cleanup.test.ts`. Manual review of the same diff must follow the same no-echo rule.
+- **Current-tree cleanup is not a complete leak response.** Removing or masking a value in HEAD does not erase Git history. History rewrite and force-push are a separate decision and are not performed by document cleanup. Credential disposal/rotation is a separate operations checkbox; a code PR must not claim it.
+- Field access (E12 and later) must use a currently valid source from the approved private store. Do not reuse a value that was previously written into a repository file. See `docs/references/engineer-workflow/e02-secret-cleanup-receipt.md`.
 
 ## Tamper-evidence
 - Change runs (`data/evidence/change-runs/*.jsonl`), the run ledger (`data/runs/*.jsonl`), and PM events are **append-only and hash-chained**. Keyed HMAC chains when `SANGFOR_CHANGE_LEDGER_SECRET` / `SANGFOR_PM_CHAIN_SECRET` are set; otherwise unkeyed SHA-256 and `verify()` honestly reports `keyed:false`.
