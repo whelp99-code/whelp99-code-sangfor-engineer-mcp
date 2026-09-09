@@ -43,6 +43,16 @@ export {
   mapRequirementsToProducts,
 } from './excel-planning.js';
 export {
+  ENGINEER_REQUIREMENT_MAX_XLSX_BYTES,
+  assertEngineerRequirementFile,
+} from './engineer-requirement-guard.js';
+export type {
+  EngineerRequirementIngestResult,
+  EngineerRequirementQuestion,
+  EngineerRequirementTracking,
+} from './engineer-requirement-ingest.js';
+export { ingestEngineerRequirements } from './engineer-requirement-ingest.js';
+export {
   applyApprovedProductChange,
   dryRunProductChange,
   verifyProductChange,

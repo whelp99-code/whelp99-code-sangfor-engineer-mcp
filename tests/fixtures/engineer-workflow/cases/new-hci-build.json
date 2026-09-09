@@ -1,0 +1,39 @@
+{
+  "caseId": "new-hci-build",
+  "mode": "new",
+  "product": "HCI_SCP",
+  "firmware": "6.11.x-requested",
+  "environmentKind": "fixture",
+  "synthetic": true,
+  "originalPresent": false,
+  "sourceKind": "provided",
+  "reproductionAcceptance": "incomplete",
+  "licenseRetention": "synthetic-only; no customer workbook copied",
+  "inputs": {
+    "requirementsFixture": "synthetic/new-hci-requirements.json"
+  },
+  "expected": {
+    "observedDeviceValues": 0,
+    "providedSpecFields": [
+      "node_count",
+      "cpu_per_node_cores",
+      "ram_per_node_gib",
+      "usable_storage_tib",
+      "ha_intent",
+      "firmware_requested"
+    ],
+    "officialBom": "unknown",
+    "sizingResult": "advisory_only",
+    "proposedSettingsAreNotObserved": true
+  },
+  "requiredFields": [
+    { "id": "node_count", "sourceKind": "provided", "collection": "manual" },
+    { "id": "cpu_per_node_cores", "sourceKind": "provided", "collection": "manual" },
+    { "id": "ram_per_node_gib", "sourceKind": "provided", "collection": "manual" },
+    { "id": "usable_storage_tib", "sourceKind": "provided", "collection": "manual" },
+    { "id": "ha_intent", "sourceKind": "provided", "collection": "manual" },
+    { "id": "firmware_requested", "sourceKind": "provided", "collection": "manual" },
+    { "id": "requirements", "sourceKind": "provided", "collection": "manual" },
+    { "id": "official_bom", "sourceKind": "unknown", "collection": "missing" }
+  ]
+}

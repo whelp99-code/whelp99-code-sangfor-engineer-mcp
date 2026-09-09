@@ -121,3 +121,22 @@ export function recommendSizing(product: string, input: SizingInput, root: strin
       : ['헤드룸 20~30% 권장', 'HA/DR 구성 시 이중화 반영 필요', '로그 보존 요구가 스토리지 사이징에 별도 영향', '임계값은 잠정 현장 휴리스틱 — 공식 Sizing Guide로 확정 필요'],
   };
 }
+
+export {
+  ENGINEER_FORMULA_CATALOG,
+  ENGINEER_FORMULA_IDS,
+  convertEngineerUnit,
+  evaluateEngineerFormula,
+  evaluateUnsupportedHaCapacity,
+  isEngineerFormulaId,
+  operandFromCalculation,
+  operandFromObservation,
+  roundHalfAway,
+  sizingTierIsNotOfficialFormula,
+} from './engineer-calculations.js';
+export type {
+  EngineerFormulaId,
+  EngineerFormulaOperand,
+  EngineerFormulaRequest,
+  EngineerFormulaRole,
+} from './engineer-calculations.js';

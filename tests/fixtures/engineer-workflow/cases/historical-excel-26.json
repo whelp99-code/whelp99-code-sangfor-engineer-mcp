@@ -1,0 +1,37 @@
+{
+  "caseId": "historical-excel-26",
+  "mode": "existing",
+  "product": "MULTI_PRODUCT",
+  "firmware": null,
+  "environmentKind": "fixture",
+  "synthetic": false,
+  "originalPresent": true,
+  "sourceKind": "provided",
+  "reproductionAcceptance": "fixture_replay_only",
+  "licenseRetention": "workbook already committed in-repo; E00 does not add another copy and does not copy cell text into this manifest",
+  "originalWorkbook": {
+    "presentInRepo": true,
+    "discoverBySha256": "20e99de99a04b349a4ec82bad18c383eddb869973498ba11aeb729ac2e4eda79",
+    "bytes": 22547,
+    "prioritizeOnly": true
+  },
+  "expected": {
+    "totalItems": 26,
+    "consoleItems": 12,
+    "manualItems": 14,
+    "mapped": {
+      "HCI_SCP": 0,
+      "IAG": 3,
+      "ENDPOINT_SECURE": 7,
+      "NDR": 2,
+      "external_or_manual": 14
+    },
+    "notAnHciRepresentativeCase": true,
+    "notCurrentLive": true
+  },
+  "requiredFields": [
+    { "id": "checklist_rows", "sourceKind": "provided", "collection": "implemented" },
+    { "id": "product_mapping", "sourceKind": "derived", "collection": "implemented" },
+    { "id": "setting_guide_docx", "sourceKind": "derived", "collection": "implemented" }
+  ]
+}
