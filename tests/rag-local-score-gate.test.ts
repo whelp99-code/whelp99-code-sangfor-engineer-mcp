@@ -41,6 +41,18 @@ describe('opt-in local score floor', () => {
     expect(await ragSearch(input)).toEqual([]);
     expect(fetch).toHaveBeenCalledOnce();
   });
+  it('applies combined ordering in the actual search path without replacing raw scores', async () => {
+    const input = setup(8); vi.stubEnv('SANGFOR_LOCAL_RERANK_SCORE_ORDER', 'rrf');
+    respond([7.8, 9, 8.8, 8.6, 8.4, 8.2, 8, 7.6].map((score, index) => ({ index, score })));
+    const hits = await ragSearch(input);
+    expect(hits.map(h => h.id)).toContain('doc-0');
+    expect(hits.find(h => h.id === 'doc-0')?.rerankScore).toBe(7.8);
+  });
+  it('refuses an ordering policy without its required floor', () => {
+    vi.stubEnv('SANGFOR_LOCAL_RERANK_SCORE_ORDER', 'rrf');
+    vi.stubEnv('SANGFOR_LOCAL_RERANK_MIN_SCORE', undefined);
+    expect(() => createLocalRerankFromEnv()).toThrow('RAG_SCORE_GATE_ORDER_REQUIRES_FLOOR');
+  });
   it.each([
     [{ index: 0, score: 8 }],
     [],

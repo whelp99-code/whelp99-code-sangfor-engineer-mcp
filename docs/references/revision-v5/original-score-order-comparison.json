@@ -1,0 +1,1914 @@
+{
+  "status": "DEVELOPMENT_REPLAY_OF_VERIFIED_COMPLETE_MODEL_SCORES_NOT_NEW_INFERENCE",
+  "calibrationSha256": "bb9c26ecb85a68dddae5f26c0ae7f3da0e6426e1dafb2fadacdd1e6987900c2e",
+  "comparisons": [
+    {
+      "floor": 3,
+      "order": "model",
+      "hitRateAt5": 0.9047619047619048,
+      "mrrAt5": 0.7380952380952381,
+      "noAnswerFalsePositiveRate": 0,
+      "rows": [
+        {
+          "queryId": "hci-cli-6113",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 4
+        },
+        {
+          "queryId": "scp-nbu-xbsa-key",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "scp-rapid-recovery-ko",
+          "noAnswer": false,
+          "goldRank": 2,
+          "returned": 5
+        },
+        {
+          "queryId": "ndr-3098-preupgrade",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "ndr-resolved-issues",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 3
+        },
+        {
+          "queryId": "ngfw-80107-guaranteed",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "ngfw-80106-limited",
+          "noAnswer": false,
+          "goldRank": 2,
+          "returned": 5
+        },
+        {
+          "queryId": "iag-vpn-bandwidth-ko",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 1
+        },
+        {
+          "queryId": "hci-overlay-6111",
+          "noAnswer": false,
+          "goldRank": 2,
+          "returned": 5
+        },
+        {
+          "queryId": "hci-datastore",
+          "noAnswer": false,
+          "goldRank": 2,
+          "returned": 5
+        },
+        {
+          "queryId": "hci-iscsi-ko",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "backup-space-case",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "scc-tenant-quota",
+          "noAnswer": false,
+          "goldRank": 4,
+          "returned": 5
+        },
+        {
+          "queryId": "scp-612-scheduled-backup",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "hci-system-diagnostics",
+          "noAnswer": false,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "hci-raid-ko",
+          "noAnswer": false,
+          "goldRank": 4,
+          "returned": 5
+        },
+        {
+          "queryId": "hci-api-reference",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 4
+        },
+        {
+          "queryId": "sfvddk-api",
+          "noAnswer": false,
+          "goldRank": 0,
+          "returned": 5
+        },
+        {
+          "queryId": "hci-dfw-ko",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "ndr-environment-ko",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 4
+        },
+        {
+          "queryId": "vcenter-cert-case",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 2
+        },
+        {
+          "queryId": "no-hci-9999",
+          "noAnswer": true,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "no-ndr-9999-ko",
+          "noAnswer": true,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "no-ngfw-9999",
+          "noAnswer": true,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "no-scp-9999-ko",
+          "noAnswer": true,
+          "goldRank": 0,
+          "returned": 0
+        }
+      ]
+    },
+    {
+      "floor": 3,
+      "order": "retrieval",
+      "hitRateAt5": 0.9523809523809523,
+      "mrrAt5": 0.7063492063492064,
+      "noAnswerFalsePositiveRate": 0,
+      "rows": [
+        {
+          "queryId": "hci-cli-6113",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 4
+        },
+        {
+          "queryId": "scp-nbu-xbsa-key",
+          "noAnswer": false,
+          "goldRank": 2,
+          "returned": 5
+        },
+        {
+          "queryId": "scp-rapid-recovery-ko",
+          "noAnswer": false,
+          "goldRank": 3,
+          "returned": 5
+        },
+        {
+          "queryId": "ndr-3098-preupgrade",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "ndr-resolved-issues",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 3
+        },
+        {
+          "queryId": "ngfw-80107-guaranteed",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "ngfw-80106-limited",
+          "noAnswer": false,
+          "goldRank": 2,
+          "returned": 5
+        },
+        {
+          "queryId": "iag-vpn-bandwidth-ko",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 1
+        },
+        {
+          "queryId": "hci-overlay-6111",
+          "noAnswer": false,
+          "goldRank": 3,
+          "returned": 5
+        },
+        {
+          "queryId": "hci-datastore",
+          "noAnswer": false,
+          "goldRank": 2,
+          "returned": 5
+        },
+        {
+          "queryId": "hci-iscsi-ko",
+          "noAnswer": false,
+          "goldRank": 2,
+          "returned": 5
+        },
+        {
+          "queryId": "backup-space-case",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "scc-tenant-quota",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "scp-612-scheduled-backup",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "hci-system-diagnostics",
+          "noAnswer": false,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "hci-raid-ko",
+          "noAnswer": false,
+          "goldRank": 2,
+          "returned": 5
+        },
+        {
+          "queryId": "hci-api-reference",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 4
+        },
+        {
+          "queryId": "sfvddk-api",
+          "noAnswer": false,
+          "goldRank": 3,
+          "returned": 5
+        },
+        {
+          "queryId": "hci-dfw-ko",
+          "noAnswer": false,
+          "goldRank": 3,
+          "returned": 5
+        },
+        {
+          "queryId": "ndr-environment-ko",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 4
+        },
+        {
+          "queryId": "vcenter-cert-case",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 2
+        },
+        {
+          "queryId": "no-hci-9999",
+          "noAnswer": true,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "no-ndr-9999-ko",
+          "noAnswer": true,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "no-ngfw-9999",
+          "noAnswer": true,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "no-scp-9999-ko",
+          "noAnswer": true,
+          "goldRank": 0,
+          "returned": 0
+        }
+      ]
+    },
+    {
+      "floor": 3,
+      "order": "rrf",
+      "hitRateAt5": 0.9523809523809523,
+      "mrrAt5": 0.8015873015873015,
+      "noAnswerFalsePositiveRate": 0,
+      "rows": [
+        {
+          "queryId": "hci-cli-6113",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 4
+        },
+        {
+          "queryId": "scp-nbu-xbsa-key",
+          "noAnswer": false,
+          "goldRank": 2,
+          "returned": 5
+        },
+        {
+          "queryId": "scp-rapid-recovery-ko",
+          "noAnswer": false,
+          "goldRank": 3,
+          "returned": 5
+        },
+        {
+          "queryId": "ndr-3098-preupgrade",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "ndr-resolved-issues",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 3
+        },
+        {
+          "queryId": "ngfw-80107-guaranteed",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "ngfw-80106-limited",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "iag-vpn-bandwidth-ko",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 1
+        },
+        {
+          "queryId": "hci-overlay-6111",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "hci-datastore",
+          "noAnswer": false,
+          "goldRank": 2,
+          "returned": 5
+        },
+        {
+          "queryId": "hci-iscsi-ko",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "backup-space-case",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "scc-tenant-quota",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "scp-612-scheduled-backup",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "hci-system-diagnostics",
+          "noAnswer": false,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "hci-raid-ko",
+          "noAnswer": false,
+          "goldRank": 2,
+          "returned": 5
+        },
+        {
+          "queryId": "hci-api-reference",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 4
+        },
+        {
+          "queryId": "sfvddk-api",
+          "noAnswer": false,
+          "goldRank": 2,
+          "returned": 5
+        },
+        {
+          "queryId": "hci-dfw-ko",
+          "noAnswer": false,
+          "goldRank": 2,
+          "returned": 5
+        },
+        {
+          "queryId": "ndr-environment-ko",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 4
+        },
+        {
+          "queryId": "vcenter-cert-case",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 2
+        },
+        {
+          "queryId": "no-hci-9999",
+          "noAnswer": true,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "no-ndr-9999-ko",
+          "noAnswer": true,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "no-ngfw-9999",
+          "noAnswer": true,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "no-scp-9999-ko",
+          "noAnswer": true,
+          "goldRank": 0,
+          "returned": 0
+        }
+      ]
+    },
+    {
+      "floor": 3.5,
+      "order": "model",
+      "hitRateAt5": 0.9047619047619048,
+      "mrrAt5": 0.7380952380952381,
+      "noAnswerFalsePositiveRate": 0,
+      "rows": [
+        {
+          "queryId": "hci-cli-6113",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 4
+        },
+        {
+          "queryId": "scp-nbu-xbsa-key",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "scp-rapid-recovery-ko",
+          "noAnswer": false,
+          "goldRank": 2,
+          "returned": 5
+        },
+        {
+          "queryId": "ndr-3098-preupgrade",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "ndr-resolved-issues",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 2
+        },
+        {
+          "queryId": "ngfw-80107-guaranteed",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "ngfw-80106-limited",
+          "noAnswer": false,
+          "goldRank": 2,
+          "returned": 5
+        },
+        {
+          "queryId": "iag-vpn-bandwidth-ko",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 1
+        },
+        {
+          "queryId": "hci-overlay-6111",
+          "noAnswer": false,
+          "goldRank": 2,
+          "returned": 5
+        },
+        {
+          "queryId": "hci-datastore",
+          "noAnswer": false,
+          "goldRank": 2,
+          "returned": 5
+        },
+        {
+          "queryId": "hci-iscsi-ko",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "backup-space-case",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "scc-tenant-quota",
+          "noAnswer": false,
+          "goldRank": 4,
+          "returned": 5
+        },
+        {
+          "queryId": "scp-612-scheduled-backup",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "hci-system-diagnostics",
+          "noAnswer": false,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "hci-raid-ko",
+          "noAnswer": false,
+          "goldRank": 4,
+          "returned": 5
+        },
+        {
+          "queryId": "hci-api-reference",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 1
+        },
+        {
+          "queryId": "sfvddk-api",
+          "noAnswer": false,
+          "goldRank": 0,
+          "returned": 5
+        },
+        {
+          "queryId": "hci-dfw-ko",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "ndr-environment-ko",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 4
+        },
+        {
+          "queryId": "vcenter-cert-case",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 1
+        },
+        {
+          "queryId": "no-hci-9999",
+          "noAnswer": true,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "no-ndr-9999-ko",
+          "noAnswer": true,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "no-ngfw-9999",
+          "noAnswer": true,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "no-scp-9999-ko",
+          "noAnswer": true,
+          "goldRank": 0,
+          "returned": 0
+        }
+      ]
+    },
+    {
+      "floor": 3.5,
+      "order": "retrieval",
+      "hitRateAt5": 0.9523809523809523,
+      "mrrAt5": 0.7063492063492064,
+      "noAnswerFalsePositiveRate": 0,
+      "rows": [
+        {
+          "queryId": "hci-cli-6113",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 4
+        },
+        {
+          "queryId": "scp-nbu-xbsa-key",
+          "noAnswer": false,
+          "goldRank": 2,
+          "returned": 5
+        },
+        {
+          "queryId": "scp-rapid-recovery-ko",
+          "noAnswer": false,
+          "goldRank": 3,
+          "returned": 5
+        },
+        {
+          "queryId": "ndr-3098-preupgrade",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "ndr-resolved-issues",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 2
+        },
+        {
+          "queryId": "ngfw-80107-guaranteed",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "ngfw-80106-limited",
+          "noAnswer": false,
+          "goldRank": 2,
+          "returned": 5
+        },
+        {
+          "queryId": "iag-vpn-bandwidth-ko",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 1
+        },
+        {
+          "queryId": "hci-overlay-6111",
+          "noAnswer": false,
+          "goldRank": 3,
+          "returned": 5
+        },
+        {
+          "queryId": "hci-datastore",
+          "noAnswer": false,
+          "goldRank": 2,
+          "returned": 5
+        },
+        {
+          "queryId": "hci-iscsi-ko",
+          "noAnswer": false,
+          "goldRank": 2,
+          "returned": 5
+        },
+        {
+          "queryId": "backup-space-case",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "scc-tenant-quota",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "scp-612-scheduled-backup",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "hci-system-diagnostics",
+          "noAnswer": false,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "hci-raid-ko",
+          "noAnswer": false,
+          "goldRank": 2,
+          "returned": 5
+        },
+        {
+          "queryId": "hci-api-reference",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 1
+        },
+        {
+          "queryId": "sfvddk-api",
+          "noAnswer": false,
+          "goldRank": 3,
+          "returned": 5
+        },
+        {
+          "queryId": "hci-dfw-ko",
+          "noAnswer": false,
+          "goldRank": 3,
+          "returned": 5
+        },
+        {
+          "queryId": "ndr-environment-ko",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 4
+        },
+        {
+          "queryId": "vcenter-cert-case",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 1
+        },
+        {
+          "queryId": "no-hci-9999",
+          "noAnswer": true,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "no-ndr-9999-ko",
+          "noAnswer": true,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "no-ngfw-9999",
+          "noAnswer": true,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "no-scp-9999-ko",
+          "noAnswer": true,
+          "goldRank": 0,
+          "returned": 0
+        }
+      ]
+    },
+    {
+      "floor": 3.5,
+      "order": "rrf",
+      "hitRateAt5": 0.9523809523809523,
+      "mrrAt5": 0.8015873015873015,
+      "noAnswerFalsePositiveRate": 0,
+      "rows": [
+        {
+          "queryId": "hci-cli-6113",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 4
+        },
+        {
+          "queryId": "scp-nbu-xbsa-key",
+          "noAnswer": false,
+          "goldRank": 2,
+          "returned": 5
+        },
+        {
+          "queryId": "scp-rapid-recovery-ko",
+          "noAnswer": false,
+          "goldRank": 3,
+          "returned": 5
+        },
+        {
+          "queryId": "ndr-3098-preupgrade",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "ndr-resolved-issues",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 2
+        },
+        {
+          "queryId": "ngfw-80107-guaranteed",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "ngfw-80106-limited",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "iag-vpn-bandwidth-ko",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 1
+        },
+        {
+          "queryId": "hci-overlay-6111",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "hci-datastore",
+          "noAnswer": false,
+          "goldRank": 2,
+          "returned": 5
+        },
+        {
+          "queryId": "hci-iscsi-ko",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "backup-space-case",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "scc-tenant-quota",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "scp-612-scheduled-backup",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "hci-system-diagnostics",
+          "noAnswer": false,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "hci-raid-ko",
+          "noAnswer": false,
+          "goldRank": 2,
+          "returned": 5
+        },
+        {
+          "queryId": "hci-api-reference",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 1
+        },
+        {
+          "queryId": "sfvddk-api",
+          "noAnswer": false,
+          "goldRank": 2,
+          "returned": 5
+        },
+        {
+          "queryId": "hci-dfw-ko",
+          "noAnswer": false,
+          "goldRank": 2,
+          "returned": 5
+        },
+        {
+          "queryId": "ndr-environment-ko",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 4
+        },
+        {
+          "queryId": "vcenter-cert-case",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 1
+        },
+        {
+          "queryId": "no-hci-9999",
+          "noAnswer": true,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "no-ndr-9999-ko",
+          "noAnswer": true,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "no-ngfw-9999",
+          "noAnswer": true,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "no-scp-9999-ko",
+          "noAnswer": true,
+          "goldRank": 0,
+          "returned": 0
+        }
+      ]
+    },
+    {
+      "floor": 4,
+      "order": "model",
+      "hitRateAt5": 0.9047619047619048,
+      "mrrAt5": 0.7380952380952381,
+      "noAnswerFalsePositiveRate": 0,
+      "rows": [
+        {
+          "queryId": "hci-cli-6113",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 3
+        },
+        {
+          "queryId": "scp-nbu-xbsa-key",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "scp-rapid-recovery-ko",
+          "noAnswer": false,
+          "goldRank": 2,
+          "returned": 5
+        },
+        {
+          "queryId": "ndr-3098-preupgrade",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 2
+        },
+        {
+          "queryId": "ndr-resolved-issues",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 1
+        },
+        {
+          "queryId": "ngfw-80107-guaranteed",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "ngfw-80106-limited",
+          "noAnswer": false,
+          "goldRank": 2,
+          "returned": 5
+        },
+        {
+          "queryId": "iag-vpn-bandwidth-ko",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 1
+        },
+        {
+          "queryId": "hci-overlay-6111",
+          "noAnswer": false,
+          "goldRank": 2,
+          "returned": 5
+        },
+        {
+          "queryId": "hci-datastore",
+          "noAnswer": false,
+          "goldRank": 2,
+          "returned": 5
+        },
+        {
+          "queryId": "hci-iscsi-ko",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "backup-space-case",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "scc-tenant-quota",
+          "noAnswer": false,
+          "goldRank": 4,
+          "returned": 5
+        },
+        {
+          "queryId": "scp-612-scheduled-backup",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "hci-system-diagnostics",
+          "noAnswer": false,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "hci-raid-ko",
+          "noAnswer": false,
+          "goldRank": 4,
+          "returned": 5
+        },
+        {
+          "queryId": "hci-api-reference",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 1
+        },
+        {
+          "queryId": "sfvddk-api",
+          "noAnswer": false,
+          "goldRank": 0,
+          "returned": 5
+        },
+        {
+          "queryId": "hci-dfw-ko",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "ndr-environment-ko",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 3
+        },
+        {
+          "queryId": "vcenter-cert-case",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 1
+        },
+        {
+          "queryId": "no-hci-9999",
+          "noAnswer": true,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "no-ndr-9999-ko",
+          "noAnswer": true,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "no-ngfw-9999",
+          "noAnswer": true,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "no-scp-9999-ko",
+          "noAnswer": true,
+          "goldRank": 0,
+          "returned": 0
+        }
+      ]
+    },
+    {
+      "floor": 4,
+      "order": "retrieval",
+      "hitRateAt5": 0.9523809523809523,
+      "mrrAt5": 0.7063492063492064,
+      "noAnswerFalsePositiveRate": 0,
+      "rows": [
+        {
+          "queryId": "hci-cli-6113",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 3
+        },
+        {
+          "queryId": "scp-nbu-xbsa-key",
+          "noAnswer": false,
+          "goldRank": 2,
+          "returned": 5
+        },
+        {
+          "queryId": "scp-rapid-recovery-ko",
+          "noAnswer": false,
+          "goldRank": 3,
+          "returned": 5
+        },
+        {
+          "queryId": "ndr-3098-preupgrade",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 2
+        },
+        {
+          "queryId": "ndr-resolved-issues",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 1
+        },
+        {
+          "queryId": "ngfw-80107-guaranteed",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "ngfw-80106-limited",
+          "noAnswer": false,
+          "goldRank": 2,
+          "returned": 5
+        },
+        {
+          "queryId": "iag-vpn-bandwidth-ko",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 1
+        },
+        {
+          "queryId": "hci-overlay-6111",
+          "noAnswer": false,
+          "goldRank": 3,
+          "returned": 5
+        },
+        {
+          "queryId": "hci-datastore",
+          "noAnswer": false,
+          "goldRank": 2,
+          "returned": 5
+        },
+        {
+          "queryId": "hci-iscsi-ko",
+          "noAnswer": false,
+          "goldRank": 2,
+          "returned": 5
+        },
+        {
+          "queryId": "backup-space-case",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "scc-tenant-quota",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "scp-612-scheduled-backup",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "hci-system-diagnostics",
+          "noAnswer": false,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "hci-raid-ko",
+          "noAnswer": false,
+          "goldRank": 2,
+          "returned": 5
+        },
+        {
+          "queryId": "hci-api-reference",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 1
+        },
+        {
+          "queryId": "sfvddk-api",
+          "noAnswer": false,
+          "goldRank": 3,
+          "returned": 5
+        },
+        {
+          "queryId": "hci-dfw-ko",
+          "noAnswer": false,
+          "goldRank": 3,
+          "returned": 5
+        },
+        {
+          "queryId": "ndr-environment-ko",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 3
+        },
+        {
+          "queryId": "vcenter-cert-case",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 1
+        },
+        {
+          "queryId": "no-hci-9999",
+          "noAnswer": true,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "no-ndr-9999-ko",
+          "noAnswer": true,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "no-ngfw-9999",
+          "noAnswer": true,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "no-scp-9999-ko",
+          "noAnswer": true,
+          "goldRank": 0,
+          "returned": 0
+        }
+      ]
+    },
+    {
+      "floor": 4,
+      "order": "rrf",
+      "hitRateAt5": 0.9523809523809523,
+      "mrrAt5": 0.8015873015873015,
+      "noAnswerFalsePositiveRate": 0,
+      "rows": [
+        {
+          "queryId": "hci-cli-6113",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 3
+        },
+        {
+          "queryId": "scp-nbu-xbsa-key",
+          "noAnswer": false,
+          "goldRank": 2,
+          "returned": 5
+        },
+        {
+          "queryId": "scp-rapid-recovery-ko",
+          "noAnswer": false,
+          "goldRank": 3,
+          "returned": 5
+        },
+        {
+          "queryId": "ndr-3098-preupgrade",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 2
+        },
+        {
+          "queryId": "ndr-resolved-issues",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 1
+        },
+        {
+          "queryId": "ngfw-80107-guaranteed",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "ngfw-80106-limited",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "iag-vpn-bandwidth-ko",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 1
+        },
+        {
+          "queryId": "hci-overlay-6111",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "hci-datastore",
+          "noAnswer": false,
+          "goldRank": 2,
+          "returned": 5
+        },
+        {
+          "queryId": "hci-iscsi-ko",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "backup-space-case",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "scc-tenant-quota",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "scp-612-scheduled-backup",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "hci-system-diagnostics",
+          "noAnswer": false,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "hci-raid-ko",
+          "noAnswer": false,
+          "goldRank": 2,
+          "returned": 5
+        },
+        {
+          "queryId": "hci-api-reference",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 1
+        },
+        {
+          "queryId": "sfvddk-api",
+          "noAnswer": false,
+          "goldRank": 2,
+          "returned": 5
+        },
+        {
+          "queryId": "hci-dfw-ko",
+          "noAnswer": false,
+          "goldRank": 2,
+          "returned": 5
+        },
+        {
+          "queryId": "ndr-environment-ko",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 3
+        },
+        {
+          "queryId": "vcenter-cert-case",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 1
+        },
+        {
+          "queryId": "no-hci-9999",
+          "noAnswer": true,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "no-ndr-9999-ko",
+          "noAnswer": true,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "no-ngfw-9999",
+          "noAnswer": true,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "no-scp-9999-ko",
+          "noAnswer": true,
+          "goldRank": 0,
+          "returned": 0
+        }
+      ]
+    },
+    {
+      "floor": 5,
+      "order": "model",
+      "hitRateAt5": 0.8571428571428571,
+      "mrrAt5": 0.6904761904761905,
+      "noAnswerFalsePositiveRate": 0,
+      "rows": [
+        {
+          "queryId": "hci-cli-6113",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 1
+        },
+        {
+          "queryId": "scp-nbu-xbsa-key",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "scp-rapid-recovery-ko",
+          "noAnswer": false,
+          "goldRank": 2,
+          "returned": 2
+        },
+        {
+          "queryId": "ndr-3098-preupgrade",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 1
+        },
+        {
+          "queryId": "ndr-resolved-issues",
+          "noAnswer": false,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "ngfw-80107-guaranteed",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "ngfw-80106-limited",
+          "noAnswer": false,
+          "goldRank": 2,
+          "returned": 5
+        },
+        {
+          "queryId": "iag-vpn-bandwidth-ko",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 1
+        },
+        {
+          "queryId": "hci-overlay-6111",
+          "noAnswer": false,
+          "goldRank": 2,
+          "returned": 5
+        },
+        {
+          "queryId": "hci-datastore",
+          "noAnswer": false,
+          "goldRank": 2,
+          "returned": 5
+        },
+        {
+          "queryId": "hci-iscsi-ko",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "backup-space-case",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 1
+        },
+        {
+          "queryId": "scc-tenant-quota",
+          "noAnswer": false,
+          "goldRank": 4,
+          "returned": 4
+        },
+        {
+          "queryId": "scp-612-scheduled-backup",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "hci-system-diagnostics",
+          "noAnswer": false,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "hci-raid-ko",
+          "noAnswer": false,
+          "goldRank": 4,
+          "returned": 4
+        },
+        {
+          "queryId": "hci-api-reference",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 1
+        },
+        {
+          "queryId": "sfvddk-api",
+          "noAnswer": false,
+          "goldRank": 0,
+          "returned": 5
+        },
+        {
+          "queryId": "hci-dfw-ko",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "ndr-environment-ko",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 3
+        },
+        {
+          "queryId": "vcenter-cert-case",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 1
+        },
+        {
+          "queryId": "no-hci-9999",
+          "noAnswer": true,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "no-ndr-9999-ko",
+          "noAnswer": true,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "no-ngfw-9999",
+          "noAnswer": true,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "no-scp-9999-ko",
+          "noAnswer": true,
+          "goldRank": 0,
+          "returned": 0
+        }
+      ]
+    },
+    {
+      "floor": 5,
+      "order": "retrieval",
+      "hitRateAt5": 0.9047619047619048,
+      "mrrAt5": 0.6746031746031746,
+      "noAnswerFalsePositiveRate": 0,
+      "rows": [
+        {
+          "queryId": "hci-cli-6113",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 1
+        },
+        {
+          "queryId": "scp-nbu-xbsa-key",
+          "noAnswer": false,
+          "goldRank": 2,
+          "returned": 5
+        },
+        {
+          "queryId": "scp-rapid-recovery-ko",
+          "noAnswer": false,
+          "goldRank": 2,
+          "returned": 2
+        },
+        {
+          "queryId": "ndr-3098-preupgrade",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 1
+        },
+        {
+          "queryId": "ndr-resolved-issues",
+          "noAnswer": false,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "ngfw-80107-guaranteed",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "ngfw-80106-limited",
+          "noAnswer": false,
+          "goldRank": 2,
+          "returned": 5
+        },
+        {
+          "queryId": "iag-vpn-bandwidth-ko",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 1
+        },
+        {
+          "queryId": "hci-overlay-6111",
+          "noAnswer": false,
+          "goldRank": 2,
+          "returned": 5
+        },
+        {
+          "queryId": "hci-datastore",
+          "noAnswer": false,
+          "goldRank": 2,
+          "returned": 5
+        },
+        {
+          "queryId": "hci-iscsi-ko",
+          "noAnswer": false,
+          "goldRank": 2,
+          "returned": 5
+        },
+        {
+          "queryId": "backup-space-case",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 1
+        },
+        {
+          "queryId": "scc-tenant-quota",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 4
+        },
+        {
+          "queryId": "scp-612-scheduled-backup",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "hci-system-diagnostics",
+          "noAnswer": false,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "hci-raid-ko",
+          "noAnswer": false,
+          "goldRank": 2,
+          "returned": 4
+        },
+        {
+          "queryId": "hci-api-reference",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 1
+        },
+        {
+          "queryId": "sfvddk-api",
+          "noAnswer": false,
+          "goldRank": 3,
+          "returned": 5
+        },
+        {
+          "queryId": "hci-dfw-ko",
+          "noAnswer": false,
+          "goldRank": 3,
+          "returned": 5
+        },
+        {
+          "queryId": "ndr-environment-ko",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 3
+        },
+        {
+          "queryId": "vcenter-cert-case",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 1
+        },
+        {
+          "queryId": "no-hci-9999",
+          "noAnswer": true,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "no-ndr-9999-ko",
+          "noAnswer": true,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "no-ngfw-9999",
+          "noAnswer": true,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "no-scp-9999-ko",
+          "noAnswer": true,
+          "goldRank": 0,
+          "returned": 0
+        }
+      ]
+    },
+    {
+      "floor": 5,
+      "order": "rrf",
+      "hitRateAt5": 0.9047619047619048,
+      "mrrAt5": 0.7619047619047619,
+      "noAnswerFalsePositiveRate": 0,
+      "rows": [
+        {
+          "queryId": "hci-cli-6113",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 1
+        },
+        {
+          "queryId": "scp-nbu-xbsa-key",
+          "noAnswer": false,
+          "goldRank": 2,
+          "returned": 5
+        },
+        {
+          "queryId": "scp-rapid-recovery-ko",
+          "noAnswer": false,
+          "goldRank": 2,
+          "returned": 2
+        },
+        {
+          "queryId": "ndr-3098-preupgrade",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 1
+        },
+        {
+          "queryId": "ndr-resolved-issues",
+          "noAnswer": false,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "ngfw-80107-guaranteed",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "ngfw-80106-limited",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "iag-vpn-bandwidth-ko",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 1
+        },
+        {
+          "queryId": "hci-overlay-6111",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "hci-datastore",
+          "noAnswer": false,
+          "goldRank": 2,
+          "returned": 5
+        },
+        {
+          "queryId": "hci-iscsi-ko",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "backup-space-case",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 1
+        },
+        {
+          "queryId": "scc-tenant-quota",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 4
+        },
+        {
+          "queryId": "scp-612-scheduled-backup",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 5
+        },
+        {
+          "queryId": "hci-system-diagnostics",
+          "noAnswer": false,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "hci-raid-ko",
+          "noAnswer": false,
+          "goldRank": 2,
+          "returned": 4
+        },
+        {
+          "queryId": "hci-api-reference",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 1
+        },
+        {
+          "queryId": "sfvddk-api",
+          "noAnswer": false,
+          "goldRank": 2,
+          "returned": 5
+        },
+        {
+          "queryId": "hci-dfw-ko",
+          "noAnswer": false,
+          "goldRank": 2,
+          "returned": 5
+        },
+        {
+          "queryId": "ndr-environment-ko",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 3
+        },
+        {
+          "queryId": "vcenter-cert-case",
+          "noAnswer": false,
+          "goldRank": 1,
+          "returned": 1
+        },
+        {
+          "queryId": "no-hci-9999",
+          "noAnswer": true,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "no-ndr-9999-ko",
+          "noAnswer": true,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "no-ngfw-9999",
+          "noAnswer": true,
+          "goldRank": 0,
+          "returned": 0
+        },
+        {
+          "queryId": "no-scp-9999-ko",
+          "noAnswer": true,
+          "goldRank": 0,
+          "returned": 0
+        }
+      ]
+    }
+  ]
+}

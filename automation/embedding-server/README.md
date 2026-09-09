@@ -113,6 +113,13 @@ passage answers all requested details or that adjacent context is supported; act
 answer/citation verification remains required. These settings apply to local RAG,
 not an authorization grant or a replacement for PostgreSQL authority/ACL checks.
 
+With a floor configured, `SANGFOR_LOCAL_RERANK_SCORE_ORDER` separates acceptance
+from ordering: `model` (default) uses the raw model ranking, `retrieval` preserves
+the hybrid retrieval ranking, and `rrf` combines those two ranks with equal weight
+and rank constant 60. All three apply the same floor and keep raw model scores;
+none refills rejected passages. Unknown ordering or ordering without a floor is
+refused. Ordering is part of evaluation settings and must be frozen with the floor.
+
 
 ### Reproducible scoring configuration
 

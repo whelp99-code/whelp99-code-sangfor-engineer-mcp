@@ -8,6 +8,7 @@ import { corpusEvalFixtureSchema } from '../packages/sangfor-rag/src/corpus-eval
 import { loadRagIndex, ragSearch, ragSearchSync, getRagSearchDiagnostics } from '../packages/sangfor-rag/src/index.js';
 import { computeRetrievalMetrics } from '../packages/sangfor-rag/src/retrieval-eval.js';
 import { createLocalRerankFromEnv } from '../packages/sangfor-rag/src/local-rerank-provider.js';
+import { localScoreOrderFromEnv } from '../packages/sangfor-rag/src/local-score-order.js';
 
 async function main(): Promise<void> {
   const [indexPath, fixturePath, baselinePath] = process.argv.slice(2);
@@ -34,6 +35,7 @@ async function main(): Promise<void> {
       ...(process.env.SANGFOR_LOCAL_RERANK_ENABLED === '1' ? {
         localRerankerConfigurationSha256: createLocalRerankFromEnv()!.configurationSha256,
         localRerankerMinimumScore: createLocalRerankFromEnv()!.minimumScore ?? null,
+        ...(process.env.SANGFOR_LOCAL_RERANK_MIN_SCORE !== undefined ? { localRerankerScoreOrder: localScoreOrderFromEnv() } : {}),
       } : {}),
       ...(process.env.SANGFOR_LOCAL_RERANK_ENABLED === '1' || process.env.SANGFOR_MIMO_RERANK_ENABLED === '1' ? {
         rerankCandidates: process.env.SANGFOR_MIMO_RERANK_CANDIDATES ?? '40',
@@ -53,7 +55,7 @@ async function main(): Promise<void> {
     'packages/sangfor-rag/src/embedding-profile.ts', 'packages/sangfor-rag/src/rag-product.ts',
     'packages/sangfor-rag/src/rag-index-store.ts', 'packages/sangfor-rag/src/embedding-provider.ts',
     'packages/sangfor-rag/src/rapid-mlx-provider.ts', 'packages/sangfor-rag/src/openai-embeddings-client.ts',
-    'packages/sangfor-rag/src/mimo-rerank-provider.ts', 'packages/sangfor-rag/src/local-rerank-provider.ts'];
+    'packages/sangfor-rag/src/mimo-rerank-provider.ts', 'packages/sangfor-rag/src/local-rerank-provider.ts', 'packages/sangfor-rag/src/local-score-order.ts'];
   for (const file of implementationFiles) {
     implementationSha256.update(file).update(readFileSync(new URL('../' + file, import.meta.url)));
   }

@@ -18,7 +18,10 @@ export function localRerankConfigurationDigest(model: string, revision: string, 
 
 export function localRerankMinimumScoreFromEnv(): number | undefined {
   const raw = process.env.SANGFOR_LOCAL_RERANK_MIN_SCORE;
-  if (raw === undefined) return undefined;
+  if (raw === undefined) {
+    if (process.env.SANGFOR_LOCAL_RERANK_SCORE_ORDER !== undefined) throw new Error('RAG_SCORE_GATE_ORDER_REQUIRES_FLOOR');
+    return undefined;
+  }
   if (!raw.trim()) throw new Error('RAG_LOCAL_RERANK_MIN_SCORE_INVALID');
   const score = Number(raw);
   if (!Number.isFinite(score)) throw new Error('RAG_LOCAL_RERANK_MIN_SCORE_INVALID');

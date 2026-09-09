@@ -1,5 +1,6 @@
 import { attachHitContext } from './hit-context.js';
 import { createLocalRerankFromEnv, localRerankMinimumScoreFromEnv } from './local-rerank-provider.js';
+import { localScoreOrderFromEnv, orderScoredHits } from './local-score-order.js';
 import type { AuthorizationResult } from '@sangfor/identity';
 import type { ProductCode } from '@sangfor/shared';
 import { resolveRagProduct } from './rag-product.js';
@@ -143,6 +144,7 @@ export async function ragSearch(input: RagSearchInput): Promise<RagSearchHit[]> 
   let pool = distinctSources(ranked, candidateLimit);
   const localReranker = createLocalRerankFromEnv();
   const minimumScore = localReranker?.minimumScore;
+  const scoreOrder = minimumScore !== undefined ? localScoreOrderFromEnv() : undefined;
   if (minimumScore !== undefined && (embeddingFailure || wasEmbeddingFallback())) throw new Error('RAG_SCORE_GATE_RETRIEVAL_UNAVAILABLE');
   const reranker = localReranker ?? createMimoRerankFromEnv();
   if (localReranker && process.env.SANGFOR_LOCAL_RERANK_PASSAGES === '2') pool = expandRerankPassages(ranked, pool);
@@ -172,9 +174,7 @@ export async function ragSearch(input: RagSearchInput): Promise<RagSearchHit[]> 
       const uniqueIds = [...new Set(rankedIds)];
       if (minimumScore !== undefined && scored) {
         if (uniqueIds.some((id) => !knownIds.has(id))) throw new Error('RAG_RERANK_IDS_INVALID');
-        const byId = new Map(pool.map((hit) => [hit.id, hit]));
-        const accepted = scored.filter((row) => row.score >= minimumScore)
-          .map((row) => ({ ...byId.get(row.id)!, rerankScore: row.score }));
+        const accepted = orderScoredHits(pool, scored, minimumScore, scoreOrder!);
         return withDiagnostics(attachHitContext(distinctSources(accepted, finalLimit), filtered, input.contextNeighbors), diagnostics);
       }
       if (!uniqueIds.length || uniqueIds.some((id) => !knownIds.has(id))) throw new Error('RAG_RERANK_IDS_INVALID');

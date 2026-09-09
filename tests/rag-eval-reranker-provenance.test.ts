@@ -58,6 +58,9 @@ describe('corpus evaluation scoring provenance', () => {
       expect(withFloor.settingsSha256).not.toBe(noFloor.settingsSha256);
       expect(withFloor.missingRelevantSources).toEqual(['a.md']);
       expect(withFloor.promotionStatus).toBe('NOT_EVALUATED');
+      const combined = run({ SANGFOR_LOCAL_RERANK_MIN_SCORE: '4', SANGFOR_LOCAL_RERANK_SCORE_ORDER: 'rrf' });
+      expect(combined.settings.localRerankerScoreOrder).toBe('rrf');
+      expect(combined.settingsSha256).not.toBe(withFloor.settingsSha256);
     } finally { rmSync(dir, { recursive: true, force: true }); }
   }, 15000);
 });
