@@ -9,9 +9,10 @@ import {
 /**
  * Extra grant surfaces that production collect emits only when the already-fetched
  * REST JSON contains an explicit key. Provenance is `unofficial_list_key:<id>`,
- * not a device URL or catalog path. Missing keys stay omitted / NOT_RUN. Values
- * are never invented from `opts.collectedAt`, `firmwareVersion`, volume status,
- * or provided E03B fields.
+ * not a device URL or catalog path. These extras stay unofficial / unverified
+ * and cannot mint `authorized_device_read`. Missing keys stay omitted / NOT_RUN.
+ * Values are never invented from `opts.collectedAt`, `firmwareVersion`, volume
+ * status, or provided E03B fields.
  */
 export const HCI_COLLECT_EXTRA_SURFACE_IDS = [
   'collectedAt',
@@ -149,6 +150,10 @@ const FIELD_QUALIFIED_DEVICE_ENDPOINT = /(?:^|\s)(?:GET|POST|PUT|PATCH|DELETE)\s
 
 export function unofficialListKeyEndpoint(surfaceId: HciCollectExtraSurfaceId): string {
   return `${UNOFFICIAL_LIST_KEY_KIND}:${surfaceId}`;
+}
+
+export function isUnofficialListKeyEndpoint(endpoint: string): boolean {
+  return endpoint.trim().startsWith(`${UNOFFICIAL_LIST_KEY_KIND}:`);
 }
 
 export function isOfficialHciCatalogReadEndpoint(endpoint: string): boolean {

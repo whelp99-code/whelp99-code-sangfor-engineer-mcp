@@ -3,8 +3,9 @@
  *
  * `authorized_device_read` is still minted only by
  * `bindEngineerAuthorizedDeviceReadEvidence` after every required surface
- * binds. This module does not invent E03B / firmware / collectedAt bytes,
- * does not treat mock :3400 as live, and does not flip `field_accepted`.
+ * binds from official catalog endpoints. Unofficial list keys may be extracted
+ * but cannot mint. This module does not invent E03B / firmware / collectedAt
+ * bytes, does not treat mock :3400 as live, and does not flip `field_accepted`.
  */
 
 import { canonicalizeUrlOrigin } from '../../shared/src/origin.js';
@@ -120,9 +121,14 @@ const REST_ENDPOINT_VALUES = new Set<string>(Object.values(REST_ENDPOINTS));
 
 /** Field-qualified lookalikes (`GET /volumes/detail field:firmware`) are not catalog URLs. */
 const FIELD_QUALIFIED_DEVICE_ENDPOINT = /(?:^|\s)(?:GET|POST|PUT|PATCH|DELETE)\s+\S+\s+field:[A-Za-z0-9_-]+$/u;
+const UNOFFICIAL_LIST_KEY_PREFIX = 'unofficial_list_key:';
 
 function isFieldQualifiedDeviceEndpoint(endpoint: string): boolean {
   return FIELD_QUALIFIED_DEVICE_ENDPOINT.test(endpoint.trim());
+}
+
+function isUnofficialListKeyEndpoint(endpoint: string): boolean {
+  return endpoint.trim().startsWith(UNOFFICIAL_LIST_KEY_PREFIX);
 }
 
 function extraSurfaceBindable(
@@ -136,6 +142,7 @@ function extraSurfaceBindable(
   if (!isFactProvenance(item.fact)) return false;
   if (REST_ENDPOINT_VALUES.has(item.fact.endpoint)) return false;
   if (isFieldQualifiedDeviceEndpoint(item.fact.endpoint)) return false;
+  if (isUnofficialListKeyEndpoint(item.fact.endpoint)) return false;
   return bindObservedFactToCase(item.fact, {
     caseId,
     projectId,
@@ -191,7 +198,9 @@ function sessionDefect(session: CollectBindSessionInput, inventory: HciCollectio
  * REST volumes/servers/images come from inventory provenance.
  * firmware / collectedAt / volume_status_health / E03B pass through only when
  * collect returned them as originalPresent facts that bind through
- * bindObservedFactToCase. Field-qualified catalog lookalikes
+ * bindObservedFactToCase from a non-unofficial, non-field-qualified endpoint.
+ * `unofficial_list_key:<id>` extras stay extracted on inventory and are not
+ * authorized-device surfaces. Field-qualified catalog lookalikes
  * (`GET /volumes/detail field:firmware`) are not bindable device URLs.
  * Timestamps, firmwareVersion options, volume status, and provided-only E03B
  * fields are not promoted.

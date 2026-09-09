@@ -120,6 +120,10 @@ export function bindObservedFactToCase(fact: unknown, binding: CaseFactBinding):
   }
   if (binding.environmentKind !== 'live') return { ok: false, reason: 'FIXTURE_MARKED_OBSERVED' };
   if (binding.originalPresent !== true) return { ok: false, reason: 'MISSING_ORIGINAL_MARKED_OBSERVED' };
+  const endpoint = (fact as FactProvenance).endpoint.trim();
+  if (/(?:^|\s)(?:GET|POST|PUT|PATCH|DELETE)\s+\S+\s+field:[A-Za-z0-9_-]+$/u.test(endpoint)) {
+    return { ok: false, reason: 'FIELD_QUALIFIED_ENDPOINT_IS_NOT_DEVICE_URL' };
+  }
   return {
     ok: true,
     sourceKind: 'observed',

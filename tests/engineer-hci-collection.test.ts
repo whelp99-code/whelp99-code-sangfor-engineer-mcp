@@ -157,6 +157,7 @@ describe('HCI collection snapshot binding', () => {
     expect(present.originalPresentSurfaces?.every((item) => item.fact.endpoint === unofficialListKeyEndpoint(item.surfaceId))).toBe(true);
     expect(present.originalPresentSurfaces?.every((item) => !isFieldQualifiedDeviceEndpoint(item.fact.endpoint))).toBe(true);
     expect(present.originalPresentSurfaces?.every((item) => !isOfficialHciCatalogReadEndpoint(item.fact.endpoint))).toBe(true);
+    expect(present.originalPresentSurfaces?.every((item) => item.fact.collector === 'hci-rest-collector')).toBe(true);
     expect(present.fields.find((field) => field.id === 'ha_status')?.acquisition).toBe('unsupported');
   });
 

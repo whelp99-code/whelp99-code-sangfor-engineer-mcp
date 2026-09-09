@@ -2,7 +2,8 @@
  * Re-bind E12 grant evidence through `bindObservedFactToCase`.
  *
  * `sourceKind: authorized_device_read` is derived only after every required
- * surface binds with live + originalPresent. Fixture/synthetic constructors
+ * surface binds with live + originalPresent from a non-unofficial endpoint.
+ * `unofficial_list_key:<id>` extras cannot mint. Fixture/synthetic constructors
  * cannot mint that source by setting labels. This is not a live HCI collect
  * and does not invent device bytes.
  */
@@ -16,6 +17,17 @@ import {
   type EngineerRequiredLiveReadSurfaceId,
 } from '../../shared/src/engineer-field-acceptance.js';
 import { bindObservedFactToCase, type FactProvenance } from './provenance.js';
+
+const UNOFFICIAL_LIST_KEY_PREFIX = 'unofficial_list_key:';
+
+function isUnofficialListKeyEndpoint(endpoint: string): boolean {
+  return endpoint.trim().startsWith(UNOFFICIAL_LIST_KEY_PREFIX);
+}
+
+function factEndpoint(fact: unknown): string {
+  if (!fact || typeof fact !== 'object' || !('endpoint' in fact)) return '';
+  return typeof fact.endpoint === 'string' ? fact.endpoint : '';
+}
 
 export type ReboundFieldAcceptanceObservation = {
   readonly surfaceId: EngineerRequiredLiveReadSurfaceId;
@@ -141,6 +153,7 @@ export function requiredSurfacesMissingBoundFacts(
 /**
  * The only constructor that may emit `authorized_device_read`.
  * Requires a successful live+originalPresent bind for every required surface.
+ * Unofficial list-key extras are not official catalog surfaces and cannot mint.
  */
 export function bindEngineerAuthorizedDeviceReadEvidence(input: {
   readonly caseRevision: string;
@@ -154,6 +167,17 @@ export function bindEngineerAuthorizedDeviceReadEvidence(input: {
     return {
       ok: false,
       reason: failed[0]?.reason ?? 'LIVE_BOUND_FACTS_REQUIRED',
+      bound,
+      requiredLiveSurfaces,
+    };
+  }
+  if (
+    bound.some((item) => isUnofficialListKeyEndpoint(item.provenance.endpoint))
+    || input.observations.some((item) => isUnofficialListKeyEndpoint(factEndpoint(item.fact)))
+  ) {
+    return {
+      ok: false,
+      reason: 'UNOFFICIAL_LIST_KEY_IS_NOT_AUTHORIZED_DEVICE_READ',
       bound,
       requiredLiveSurfaces,
     };
