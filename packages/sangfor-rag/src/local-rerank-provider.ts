@@ -23,7 +23,8 @@ const responseSchema = z.object({ model: z.string(), revision: z.string(),
 
 export class LocalRerankProvider implements RerankProvider {
   readonly name = 'local-cross-encoder' as const;
-  private readonly configurationSha256?: string;
+  /** Configured scoring identity, not proof that inference ran successfully. */
+  readonly configurationSha256?: string;
   constructor(private readonly baseUrl: string, private readonly model: string, private readonly revision: string, configuration?: LocalRerankConfiguration) {
     const url = new URL(baseUrl);
     if (url.protocol !== 'http:' || !['127.0.0.1', '[::1]'].includes(url.hostname)

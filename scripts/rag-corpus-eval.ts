@@ -7,6 +7,7 @@ import { compareCorpusQuality, corpusQualityThresholdsSchema, corpusReportSchema
 import { corpusEvalFixtureSchema } from '../packages/sangfor-rag/src/corpus-eval-contract.js';
 import { loadRagIndex, ragSearch, ragSearchSync, getRagSearchDiagnostics } from '../packages/sangfor-rag/src/index.js';
 import { computeRetrievalMetrics } from '../packages/sangfor-rag/src/retrieval-eval.js';
+import { createLocalRerankFromEnv } from '../packages/sangfor-rag/src/local-rerank-provider.js';
 
 async function main(): Promise<void> {
   const [indexPath, fixturePath, baselinePath] = process.argv.slice(2);
@@ -29,6 +30,13 @@ async function main(): Promise<void> {
       localRerankerPassages: process.env.SANGFOR_LOCAL_RERANK_PASSAGES === '2' ? 2 : 1,
       localReranker: process.env.SANGFOR_LOCAL_RERANK_MODEL ?? null,
       localRerankerRevision: process.env.SANGFOR_LOCAL_RERANK_REVISION ?? null,
+      ...(process.env.SANGFOR_LOCAL_RERANK_ENABLED === '1' ? {
+        localRerankerConfigurationSha256: createLocalRerankFromEnv()!.configurationSha256,
+      } : {}),
+      ...(process.env.SANGFOR_LOCAL_RERANK_ENABLED === '1' || process.env.SANGFOR_MIMO_RERANK_ENABLED === '1' ? {
+        rerankCandidates: process.env.SANGFOR_MIMO_RERANK_CANDIDATES ?? '40',
+        rerankTimeoutMs: process.env.SANGFOR_MIMO_RERANK_TIMEOUT_MS ?? '5000',
+      } : {}),
       rerankDisabled: process.env.SANGFOR_MIMO_RERANK_ENABLED === '0',
     } : {}),
     ...(process.env.SANGFOR_RAG_REQUIRE_SUBJECT_MATCH === '1' ? { requireSubjectMatch: true } : {}),
