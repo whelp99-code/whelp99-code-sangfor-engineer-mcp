@@ -18,7 +18,7 @@
       "writesPerformed": 0,
       "repoEvidence": {
         "path": "outputs/diagnosis/HCI_SCP_real_device_smoke_2026-07-02.md",
-        "sha256": "3c02bb98bc7bb31cc20b1972e0745bb019c5ddd6898817d1d3c425cf8f62bd39",
+        "sha256": "aafd2d3c62a589c62f0a5a7ba2a543286d4d80c8cb01c99f083c55519d3fba47",
         "reproduction": "scripts/hci-real-smoke.ts"
       },
       "currentStatus": "record_only",

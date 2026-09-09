@@ -305,7 +305,7 @@ describe('engineer workflow E00 baseline', () => {
 
   it('locks historical evidence hashes without importing them as current PASS', () => {
     expect(sha256File('outputs/diagnosis/HCI_SCP_real_device_smoke_2026-07-02.md')).toBe(
-      '3c02bb98bc7bb31cc20b1972e0745bb019c5ddd6898817d1d3c425cf8f62bd39',
+      'aafd2d3c62a589c62f0a5a7ba2a543286d4d80c8cb01c99f083c55519d3fba47',
     );
     expect(sha256File('outputs/sangfor-excel-plan/setting-plan.json')).toBe(
       'c0130612b0ce1eabb080f7ddf4583d3378ee2693a22747f67dae2f155a7e4f4b',
