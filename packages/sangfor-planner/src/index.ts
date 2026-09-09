@@ -6,6 +6,11 @@ export {
   type EngineerCaseAssembly,
   type EngineerCaseIssue,
 } from './engineer-case.js';
+export {
+  applyRequirementRevision,
+  attachRequirementsToCase,
+  type RequirementRevisionStale,
+} from './engineer-requirement-revision.js';
 import { searchManuals } from '@sangfor/knowledge';
 import { searchWiki } from '@sangfor/wiki';
 import { loadRagIndex, ragSearch, ragSearchSync } from '@sangfor/rag';

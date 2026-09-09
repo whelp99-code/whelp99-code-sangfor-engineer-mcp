@@ -10,6 +10,8 @@ import type {
   RequirementTask,
 } from './types.js';
 
+export { ingestTextRequirementsForCase } from './engineer-requirement-ingest.js';
+
 export function analyzeCustomerRequirements(input: RequirementAnalysisInput) {
   const adapter = getProductAdapter(input.product);
   const tasks = input.requirements.map((requirement, index) => taskFromRequirement(adapter, requirement, index));
