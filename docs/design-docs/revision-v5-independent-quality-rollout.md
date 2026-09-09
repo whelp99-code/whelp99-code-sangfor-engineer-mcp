@@ -35,3 +35,11 @@
 - 구조 후보 개발 실측: 기존 20/21, 추가 12/12, 무응답 각각 0/4. 추가 MRR 0.6597 → 0.8889, 기존 MRR 0.7937 → 0.7222. 기존의 RAID 디스크/노드 격리 라벨 불일치 문항이 top5 밖으로 이동했다. 결과를 숨기거나 qrels를 바꾸지 않았다. 구조 후보 채택은 아직 확정하지 않았다.
 - 구조 청킹 4개 및 주제 일치 4개 테스트 통과, 타입 검사 통과. 전체 CI는 아직 미실행.
 - E5-small의 512토큰 입력과 query/passsage prefix 요구사항을 [공식 모델 카드](https://huggingface.co/intfloat/multilingual-e5-small/raw/main/README.md)에서 확인했다. 고정 revision `614241f622f53c4eeff9890bdc4f31cfecc418b3`, 384차원 실제 로컬 health 확인. 기존 embedForRole의 query/document prefix를 사용해 구조 후보 전체 재임베딩을 시작했다. 실행 결과와 품질은 아직 미확정이다.
+
+## 진행 증거: 실제 구성 계획의 인용 검증
+
+- 실제 `generateConfigPlanAsync` 경로가 요구사항 텍스트로 문서를 검색하도록 수정했다. 인덱스에서 결과가 없으면 예제 문서로 대체하지 않으며, 제품/버전 불일치·빈 문서·없는 인용 ID를 검증한다.
+- 고정 템플릿 구성 계획은 `UNVERIFIED_TEMPLATE`, 근거가 없으면 `INSUFFICIENT_EVIDENCE`, 인용이 잘못되면 `INVALID_REFERENCES`를 반환한다. 구조 검증 `ok`와 답변 검증 `answerReady`를 혼동하지 않는다. 현재 템플릿은 claim 단위 증명이 없어 answerReady=false다.
+- 개발 16질문 실제 구성 계획 평가: 인용 무결성 실패 0, answerReady 0. 답변 정확도는 null이다. 이는 정답률 0% 또는 100%가 아니라 해당 경로가 직접 Q&A를 생성하지 않음을 뜻한다. MCP 호출 AI의 최종 답변 평가는 별도 단계로 남는다.
+- 관련 기존+신규 14테스트 및 최종 인덱스 무응답 통합 테스트 4개 통과. 통합 테스트의 초기 fixture updatedAt 누락으로 인덱스 파싱이 거절됐으며, 유효한 timestamp를 넣어 fixture를 수정했다. 파서의 거절 조건은 유지했다.
+- BLRO 파일 복사본에는 node_modules와 .env가 없고, 해당 디렉터리를 cwd로 사용하는 프로세스도 없다. 운영 갱신 전 현재 정본 실행 위치/클라이언트 경로를 확인해야 한다.

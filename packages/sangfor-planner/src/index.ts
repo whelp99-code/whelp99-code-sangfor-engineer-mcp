@@ -1,3 +1,5 @@
+import { assessPlanGrounding } from './grounding-assessment.js';
+export { assessPlanGrounding } from './grounding-assessment.js';
 import { searchManuals } from '@sangfor/knowledge';
 import { searchWiki } from '@sangfor/wiki';
 import { loadRagIndex, ragSearch, ragSearchSync } from '@sangfor/rag';
@@ -129,6 +131,8 @@ async function collectPlanReferences(
       })));
       return { manualReferences, wikiReferences: [] };
     }
+    // An indexed refusal must not be replaced with unrelated seed references.
+    return { manualReferences: [], wikiReferences: [] };
   }
   return {
     manualReferences: searchManuals({ product, version, query: ragQuery, limit: 5 }),
@@ -247,14 +251,16 @@ export function generateConfigPlan(input: ProjectInput): ConfigPlan {
   };
 }
 
-export function validateConfigPlan(plan: ConfigPlan): { ok: boolean; errors: string[] } {
+export function validateConfigPlan(plan: ConfigPlan): { ok: boolean; errors: string[]; grounding: ReturnType<typeof assessPlanGrounding> } {
   const errors: string[] = [];
   if (plan.precheck.length === 0) errors.push('precheck is required');
   if (plan.steps.length === 0) errors.push('steps are required');
   if (plan.rollbackPlan.length === 0) errors.push('rollbackPlan is required');
   if (plan.validationPlan.length === 0) errors.push('validationPlan is required');
   if (plan.manualReferences.length + plan.wikiReferences.length === 0) errors.push('manual or wiki references are required');
-  return { ok: errors.length === 0, errors };
+  const grounding = assessPlanGrounding(plan);
+  errors.push(...grounding.issues);
+  return { ok: errors.length === 0, errors, grounding };
 }
 
 function attachReferences(plan: ConfigPlan, refs: KnowledgeChunk[]): ConfigPlan {
@@ -272,15 +278,15 @@ function attachReferences(plan: ConfigPlan, refs: KnowledgeChunk[]): ConfigPlan 
 }
 
 /** Async plan with semantic RAG + optional MiMo rerank for references. */
-export async function generateConfigPlanAsync(input: ProjectInput): Promise<ConfigPlan> {
+export async function generateConfigPlanAsync(input: ProjectInput): Promise<ConfigPlan & { grounding: ReturnType<typeof assessPlanGrounding> }> {
   const analysis = analyzeProject(input);
   const { manualReferences, wikiReferences } = await collectPlanReferences(
     analysis.detectedProduct,
     input.version,
-    analysis.recommendedKnowledgeQueries.join(' ')
+    input.requirements?.filter((requirement) => requirement.trim()).join(' ') || analysis.recommendedKnowledgeQueries.join(' ')
   );
   const base = generateConfigPlan(input);
   const refs = [...manualReferences, ...wikiReferences];
-  if (!refs.length) return base;
-  return attachReferences(base, refs);
+  const plan = attachReferences(base, refs);
+  return { ...plan, grounding: assessPlanGrounding(plan) };
 }
