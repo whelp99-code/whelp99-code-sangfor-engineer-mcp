@@ -11,6 +11,14 @@ export {
   attachRequirementsToCase,
   type RequirementRevisionStale,
 } from './engineer-requirement-revision.js';
+export {
+  assessEngineerCase,
+  type EngineerAssessmentBinding,
+  type EngineerAssessmentRequest,
+  type EngineerAssessmentResult,
+  type EngineerCaseCoverage,
+  type EngineerProductMaturity,
+} from './engineer-assessment.js';
 import { searchManuals } from '@sangfor/knowledge';
 import { searchWiki } from '@sangfor/wiki';
 import { loadRagIndex, ragSearch, ragSearchSync } from '@sangfor/rag';
