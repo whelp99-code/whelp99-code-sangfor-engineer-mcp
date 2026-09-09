@@ -8,7 +8,7 @@ export interface EmbeddingProvider {
 }
 
 export interface RerankProvider {
-  readonly name: 'mimo';
+  readonly name: 'mimo' | 'local-cross-encoder';
   rerank(
     query: string,
     candidates: Array<{ id: string; text: string; title?: string }>,

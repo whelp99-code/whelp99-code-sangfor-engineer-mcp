@@ -1,0 +1,176 @@
+[
+  {
+    "mode": "current-bm25",
+    "original": {
+      "metrics": {
+        "queryCount": 21,
+        "hitRateAtK": 1,
+        "recallAtK": 0.9761904761904762,
+        "mrrAtK": 0.7936507936507935,
+        "ndcgAtK": 0.8270137890298389
+      },
+      "noAnswerFalsePositiveRate": 0,
+      "meanLatencyMs": 101.94831715999992,
+      "implementationSha256": "facd2830e3cf8d5000d00e556551fd23a3f51dd49d029adfc0dd233792457892",
+      "settingsSha256": "81f3692bbf1dcf851b5d5f1ad01cdbfabc14507204929ffeb2d0c6c7509c8b10"
+    },
+    "validation": {
+      "metrics": {
+        "queryCount": 12,
+        "hitRateAtK": 1,
+        "recallAtK": 1,
+        "mrrAtK": 0.6597222222222222,
+        "ndcgAtK": 0.7461996310299353
+      },
+      "noAnswerFalsePositiveRate": 0.25,
+      "meanLatencyMs": 114.58949656249987,
+      "implementationSha256": "facd2830e3cf8d5000d00e556551fd23a3f51dd49d029adfc0dd233792457892",
+      "settingsSha256": "81f3692bbf1dcf851b5d5f1ad01cdbfabc14507204929ffeb2d0c6c7509c8b10"
+    }
+  },
+  {
+    "mode": "dense",
+    "original": {
+      "metrics": {
+        "queryCount": 21,
+        "hitRateAtK": 0.38095238095238093,
+        "recallAtK": 0.38095238095238093,
+        "mrrAtK": 0.34523809523809523,
+        "ndcgAtK": 0.35384174086063774
+      },
+      "noAnswerFalsePositiveRate": 0,
+      "meanLatencyMs": 132.79481672000009,
+      "implementationSha256": "facd2830e3cf8d5000d00e556551fd23a3f51dd49d029adfc0dd233792457892",
+      "settingsSha256": "5b8d13e73d912283f0cc053c2234f2cd06559d80c69aae2baa95f1ae0be7df5a"
+    },
+    "validation": {
+      "metrics": {
+        "queryCount": 12,
+        "hitRateAtK": 0.3333333333333333,
+        "recallAtK": 0.3333333333333333,
+        "mrrAtK": 0.17361111111111108,
+        "ndcgAtK": 0.2134671926370709
+      },
+      "noAnswerFalsePositiveRate": 1,
+      "meanLatencyMs": 160.19179137499998,
+      "implementationSha256": "facd2830e3cf8d5000d00e556551fd23a3f51dd49d029adfc0dd233792457892",
+      "settingsSha256": "5b8d13e73d912283f0cc053c2234f2cd06559d80c69aae2baa95f1ae0be7df5a"
+    }
+  },
+  {
+    "mode": "hybrid",
+    "original": {
+      "metrics": {
+        "queryCount": 21,
+        "hitRateAtK": 0.9523809523809523,
+        "recallAtK": 0.9523809523809523,
+        "mrrAtK": 0.7063492063492063,
+        "ndcgAtK": 0.7630546168054086
+      },
+      "noAnswerFalsePositiveRate": 0,
+      "meanLatencyMs": 137.76486239999994,
+      "implementationSha256": "facd2830e3cf8d5000d00e556551fd23a3f51dd49d029adfc0dd233792457892",
+      "settingsSha256": "9351aad2980190aad5e44c63809b196bdf36456ccafe43a447528b966da00f7a"
+    },
+    "validation": {
+      "metrics": {
+        "queryCount": 12,
+        "hitRateAtK": 0.9166666666666666,
+        "recallAtK": 0.9166666666666666,
+        "mrrAtK": 0.5125000000000001,
+        "ndcgAtK": 0.613252578366647
+      },
+      "noAnswerFalsePositiveRate": 1,
+      "meanLatencyMs": 152.24489450000004,
+      "implementationSha256": "facd2830e3cf8d5000d00e556551fd23a3f51dd49d029adfc0dd233792457892",
+      "settingsSha256": "9351aad2980190aad5e44c63809b196bdf36456ccafe43a447528b966da00f7a"
+    }
+  },
+  {
+    "mode": "rrf",
+    "original": {
+      "metrics": {
+        "queryCount": 21,
+        "hitRateAtK": 0.7619047619047619,
+        "recallAtK": 0.7619047619047619,
+        "mrrAtK": 0.5611111111111111,
+        "ndcgAtK": 0.6099910588107704
+      },
+      "noAnswerFalsePositiveRate": 0,
+      "meanLatencyMs": 156.31019028000003,
+      "implementationSha256": "facd2830e3cf8d5000d00e556551fd23a3f51dd49d029adfc0dd233792457892",
+      "settingsSha256": "c6f5f686b4c0a0d8af8e3acbb3959485c6a5a5816710b4f585450781c4330fa3"
+    },
+    "validation": {
+      "metrics": {
+        "queryCount": 12,
+        "hitRateAtK": 0.6666666666666666,
+        "recallAtK": 0.6666666666666666,
+        "mrrAtK": 0.2986111111111111,
+        "ndcgAtK": 0.39040157791121266
+      },
+      "noAnswerFalsePositiveRate": 1,
+      "meanLatencyMs": 152.1454834375,
+      "implementationSha256": "facd2830e3cf8d5000d00e556551fd23a3f51dd49d029adfc0dd233792457892",
+      "settingsSha256": "c6f5f686b4c0a0d8af8e3acbb3959485c6a5a5816710b4f585450781c4330fa3"
+    }
+  },
+  {
+    "mode": "final-rerank",
+    "original": {
+      "metrics": {
+        "queryCount": 21,
+        "hitRateAtK": 0.9047619047619048,
+        "recallAtK": 0.9047619047619048,
+        "mrrAtK": 0.7317460317460318,
+        "ndcgAtK": 0.7680946177849366
+      },
+      "noAnswerFalsePositiveRate": 0,
+      "meanLatencyMs": 3105.14142672,
+      "implementationSha256": "d2b4a56b2d77f81c9e0bb0ff0ea83c308f1675c01a489fba50d33ba3ecafa663",
+      "settingsSha256": "c121bff2f58df89ed064d68742fa36ba010af4f80bbdb4bf2c8fed2a7eb49739"
+    },
+    "validation": {
+      "metrics": {
+        "queryCount": 12,
+        "hitRateAtK": 0.75,
+        "recallAtK": 0.75,
+        "mrrAtK": 0.3875,
+        "ndcgAtK": 0.4773417655690255
+      },
+      "noAnswerFalsePositiveRate": 0.25,
+      "meanLatencyMs": 3374.0545398125,
+      "implementationSha256": "d2b4a56b2d77f81c9e0bb0ff0ea83c308f1675c01a489fba50d33ba3ecafa663",
+      "settingsSha256": "c121bff2f58df89ed064d68742fa36ba010af4f80bbdb4bf2c8fed2a7eb49739"
+    }
+  },
+  {
+    "mode": "multipassage-rerank",
+    "original": {
+      "metrics": {
+        "queryCount": 21,
+        "hitRateAtK": 0.8571428571428571,
+        "recallAtK": 0.8333333333333334,
+        "mrrAtK": 0.6944444444444444,
+        "ndcgAtK": 0.7243008869534433
+      },
+      "noAnswerFalsePositiveRate": 0,
+      "meanLatencyMs": 6503.097274639998,
+      "implementationSha256": "e022577e06e3397602ca9156df391829d4d0c9f2296f4f5abd6f33d916a757b7",
+      "settingsSha256": "c121bff2f58df89ed064d68742fa36ba010af4f80bbdb4bf2c8fed2a7eb49739"
+    },
+    "validation": {
+      "metrics": {
+        "queryCount": 12,
+        "hitRateAtK": 0.6666666666666666,
+        "recallAtK": 0.6666666666666666,
+        "mrrAtK": 0.4375,
+        "ndcgAtK": 0.49619963102993525
+      },
+      "noAnswerFalsePositiveRate": 0.25,
+      "meanLatencyMs": 6184.349115187499,
+      "implementationSha256": "e022577e06e3397602ca9156df391829d4d0c9f2296f4f5abd6f33d916a757b7",
+      "settingsSha256": "c121bff2f58df89ed064d68742fa36ba010af4f80bbdb4bf2c8fed2a7eb49739"
+    }
+  }
+]

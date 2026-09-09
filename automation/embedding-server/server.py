@@ -21,6 +21,8 @@ Bound to loopback only, matching the repo's local-authority posture.
 from __future__ import annotations
 
 import os
+import re
+import torch
 from typing import List, Union
 
 import numpy as np
@@ -36,7 +38,12 @@ EXPECTED_DIMS = int(os.environ.get("SANGFOR_EMBEDDING_SERVER_DIMS", "384"))
 BATCH_SIZE = int(os.environ.get("SANGFOR_EMBEDDING_SERVER_BATCH", "64"))
 
 app = FastAPI(title="sangfor-local-embeddings")
-model = SentenceTransformer(MODEL_NAME, device="cpu")
+MODEL_REVISION = os.environ.get("SANGFOR_EMBEDDING_MODEL_REVISION", "")
+if not re.fullmatch(r"[a-f0-9]{40}", MODEL_REVISION):
+    raise RuntimeError("A full immutable SANGFOR_EMBEDDING_MODEL_REVISION is required")
+torch.set_num_threads(int(os.environ.get("SANGFOR_EMBEDDING_SERVER_THREADS", "4")))
+model = SentenceTransformer(MODEL_NAME, device="cpu", revision=MODEL_REVISION,
+                            trust_remote_code=False, local_files_only=os.environ.get("HF_HUB_OFFLINE") == "1")
 
 _probe = model.encode(["dimension probe"], normalize_embeddings=True)
 if _probe.shape[1] != EXPECTED_DIMS:
@@ -55,7 +62,7 @@ class EmbeddingsRequest(BaseModel):
 
 @app.get("/health")
 def health() -> dict:
-    return {"ok": True, "model": MODEL_NAME, "dimensions": EXPECTED_DIMS}
+    return {"ok": True, "model": MODEL_NAME, "dimensions": EXPECTED_DIMS, "revision": MODEL_REVISION}
 
 
 @app.get("/v1/models")
@@ -64,19 +71,21 @@ def list_models() -> dict:
         "object": "list",
         "data": [
             {"id": MODEL_NAME, "object": "model", "owned_by": "local"},
-            # The LiteLLM/CrewAI stack in docs/LOCAL_SETUP.md refers to this route as
-            # `local-rapid`; expose the alias so either id resolves here.
-            {"id": "local-rapid", "object": "model", "owned_by": "local"},
+
         ],
     }
 
 
 @app.post("/v1/embeddings")
 def embeddings(req: EmbeddingsRequest) -> dict:
+    if req.model != MODEL_NAME:
+        raise HTTPException(status_code=400, detail="Requested model does not match the loaded model")
     texts = [req.input] if isinstance(req.input, str) else list(req.input)
     if not texts:
         raise HTTPException(status_code=400, detail="input must not be empty")
 
+    if len(texts) > 128 or any(len(text) > 32000 for text in texts):
+        raise HTTPException(status_code=413, detail="Embedding input exceeds local limits")
     vectors = model.encode(
         texts,
         batch_size=BATCH_SIZE,
@@ -89,6 +98,7 @@ def embeddings(req: EmbeddingsRequest) -> dict:
     return {
         "object": "list",
         "model": MODEL_NAME,
+        "revision": MODEL_REVISION,
         "data": [
             {"object": "embedding", "index": i, "embedding": vectors[i].tolist()}
             for i in range(len(texts))

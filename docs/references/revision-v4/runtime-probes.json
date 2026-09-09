@@ -1,0 +1,36 @@
+[
+  {
+    "endpoint": "http://127.0.0.1:8004/v1/embeddings",
+    "wrongModelStatus": 400
+  },
+  {
+    "endpoint": "http://127.0.0.1:8005/rerank",
+    "wrongModelStatus": 400
+  },
+  {
+    "service": "embedding",
+    "health": {
+      "ok": true,
+      "model": "intfloat/multilingual-e5-small",
+      "dimensions": 384,
+      "revision": "614241f622f53c4eeff9890bdc4f31cfecc418b3"
+    }
+  },
+  {
+    "service": "reranker",
+    "health": {
+      "ok": true,
+      "model": "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1",
+      "revision": "1427fd652930e4ba29e8149678df786c240d8825"
+    }
+  },
+  {
+    "service": "selected-minilm",
+    "health": {
+      "ok": true,
+      "model": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+      "dimensions": 384,
+      "revision": "e8f8c211226b894fcb81acc59f3b34ba3efd5f42"
+    }
+  }
+]

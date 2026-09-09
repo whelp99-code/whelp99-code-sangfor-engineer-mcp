@@ -1,0 +1,14 @@
+[
+  {
+    "model": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+    "batchSize": 32,
+    "seconds": 2.082766603678465,
+    "dimensions": 384
+  },
+  {
+    "model": "intfloat/multilingual-e5-small",
+    "batchSize": 32,
+    "seconds": 7.307768327649683,
+    "dimensions": 384
+  }
+]

@@ -1,3 +1,4 @@
+import { createLocalRerankFromEnv } from './local-rerank-provider.js';
 import type { AuthorizationResult } from '@sangfor/identity';
 import type { ProductCode } from '@sangfor/shared';
 import { resolveRagProduct } from './rag-product.js';
@@ -10,7 +11,7 @@ import { createMimoRerankFromEnv } from './mimo-rerank-provider.js';
 import { normalizeRetrievalQuery } from './query-normalization.js';
 import { loadRagIndex } from './index.js';
 import { DEFAULT_INDEX_PATH } from './rag-index-store.js';
-import { canCompareVector, distinctSources, hasRetrievalEvidence, rankHybrid } from './rag-ranking.js';
+import { canCompareVector, distinctSources, expandRerankPassages, hasRetrievalEvidence, rankHybrid } from './rag-ranking.js';
 import { embeddingSpaceId, resolveEmbeddingSpace, type EmbeddingSpace } from './embedding-space.js';
 import { actualEmbeddingModelName } from './rag-ingest.js';
 import type {
@@ -139,7 +140,9 @@ export async function ragSearch(input: RagSearchInput): Promise<RagSearchHit[]> 
   );
   const ranked = rankHybrid(filtered, queryVector, normalizedQuery, querySpace).filter(hasRetrievalEvidence).sort((left, right) => right.score - left.score);
   let pool = distinctSources(ranked, candidateLimit);
-  const reranker = createMimoRerankFromEnv();
+  const localReranker = createLocalRerankFromEnv();
+  const reranker = localReranker ?? createMimoRerankFromEnv();
+  if (localReranker && process.env.SANGFOR_LOCAL_RERANK_PASSAGES === '2') pool = expandRerankPassages(ranked, pool);
   if (reranker && pool.length > 1) {
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -150,7 +153,7 @@ export async function ragSearch(input: RagSearchInput): Promise<RagSearchHit[]> 
         reranker.rerank(
           normalizedQuery,
           pool.map((chunk) => ({ id: chunk.id, text: chunk.text, title: chunk.title })),
-          finalLimit,
+          localReranker ? pool.length : finalLimit,
           controller.signal,
         ),
         new Promise<string[]>((_, reject) => { timer = setTimeout(() => { controller.abort(); reject(new Error('rerank-timeout')); }, rerankTimeoutMs); }),
