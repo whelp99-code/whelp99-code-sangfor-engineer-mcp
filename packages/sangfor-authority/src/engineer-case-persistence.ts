@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
-import { RuntimeSchemaError } from '../../shared/src/runtime-schema.js';
+import { z } from 'zod';
+import { parseRuntimeJson, RuntimeSchemaError } from '../../shared/src/runtime-schema.js';
 import {
   computeEngineerGuideDigest,
   engineerCaseDocumentSchema,
@@ -49,6 +50,16 @@ export function isBlroAuthorityPostgres(
 
 function issue(code: string, path: string): EngineerCaseIssue {
   return { code, path };
+}
+
+const UNKNOWN_JSON_CONTRACT = {
+  schema: z.unknown(),
+  schemaName: 'engineer-case-unknown-json.v1',
+  policy: 'deny' as const,
+};
+
+function parseUnknownPersistedJson(source: string): unknown {
+  return parseRuntimeJson(source, UNKNOWN_JSON_CONTRACT);
 }
 
 function hasUnknownValue(value: EngineerValue | undefined): boolean {
@@ -154,7 +165,7 @@ export function prepareEngineerCaseForPersistence(
         return { ok: false, issues: [issue('UNSUPPORTED_SCHEMA_VERSION', (first.path ?? ['schemaVersion']).join('.'))] };
       }
       try {
-        const parsed = JSON.parse(source) as unknown;
+        const parsed = parseUnknownPersistedJson(source);
         const detailed = engineerCaseDocumentSchema.safeParse(parsed);
         if (!detailed.success) {
           return {
@@ -168,8 +179,8 @@ export function prepareEngineerCaseForPersistence(
             )),
           };
         }
-      } catch {
-        // Fall through to the generic schema mismatch.
+      } catch (inner) {
+        if (!(inner instanceof RuntimeSchemaError)) throw inner;
       }
       return { ok: false, issues: [issue('SCHEMA_MISMATCH', first?.path.join('.') || 'schemaVersion')] };
     }
@@ -416,9 +427,12 @@ export async function loadEngineerCaseArtifactRow(
 
 function safeJson(value: string): unknown {
   try {
-    return JSON.parse(value) as unknown;
-  } catch {
-    return value;
+    return parseUnknownPersistedJson(value);
+  } catch (error) {
+    if (error instanceof RuntimeSchemaError && error.issues.some((item) => item.code === 'malformed_json')) {
+      return value;
+    }
+    throw error;
   }
 }
 

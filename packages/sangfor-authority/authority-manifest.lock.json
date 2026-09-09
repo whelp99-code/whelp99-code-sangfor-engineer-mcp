@@ -38,8 +38,8 @@
     "credential_local": 1,
     "curated_seed": 1
   },
-  "manifestSemanticSha256": "32e808d7a48a4ae32a6c8a707cfc3e9ac4bac182315de9f14dc529c5f04da1ce",
-  "repositoryCensusDigest": "4cfb9c9a2095442dc4e776feec41301babfd58f526e3d30d0d9caa26898cd6d0",
+  "manifestSemanticSha256": "765f8317e07e5a92b04ba56c34130a4e577d0b20be1562777648ff693bdf760c",
+  "repositoryCensusDigest": "fe7ce72a0c4819d81313c4ab1c9f16ff49cca77b0c3a2e083fe24840c840c490",
   "sourceOnlyRefs": [
     "m026-spec-registry:data/specs#curated-seed:v1"
   ]

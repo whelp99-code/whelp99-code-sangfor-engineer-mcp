@@ -1,11 +1,32 @@
 import { assessPlanGrounding } from './grounding-assessment.js';
-export { assessPlanGrounding } from './grounding-assessment.js';
+export { assessPlanGrounding, assessEngineerGuideGrounding } from './grounding-assessment.js';
+export type { EngineerGuideGrounding } from './grounding-assessment.js';
 export {
   assembleEngineerCase,
   validateEngineerCase,
   type EngineerCaseAssembly,
   type EngineerCaseIssue,
 } from './engineer-case.js';
+export {
+  applyRequirementRevision,
+  attachRequirementsToCase,
+  type RequirementRevisionStale,
+} from './engineer-requirement-revision.js';
+export {
+  assessEngineerCase,
+  type EngineerAssessmentBinding,
+  type EngineerAssessmentRequest,
+  type EngineerAssessmentResult,
+  type EngineerCaseCoverage,
+  type EngineerProductMaturity,
+} from './engineer-assessment.js';
+export {
+  buildEngineerGuide,
+  computeEngineerGuideDigest,
+  type EngineerGuideBuildRequest,
+  type EngineerGuideBuildResult,
+  type EngineerGuideStepView,
+} from './engineer-guide.js';
 import { searchManuals } from '@sangfor/knowledge';
 import { searchWiki } from '@sangfor/wiki';
 import { loadRagIndex, ragSearch, ragSearchSync } from '@sangfor/rag';
