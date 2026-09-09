@@ -1,6 +1,6 @@
-import { createHash } from 'node:crypto';
 import { assembleEngineerCase, type EngineerCaseAssembly } from '../../../packages/sangfor-planner/src/engineer-case.js';
 import {
+  computeEngineerGuideDigest,
   ENGINEER_ID_RE,
   ENGINEER_UNITS,
   type EngineerCaseAuthContext,
@@ -126,15 +126,26 @@ export function assembleEngineerCaseDraft(
     assessments: [],
     guide: {
       revision: 'guide-draft-1',
-      digest: createHash('sha256').update(`${caseId}:${revision}`).digest('hex'),
+      digest: '00'.repeat(32),
       requirementRefs: requirements.map((item) => item.id),
       steps: [],
       prerequisites: [],
       unresolved,
-      readiness: 'draft',
+      readiness: unresolved.length > 0 ? 'blocked' : 'draft',
     },
     evidence: [],
     execution: { result: 'not_started', reason: 'E10A review does not execute device changes' },
   };
-  return assembleEngineerCase(document, auth);
+  const guideFields = {
+    revision: document.guide.revision,
+    requirementRefs: document.guide.requirementRefs,
+    steps: document.guide.steps,
+    prerequisites: document.guide.prerequisites,
+    unresolved: document.guide.unresolved,
+    readiness: document.guide.readiness,
+  };
+  return assembleEngineerCase({
+    ...document,
+    guide: { ...guideFields, digest: computeEngineerGuideDigest(guideFields) },
+  }, auth);
 }

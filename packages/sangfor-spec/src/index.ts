@@ -15,7 +15,8 @@ export { normalizeSpecProduct } from './product.js';
 export { listSpecCoverage, loadSpec } from './loader.js';
 export { evaluateSpec } from './evaluate.js';
 export { renderAdvisoryReport } from './report-markdown.js';
-export { renderAdvisoryReportDocx } from './report-docx.js';
+export { renderAdvisoryReportDocx, writeConfinedDocxArchive } from './report-docx.js';
+export type { ConfinedDocxArchiveInput, ConfinedDocxArchiveResult } from './report-docx.js';
 export type {
   Category,
   ActionableReason,

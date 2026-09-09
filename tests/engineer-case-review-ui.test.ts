@@ -273,8 +273,88 @@ describe('engineer case review UI contract', () => {
     expect(ENGINEER_CASE_ACTION_SCRIPT).toContain('executionPassGranted');
     expect(ENGINEER_CASE_ACTION_SCRIPT).not.toContain("document.progress === 'accepted'");
     expect(ENGINEER_CASE_ACTION_SCRIPT).not.toContain("readiness === 'review_ready'");
-    expect(ENGINEER_CASE_PANEL).toContain('가이드 미리보기와 다운로드는 이 화면에 없습니다');
-    expect(ENGINEER_CASE_ACTION_SCRIPT).toContain('이 화면에서는 가이드를 내보내지 않습니다');
+    expect(ENGINEER_CASE_PANEL).toContain('가이드 미리보기');
+    expect(ENGINEER_CASE_PANEL).toContain('처음 쓰는 경우');
+    expect(ENGINEER_CASE_ACTION_SCRIPT).toContain('/api/engineer-cases/guide-export');
+    expect(ENGINEER_CASE_ACTION_SCRIPT).toContain('/api/engineer-cases/guide-download');
+    expect(ENGINEER_CASE_ACTION_SCRIPT).toContain('downloadComplete');
+    expect(ENGINEER_CASE_ACTION_SCRIPT).toContain('exportedCaseRevision');
+    expect(ENGINEER_CASE_ACTION_SCRIPT).not.toContain('progress === \'accepted\'');
+  });
+
+  it('exports Word only after a saved case and blocks cross-case download', async () => {
+    const db = new FakeEngineerCaseAuthorityDatabase();
+    const store = storeFor(db);
+    const base = await listen(store);
+    const unsaved = await call(base, '/api/engineer-cases/guide-export', { caseId: 'case-missing-1' });
+    expect(unsaved.body).toMatchObject({ ok: false, status: 'unsaved', downloadComplete: false, approved: false });
+    expect(unsaved.body.status).not.toBe('exported');
+
+    const reviewed = await call(base, '/api/engineer-cases/review', { draft: { ...draft, caseId: 'case-guide-1' } });
+    const saved = await call(base, '/api/engineer-cases', {
+      requestId: 'req-guide-1',
+      document: reviewed.body.document,
+    });
+    expect(saved.body).toMatchObject({ ok: true, status: 'saved' });
+    const exported = await call(base, '/api/engineer-cases/guide-export', { caseId: 'case-guide-1' });
+    expect(exported.status).toBe(200);
+    expect(exported.body).toMatchObject({
+      ok: true,
+      status: 'exported',
+      downloadComplete: true,
+      approved: false,
+      guideReadyGranted: false,
+      executionPassGranted: false,
+      fieldAccepted: false,
+      artifactId: 'gdocx-1',
+    });
+    expect(exported.body.exportedCaseRevision).toBeTruthy();
+    expect(String(JSON.stringify(exported.body))).not.toMatch(/\/home\/|outputPath|absPath/);
+
+    const file = await fetch(`${base}/api/engineer-cases/guide-download?caseId=case-guide-1&artifactId=gdocx-1`);
+    expect(file.status).toBe(200);
+    expect(file.headers.get('content-type')).toContain('wordprocessingml');
+    const bytes = Buffer.from(await file.arrayBuffer());
+    expect(bytes.subarray(0, 2).toString()).toBe('PK');
+
+    const other = await listen(store, OTHER);
+    const stolen = await fetch(`${other}/api/engineer-cases/guide-download?caseId=case-guide-1&artifactId=gdocx-1`);
+    expect(stolen.status).toBe(404);
+    expect(await stolen.json()).toMatchObject({ ok: false, downloadComplete: false });
+
+    const traversal = await fetch(`${base}/api/engineer-cases/guide-download?caseId=case-guide-1&artifactId=../secret`);
+    expect(traversal.status).toBe(400);
+  });
+
+  it('keeps the generated document revision when the stored case changes during export', async () => {
+    const db = new FakeEngineerCaseAuthorityDatabase();
+    const inner = storeFor(db);
+    const setup = await listen(inner);
+    const reviewed = await call(setup, '/api/engineer-cases/review', { draft: { ...draft, caseId: 'case-shift-1' } });
+    await call(setup, '/api/engineer-cases', { requestId: 'req-shift-1', document: reviewed.body.document });
+    const first = await inner.loadEngineerCase({ ...AUTH, caseId: 'case-shift-1' });
+    if (!first.ok) throw new Error('expected saved case');
+    let loads = 0;
+    const shifting = await listen({
+      save: async () => unsaved('REVISION_CONFLICT'),
+      load: async (input) => {
+        loads += 1;
+        if (loads === 1) return first;
+        return { ...first, revision: 'rev-later', document: { ...(first.document as object), revision: 'rev-later' } };
+      },
+      loadArtifact: (input) => inner.loadEngineerCaseArtifact(input),
+    });
+    const exported = await call(shifting, '/api/engineer-cases/guide-export', { caseId: 'case-shift-1' });
+    expect(exported.body).toMatchObject({
+      ok: false,
+      status: 'unsaved',
+      downloadComplete: false,
+      exportedCaseRevision: first.revision,
+      currentCaseRevision: 'rev-later',
+      approved: false,
+    });
+    expect(exported.body.exportedCaseRevision).not.toBe('rev-later');
+    expect(exported.body.status).not.toBe('exported');
   });
 
   it('rejects a tenant claim on the review route', () => {

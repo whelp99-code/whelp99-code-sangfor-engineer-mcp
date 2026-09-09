@@ -86,6 +86,10 @@ const requestSchemas = {
     caseId: engineerIdSchema,
     artifactId: engineerIdSchema,
   }).strict(),
+  'engineer-cases-guide-export': z.object({
+    caseId: engineerIdSchema,
+    expectedRevision: engineerIdSchema.optional(),
+  }).strict(),
   'engineer-cases-review': z.object({
     caseId: engineerIdSchema.optional(),
     draft: z.object({
@@ -124,6 +128,7 @@ const operatorRequestSchema: z.ZodType<AnyOperatorRequestBody> = z.union([
   requestSchemas['engineer-cases-resume'],
   requestSchemas['engineer-cases-compare'],
   requestSchemas['engineer-cases-artifact'],
+  requestSchemas['engineer-cases-guide-export'],
   requestSchemas['engineer-cases-review'],
 ]);
 
