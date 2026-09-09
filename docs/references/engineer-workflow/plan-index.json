@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "status": "in_development",
   "baseCommit": "cd8e44db41b8fcd7aad4d6c052c3dd008c1e27d4",
-  "stackTip": "3cfdf69335a6f9906bfddabbf754d296825416a2",
-  "stackTipPr": 132,
+  "stackTip": "10ec2ef075e4b9687cb5fd97a28823c23c2ca850",
+  "stackTipPr": 133,
   "verifiedAt": "2026-09-10",
   "programIssue": 90,
   "planningIssue": 91,
@@ -141,7 +141,8 @@
       ],
       "pr": 119,
       "head": "5384535be0fd4061fd0674a8acff1a19ac7d2813",
-      "status": "ACCEPT WITH FOLLOW-UPS"
+      "laterPr": 133,
+      "status": "code_verified"
     },
     {
       "unit": "E09B",
@@ -155,7 +156,8 @@
       ],
       "pr": 124,
       "head": "800514f4d0e96db3f12870e34300694ef020a919",
-      "status": "ACCEPT WITH FOLLOW-UPS"
+      "laterPr": 133,
+      "status": "code_verified"
     },
     {
       "unit": "E10A",
@@ -250,6 +252,9 @@
     "packageScriptNames": "PASS",
     "remoteIssueLinks": "PASS",
     "implementationTests": "FIXTURE_REVIEWED_NOT_INTEGRATION",
+    "localIsolationStore": "ACCEPT",
+    "ciForStackTip": "NOT_RUN",
+    "blroStore": "NOT_RUN",
     "liveDeviceAccess": "NOT_RUN",
     "fieldAccepted": "NOT_RUN"
   }
