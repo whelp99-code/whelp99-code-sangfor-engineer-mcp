@@ -194,6 +194,14 @@ describe('engineer workflow E11 integration harness', () => {
     const result = await existingRun(store, { exportRoot });
     expect(result.fabricatedPass).toBe(false);
     expect(result.fieldAccepted).toBe(false);
+    expect(result.fieldAcceptance.fieldAccepted).toBe(false);
+    expect(result.fieldAcceptance.liveRead).toBe('not_run');
+    expect(result.fieldAcceptance.grantPath).toBe('none');
+    expect(result.fieldAcceptance.refusedReasons).toEqual(expect.arrayContaining([
+      'FIXTURE_IS_NOT_FIELD_ACCEPTED',
+      'WORD_DOWNLOAD_IS_NOT_FIELD_ACCEPTED',
+      'LIVE_READ_NOT_RUN',
+    ]));
     expect(result.liveProof).toBe(false);
     expect(result.completedNormally).toBe(false);
     expect(result.collectFailed).toBe(false);
@@ -356,6 +364,9 @@ describe('engineer workflow E11 integration harness', () => {
     expect(result.steps.find((item) => item.id === 'collect')?.status).toBe('unavailable');
     expect(result.completedNormally).toBe(false);
     expect(result.fieldAccepted).toBe(false);
+    expect(result.fieldAcceptance.fieldAccepted).toBe(false);
+    expect(result.fieldAcceptance.liveRead).toBe('not_run');
+    expect(result.fieldAcceptance.refusedReasons).toContain('LIVE_READ_NOT_RUN');
   });
 
   it('refuses to treat a collection failure plus Word output as normal completion', async () => {
@@ -382,6 +393,9 @@ describe('engineer workflow E11 integration harness', () => {
     expect(readdirSync(exportRoot).some((name) => name.endsWith('.docx'))).toBe(false);
     expect(result.completedNormally).toBe(false);
     expect(result.fieldAccepted).toBe(false);
+    expect(result.fieldAcceptance.fieldAccepted).toBe(false);
+    expect(result.fieldAcceptance.refusedReasons).toContain('FIXTURE_IS_NOT_FIELD_ACCEPTED');
+    expect(result.fieldAcceptance.refusedReasons).not.toContain('WORD_DOWNLOAD_IS_NOT_FIELD_ACCEPTED');
   });
 
   it('refuses mixed expectedRevision instead of synthesizing another revision', async () => {

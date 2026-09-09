@@ -43,6 +43,10 @@ import {
   type EngineerObservation,
   type EngineerRequirement,
 } from '../../packages/shared/src/engineer-case-contract.js';
+import {
+  evaluateEngineerFieldAcceptance,
+  type EngineerFieldAcceptanceDecision,
+} from '../../packages/shared/src/engineer-field-acceptance.js';
 import type { ProductCode } from '../../packages/shared/src/index.js';
 
 const WHEN = '2026-09-09T00:00:00.000Z';
@@ -113,6 +117,7 @@ export type EngineerWorkflowResult = {
   readonly export?: EngineerGuideExportResult;
   readonly review?: EngineerCaseReviewView;
   readonly preview?: EngineerGuidePreview;
+  readonly fieldAcceptance: EngineerFieldAcceptanceDecision;
   readonly coverage?: EngineerCaseCoverage;
   readonly tracking: {
     readonly requiredFields: readonly FieldTrack[];
@@ -310,10 +315,19 @@ function baseResult(partial: {
   tracking?: EngineerWorkflowResult['tracking'];
   unresolved?: readonly string[];
 }): EngineerWorkflowResult {
+  const document = partial.document;
   return {
     fabricatedPass: false,
     fieldAccepted: false,
     liveProof: false,
+    fieldAcceptance: evaluateEngineerFieldAcceptance({
+      environmentKind: document?.environmentKind,
+      synthetic: document?.synthetic,
+      originalPresent: document?.originalPresent,
+      guideReadiness: document?.guide.readiness,
+      wordExportOk: partial.export?.ok === true,
+      workflowCompletedNormally: false,
+    }),
     completedNormally: false,
     collectFailed: partial.collectFailed,
     skippedCountedAsPass: false,
@@ -651,10 +665,20 @@ export async function runEngineerWorkflow(input: EngineerWorkflowInput): Promise
     && persist.guideReadyGranted === false
     && persistedDocument.guide.readiness !== 'review_ready';
 
+  const fieldAcceptance = evaluateEngineerFieldAcceptance({
+    environmentKind: persistedDocument.environmentKind,
+    synthetic: persistedDocument.synthetic,
+    originalPresent: persistedDocument.originalPresent,
+    guideReadiness: persistedDocument.guide.readiness,
+    wordExportOk: exported?.ok === true,
+    workflowCompletedNormally: completedNormally,
+  });
+
   return {
     fabricatedPass: false,
     fieldAccepted: false,
     liveProof: false,
+    fieldAcceptance,
     completedNormally,
     collectFailed,
     skippedCountedAsPass: false,
