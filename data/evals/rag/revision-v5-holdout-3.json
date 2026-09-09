@@ -1,0 +1,243 @@
+{
+  "k": 5,
+  "queries": [
+    {
+      "queryId": "v5-holdout3-01",
+      "query": "HCI 6.10.0 문서의 SCMT 3.0에서 일대일 마이그레이션을 할 때 시스템 관리자에게 저장소를 할당해야 하나요? 어떤 저장소 종류를 추가할 수 있나요?",
+      "product": "HCI",
+      "language": "ko",
+      "family": "scmt-point-to-point-storage",
+      "relevantSources": [
+        "data/sources/raw/support_10_1070_2126550.md"
+      ],
+      "version": "6.10.0"
+    },
+    {
+      "queryId": "v5-holdout3-02",
+      "query": "After a local VM file import succeeds in HCI 6.11.1R1, what must I do to connect its network interface to a switch?",
+      "product": "HCI",
+      "language": "en",
+      "family": "imported-vm-network-attachment",
+      "relevantSources": [
+        "data/sources/raw/support_10_1229_2639791.md"
+      ],
+      "version": "6.11.1R1"
+    },
+    {
+      "queryId": "v5-holdout3-03",
+      "query": "NGFW 8.0.107의 0001-0004 설치 실패 권고에서 고객이 직접 조치해도 되나요? 지원 담당자가 수행할 복구 순서는 무엇인가요?",
+      "product": "NGFW",
+      "language": "ko",
+      "family": "precheck-script-operator-warning",
+      "relevantSources": [
+        "data/sources/raw/support_21_1095_2653431.md"
+      ],
+      "version": "8.0.107"
+    },
+    {
+      "queryId": "v5-holdout3-04",
+      "query": "For NGFW 8.0.106 managed through Central Manager, how can I choose target branch devices and schedule an upgrade task?",
+      "product": "NGFW",
+      "language": "en",
+      "family": "central-manager-upgrade-scheduling",
+      "relevantSources": [
+        "data/sources/raw/support_21_1093_2637441.md"
+      ],
+      "version": "8.0.106"
+    },
+    {
+      "queryId": "v5-holdout3-05",
+      "query": "NDR 3.0.98에서 최근 하루 또는 일주일의 외부 전송 트래픽을 조회하고 국내·해외 자산 위치별로 보려면 어떻게 하나요?",
+      "product": "NDR",
+      "language": "ko",
+      "family": "outbound-traffic-time-location-filters",
+      "relevantSources": [
+        "data/sources/raw/support_24_1219_2630689.md"
+      ],
+      "version": "3.0.98"
+    },
+    {
+      "queryId": "v5-holdout3-06",
+      "query": "In NDR 3.0.92, why might the Holistic console module not be displayed, and how can I see a brief description of a configuration icon?",
+      "product": "NDR",
+      "language": "en",
+      "family": "holistic-branch-display",
+      "relevantSources": [
+        "data/sources/raw/support_24_1078_2634604.md"
+      ],
+      "version": "3.0.92"
+    },
+    {
+      "queryId": "v5-holdout3-07",
+      "query": "SCP 6.11.3에서 하나의 탄력적 IP 풀이 여러 리소스 풀과 연결될 수 있나요? 연결된 IP 풀은 어디에서 볼 수 있나요?",
+      "product": "HCI_SCP",
+      "language": "ko",
+      "family": "elastic-ip-pool-association",
+      "relevantSources": [
+        "data/sources/raw/support_45_1379_2663166.md"
+      ],
+      "version": "6.11.3"
+    },
+    {
+      "queryId": "v5-holdout3-08",
+      "query": "In SCP 6.12.0 aDeploy, how do I run a precheck before expanding a datastore and which datastore information must I select?",
+      "product": "HCI_SCP",
+      "language": "en",
+      "family": "adeploy-datastore-expansion-precheck",
+      "relevantSources": [
+        "data/sources/raw/support_45_1388_2656896.md"
+      ],
+      "version": "6.12.0"
+    },
+    {
+      "queryId": "v5-holdout3-09",
+      "query": "바이패스 IAM이 내부 PC들에 UDP 2330 패킷을 보내는 지원 사례에서 어떤 감사 옵션이 원인이었고 어떤 조정이 제시됐나요?",
+      "product": "IAG",
+      "language": "ko",
+      "family": "iam-unidentified-app-udp-probes",
+      "relevantSources": [
+        "data/sources/raw/support_case_2_33574.md"
+      ]
+    },
+    {
+      "queryId": "v5-holdout3-10",
+      "query": "In the IAM support case where Internet Activities showed only rejection logs, which policy condition caused the problem and what was the remedy?",
+      "product": "IAG",
+      "language": "en",
+      "family": "iam-reject-only-audit-disabled",
+      "relevantSources": [
+        "data/sources/raw/support_case_2_33602.md"
+      ]
+    },
+    {
+      "queryId": "v5-holdout3-11",
+      "query": "SCC 2.6.0에서 데이터 센터 통신을 중지하면 객체 작업의 동기화는 어떻게 되며 언제 이 기능을 쓰나요?",
+      "product": "SCC",
+      "language": "ko",
+      "family": "scc-stop-communication-effect",
+      "relevantSources": [
+        "data/sources/raw/support_32_1101_1540500.md"
+      ],
+      "version": "2.6.0"
+    },
+    {
+      "queryId": "v5-holdout3-12",
+      "query": "In SCC 2.6.0 service management, may the fulfillment person send reminders, and how can customers be invited to provide feedback?",
+      "product": "SCC",
+      "language": "en",
+      "family": "scc-fulfillment-reminder-restriction",
+      "relevantSources": [
+        "data/sources/raw/support_32_1101_1544250.md"
+      ],
+      "version": "2.6.0"
+    }
+  ],
+  "noAnswerQueries": [
+    {
+      "queryId": "v5-holdout3-noanswer-01",
+      "query": "우리 고객 HCI 6.11.3에서 지금 HA가 꺼져 있는 가상 머신의 실제 이름을 나열해 줘.",
+      "product": "HCI",
+      "language": "ko",
+      "family": "private-runtime-state",
+      "reason": "Public manuals cannot establish current customer-instance state.",
+      "version": "6.11.3"
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-02",
+      "query": "우리 NGFW 8.0.107에 오늘 연결된 VPN 사용자는 실제로 몇 명인가요?",
+      "product": "NGFW",
+      "language": "ko",
+      "family": "private-runtime-state",
+      "reason": "Public manuals cannot establish current customer-instance state.",
+      "version": "8.0.107"
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-03",
+      "query": "우리 NDR 3.0.98이 지금 수집 중인 실제 DNS 서버의 IP 주소는 무엇인가요?",
+      "product": "NDR",
+      "language": "ko",
+      "family": "private-runtime-state",
+      "reason": "Public manuals cannot establish current customer-instance state.",
+      "version": "3.0.98"
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-04",
+      "query": "우리 고객 SCP 6.12.0의 현재 백업 저장소에 남은 실제 용량을 알려줘.",
+      "product": "HCI_SCP",
+      "language": "ko",
+      "family": "private-runtime-state",
+      "reason": "Public manuals cannot establish current customer-instance state.",
+      "version": "6.12.0"
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-05",
+      "query": "Which external IP addresses is our IAM appliance communicating with at this moment?",
+      "product": "IAG",
+      "language": "en",
+      "family": "private-runtime-state",
+      "reason": "Public manuals cannot establish current customer-instance state."
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-06",
+      "query": "Which data centers in my SCC 2.6.0 deployment have communication stopped right now?",
+      "product": "SCC",
+      "language": "en",
+      "family": "private-runtime-state",
+      "reason": "Public manuals cannot establish current customer-instance state.",
+      "version": "2.6.0"
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-07",
+      "query": "HCI 6.11.3에서 중력파 위상으로 가상 디스크를 압축하는 옵션은 어디 있나요?",
+      "product": "HCI",
+      "language": "ko",
+      "family": "invented-feature",
+      "reason": "Deliberately fictional non-product capability.",
+      "version": "6.11.3"
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-08",
+      "query": "How do I configure the telepathic packet-signing engine in NGFW 8.0.107?",
+      "product": "NGFW",
+      "language": "en",
+      "family": "invented-feature",
+      "reason": "Deliberately fictional non-product capability.",
+      "version": "8.0.107"
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-09",
+      "query": "How do I enable taste-based malware classification in NDR 3.0.98?",
+      "product": "NDR",
+      "language": "en",
+      "family": "invented-feature",
+      "reason": "Deliberately fictional non-product capability.",
+      "version": "3.0.98"
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-10",
+      "query": "How can SCP 6.12.0 teleport physical servers between buildings through its compute scheduler?",
+      "product": "HCI_SCP",
+      "language": "en",
+      "family": "invented-feature",
+      "reason": "Deliberately fictional non-product capability.",
+      "version": "6.12.0"
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-11",
+      "query": "Where do I configure the user aura-color bandwidth allocator in IAM?",
+      "product": "IAG",
+      "language": "en",
+      "family": "invented-feature",
+      "reason": "Deliberately fictional non-product capability."
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-12",
+      "query": "How does SCC 2.6.0 use astrological star signs to encrypt tenant invoices?",
+      "product": "SCC",
+      "language": "en",
+      "family": "invented-feature",
+      "reason": "Deliberately fictional non-product capability.",
+      "version": "2.6.0"
+    }
+  ]
+}
