@@ -14,6 +14,8 @@
 export { normalizeSpecProduct } from './product.js';
 export { listSpecCoverage, loadSpec } from './loader.js';
 export { evaluateSpec } from './evaluate.js';
+export { evaluateDerivedFitness } from './derived-fitness.js';
+export type { DerivedFitnessResult, SourcedCalculationBaseline } from './derived-fitness.js';
 export { renderAdvisoryReport } from './report-markdown.js';
 export { renderAdvisoryReportDocx } from './report-docx.js';
 export type {
