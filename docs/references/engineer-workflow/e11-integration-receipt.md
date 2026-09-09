@@ -70,7 +70,7 @@ Requirement edit stales linked calculations through assessment `calculationRefs`
 | `pnpm run check:browser-boundary` | 0 | pass |
 | `pnpm run check:data-scope-boundary` | 0 | pass |
 | `pnpm run check:hygiene` | 0 | pass |
-| `pnpm test` | — | recorded in the PR after this receipt if re-run; inherited 2 fails remain |
+| `pnpm test` | 1 | fail: 3457 passed, 102 skipped, 2 failed (inherited only, recorded below). skip≠PASS |
 | `pnpm run test:postgres:mandatory` | 1 | not_run (`MANDATORY_POSTGRES_DATABASE_REQUIRED`; no isolation DB). not_run ≠ PASS |
 | historical 26-item workbook sha256 `20e99de99a04b349a4ec82bad18c383eddb869973498ba11aeb729ac2e4eda79` | — | not_run (file not in this tree). not_run ≠ PASS |
 

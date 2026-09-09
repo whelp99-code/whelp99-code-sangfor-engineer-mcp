@@ -25,18 +25,24 @@ const ROOT = join(import.meta.dirname, '..');
 const SOURCE_DIR = join(ROOT, 'packages', 'sangfor-spec', 'src');
 const BARREL = join(SOURCE_DIR, 'index.ts');
 const PURE_LOC_CEILING = 250;
-const BARREL_LOC_CEILING = 40;
+const BARREL_LOC_CEILING = 50;
 const MIN_FOCUSED_MODULES = 5;
 
 /** The public surface every downstream consumer (mcp-server, operator-console,
  *  intent-graph, diagnose scripts) imports from the barrel. */
 const PUBLIC_RUNTIME_EXPORTS = [
+  'evaluateDerivedFitness',
+  'evaluateEngineerRequirementCompare',
   'evaluateSpec',
   'listSpecCoverage',
   'loadSpec',
   'normalizeSpecProduct',
+  'parseEngineerConstraint',
   'renderAdvisoryReport',
   'renderAdvisoryReportDocx',
+  'resolveConfinedDocxOutputPath',
+  'resolveDocxOutputRoot',
+  'writeConfinedDocxArchive',
 ] as const;
 
 /** A barrel re-exports; it does not declare. Anything matching these at line start
