@@ -4,6 +4,69 @@
 
 이 문서는 개발 에이전트에게 전달할 작업 계약이다. 실제 배정 시 아래 빈칸을 주관 에이전트가 채운다. 빈칸이 있는 예시는 실행 승인·실제 결과가 아니다.
 
+## 0. Verified program map (2026-09-10)
+
+Re-read from live GitHub issue/PR bodies and `git ls-remote origin` on this date. Do not trust session memory. Fixture / e2e PASS is not field acceptance. No stacked PR is merged to `main`. Independent reviews are COMMENT (same GitHub actor cannot APPROVE).
+
+| Pin | SHA (verified `ls-remote`) | Note |
+| --- | --- | --- |
+| `origin/main` | `cd8e44db41b8fcd7aad4d6c052c3dd008c1e27d4` | Plan PR #110 base. Do not merge the stack here. |
+| Plan PR [#110](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/110) | this branch; map recorded after `5141cc4c3d98344b2f44011b5920942578398ced` | Refs #90 only on the map commit. Do not close #90/#91 from a status update. |
+| Stack tip / Janus adapter PR [#132](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/132) | `3cfdf69335a6f9906bfddabbf754d296825416a2` | Independent **ACCEPT**. Production collect does not GET Janus. |
+| Janus extras catalog PR [#131](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/131) | `8ae2839e23ff3665125a469d1117fe3fdafac34c` | **ACCEPT WITH FOLLOW-UPS** (not merge-blocking). |
+| Collect-bind leftovers PR [#130](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/130) | `a0f7d721f260d88e615dbe8e5f27f8867f9a1ac8` | Independent leftover **ACCEPT**. Unofficial list keys cannot mint. |
+
+Related E12 prep (not #105 done): grant leftovers PR [#129](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/129) `c728e2f814f8d42837d13654ec832aa71ce91ccd`; fail-closed recorder PR [#128](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/128) `71f864dc84d608e25ebe8c841dcc3a9c8711893c`; E11 freshness leftover PR [#127](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/127) `ffae9a6763a98830a79905365eaebeb2e0d43ddd`.
+
+### 18 program issues (plan §4)
+
+Primary label is the current honest unit state. `code_verified` never means `field_accepted` or `#90` complete. GitHub issue labels (`status:backlog` / `status:in-review`) lag the reviews.
+
+| Unit | Issue | PR / head | Independent review (exact head) | Label | Remaining |
+| --- | --- | --- | --- | --- | --- |
+| E00 | [#92](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/issues/92) OPEN | [#113](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/113) `20ab175ce663c6511c793b2778aed8f431ec6261` | volume `historical_live` + E02 digest lock **ACCEPT** | **code_verified** | `current_live` / field replay **NOT_RUN**. Refs only. |
+| E01 | [#93](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/issues/93) OPEN | [#114](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/114) `da9ed1cc27bd190616b882c91772b16a1ca1ad5c` | omitted `originalPresent` follow-up **ACCEPT** | **code_verified** | Not `integration_verified`. |
+| E02 | [#94](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/issues/94) OPEN | [#118](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/118) `e49c77a0024596b926b6e5df16e24515d29aab0e` | code-cleanup **ACCEPT WITH FOLLOW-UPS** | **BLOCKED-ON-USER** | Credential rotation / leak-response / history rewrite **NOT_RUN**. Do not paste secrets. Do not contact the historical cleanup host. |
+| E03A | [#95](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/issues/95) OPEN | [#115](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/115) `8537868b7890da5e4148f3e7272a1e7f88108be7` | protocol-relative next **ACCEPT** | **code_verified** | Live collect **NOT_RUN**. Later E12 PRs Refs #95; do not close. |
+| E03B | [#96](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/issues/96) OPEN | Unit PR [#120](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/120) `2db1b25f02710c3a65abad69b415d6dba206d317`; Janus child [#132](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/132) | #120 **ACCEPT WITH FOLLOW-UPS**; #132 **ACCEPT** | **ACCEPT WITH FOLLOW-UPS** | Host/network/HA stay unsupported without official read. Live Janus GET **NOT_RUN**. Capture-gated. |
+| E04 | [#97](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/issues/97) OPEN | [#116](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/116) `f6e5b1b7d5512490d00fba0de41489aead624564` | redaction follow-up **ACCEPT** | **code_verified** | 26-item live original still synthetic unless user provides it. |
+| E05 | [#98](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/issues/98) OPEN | [#117](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/117) `221a8e19aeb765512e37e3bdc7ab65f7013f8f27` | **ACCEPT WITH FOLLOW-UPS** (no required code patch) | **ACCEPT WITH FOLLOW-UPS** | Stacked Actions **NOT_RUN** ≠ PASS. |
+| E06 | [#99](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/issues/99) OPEN | [#121](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/121) `59c22692e03480daca47d1ccf0c72b9a922011c2` | **ACCEPT WITH FOLLOW-UPS** | **ACCEPT WITH FOLLOW-UPS** | Actions **NOT_RUN**. |
+| E07 | [#100](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/issues/100) OPEN | [#122](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/122) `4ef1f42498ba51402966bece8b7457f9bde2e30a` | snapshot-surface follow-up **ACCEPT** | **code_verified** | Highest grantable state remains `review_ready`. |
+| E08 | [#101](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/issues/101) OPEN | [#123](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/123) `493ba66c91b28639d5742ea690abf8035f75326f` | planner-import follow-up **ACCEPT** | **code_verified** | Visual Word check ≠ field accept. |
+| E09A | [#102](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/issues/102) OPEN | [#119](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/119) `5384535be0fd4061fd0674a8acff1a19ac7d2813` | in-memory **ACCEPT WITH FOLLOW-UPS** | **ACCEPT WITH FOLLOW-UPS** | `test:postgres:mandatory` / `verify:rls` **NOT_RUN**. |
+| E09B | [#108](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/issues/108) OPEN | [#124](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/124) `800514f4d0e96db3f12870e34300694ef020a919` | persist/digest follow-ups **ACCEPT** | **ACCEPT WITH FOLLOW-UPS** | Postgres/RLS/Actions still **NOT_RUN**. |
+| E10A | [#103](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/issues/103) OPEN | [#125](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/125) `33082c33e3004b55b6f4b6c74a2a3823ce07e4c6` | census follow-up **ACCEPT** | **code_verified** | Browser E2E evidence is fixture/UI test, not field. |
+| E10B | [#109](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/issues/109) OPEN | [#126](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/126) `ae3d190d1f7ba25fb817095fe43cddc93139ee22` | digest/rebase follow-ups **ACCEPT** | **code_verified** | Not `integration_verified`. |
+| E11 | [#104](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/issues/104) OPEN | [#127](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/127) `ffae9a6763a98830a79905365eaebeb2e0d43ddd` | compose then leftovers **ACCEPT WITH FOLLOW-UPS**; freshness leftover **ACCEPT** | **ACCEPT WITH FOLLOW-UPS** | **#104 is not done.** `integration_verified` no. Do not treat fixture e2e as field. |
+| E12 | [#105](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/issues/105) OPEN | [#128](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/128)–[#132](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/132); tip `3cfdf69335a6f9906bfddabbf754d296825416a2` | prep/grant/bind/extras/adapter as above | **BLOCKED-ON-USER** | **#105 is not done.** `field_accepted` remains false. Live HCI/Janus GET **NOT_RUN**. |
+| E13 | [#106](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/issues/106) OPEN | none | none | **not started** | Do not start. Blocked on E11 integration + E12 field path. |
+| E14 | [#107](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/issues/107) OPEN | none | none | **not started** | Do not start. Needs E02 ops + E12 field + E13 + separate PM write approval. |
+
+Program [#90](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/issues/90) OPEN. Plan [#91](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/issues/91) OPEN (PR #110 still `Closes #91` only when that plan PR merges; this map commit does not close it). #111 closed (admin). #112 is not one of the 18.
+
+**Unblocked unshipped unit in the 18:** none. Do not invent unofficial mint, login stubs, live HTTP on `explicit_janus_hosts_capture`, or E13/E14.
+
+### User / PM artifacts still required
+
+Do not paste secrets. Do not set `SANGFOR_ALLOW_REAL_EXECUTION`. Do not reuse Git-history passwords. Do not contact the historical cleanup host.
+
+1. **Sanitized Janus auth capture**, or an explicit confirmation that the live path is `/janus/authenticate` instead. In-repo catalog / M4 runbook still name `/janus/v2/public-key` + `/janus/v2/login`. `/janus/authenticate` is **unconfirmed** on this machine. No sanitized public-key/login HAR/pcap was found under `TMPDIR=/home/jm/.cache/sangfor-e12`. Do not invent login shapes.
+2. **Authorized read-only target** that is not the historical cleanup host (product, firmware, collection scope). Past write approval is not reusable.
+3. **E02 read-account locator** in the approved private store after operational confirmation (rotation/leak-response still **NOT_RUN**).
+4. **Retention / sanitization scope** for any live evidence.
+5. **Customer requirements** for the existing case, plus provided/proposed specs for the new-build case.
+6. **Confirmation the session is read-only.**
+7. **2020 HCI/SCP English OpenAPI docx** if HCI aCMP extras (not Janus) must be wired. Catalog still cites a Passport path (`year: 2020`). That volume is **not mounted** here (no `*2020*.docx` found). Optional: persist `SANGFOR_CHROMIUM_PATH`; isolation Postgres if mandatory DB tests must run; a display for interactive JM login.
+
+### Explicit no (still in force)
+
+- No live Janus/HCI login or GET. No attach of live HTTP to `explicit_janus_hosts_capture`.
+- No `field_accepted` grant. Shared `evaluateEngineerFieldAcceptance` stays non-granting.
+- No merge of the stacked PRs to `main`.
+- No E13 / E14.
+- No program / #90 / #104 / #105 complete.
+
 ## 1. 개발 에이전트에게 전달할 입력
 
 ```text
