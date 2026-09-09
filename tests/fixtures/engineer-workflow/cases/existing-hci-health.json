@@ -1,0 +1,48 @@
+{
+  "caseId": "existing-hci-health",
+  "mode": "existing",
+  "product": "HCI_SCP",
+  "firmware": null,
+  "environmentKind": "fixture",
+  "synthetic": true,
+  "originalPresent": false,
+  "sourceKind": "provided",
+  "reproductionAcceptance": "incomplete",
+  "licenseRetention": "synthetic-only; no customer workbook copied",
+  "inputs": {
+    "inventoryFixture": "synthetic/existing-hci-inventory.json",
+    "requirementsFixture": "synthetic/existing-hci-requirements.json"
+  },
+  "expected": {
+    "healthVerdict": "PASS",
+    "healthScope": "volume-status",
+    "collection": {
+      "volumes": "complete",
+      "servers": "complete",
+      "images": "complete"
+    },
+    "observedSurfaces": ["volumes", "servers", "images"],
+    "unknownRequiredFields": [
+      "host_cpu",
+      "host_ram",
+      "storage_usable_capacity",
+      "network_topology",
+      "ha_status"
+    ],
+    "historicalLiveIsNotCurrentLive": true
+  },
+  "requiredFields": [
+    { "id": "volumes", "sourceKind": "observed", "collection": "implemented" },
+    { "id": "servers", "sourceKind": "observed", "collection": "implemented" },
+    { "id": "images", "sourceKind": "observed", "collection": "implemented" },
+    { "id": "collectedAt", "sourceKind": "observed", "collection": "implemented" },
+    { "id": "volume_status_health", "sourceKind": "derived", "collection": "implemented" },
+    { "id": "requirements", "sourceKind": "provided", "collection": "manual" },
+    { "id": "firmware", "sourceKind": "unknown", "collection": "missing" },
+    { "id": "host_cpu", "sourceKind": "unknown", "collection": "missing" },
+    { "id": "host_ram", "sourceKind": "unknown", "collection": "missing" },
+    { "id": "storage_usable_capacity", "sourceKind": "unknown", "collection": "missing" },
+    { "id": "network_topology", "sourceKind": "unknown", "collection": "missing" },
+    { "id": "ha_status", "sourceKind": "unknown", "collection": "missing" }
+  ]
+}

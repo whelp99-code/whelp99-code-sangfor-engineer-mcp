@@ -1,0 +1,29 @@
+{
+  "environmentKind": "fixture",
+  "sourceKind": "provided",
+  "providedSpecs": {
+    "node_count": 3,
+    "cpu_per_node_cores": 32,
+    "ram_per_node_gib": 256,
+    "usable_storage_tib": 40,
+    "ha_intent": "n_plus_1_requested",
+    "firmware_requested": "6.11.x"
+  },
+  "rows": [
+    {
+      "rowNumber": 1,
+      "rowId": "new-hci-req-1",
+      "no": "1",
+      "category": "HCI",
+      "solution": "HCI/SCP",
+      "item": "New cluster size",
+      "specificDetails": "New HCI/SCP build with three nodes, 32 cores and 256 GiB RAM each, 40 TiB usable storage, N+1 HA requested",
+      "inspectionResult": {},
+      "requirement": "HCI/SCP new build: 3 nodes, 32 cores, 256 GiB RAM, 40 TiB usable, N+1 HA",
+      "evidenceNeed": ["provided specification"],
+      "targetControl": "proposed settings remain proposed until a device is observed",
+      "currentGap": "no observed device values",
+      "priority": "high"
+    }
+  ]
+}
