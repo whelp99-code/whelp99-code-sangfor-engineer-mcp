@@ -137,7 +137,10 @@ describe('engineer workflow E00 baseline', () => {
   const historical = readJson<{
     environmentKind: string;
     currentLive: boolean;
-    records: Array<{ repoEvidence?: Record<string, string>; counts?: Record<string, number> }>;
+    records: Array<{
+      repoEvidence?: Record<string, string>;
+      counts?: { servers?: number; images?: number; volumes?: number; volumeServiceAvailable?: boolean };
+    }>;
   }>('historical-evidence.json');
   const existingCase = readJson<CaseManifest>('cases/existing-hci-health.json');
   const newCase = readJson<CaseManifest>('cases/new-hci-build.json');
@@ -309,6 +312,11 @@ describe('engineer workflow E00 baseline', () => {
     );
     expect(historical.currentLive).toBe(false);
     expect(historical.records[0]?.counts).toMatchObject({ servers: 28, images: 0, volumes: 0 });
+    expect(historical.records[0]?.counts?.volumeServiceAvailable).toBe(false);
+    for (const id of ['hci.collect.volumes', 'hci.health.volume_status']) {
+      const capability = capabilitiesDoc.capabilities.find((entry) => entry.id === id);
+      expect(capability, id).toMatchObject({ historical_live: false, current_live: false });
+    }
   });
 
   it('keeps planner grounding from becoming answer-ready', () => {
