@@ -1,4 +1,4 @@
-import { cleanRetrievalText, retrievalTitle } from './retrieval-text.js';
+import { retrievalBody, retrievalTitle } from './retrieval-text.js';
 import { computeBm25Scores } from './bm25.js';
 import { querySubjectTerms } from './query-evidence.js';
 import { cosineSimilarity } from './hash-embedding.js';
@@ -10,7 +10,7 @@ function searchView(chunk: RagDocumentChunk) {
   let view = searchViews.get(chunk);
   if (!view || view.text !== chunk.text || view.title !== chunk.title) {
     view = { title: chunk.title, text: chunk.text,
-      body: { id: chunk.id, text: `${chunk.title}\n${cleanRetrievalText(chunk.text)}` },
+      body: { id: chunk.id, text: retrievalBody(chunk.text, chunk.title) },
       heading: { id: chunk.id, text: retrievalTitle(chunk.title) } };
     searchViews.set(chunk, view);
   }
@@ -77,7 +77,7 @@ export function rankHybrid<T extends RagDocumentChunk>(
   const bm25Scores = computeBm25Scores(query, views.map((view) => view.body));
   const titleScores = computeBm25Scores(query, views.map((view) => view.heading));
   const subjectScores = process.env.SANGFOR_RAG_REQUIRE_SUBJECT_MATCH === '1'
-    ? computeBm25Scores(querySubjectTerms(query).join(' '), views.map((view) => view.body)) : undefined;
+    ? computeBm25Scores(querySubjectTerms(query).join(' '), views.map((view) => ({ id: view.body.id, text: `${view.heading.text}\n${view.body.text}` }))) : undefined;
   const keywordScores = candidates.map((chunk) => (bm25Scores.get(chunk.id) ?? 0) + 2 * (titleScores.get(chunk.id) ?? 0));
   const normalizeCosine = minMaxNormalizer(cosineScores.filter((_, index) => compatible[index]));
   const normalizeKeyword = minMaxNormalizer(keywordScores);

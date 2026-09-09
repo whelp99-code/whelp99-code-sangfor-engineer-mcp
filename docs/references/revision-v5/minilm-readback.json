@@ -1,0 +1,32 @@
+{
+  "sourceSha256": "ee04fc7a022c3901ce8a7adce3a29c49bc23c8315e613165e035d4754793e8d4",
+  "candidateSha256": "47177f262244ee0765a4faf4348415acaa4305c0bd5dd4217300f37a06d8dd99",
+  "chunks": 39789,
+  "model": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+  "embeddingSpace": {
+    "schemaVersion": 1,
+    "model": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+    "revision": "e8f8c211226b894fcb81acc59f3b34ba3efd5f42",
+    "dimensions": 384,
+    "normalization": "cosine-l2-at-search-v1",
+    "preprocessing": "rag-text-role-prefix-v1",
+    "queryPrefix": "",
+    "documentPrefix": ""
+  },
+  "minNorm": 0.9999998517632499,
+  "maxNorm": 1.0000001436699009,
+  "spotCheckPositions": [
+    0,
+    13263,
+    26526,
+    39788
+  ],
+  "spotCheckCosines": [
+    1.000000076044737,
+    0.9999999242269579,
+    0.9999999105898555,
+    0.9999999956916686
+  ],
+  "sourceMetadataPreserved": true,
+  "promotionAuthorized": false
+}

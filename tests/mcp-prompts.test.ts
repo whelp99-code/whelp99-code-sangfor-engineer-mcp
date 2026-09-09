@@ -22,10 +22,10 @@ describe('MCP prompts capability (W2 C3)', () => {
     expect(res.result.capabilities.prompts).toBeTruthy();
   });
 
-  it('prompts/list returns exactly the 3 curated prompts', async () => {
+  it('prompts/list returns exactly the 4 curated prompts', async () => {
     const res = await handle({ jsonrpc: '2.0', id: 1, method: 'prompts/list' });
     const names = res.result.prompts.map((p: { name: string }) => p.name).sort();
-    expect(names).toEqual(['sangfor-config-plan', 'sangfor-health-check', 'sangfor-troubleshoot']);
+    expect(names).toEqual(['sangfor-answer-from-docs', 'sangfor-config-plan', 'sangfor-health-check', 'sangfor-troubleshoot']);
     for (const p of res.result.prompts) {
       expect(typeof p.name).toBe('string');
       expect(typeof p.description).toBe('string');
@@ -56,7 +56,7 @@ describe('MCP prompts capability (W2 C3)', () => {
 
     const listRes = await handle({ jsonrpc: '2.0', id: 1, method: 'prompts/list' });
     const names: string[] = listRes.result.prompts.map((p: { name: string }) => p.name);
-    expect(names.length).toBe(3);
+    expect(names.length).toBe(4);
 
     for (const name of names) {
       const getRes = await handle({ jsonrpc: '2.0', id: 1, method: 'prompts/get', params: { name } });
@@ -108,11 +108,11 @@ describe('MCP prompts capability (W2 C3)', () => {
 });
 
 describe('MCP prompts — SANGFOR_TOOL_PROFILE gating (W2 F3)', () => {
-  it('full profile exposes all 3 curated prompts', async () => {
+  it('full profile exposes all 4 curated prompts', async () => {
     process.env.SANGFOR_TOOL_PROFILE = 'full';
     const res = await handle({ jsonrpc: '2.0', id: 1, method: 'prompts/list' });
     expect(res.result.prompts.map((p: { name: string }) => p.name).sort()).toEqual([
-      'sangfor-config-plan', 'sangfor-health-check', 'sangfor-troubleshoot',
+      'sangfor-answer-from-docs', 'sangfor-config-plan', 'sangfor-health-check', 'sangfor-troubleshoot',
     ]);
   });
 
@@ -149,4 +149,16 @@ describe('MCP prompts — SANGFOR_TOOL_PROFILE gating (W2 F3)', () => {
       }
     }
   });
+});
+
+
+it('document answer prompt requires body support, exact citations, scope and abstention', async () => {
+  const response = await handle({ jsonrpc: '2.0', id: 1, method: 'prompts/get', params: { name: 'sangfor-answer-from-docs', arguments: { question: 'Certificate requirements?', product: 'HCI', version: '6.11.3' } } });
+  const text = response.result.messages[0].content.text;
+  expect(text).toContain('sangfor_rag_search');
+  expect(text).toContain('filePath and id');
+  expect(text).toContain('exact supporting quotation');
+  expect(text).toContain('explicitly abstain');
+  expect(text).toContain('Do not substitute another product or release');
+  expect(text).toContain('6.11.3');
 });

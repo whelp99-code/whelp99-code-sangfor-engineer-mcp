@@ -1,3 +1,4 @@
+import { attachHitContext } from './hit-context.js';
 import { createLocalRerankFromEnv } from './local-rerank-provider.js';
 import type { AuthorizationResult } from '@sangfor/identity';
 import type { ProductCode } from '@sangfor/shared';
@@ -166,7 +167,7 @@ export async function ragSearch(input: RagSearchInput): Promise<RagSearchHit[]> 
         degradedReason: [diagnostics.degradedReason, 'partial rerank; remaining retrieval order retained'].filter(Boolean).join('; ') };
       pool = pool.sort((left, right) => (order.get(right.id) ?? 0) - (order.get(left.id) ?? 0))
         .map((chunk) => order.has(chunk.id) ? { ...chunk, rerankScore: order.get(chunk.id) } : chunk);
-      return withDiagnostics(distinctSources(pool, finalLimit), diagnostics);
+      return withDiagnostics(attachHitContext(distinctSources(pool, finalLimit), filtered, input.contextNeighbors), diagnostics);
     } catch (error) {
         diagnostics = {
           ...diagnostics,
@@ -180,7 +181,7 @@ export async function ragSearch(input: RagSearchInput): Promise<RagSearchHit[]> 
       controller.abort();
     }
   }
-  return withDiagnostics(distinctSources(ranked, finalLimit), diagnostics);
+  return withDiagnostics(attachHitContext(distinctSources(ranked, finalLimit), filtered, input.contextNeighbors), diagnostics);
 }
 
 export function filterScopedRagCandidates(
@@ -208,9 +209,9 @@ export function ragSearchScopedSync(input: ScopedRagSearchInput): RagSearchHit[]
   input.onCandidates?.(authorized);
   const queryVector = hashEmbedding(normalizedQuery);
   const space = resolveEmbeddingSpace('hash', queryVector.length, 'hash');
-  return withDiagnostics(rankHybrid(authorized, queryVector, normalizedQuery, space).filter(hasRetrievalEvidence)
+  return withDiagnostics(attachHitContext(rankHybrid(authorized, queryVector, normalizedQuery, space).filter(hasRetrievalEvidence)
     .sort((left, right) => right.score - left.score)
-    .slice(0, input.limit ?? 8), computeRagSearchDiagnostics({ version: 1, chunks: authorized, updatedAt: '' }, false, 'hash', queryVector.length, space, queryVector));
+    .slice(0, input.limit ?? 8), authorized, input.contextNeighbors), computeRagSearchDiagnostics({ version: 1, chunks: authorized, updatedAt: '' }, false, 'hash', queryVector.length, space, queryVector));
 }
 
 export function ragSearchSync(input: RagSearchInput): RagSearchHit[] {
@@ -227,10 +228,10 @@ export function ragSearchSync(input: RagSearchInput): RagSearchHit[] {
     .filter((chunk) => process.env.SANGFOR_ALLOW_CLOUD_RAG_CUSTOMER === '1' || chunk.trustLevel !== 'customer');
   const querySpace = resolveEmbeddingSpace('hash', queryVector.length, 'hash');
   const diagnostics = computeRagSearchDiagnostics({ ...index, chunks: filtered }, false, 'hash', queryVector.length, querySpace, queryVector);
-  return withDiagnostics(distinctSources(
+  return withDiagnostics(attachHitContext(distinctSources(
     rankHybrid(filtered, queryVector, normalizedQuery, querySpace).filter(hasRetrievalEvidence).sort((left, right) => right.score - left.score),
     input.limit ?? 8,
-  ), diagnostics);
+  ), filtered, input.contextNeighbors), diagnostics);
 }
 
 export function exportRagIndexSummary(indexPath = DEFAULT_INDEX_PATH): Record<string, unknown> {

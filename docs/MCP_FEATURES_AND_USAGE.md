@@ -580,3 +580,11 @@ pnpm test
 - 타워는 LLM을 내장하지 않는다. 조립·분석은 외부 에이전트가 하고, **에이전트 작업 큐를 자동으로 폴링하는 상주 데몬도 비범위다** — 폴링 주체는 에이전트다.
 - HCI `volume_create`/`volume_delete`는 `human_only` 안전등급이므로 실장비 실행이 거부된다. M4 실장비 슬라이스의 증거 확보 후에만 승격된다.
 
+
+## 문서 근거 기반 답변
+
+MCP `prompts/get`의 `sangfor-answer-from-docs`는 호출 AI가 문서 근거를 확인하고 답변하는 워크플로다. `question`, 알고 있는 `product`와 정확한 `version`을 전달한다. 서버가 별도의 생성 모델을 실행하는 기능은 아니다.
+
+`sangfor_rag_search`의 `contextNeighbors: 1`은 선택 청크의 이웃 근거를 함께 반환한다(0 기본, 최대 2). `contextChunks`는 같은 문서·제품·버전·접근 범위에서만 제공되며 본문을 자르지 않는 8,000자 한도가 있다. 각 사실에 실제 반환된 `filePath`, 청크 `id`, 정확한 짧은 인용을 붙인다. 검색 점수나 제목만으로 답변을 확정하지 말고 근거가 부족하면 보류한다.
+
+구성 계획의 `grounding`은 인용 무결성과 미검증 상태를 별도로 표시한다. `sangfor_validate_config_plan`의 구조 `ok`를 답변 정확성이나 장치 실행 승인으로 해석하지 않는다.

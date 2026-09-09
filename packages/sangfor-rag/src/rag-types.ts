@@ -37,6 +37,7 @@ export interface RagIndex {
 }
 
 export interface RagSearchInput {
+  contextNeighbors?: number;
   product?: string;
   version?: string;
   sourceType?: KnowledgeChunk['sourceType'];
@@ -49,6 +50,7 @@ export interface RagSearchInput {
 export type AuthorizedRagScope = Extract<AuthorizationResult, { readonly ok: true }>;
 
 export interface ScopedRagSearchInput {
+  readonly contextNeighbors?: number;
   readonly authorization: AuthorizationResult;
   readonly query: string;
   readonly chunks: readonly RagDocumentChunk[];
@@ -62,6 +64,7 @@ export interface ScopedRagSearchInput {
 }
 
 export interface RagSearchHit extends RagDocumentChunk {
+  contextChunks?: Array<Pick<RagDocumentChunk, 'id' | 'filePath' | 'product' | 'version' | 'title' | 'text' | 'contentHash'>>;
   /** Composite hybrid score = alpha*cosineNorm + (1-alpha)*bm25Norm (see SANGFOR_RAG_HYBRID_ALPHA). */
   score: number;
   /** Raw cosine similarity against the query vector, before hybrid normalization. */

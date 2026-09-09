@@ -43,3 +43,11 @@ export function selectRetrievalSnippet(query: string, text: string, maxChars = 1
   }
   return cleaned.slice(bestStart, bestStart + maxChars);
 }
+
+/** The heading has its own scoring field; do not count it again as body evidence. */
+export function retrievalBody(text: string, title: string): string {
+  const cleaned = cleanRetrievalText(text);
+  const newline = cleaned.indexOf('\n');
+  const firstLine = newline < 0 ? cleaned : cleaned.slice(0, newline);
+  return firstLine.trim() === `# ${title}` ? (newline < 0 ? '' : cleaned.slice(newline + 1).trim()) : cleaned;
+}
