@@ -557,7 +557,7 @@ export function assessEngineerCase(request: EngineerAssessmentRequest): Engineer
       desired: desired.constraint.kind === 'unparseable' || desired.constraint.kind === 'not_applicable_text'
         ? desired.constraint
         : desired.constraint,
-      freshnessIssue: storedCalc ? undefined : stale,
+      freshnessIssue: storedCalc?.id === compareCurrentRef ? undefined : stale,
       conflicting: false,
       searchOnly: false,
     });

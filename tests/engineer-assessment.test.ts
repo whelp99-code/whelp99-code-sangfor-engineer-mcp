@@ -667,6 +667,145 @@ describe('engineer assessment compare (E06)', () => {
     expect(result.guideReadyGranted).toBe(false);
   });
 
+  it('voids observation freshness only when the stored calculation is the compared current', () => {
+    const headroom = evaluateEngineerFormula({
+      id: 'calc-headroom',
+      formulaId: 'demand-headroom',
+      roles: {
+        total: {
+          id: 'obs-total',
+          sourceKind: 'provided',
+          collectionStatus: 'complete',
+          value: { presence: 'known', data: { kind: 'number', number: 100, unit: 'GiB' } },
+        },
+        used: {
+          id: 'obs-used',
+          sourceKind: 'provided',
+          collectionStatus: 'complete',
+          value: { presence: 'known', data: { kind: 'number', number: 40, unit: 'GiB' } },
+        },
+        demand: {
+          id: 'obs-demand',
+          sourceKind: 'provided',
+          collectionStatus: 'complete',
+          value: { presence: 'known', data: { kind: 'number', number: 20, unit: 'GiB' } },
+        },
+      },
+    });
+    expect(headroom.result).toEqual({ presence: 'known', data: { kind: 'number', number: 40, unit: 'GiB' } });
+
+    const headroomRequirement = {
+      id: 'req-remaining',
+      sourceKind: 'provided' as const,
+      sourceRef: 'excel-row-1',
+      target: 'Capacity headroom',
+      constraint: 'usable storage headroom >= 20 GiB',
+      priority: 'high' as const,
+      confirmationState: 'confirmed' as const,
+      acceptanceCriterion: 'usable storage headroom >= 20 GiB',
+      revision: 'req-rev-1',
+    };
+    const operands = [
+      observation({
+        id: 'obs-total',
+        sourceKind: 'provided',
+        collectionStatus: 'complete',
+        collectedAt: WHEN,
+        evidenceRef: 'ev-1',
+        value: { presence: 'known', data: { kind: 'number', number: 100, unit: 'GiB' } },
+      }),
+      observation({
+        id: 'obs-used',
+        sourceKind: 'provided',
+        collectionStatus: 'complete',
+        collectedAt: WHEN,
+        evidenceRef: 'ev-1',
+        value: { presence: 'known', data: { kind: 'number', number: 40, unit: 'GiB' } },
+      }),
+      observation({
+        id: 'obs-demand',
+        sourceKind: 'provided',
+        collectionStatus: 'complete',
+        collectedAt: WHEN,
+        evidenceRef: 'ev-1',
+        value: { presence: 'known', data: { kind: 'number', number: 20, unit: 'GiB' } },
+      }),
+    ];
+    const bindings = [{
+      requirementId: 'req-remaining',
+      fieldId: 'storage_usable_capacity' as const,
+      calculationRefs: ['calc-headroom'],
+    }];
+
+    const staleObserved = assessEngineerCase({
+      document: validFixtureCase({
+        observations: [
+          ...operands,
+          observation({
+            id: 'obs-storage_usable_capacity',
+            sourceKind: 'provided',
+            collectionStatus: 'complete',
+            collectedAt: WHEN,
+            freshnessPolicy: { maxAgeSec: 60 },
+            value: { presence: 'known', data: { kind: 'number', number: 40, unit: 'GiB' } },
+          }),
+        ],
+        requirements: [headroomRequirement],
+        calculations: [headroom],
+      }),
+      auth: AUTH,
+      caseRevision: 'rev-1',
+      now: LATER,
+      bindings,
+    });
+    expect(staleObserved.ok).toBe(true);
+    if (!staleObserved.ok) throw new Error(staleObserved.message);
+    expect(staleObserved.assessments[0]).toMatchObject({
+      requirementRef: 'req-remaining',
+      currentRef: 'obs-storage_usable_capacity',
+      status: 'unresolved',
+      nextAction: 'recollect',
+    });
+    expect(staleObserved.assessments[0]?.reasons.join(' ')).toMatch(/STALE_INPUT:obs-storage_usable_capacity/);
+    expect(staleObserved.assessments[0]?.reasons.join(' ')).toMatch(/current:obs-storage_usable_capacity:provided:complete/);
+    expect(staleObserved.assessments[0]?.reasons.join(' ')).not.toMatch(/stored-calculation:/);
+    expect(staleObserved.assessments[0]?.reasons.join(' ')).not.toMatch(/current:calc-headroom:derived/);
+
+    const substituted = assessEngineerCase({
+      document: validFixtureCase({
+        observations: [
+          ...operands,
+          observation({
+            id: 'obs-storage_usable_capacity',
+            sourceKind: 'unknown',
+            collectionStatus: 'complete',
+            collectedAt: WHEN,
+            freshnessPolicy: { maxAgeSec: 60 },
+            value: { presence: 'unknown', reason: 'E03B usable capacity is unsupported' },
+            unknownReason: 'E03B usable capacity is unsupported',
+          }),
+        ],
+        requirements: [headroomRequirement],
+        calculations: [headroom],
+      }),
+      auth: AUTH,
+      caseRevision: 'rev-1',
+      now: LATER,
+      bindings,
+    });
+    expect(substituted.ok).toBe(true);
+    if (!substituted.ok) throw new Error(substituted.message);
+    expect(substituted.assessments[0]).toMatchObject({
+      requirementRef: 'req-remaining',
+      currentRef: 'calc-headroom',
+      status: 'satisfied',
+    });
+    expect(substituted.assessments[0]?.reasons.join(' ')).toMatch(/stored-calculation:calc-headroom:demand-headroom/);
+    expect(substituted.assessments[0]?.reasons.join(' ')).toMatch(/current:calc-headroom:derived:demand-headroom/);
+    expect(substituted.assessments[0]?.reasons.join(' ')).not.toMatch(/STALE_INPUT/);
+    expect(substituted.guideReadyGranted).toBe(false);
+  });
+
   it('keeps evaluateSpec INDETERMINATE from becoming an engineer PASS', () => {
     const specResult = evaluateSpec({
       id: 'ha-fit',

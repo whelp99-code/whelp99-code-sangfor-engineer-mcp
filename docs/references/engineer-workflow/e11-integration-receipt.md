@@ -81,8 +81,9 @@ Skipped Vitest cases in the default suite are not counted as PASS.
 | UNPARSEABLE_CONSTRAINT hides compare | Fixed. `%` now parses. E11 fixture constraint is `usable storage headroom >= 20 GiB`. Assess compares stored `calc-headroom` (40 GiB) to that requirement. |
 | Authority lock census | Fixed. Lock rewritten with `deriveAuthorityManifestLock` + live `loadRepositoryCensus` (`fe7ce72a…`). E08 `exportEngineerGuide` / `writeConfinedDocxArchive` owned under generated-artifacts. |
 | persistence `JSON.parse` | Fixed. Both sites use `parseRuntimeJson`. Not skipped. |
+| `freshnessIssue: storedCalc ? undefined : stale` | Fixed. Observation freshness is voided only when the stored calculation is the compared current (`storedCalc.id === compareCurrentRef`). A known stale observation still reports `STALE_INPUT` even if a matching stored calc exists. Substitute path stays `derived` / `stored-calculation`. Unknown stays unknown. |
 
-Neither leftover is BLOCKED.
+Neither leftover is BLOCKED. This receipt is still fixture evidence, not `field_accepted`.
 
 ## Artifact digests (inputs, not generated Word)
 
