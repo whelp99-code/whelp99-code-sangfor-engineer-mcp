@@ -3,6 +3,12 @@
 // locally because both packages are L1 (imports point downward, never sideways).
 // Fail-closed: an observed HCI fact without a complete envelope cannot be built.
 
+import type {
+  HciE03bFieldId,
+  HciProvidedFieldInput,
+  HciRequiredReadAttempt,
+} from './required-observations.js';
+
 /** Version of the HCI REST response → observed fact mappers in this package.
  *  Bump on any mapping change so stored facts stay attributable to their code. */
 export const HCI_MAPPER_VERSION = '1.0.0';
@@ -76,12 +82,29 @@ export function createHciObservedFact(value: unknown, provenance: HciFactProvena
   return { value, source: provenance };
 }
 
+export const HCI_INVENTORY_COLLECTED_SURFACES = ['volumes', 'servers', 'images'] as const;
+export type HciInventoryCollectedSurface = (typeof HCI_INVENTORY_COLLECTED_SURFACES)[number];
+
+/** Caller-declared read request. Collection never infers a write surface. */
+export interface HciCollectionRequest {
+  readonly target?: string;
+  readonly identityOrigin?: string;
+  readonly serviceOrigins?: Partial<Record<'identity' | 'volume' | 'compute' | 'image', string>>;
+  readonly surfaces?: readonly HciInventoryCollectedSurface[];
+  readonly maxPages?: number;
+  readonly maxPageTimeMs?: number;
+  readonly scope?: { readonly tenantId?: string; readonly projectId?: string };
+}
+
 /** Envelope fields the caller may add on top of what the transport measures. */
 export interface HciCollectionOptions {
   collectedAt?: string;
   collector?: string;
   firmwareVersion?: string;
   authPrincipal?: string;
+  request?: HciCollectionRequest;
+  providedFields?: Partial<Record<HciE03bFieldId, HciProvidedFieldInput>>;
+  attemptedRequiredReads?: readonly HciRequiredReadAttempt[];
 }
 
 /** Compose the envelope for one measured REST read. latencyMs is included only
