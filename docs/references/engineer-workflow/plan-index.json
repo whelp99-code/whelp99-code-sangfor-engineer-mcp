@@ -1,0 +1,216 @@
+{
+  "schemaVersion": 1,
+  "status": "planned",
+  "baseCommit": "cd8e44db41b8fcd7aad4d6c052c3dd008c1e27d4",
+  "programIssue": 90,
+  "planningIssue": 91,
+  "units": [
+    {
+      "unit": "E00",
+      "issue": 92,
+      "title": "과거 고객 업무 재현과 현재 기능 기준선 고정",
+      "phase": "A0",
+      "dependsOn": [],
+      "status": "planned"
+    },
+    {
+      "unit": "E01",
+      "issue": 93,
+      "title": "사례·관측값·요구사항·계산·가이드 공통 계약",
+      "phase": "A0",
+      "dependsOn": [
+        "E00"
+      ],
+      "status": "planned"
+    },
+    {
+      "unit": "E02",
+      "issue": 94,
+      "title": "과거 문서 비밀정보 정리와 현장 접근 자격 증명 확인",
+      "phase": "A0",
+      "dependsOn": [],
+      "status": "planned"
+    },
+    {
+      "unit": "E03A",
+      "issue": 95,
+      "title": "HCI 기존 읽기 수집의 완전성·정규화 연결",
+      "phase": "A1",
+      "dependsOn": [
+        "E01"
+      ],
+      "status": "planned"
+    },
+    {
+      "unit": "E03B",
+      "issue": 96,
+      "title": "대표 구축 사례에 필요한 HCI 추가 수집면 구현",
+      "phase": "A1",
+      "dependsOn": [
+        "E03A"
+      ],
+      "status": "planned"
+    },
+    {
+      "unit": "E04",
+      "issue": 97,
+      "title": "고객 요구사항 입력·Excel 매핑·미확인 질문 추적",
+      "phase": "A1",
+      "dependsOn": [
+        "E01"
+      ],
+      "status": "planned"
+    },
+    {
+      "unit": "E05",
+      "issue": 98,
+      "title": "단위·근거·누락을 보존하는 결정적 계산과 점검",
+      "phase": "A1",
+      "dependsOn": [
+        "E01"
+      ],
+      "status": "planned"
+    },
+    {
+      "unit": "E06",
+      "issue": 99,
+      "title": "현재 상태·요구사항·계산을 연결하는 차이 분석",
+      "phase": "A2",
+      "dependsOn": [
+        "E03A",
+        "E04",
+        "E05",
+        "E03B"
+      ],
+      "status": "planned"
+    },
+    {
+      "unit": "E07",
+      "issue": 100,
+      "title": "실측 근거를 가진 구축 가이드 모델과 준비도 판정",
+      "phase": "A2",
+      "dependsOn": [
+        "E06"
+      ],
+      "status": "planned"
+    },
+    {
+      "unit": "E08",
+      "issue": 101,
+      "title": "동일 가이드에서 Word·검토용 결과 출력",
+      "phase": "A3",
+      "dependsOn": [
+        "E07"
+      ],
+      "status": "planned"
+    },
+    {
+      "unit": "E09A",
+      "issue": 102,
+      "title": "권한 저장소의 사례 aggregate·원자성·scope·동시성",
+      "phase": "A1",
+      "dependsOn": [
+        "E01"
+      ],
+      "status": "planned"
+    },
+    {
+      "unit": "E09B",
+      "issue": 108,
+      "title": "사례 API의 저장·재개·revision 충돌 연결",
+      "phase": "A1",
+      "dependsOn": [
+        "E09A",
+        "E04",
+        "E07"
+      ],
+      "status": "planned"
+    },
+    {
+      "unit": "E10A",
+      "issue": 103,
+      "title": "사례 입력·수집·미확인·계산 검토 화면",
+      "phase": "A3",
+      "dependsOn": [
+        "E04",
+        "E06",
+        "E09B"
+      ],
+      "status": "planned"
+    },
+    {
+      "unit": "E10B",
+      "issue": 109,
+      "title": "가이드 검토·다운로드·진행 재개·첫 사용 안내",
+      "phase": "A3",
+      "dependsOn": [
+        "E10A",
+        "E08",
+        "E09B"
+      ],
+      "status": "planned"
+    },
+    {
+      "unit": "E11",
+      "issue": 104,
+      "title": "독립 기대값으로 전체 업무 인수 하네스와 통합 회귀",
+      "phase": "A4",
+      "dependsOn": [
+        "E03A",
+        "E04",
+        "E05",
+        "E06",
+        "E07",
+        "E08",
+        "E09B",
+        "E10B",
+        "E03B"
+      ],
+      "status": "planned"
+    },
+    {
+      "unit": "E12",
+      "issue": 105,
+      "title": "허가된 장비 읽기와 구축 가이드 현장 인수",
+      "phase": "A5",
+      "dependsOn": [
+        "E00",
+        "E02",
+        "E11"
+      ],
+      "status": "planned"
+    },
+    {
+      "unit": "E13",
+      "issue": 106,
+      "title": "가이드 revision에 결합된 승인 실행의 dry-run 연결",
+      "phase": "B1",
+      "dependsOn": [
+        "E07",
+        "E09B",
+        "E11"
+      ],
+      "status": "planned"
+    },
+    {
+      "unit": "E14",
+      "issue": 107,
+      "title": "PM 별도 승인 하에 단일 가역 작업 실행·독립 재조회 인수",
+      "phase": "B2",
+      "dependsOn": [
+        "E02",
+        "E12",
+        "E13"
+      ],
+      "status": "planned"
+    }
+  ],
+  "verification": {
+    "dependencyDag": "PASS",
+    "localDocumentLinks": "PASS",
+    "packageScriptNames": "PASS",
+    "remoteIssueLinks": "PASS",
+    "implementationTests": "NOT_RUN",
+    "liveDeviceAccess": "NOT_RUN"
+  }
+}
