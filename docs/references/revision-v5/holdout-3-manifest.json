@@ -1,0 +1,158 @@
+{
+  "status": "FROZEN_BEFORE_FURTHER_IMPLEMENTATION_AND_SEARCH",
+  "baseCommit": "f506fd6d9528626016184dfe51e4f0db0ab4dfb9",
+  "fixtureSha256": "4353f05476d0ad8ef0a4b35503b91c5f5f04eb96185bd6e43cdf5b14d8ce43a1",
+  "clientFixtureSha256": "ccc088e73edc4f1bb9c7b4cd46dab64c92aadce7d8bcc779ae00cb7b2e82e400",
+  "originalCorpusSha256": "55107e56f6ee22845894dcc7d16eb00c5b5c3887af451dd255d1965a7000b294",
+  "structuredCorpusSha256": "ee04fc7a022c3901ce8a7adce3a29c49bc23c8315e613165e035d4754793e8d4",
+  "positiveQuestions": 12,
+  "noAnswerQuestions": 12,
+  "priorRelevantSourceOverlap": 0,
+  "evidence": [
+    {
+      "queryId": "v5-holdout3-01",
+      "source": "data/sources/raw/support_10_1070_2126550.md",
+      "quote": "There is no need to allocate storage resources to the system administrator for the point-to-point migration. 2. Currently only supports adding local storage and iSCSI storage.",
+      "originalChunkId": "doc_1786665223637_0102ca_chunk_2",
+      "originalQuoteStart": 662,
+      "originalChunkTextSha256": "f26a9291e32548ee8bce8e9cca2f18101d212554be918bb18347c2264448d6aa",
+      "structuredChunkId": "structured_de84519bd4bca327d9d67a64832db5caea1a0baeb19504a3b7ef15d7fe5b01bf",
+      "structuredQuoteStart": 224,
+      "structuredChunkTextSha256": "4d5fe18b140b77aa9228fe65fe36ef7c9afca627356123615c0437b39ed8e649"
+    },
+    {
+      "queryId": "v5-holdout3-02",
+      "source": "data/sources/raw/support_10_1229_2639791.md",
+      "quote": "Click Compute and move to the VM. Click More > Edit to enter the VM editing interface. Click eth0, select the corresponding connected device, and click OK.",
+      "originalChunkId": "doc_1786665223150_c483dd_chunk_4",
+      "originalQuoteStart": 363,
+      "originalChunkTextSha256": "8f36e3320c738203d0e62f7889ba53f7137e4c0b6894486270aab420a0b62250",
+      "structuredChunkId": "structured_b755b375ccd9e71c27ab9245ba2d1a894c1d0370702a5f9f1fd728408733bafd",
+      "structuredQuoteStart": 644,
+      "structuredChunkTextSha256": "f409f3f8979935b55bcc84822c8fb7d7ade3aabb43b531439290b014db95cea2"
+    },
+    {
+      "queryId": "v5-holdout3-03",
+      "source": "data/sources/raw/support_21_1095_2653431.md",
+      "quote": "The following operations are not recommended for customers. Please contact the service provider or Sangfor technical support to perform these operations.",
+      "originalChunkId": "doc_1786665227020_053f8b_chunk_2",
+      "originalQuoteStart": 592,
+      "originalChunkTextSha256": "3a6c67cd99e9598d2417b67cef59964ed131406de37f1aca62307dc3ad4aeb27",
+      "structuredChunkId": "structured_6dcb34bbeb32f9189c9a5f7b5c63897dbdf873bb2634d63bd42991c1bd34b1ae",
+      "structuredQuoteStart": 175,
+      "structuredChunkTextSha256": "b539c89f64a4f2c08474bec91195dc743f4c2c844be69a6221c4b2b0a57ee0a2"
+    },
+    {
+      "queryId": "v5-holdout3-04",
+      "source": "data/sources/raw/support_21_1093_2637441.md",
+      "quote": "Step 2.Click Next to select branch devices you want to upgrade. Step 3.Click Next to specify a schedule for the upgrade task.",
+      "originalChunkId": "doc_1786665227764_a992a4_chunk_2",
+      "originalQuoteStart": 768,
+      "originalChunkTextSha256": "87b516f3cfb05435639bc5202395f2691aca7f5b3b30999e955f4baa0c4195f6",
+      "structuredChunkId": "structured_61204499e12a3c93aa109b4bfaba9f6c9d8fd77576f48d1768fe7e2bb0fda6be",
+      "structuredQuoteStart": 561,
+      "structuredChunkTextSha256": "393ce835673f519da992feeff8aff6a37ac6dd72d0df2b53ff93f0811ce53623"
+    },
+    {
+      "queryId": "v5-holdout3-05",
+      "source": "data/sources/raw/support_24_1219_2630689.md",
+      "quote": "You can query outbound traffic within a specific time range by selecting Last 24 hours or Last 7 days in the upper-right corner.",
+      "originalChunkId": "doc_1786665232121_781a27_chunk_2",
+      "originalQuoteStart": 1106,
+      "originalChunkTextSha256": "f9f75987605c41cf4060f1b0be65416712af99975c39e8172b53cfe4e56155b6",
+      "structuredChunkId": "structured_9b3997d4302c9f412370499091ba0a2609ff3d6eca91a39211690ed23bd637bf",
+      "structuredQuoteStart": 150,
+      "structuredChunkTextSha256": "3461a0b548deaec80ce9a6a1d368bd759d11ac3fc6ea54952a16ce91b82a6503"
+    },
+    {
+      "queryId": "v5-holdout3-06",
+      "source": "data/sources/raw/support_24_1078_2634604.md",
+      "quote": "The holistic module is only displayed after the branch is configured.",
+      "originalChunkId": "doc_1786665232150_c03941_chunk_2",
+      "originalQuoteStart": 591,
+      "originalChunkTextSha256": "23371726389494c5add05a00ed2e1e1298844b1a788c08b13fd153095b3c807f",
+      "structuredChunkId": "structured_b97a07bc743d0a098d04497841a5d6b60330d59e14244ece438a3e81e678a029",
+      "structuredQuoteStart": 530,
+      "structuredChunkTextSha256": "ee832a2d52f55d44aed9c9375fe0b393b458a4ee9099900263f819dbc86f76e1"
+    },
+    {
+      "queryId": "v5-holdout3-07",
+      "source": "data/sources/raw/support_45_1379_2663166.md",
+      "quote": "IP pool can be associated with multiple resource pools and vice versa. Elastic IP pools associated with a resource pool can be viewed in all VPC networks associated with that resource pool.",
+      "originalChunkId": "doc_1786665238066_0b9614_chunk_4",
+      "originalQuoteStart": 192,
+      "originalChunkTextSha256": "7df0f24c7fe77654058f4651bcb35e86882890de6832546315c54168daf939e1",
+      "structuredChunkId": "structured_ca2ba91078fd2988d507ccb6e6f6992e8b8207e2246ca99389c230f3c91ea5c2",
+      "structuredQuoteStart": 119,
+      "structuredChunkTextSha256": "fae9628276ac766ac2c42d46ea42410e50fcaada58b63e69b9cce7d534a1f73d"
+    },
+    {
+      "queryId": "v5-holdout3-08",
+      "source": "data/sources/raw/support_45_1388_2656896.md",
+      "quote": "In the Pre-expansion Check pop-up window, select Datastore Expansion. In the Select Disk pop-up window, select a datastore ID. Then, select a disk and click Start Check.",
+      "originalChunkId": "doc_1786665237049_bb630a_chunk_2",
+      "originalQuoteStart": 1137,
+      "originalChunkTextSha256": "84802eb9c337dd0e2b08b536c7de586aeca3835350a39fda9e5f3d2978332e3e",
+      "structuredChunkId": "structured_0df15ccccccc281f47cae6d07303f36c6356bc657cefdea4a5d747b03b434306",
+      "structuredQuoteStart": 726,
+      "structuredChunkTextSha256": "cc5153093f516f09f99c5115763ea238194295a0942feac0e739b58b5a7a3d36"
+    },
+    {
+      "queryId": "v5-holdout3-09",
+      "source": "data/sources/raw/support_case_2_33574.md",
+      "quote": "The audit policy can be unchecked with the “Access to unidentified applications” option.",
+      "originalChunkId": "doc_1786665240912_1e4ff4_chunk_1",
+      "originalQuoteStart": 946,
+      "originalChunkTextSha256": "fc3107185d0445665325d75503afbd6cdec98d5d5bae134cc090ba444f16ba11",
+      "structuredChunkId": "structured_f62fc60e5f16f5c5dc9d47073849256a29f2b8db36a51d3e0147498a28f8e880",
+      "structuredQuoteStart": 946,
+      "structuredChunkTextSha256": "a1234d74251e56fc4504bcf6f17b21c06dc66efe278f45fbc05a3d00db56dfa1"
+    },
+    {
+      "queryId": "v5-holdout3-10",
+      "source": "data/sources/raw/support_case_2_33602.md",
+      "quote": "Audit policy must be enable so the IAM able to log the traffic. Solution Create or enable audit policy to allow IAM to log the Internet traffic.",
+      "originalChunkId": "doc_1786665240912_26accd_chunk_1",
+      "originalQuoteStart": 339,
+      "originalChunkTextSha256": "2396d51937b9c8204ae8f95abc4ea29d9e33d5d21910c2cd9d2163262a8eaaa6",
+      "structuredChunkId": "structured_1593435ac5bc545d465f490b4f78cfab30bbc9338d07ef9deb211b9dfb075587",
+      "structuredQuoteStart": 339,
+      "structuredChunkTextSha256": "2396d51937b9c8204ae8f95abc4ea29d9e33d5d21910c2cd9d2163262a8eaaa6"
+    },
+    {
+      "queryId": "v5-holdout3-11",
+      "source": "data/sources/raw/support_32_1101_1540500.md",
+      "quote": "After communication is stopped, operations on objects in the data center will not be synced to Managed Cloud Services.",
+      "originalChunkId": "doc_1786665235621_62a6b4_chunk_2",
+      "originalQuoteStart": 1165,
+      "originalChunkTextSha256": "d5932326daf5f2002e06eb4c95ca06fa23af789fe13ee36e75cce6983e40a669",
+      "structuredChunkId": "structured_fb60745b67f0d5fab7b801405bc3c5c63d380f3533daafa903fb43e2025c9a74",
+      "structuredQuoteStart": 182,
+      "structuredChunkTextSha256": "843bbdaa1608af71f0e26010a2665e6ac9ac74c4a97805d81e89cb1a25f52732"
+    },
+    {
+      "queryId": "v5-holdout3-12",
+      "source": "data/sources/raw/support_32_1101_1544250.md",
+      "quote": "Users cannot send reminders when acting as the fulfillment person of a service but need to fulfill the service as soon as possible. Copy feedback link: Users can invite customers to give feedback via the link.",
+      "originalChunkId": "doc_1786665235637_8647b7_chunk_4",
+      "originalQuoteStart": 359,
+      "originalChunkTextSha256": "f60fc57fd146a972467a61c42383e822a3c21b755c0158741e8e97577cf3a963",
+      "structuredChunkId": "structured_23f6f232f7f66c0a689050b6a94f942f214bb468ca909312c9c8c59f7e6a1681",
+      "structuredQuoteStart": 117,
+      "structuredChunkTextSha256": "0812e8fbc3c6a4e066944b399f20a3b6dd65698d42599cad939c11df0a88dfa3"
+    }
+  ],
+  "acceptance": {
+    "hitRateAt5Min": 0.9,
+    "noAnswerFalsePositiveRateMax": 0.1,
+    "forbiddenHitsMax": 0,
+    "answerCitationAndProductVersionVerificationRequired": true
+  },
+  "limitations": [
+    "Same-author source-grounded synthetic evaluation, not independent human or random field validation.",
+    "Source shortlist ordered by SHA256 of holdout3-20260909:source path, with body-length/product filters; author selected distinct topics and paraphrased questions.",
+    "Prior holdout-2 results were observed before authoring. No retrieval or model scores for this new set were consulted.",
+    "IAG cases have no inferred version filter; case conclusions must not be generalized.",
+    "Negative families are six private runtime-state requests and six fictional capabilities; not exhaustive coverage."
+  ]
+}
