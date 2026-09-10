@@ -79,6 +79,23 @@ function fail(code: string): EngineerGuideApplyProposeFailure {
   return { ok: false, code, mutationAttempted: false, retry: false };
 }
 
+function isExecutableStepView(view: EngineerGuideApplyStepView | undefined): boolean {
+  return view !== undefined && view.support === 'executable' && view.executable === true;
+}
+
+function refuseUnlessStoredExecutable(input: {
+  readonly storedStepViews?: readonly EngineerGuideApplyStepView[];
+  readonly stepViews: readonly EngineerGuideApplyStepView[];
+  readonly stepId: string;
+}): EngineerGuideApplyProposeFailure | undefined {
+  // Caller stepViews cannot grant executable. Only stored E07 step views can.
+  const storedView = (input.storedStepViews ?? []).find((candidate) => candidate.stepId === input.stepId);
+  if (!isExecutableStepView(storedView)) return fail('STEP_NOT_EXECUTABLE');
+  const callerView = input.stepViews.find((candidate) => candidate.stepId === input.stepId);
+  if (callerView !== undefined && !isExecutableStepView(callerView)) return fail('STEP_NOT_EXECUTABLE');
+  return undefined;
+}
+
 function dryFail(code: string): EngineerGuideApplyDryRunFailure {
   return { ...fail(code), verifiedSuccess: false, httpSuccessIgnored: true };
 }
@@ -108,6 +125,7 @@ function observedEqual(left: IagMutationObservedState, right: IagMutationObserve
 
 export function proposeEngineerGuideApply(input: {
   readonly guide: EngineerGuide;
+  readonly storedStepViews?: readonly EngineerGuideApplyStepView[];
   readonly stepViews: readonly EngineerGuideApplyStepView[];
   readonly stepId: string;
   readonly product: 'IAG' | 'HCI';
@@ -119,10 +137,8 @@ export function proposeEngineerGuideApply(input: {
   if (input.guide.steps.length !== 1) return fail('SINGLE_GUIDE_STEP_REQUIRED');
   const step = input.guide.steps[0];
   if (step === undefined || step.id !== input.stepId) return fail('STEP_NOT_IN_GUIDE');
-  const view = input.stepViews.find((candidate) => candidate.stepId === input.stepId);
-  if (view !== undefined && (view.support !== 'executable' || view.executable !== true)) {
-    return fail('STEP_NOT_EXECUTABLE');
-  }
+  const executable = refuseUnlessStoredExecutable(input);
+  if (executable !== undefined) return executable;
   if (input.action.target.product !== 'IAG') return fail('ACTION_PRODUCT_MISMATCH');
   if (input.action.dryRun !== true) return fail('IAG_DRY_RUN_ACTION_REQUIRED');
   if (!isNarrowReversibleIagAction(input.action)) return fail('BROAD_OR_IRREVERSIBLE_ACTION_REFUSED');
@@ -187,12 +203,14 @@ export async function dryRunEngineerGuideApply(input: {
   readonly proposal: EngineerGuideApplyProposal;
   readonly currentGuide: EngineerGuide;
   readonly currentObserved?: EngineerGuideApplyObserved;
+  readonly storedStepViews?: readonly EngineerGuideApplyStepView[];
   readonly stepViews: readonly EngineerGuideApplyStepView[];
   readonly executor: IagExecutor;
   readonly authorityRequest: IagOrchestratorRequest['authorityRequest'];
 }): Promise<EngineerGuideApplyDryRunResult> {
   const rebound = proposeEngineerGuideApply({
     guide: input.currentGuide,
+    storedStepViews: input.storedStepViews,
     stepViews: input.stepViews,
     stepId: input.proposal.stepId,
     product: input.proposal.product,

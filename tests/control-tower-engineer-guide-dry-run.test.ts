@@ -24,6 +24,7 @@ let root = '';
 let runsDir = '';
 let registryDir = '';
 let tower: http.Server | undefined;
+let bridge: http.Server | undefined;
 let towerUrl = '';
 
 beforeEach(() => {
@@ -39,6 +40,10 @@ afterEach(async () => {
   if (tower !== undefined) {
     await new Promise<void>((resolve) => tower?.close(() => resolve()));
     tower = undefined;
+  }
+  if (bridge !== undefined) {
+    await new Promise<void>((resolve) => bridge?.close(() => resolve()));
+    bridge = undefined;
   }
   configureIagOrchestratorToolService(undefined);
   cleanupTestIagMutationAuthorityEnvironment();
@@ -75,13 +80,41 @@ function guideOf(readiness: EngineerGuide['readiness'] = 'review_ready'): Engine
   return { ...withoutDigest, digest: computeEngineerGuideDigest(withoutDigest) };
 }
 
+const storedExecutableView = {
+  stepId: 'step-url-exception',
+  executable: true,
+  support: 'executable',
+} as const;
+
+type StoredStepView = {
+  readonly stepId: string;
+  readonly executable: boolean;
+  readonly support: 'executable' | 'blocked' | 'unsupported';
+};
+
+function guideFileOf(
+  guide: EngineerGuide = guideOf(),
+  stepViews: readonly StoredStepView[] = [storedExecutableView],
+): { readonly product: 'IAG'; readonly guide: EngineerGuide; readonly stepViews: readonly StoredStepView[] } {
+  return { product: 'IAG', guide, stepViews };
+}
+
 function writeGuideFiles(input: {
-  readonly guide?: EngineerGuide | { readonly product: 'IAG' | 'HCI'; readonly guide: EngineerGuide };
+  readonly guide?: EngineerGuide | {
+    readonly product: 'IAG' | 'HCI';
+    readonly guide: EngineerGuide;
+    readonly stepViews?: readonly StoredStepView[];
+  };
   readonly observed: unknown;
 }): { readonly guidePath: string; readonly observedPath: string } {
   const guidePath = join(root, 'guide.json');
   const observedPath = join(root, 'observed.json');
-  writeFileSync(guidePath, JSON.stringify(input.guide ?? guideOf()));
+  const payload = input.guide === undefined
+    ? guideFileOf()
+    : 'guide' in input.guide
+      ? input.guide
+      : guideFileOf(input.guide);
+  writeFileSync(guidePath, JSON.stringify(payload));
   writeFileSync(observedPath, JSON.stringify(input.observed));
   return { guidePath, observedPath };
 }
@@ -102,6 +135,54 @@ async function startBoundTower(
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', () => resolve()));
   towerUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   return towerUrl;
+}
+
+async function startProductionTower(
+  onCall: (body: { readonly name: string; readonly arguments: Record<string, unknown> }) => Promise<unknown>,
+): Promise<{ readonly recorded: string[] }> {
+  const recorded: string[] = [];
+  const stub = http.createServer(async (req, res) => {
+    const respond = (status: number, body: unknown) => {
+      res.writeHead(status, { 'content-type': 'application/json' });
+      res.end(JSON.stringify(body));
+    };
+    if (req.method === 'GET' && req.url === '/health') return respond(200, { status: 'ok', mcp: 'connected' });
+    if (req.method === 'POST' && req.url === '/tools/call') {
+      const chunks: Buffer[] = [];
+      for await (const chunk of req) chunks.push(chunk as Buffer);
+      const body = JSON.parse(Buffer.concat(chunks).toString('utf8')) as {
+        name: string;
+        arguments: Record<string, unknown>;
+      };
+      recorded.push(body.name);
+      try {
+        const payload = await onCall(body);
+        return respond(200, {
+          result: { structuredContent: payload, content: [], isError: false },
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        return respond(400, { error: message });
+      }
+    }
+    return respond(404, { error: 'not found' });
+  });
+  bridge = stub;
+  await new Promise<void>((resolve) => stub.listen(0, '127.0.0.1', () => resolve()));
+  const bridgeUrl = `http://127.0.0.1:${(stub.address() as AddressInfo).port}`;
+  const server = createTowerServer({
+    authorityMode: 'local',
+    runsDir,
+    registryDir,
+    approvalSecret: 'tower-e13-secret',
+    apiToken: 'test-token',
+    mockConsoleUrl: 'http://127.0.0.1:1',
+    bridgeUrl,
+  });
+  tower = server;
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', () => resolve()));
+  towerUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  return { recorded };
 }
 
 async function post(path: string, body: unknown, token = 'test-token') {
@@ -146,6 +227,37 @@ describe('control-tower guide-bound dry-run (E13 leftover)', () => {
       developerTestPass: true,
       claimedFieldAccepted: true,
     })).toMatchObject({ fieldAccepted: false, grantPath: 'none' });
+  });
+
+  it('production default BridgeClient calls sangfor_engineer_guide_dry_run and never an apply tool', async () => {
+    const refs = await configureIagMcpFixture({ root, dryRun: true });
+    delete process.env.SANGFOR_ALLOW_REAL_EXECUTION;
+    delete process.env.SANGFOR_ALLOW_PRODUCTION_EXECUTION;
+    const files = writeGuideFiles({ observed: refs.fixture.action.preState.observed });
+    const { recorded } = await startProductionTower(async (body) => {
+      if (body.name === 'sangfor_engineer_guide_apply' || body.name === 'sangfor_iag_exception_apply') {
+        throw new Error(`UNEXPECTED_APPLY_TOOL:${body.name}`);
+      }
+      if (body.name !== 'sangfor_engineer_guide_dry_run') {
+        throw new Error(`UNEXPECTED_TOOL:${body.name}`);
+      }
+      return refs.service.dryRunBoundToGuide(body.arguments);
+    });
+
+    const result = await post('/api/engineer-guide/dry-run', {
+      actionPath: refs.actionPath, configPath: refs.configPath,
+      guidePath: files.guidePath, observedPath: files.observedPath,
+    });
+
+    expect(recorded).toEqual(['sangfor_engineer_guide_dry_run']);
+    expect(recorded).not.toContain('sangfor_engineer_guide_apply');
+    expect(recorded).not.toContain('sangfor_iag_exception_apply');
+    expect(result.status).toBe(200);
+    expect(result.body).toMatchObject({
+      ok: true, mutationAttempted: false, verifiedSuccess: false,
+      httpSuccessIgnored: true, retry: false,
+    });
+    expect(refs.fixture.adapterFixture.dispatches).toHaveLength(0);
   });
 
   it('refuses an approval envelope, apply, and dryRun:false without dispatch', async () => {
@@ -202,6 +314,7 @@ describe('control-tower guide-bound dry-run (E13 leftover)', () => {
     const files = writeGuideFiles({ guide, observed: refs.fixture.action.preState.observed });
     const proposed = proposeEngineerGuideApply({
       guide,
+      storedStepViews: [storedExecutableView],
       stepViews: [],
       stepId: 'step-url-exception',
       product: 'IAG',
@@ -230,7 +343,7 @@ describe('control-tower guide-bound dry-run (E13 leftover)', () => {
       body: { ok: false, code: 'HCI_GUIDE_APPLY_UNSUPPORTED', retry: false, mutationAttempted: false },
     });
 
-    writeFileSync(join(root, 'ind-guide.json'), JSON.stringify(guideOf()));
+    writeFileSync(join(root, 'ind-guide.json'), JSON.stringify(guideFileOf()));
     writeFileSync(join(root, 'ind-observed.json'), JSON.stringify({
       kind: 'INDETERMINATE', reasonCode: 'READ_BACK_INDETERMINATE',
     }));
@@ -242,7 +355,7 @@ describe('control-tower guide-bound dry-run (E13 leftover)', () => {
       status: 200,
       body: { ok: false, code: 'PRESTATE_INDETERMINATE', retry: false, mutationAttempted: false },
     });
-    writeFileSync(join(root, 'unavail-guide.json'), JSON.stringify(guideOf()));
+    writeFileSync(join(root, 'unavail-guide.json'), JSON.stringify(guideFileOf()));
     writeFileSync(join(root, 'unavail-observed.json'), JSON.stringify({
       kind: 'UNAVAILABLE', reasonCode: 'READ_BACK_UNAVAILABLE',
     }));
@@ -253,6 +366,24 @@ describe('control-tower guide-bound dry-run (E13 leftover)', () => {
     })).toMatchObject({
       status: 200,
       body: { ok: false, code: 'PRESTATE_INDETERMINATE', retry: false, mutationAttempted: false },
+    });
+    expect(refs.fixture.adapterFixture.dispatches).toHaveLength(0);
+  });
+
+  it('refuses a review_ready guide file that has no stored executable step view', async () => {
+    const refs = await configureIagMcpFixture({ root, dryRun: true });
+    await startBoundTower((input) => refs.service.dryRunBoundToGuide(input));
+    const guidePath = join(root, 'bare-guide.json');
+    const observedPath = join(root, 'bare-observed.json');
+    writeFileSync(guidePath, JSON.stringify(guideOf()));
+    writeFileSync(observedPath, JSON.stringify(refs.fixture.action.preState.observed));
+
+    expect(await post('/api/engineer-guide/dry-run', {
+      actionPath: refs.actionPath, configPath: refs.configPath,
+      guidePath, observedPath,
+    })).toMatchObject({
+      status: 200,
+      body: { ok: false, code: 'STEP_NOT_EXECUTABLE', retry: false, mutationAttempted: false, verifiedSuccess: false },
     });
     expect(refs.fixture.adapterFixture.dispatches).toHaveLength(0);
   });

@@ -22,6 +22,7 @@ import {
   type EngineerGuideApplyDryRunResult,
   type EngineerGuideApplyObserved,
   type EngineerGuideApplyProposal,
+  type EngineerGuideApplyStepView,
 } from '../../../packages/sangfor-product-adapters/src/operator/engineer-guide-apply-bind.js';
 import {
   ENGINEER_DIGEST_RE,
@@ -66,9 +67,18 @@ const guideSchema = z.object({
   unresolved: z.array(z.string().min(1).max(512)).max(64),
   readiness: z.enum(ENGINEER_GUIDE_READINESS),
 }).strict();
+const storedStepViewSchema = z.object({
+  stepId: engineerId,
+  executable: z.boolean(),
+  support: z.enum(['executable', 'blocked', 'unsupported']),
+}).strict();
 const guideFileSchema = z.union([
   guideSchema,
-  z.object({ product: z.enum(['IAG', 'HCI']), guide: guideSchema }).strict(),
+  z.object({
+    product: z.enum(['IAG', 'HCI']),
+    guide: guideSchema,
+    stepViews: z.array(storedStepViewSchema).max(64).optional(),
+  }).strict(),
 ]);
 const observedFileSchema = z.union([
   structuralIagObservedStateSchema,
@@ -98,10 +108,20 @@ function refuse(code: string): EngineerGuideApplyDryRunResult {
   };
 }
 
-function loadGuide(raw: unknown): { readonly product: 'IAG' | 'HCI'; readonly guide: EngineerGuide } {
+function loadGuide(raw: unknown): {
+  readonly product: 'IAG' | 'HCI';
+  readonly guide: EngineerGuide;
+  readonly storedStepViews: readonly EngineerGuideApplyStepView[];
+} {
   const parsed = guideFileSchema.parse(raw);
-  if ('guide' in parsed) return parsed;
-  return { product: 'IAG', guide: parsed };
+  if ('guide' in parsed) {
+    return {
+      product: parsed.product,
+      guide: parsed.guide,
+      storedStepViews: parsed.stepViews ?? [],
+    };
+  }
+  return { product: 'IAG', guide: parsed, storedStepViews: [] };
 }
 
 function loadObserved(raw: unknown): EngineerGuideApplyObserved {
@@ -154,6 +174,7 @@ export async function executeEngineerGuideBoundDryRun(input: {
   } else {
     const proposed = proposeEngineerGuideApply({
       guide: loadedGuide.guide,
+      storedStepViews: loadedGuide.storedStepViews,
       stepViews: [],
       stepId,
       product: 'IAG',
@@ -173,6 +194,7 @@ export async function executeEngineerGuideBoundDryRun(input: {
     proposal,
     currentGuide: loadedGuide.guide,
     currentObserved,
+    storedStepViews: loadedGuide.storedStepViews,
     stepViews: [],
     executor: input.executor,
     authorityRequest: input.authorityRequest,

@@ -63,14 +63,42 @@ function guideOf(readiness: EngineerGuide['readiness'] = 'review_ready'): Engine
   return { ...withoutDigest, digest: computeEngineerGuideDigest(withoutDigest) };
 }
 
+const storedExecutableView = {
+  stepId: 'step-url-exception',
+  executable: true,
+  support: 'executable',
+} as const;
+
+type StoredStepView = {
+  readonly stepId: string;
+  readonly executable: boolean;
+  readonly support: 'executable' | 'blocked' | 'unsupported';
+};
+
+function guideFileOf(
+  guide: EngineerGuide = guideOf(),
+  stepViews: readonly StoredStepView[] = [storedExecutableView],
+): { readonly product: 'IAG'; readonly guide: EngineerGuide; readonly stepViews: readonly StoredStepView[] } {
+  return { product: 'IAG', guide, stepViews };
+}
+
 function writeGuideFiles(input: {
   readonly root: string;
-  readonly guide?: EngineerGuide | { readonly product: 'IAG' | 'HCI'; readonly guide: EngineerGuide };
+  readonly guide?: EngineerGuide | {
+    readonly product: 'IAG' | 'HCI';
+    readonly guide: EngineerGuide;
+    readonly stepViews?: readonly StoredStepView[];
+  };
   readonly observed: unknown;
 }): { readonly guidePath: string; readonly observedPath: string } {
   const guidePath = join(input.root, 'guide.json');
   const observedPath = join(input.root, 'observed.json');
-  writeFileSync(guidePath, JSON.stringify(input.guide ?? guideOf()));
+  const payload = input.guide === undefined
+    ? guideFileOf()
+    : 'guide' in input.guide
+      ? input.guide
+      : guideFileOf(input.guide);
+  writeFileSync(guidePath, JSON.stringify(payload));
   writeFileSync(observedPath, JSON.stringify(input.observed));
   return { guidePath, observedPath };
 }
@@ -159,6 +187,7 @@ describe('guide-bound MCP dry-run (E13 leftover)', () => {
     const files = writeGuideFiles({ root, guide, observed: refs.fixture.action.preState.observed });
     const proposed = proposeEngineerGuideApply({
       guide,
+      storedStepViews: [storedExecutableView],
       stepViews: [],
       stepId: 'step-url-exception',
       product: 'IAG',
@@ -232,7 +261,7 @@ describe('guide-bound MCP dry-run (E13 leftover)', () => {
       ok: false, code: 'PRESTATE_INDETERMINATE', retry: false, mutationAttempted: false,
     });
 
-    writeFileSync(join(root, 'unavailable-guide.json'), JSON.stringify(guideOf()));
+    writeFileSync(join(root, 'unavailable-guide.json'), JSON.stringify(guideFileOf()));
     writeFileSync(join(root, 'unavailable-observed.json'), JSON.stringify({
       kind: 'UNAVAILABLE', reasonCode: 'READ_BACK_UNAVAILABLE',
     }));
@@ -242,6 +271,43 @@ describe('guide-bound MCP dry-run (E13 leftover)', () => {
       observedPath: join(root, 'unavailable-observed.json'),
     })).resolves.toMatchObject({
       ok: false, code: 'PRESTATE_INDETERMINATE', retry: false, mutationAttempted: false,
+    });
+    expect(refs.fixture.adapterFixture.dispatches).toHaveLength(0);
+  });
+
+  it('refuses a review_ready guide file that has no stored executable step view', async () => {
+    const refs = await configureIagMcpFixture({ root, dryRun: true });
+    const guidePath = join(root, 'bare-guide.json');
+    const observedPath = join(root, 'bare-observed.json');
+    writeFileSync(guidePath, JSON.stringify(guideOf()));
+    writeFileSync(observedPath, JSON.stringify(refs.fixture.action.preState.observed));
+
+    await expect(tool('sangfor_engineer_guide_dry_run')({
+      actionPath: refs.actionPath, configPath: refs.configPath,
+      guidePath, observedPath,
+    })).resolves.toMatchObject({
+      ok: false, code: 'STEP_NOT_EXECUTABLE', retry: false, mutationAttempted: false, verifiedSuccess: false,
+    });
+    expect(refs.fixture.adapterFixture.dispatches).toHaveLength(0);
+  });
+
+  it('refuses stored blocked step views even if a caller would mark them executable', async () => {
+    const refs = await configureIagMcpFixture({ root, dryRun: true });
+    const files = writeGuideFiles({
+      root,
+      guide: {
+        product: 'IAG',
+        guide: guideOf(),
+        stepViews: [{ stepId: 'step-url-exception', executable: false, support: 'blocked' }],
+      },
+      observed: refs.fixture.action.preState.observed,
+    });
+
+    await expect(tool('sangfor_engineer_guide_dry_run')({
+      actionPath: refs.actionPath, configPath: refs.configPath,
+      guidePath: files.guidePath, observedPath: files.observedPath,
+    })).resolves.toMatchObject({
+      ok: false, code: 'STEP_NOT_EXECUTABLE', retry: false, mutationAttempted: false,
     });
     expect(refs.fixture.adapterFixture.dispatches).toHaveLength(0);
   });
