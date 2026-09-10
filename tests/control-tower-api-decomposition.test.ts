@@ -28,6 +28,7 @@ const TOWER_API_MODULES = [
   'tower-health-api.ts',
   'tower-playbook-api.ts',
   'tower-agent-task-api.ts',
+  'tower-guide-dry-run-api.ts',
 ] as const;
 
 /** Names `server.ts`, `legacy-seed.ts`, and the suites import from `api.js`. */
@@ -63,6 +64,7 @@ const EXPECTED_API_METHODS = [
   'createPlaybook',
   'createRun',
   'deleteDevice',
+  'dryRunEngineerGuide',
   'executePlaybook',
   'getPlaybook',
   'getPlaybookRun',
