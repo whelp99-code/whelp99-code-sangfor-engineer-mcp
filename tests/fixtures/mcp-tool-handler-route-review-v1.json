@@ -2,7 +2,7 @@
   "schemaVersion": "mcp-tool-handler-route-review.v1",
   "baselineCommit": "eb60873ad96e69ebecfa995ac96c61c888ee6cbd",
   "baselineRouteCount": 115,
-  "finalRouteCount": 118,
+  "finalRouteCount": 119,
   "reviewedHandlerChanges": [
     {
       "toolName": "sangfor_apply_approved_product_change",
@@ -117,6 +117,11 @@
   ],
   "approvedAdditions": [
     {
+      "toolName": "sangfor_engineer_guide_dry_run",
+      "handlerAstSha256": "4bfe387eb53e0ba0de3dd81394c0bae41915015cbacf0f2f10364902809eeb1a",
+      "catalogSource": "apps/mcp-server/src/iag-orchestrator-tools.ts"
+    },
+    {
       "toolName": "sangfor_iag_exception_apply",
       "handlerAstSha256": "1778a1a5ccee5dd9a7cee4e7ac96b30fd1e1a9c849edfc786e0859b4641db90f",
       "catalogSource": "apps/mcp-server/src/iag-orchestrator-tools.ts"
@@ -132,5 +137,5 @@
       "catalogSource": "apps/mcp-server/src/iag-orchestrator-tools.ts"
     }
   ],
-  "sha256": "2070dd9f10d707c60f1c550de62b4c075bd601c45d5ceb61aee8d5b3498978df"
+  "sha256": "e9c4cdbe4880961c170d69a4e6a0f62c2bda8148ac2bf474057f8b5e3cce9804"
 }

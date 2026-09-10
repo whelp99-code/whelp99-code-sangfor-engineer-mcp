@@ -12,6 +12,10 @@ import {
   type IagOrchestrator,
 } from '../../../packages/sangfor-product-adapters/src/apply/index.js';
 import { z } from 'zod';
+import {
+  boundGuideDryRunInputSchema,
+  executeEngineerGuideBoundDryRun,
+} from './engineer-guide-bound-dry-run.js';
 
 const MAX_REFERENCE_BYTES = 1_048_576;
 const pathSchema = z.string().min(1).max(4096);
@@ -152,6 +156,24 @@ export class IagOrchestratorToolService {
     });
   }
 
+  async dryRunBoundToGuide(input: unknown) {
+    const parsed = boundGuideDryRunInputSchema.parse(input);
+    if (parsed.approvalEnvelopePath !== undefined) throw new TypeError('IAG_DRY_RUN_APPROVAL_REFUSED');
+    const loaded = this.loadConfig(parsed.configPath);
+    const actionSource = readSource(confinedPath(loaded.root, parsed.actionPath, 'file'));
+    if (!actionModeSchema.parse(JSON.parse(actionSource)).dryRun) throw new TypeError('IAG_DRY_RUN_ACTION_REQUIRED');
+    return executeEngineerGuideBoundDryRun({
+      actionSource,
+      guideRaw: readReference(confinedPath(loaded.root, parsed.guidePath, 'file')),
+      observedRaw: readReference(confinedPath(loaded.root, parsed.observedPath, 'file')),
+      proposalRaw: parsed.proposalPath === undefined
+        ? undefined
+        : readReference(confinedPath(loaded.root, parsed.proposalPath, 'file')),
+      executor: this.executor,
+      authorityRequest: authorityRequest(loaded.config, this.dependencies.now()),
+    });
+  }
+
   async apply(input: unknown) {
     const parsed = executionInputSchema.required({ approvalEnvelopePath: true }).parse(input);
     const loaded = this.loadConfig(parsed.configPath);
@@ -201,6 +223,18 @@ export function iagOrchestratorToolCatalog(
         required: ['actionPath', 'configPath'],
       },
       handler: (input) => service().dryRun(input),
+    },
+    sangfor_engineer_guide_dry_run: {
+      description: 'Read-only guide-bound IAG dry-run. Binds one review_ready guide step to a confined action without dispatch or verified success.',
+      inputSchema: {
+        type: 'object', additionalProperties: false,
+        properties: {
+          actionPath: { type: 'string' }, configPath: { type: 'string' },
+          guidePath: { type: 'string' }, observedPath: { type: 'string' },
+        },
+        required: ['actionPath', 'configPath', 'guidePath', 'observedPath'],
+      },
+      handler: (input) => service().dryRunBoundToGuide(input),
     },
     sangfor_iag_exception_apply: {
       description: 'Apply one ordinary-authority, narrow reversible IAG internet-policy exception and report success only after independent read-back.',
