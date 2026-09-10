@@ -71,10 +71,14 @@ describe('operator console engineer case review — real browser', () => {
     expect(await page.evaluate(() => (window as unknown as { __untrustedExecuted?: boolean }).__untrustedExecuted)).toBe(false);
 
     await page.locator('#ec-btn-save').click();
-    await page.waitForFunction(() => (document.querySelector('#ec-status')?.textContent || '').includes('저장됨'));
+    await page.waitForFunction(() => (document.querySelector('#ec-status')?.textContent || '').includes('가이드 적용 파일 생략'));
     const saved = await page.locator('#ec-status').textContent();
+    expect(saved).toContain('사례 문서는 유지됨');
+    expect(saved).toContain('dry-run 봉투는 준비되지 않았습니다');
     expect(saved).toContain('승인·가이드 준비·실행 통과가 아닙니다');
+    expect(saved).not.toContain('저장됨');
     expect(saved).not.toContain('현장 인수');
+    expect(await page.locator('#ec-json').textContent()).toContain('applyFileOmitted');
 
     const downloadPromise = page.waitForEvent('download');
     await page.locator('#ec-btn-export').click();
@@ -108,7 +112,7 @@ describe('operator console engineer case review — real browser', () => {
     await page.locator('#ec-btn-review').click();
     await page.waitForFunction(() => (document.querySelector('#ec-status')?.textContent || '').includes('검토됨'));
     await page.locator('#ec-btn-save').click();
-    await page.waitForFunction(() => (document.querySelector('#ec-status')?.textContent || '').includes('저장됨'));
+    await page.waitForFunction(() => (document.querySelector('#ec-status')?.textContent || '').includes('가이드 적용 파일 생략'));
     const revision = await page.locator('#ec-revision').inputValue();
     await page.reload({ waitUntil: 'domcontentloaded' });
     await page.locator('#nav button[data-panel="engineer-case"]').click();

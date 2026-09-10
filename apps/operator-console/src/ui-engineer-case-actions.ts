@@ -196,7 +196,8 @@ export const ENGINEER_CASE_ACTION_SCRIPT = `
       var result = await ecCall('/api/engineer-cases', payload);
       if (!ecIsSaveSuccess(result.data)) {
         var code = result.data.code || result.data.error || String(result.httpStatus);
-        ecStatus('fail', '저장되지 않음: ' + code + '. 완료가 아닙니다. · ' + ecGrantLine(result.data));
+        var omitFail = result.data.applyFileOmitted ? ' 가이드 적용 파일 생략: ' + result.data.applyFileOmitted + '.' : '';
+        ecStatus('fail', '저장되지 않음: ' + code + '.' + omitFail + ' 완료가 아닙니다. · ' + ecGrantLine(result.data));
         $('ec-json').textContent = JSON.stringify(result.data, null, 2);
         return;
       }
@@ -204,7 +205,9 @@ export const ENGINEER_CASE_ACTION_SCRIPT = `
       ecSavedCaseId = result.data.caseId || $('ec-case-id').value.trim();
       if (result.data.caseId) $('ec-case-id').value = result.data.caseId;
       if (result.data.revision) $('ec-revision').value = result.data.revision;
-      ecStatus('ok', '저장됨. 승인·가이드 준비·실행 통과가 아닙니다. · ' + ecGrantLine(result.data));
+      var omit = result.data.applyFileOmitted;
+      var omitLine = omit ? '사례 문서는 유지됨. 가이드 적용 파일 생략: ' + omit + (result.data.unresolved ? ' · ' + result.data.unresolved : '') + '. dry-run 봉투는 준비되지 않았습니다. ' : '저장됨. ';
+      ecStatus(omit ? 'warn' : 'ok', omitLine + '승인·가이드 준비·실행 통과가 아닙니다. · ' + ecGrantLine(result.data));
       $('ec-json').textContent = JSON.stringify(result.data, null, 2);
     };
 
