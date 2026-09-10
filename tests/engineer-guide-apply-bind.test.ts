@@ -115,6 +115,60 @@ describe('engineer guide apply bind (E13)', () => {
     });
   });
 
+  it('refuses a multi-step guide even if the caller marks one view executable', async () => {
+    const fixture = await iagOrchestratorFixture({ root, dryRun: true });
+    const base = guideOf();
+    const withoutDigest = {
+      revision: base.revision,
+      requirementRefs: base.requirementRefs,
+      steps: [
+        base.steps[0],
+        {
+          ...base.steps[0],
+          id: 'step-other',
+          order: 2,
+          title: 'Another step',
+        },
+      ],
+      prerequisites: base.prerequisites,
+      unresolved: base.unresolved,
+      readiness: base.readiness,
+    } as const;
+    const multi = { ...withoutDigest, digest: computeEngineerGuideDigest(withoutDigest) };
+    expect(proposeEngineerGuideApply({
+      guide: multi,
+      stepViews: [
+        executableView,
+        { stepId: 'step-other', executable: true, support: 'executable' },
+      ],
+      stepId: 'step-url-exception',
+      product: 'IAG',
+      action: fixture.action,
+      currentObserved: fixture.action.preState.observed,
+    })).toMatchObject({ ok: false, code: 'SINGLE_GUIDE_STEP_REQUIRED', retry: false });
+  });
+
+  it('refuses a tampered proposal digest', async () => {
+    const fixture = await iagOrchestratorFixture({ root, dryRun: true });
+    const guide = guideOf();
+    const proposed = proposeEngineerGuideApply({
+      guide,
+      stepViews: [executableView],
+      stepId: 'step-url-exception',
+      product: 'IAG',
+      action: fixture.action,
+      currentObserved: fixture.action.preState.observed,
+    });
+    expect(proposed.ok).toBe(true);
+    if (!proposed.ok) return;
+    const tampered = assertEngineerGuideApplyBinding({
+      proposal: { ...proposed.proposal, digest: 'c'.repeat(64) },
+      currentGuide: guide,
+      currentObserved: fixture.action.preState.observed,
+    });
+    expect(tampered).toMatchObject({ ok: false, code: 'PROPOSAL_TAMPERED', retry: false });
+  });
+
   it('refuses a non-executable or draft guide', async () => {
     const fixture = await iagOrchestratorFixture({ root, dryRun: true });
     expect(proposeEngineerGuideApply({

@@ -8,19 +8,19 @@
 import { createHash } from 'node:crypto';
 import type { EngineerGuide } from '@sangfor/shared';
 import { digestIagMutationAction } from '../apply/iag-action-authority.js';
+import type { IagExecutor } from '../apply/iag-executor.js';
 import type {
   GroundedIagMutationAction,
   IagMutationObservedState,
 } from '../apply/iag-mutation-action.js';
+import { dryRunIagMutation } from './dry-run.js';
+import type { IagOrchestratorRequest } from './run-machine.js';
+import { isNarrowReversibleIagAction } from './policy.js';
+import type { IagApplyResult } from './result.js';
 
 export type EngineerGuideApplyObserved =
   | IagMutationObservedState
   | { readonly kind: 'UNAVAILABLE'; readonly reasonCode: string };
-import { dryRunIagMutation } from './dry-run.js';
-import type { IagExecutor } from '../apply/iag-executor.js';
-import type { IagOrchestratorRequest } from './run-machine.js';
-import { isNarrowReversibleIagAction } from './policy.js';
-import type { IagApplyResult } from './result.js';
 
 export type EngineerGuideApplyStepView = {
   readonly stepId: string;
@@ -116,14 +116,13 @@ export function proposeEngineerGuideApply(input: {
 }): EngineerGuideApplyProposeResult {
   if (input.product === 'HCI') return fail('HCI_GUIDE_APPLY_UNSUPPORTED');
   if (input.guide.readiness !== 'review_ready') return fail('GUIDE_NOT_REVIEW_READY');
-  const step = input.guide.steps.find((candidate) => candidate.id === input.stepId);
-  if (step === undefined) return fail('STEP_NOT_IN_GUIDE');
+  if (input.guide.steps.length !== 1) return fail('SINGLE_GUIDE_STEP_REQUIRED');
+  const step = input.guide.steps[0];
+  if (step === undefined || step.id !== input.stepId) return fail('STEP_NOT_IN_GUIDE');
   const view = input.stepViews.find((candidate) => candidate.stepId === input.stepId);
-  if (view === undefined || view.support !== 'executable' || view.executable !== true) {
+  if (view !== undefined && (view.support !== 'executable' || view.executable !== true)) {
     return fail('STEP_NOT_EXECUTABLE');
   }
-  const executableCount = input.stepViews.filter((candidate) => candidate.executable && candidate.support === 'executable').length;
-  if (executableCount !== 1) return fail('SINGLE_EXECUTABLE_STEP_REQUIRED');
   if (input.action.target.product !== 'IAG') return fail('ACTION_PRODUCT_MISMATCH');
   if (input.action.dryRun !== true) return fail('IAG_DRY_RUN_ACTION_REQUIRED');
   if (!isNarrowReversibleIagAction(input.action)) return fail('BROAD_OR_IRREVERSIBLE_ACTION_REFUSED');
