@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { configureIagOrchestratorToolService } from '../apps/mcp-server/src/iag-orchestrator-tools.js';
 import { proposeEngineerGuideApply } from '../packages/sangfor-product-adapters/src/operator/engineer-guide-apply-bind.js';
+import { writeEngineerGuideApplyFile } from '../packages/sangfor-product-adapters/src/operator/engineer-guide-apply-file.js';
 import { evaluateEngineerFieldAcceptance } from '../packages/shared/src/engineer-field-acceptance.js';
 import type { EngineerGuide } from '../packages/shared/src/engineer-case-contract.js';
 import { computeEngineerGuideDigest } from '../packages/shared/src/engineer-guide-digest.js';
@@ -75,11 +76,24 @@ type StoredStepView = {
   readonly support: 'executable' | 'blocked' | 'unsupported';
 };
 
-function guideFileOf(
-  guide: EngineerGuide = guideOf(),
-  stepViews: readonly StoredStepView[] = [storedExecutableView],
-): { readonly product: 'IAG'; readonly guide: EngineerGuide; readonly stepViews: readonly StoredStepView[] } {
-  return { product: 'IAG', guide, stepViews };
+function persistGuideFile(
+  outputPath: string,
+  input: {
+    readonly product?: 'IAG' | 'HCI';
+    readonly guide?: EngineerGuide;
+    readonly stepViews?: readonly StoredStepView[];
+  } = {},
+): void {
+  writeEngineerGuideApplyFile({
+    outputPath,
+    product: input.product ?? 'IAG',
+    guide: input.guide ?? guideOf(),
+    stepViews: (input.stepViews ?? [storedExecutableView]).map((view) => ({
+      step: { id: view.stepId },
+      executable: view.executable,
+      support: view.support,
+    })),
+  });
 }
 
 function writeGuideFiles(input: {
@@ -93,12 +107,10 @@ function writeGuideFiles(input: {
 }): { readonly guidePath: string; readonly observedPath: string } {
   const guidePath = join(input.root, 'guide.json');
   const observedPath = join(input.root, 'observed.json');
-  const payload = input.guide === undefined
-    ? guideFileOf()
-    : 'guide' in input.guide
-      ? input.guide
-      : guideFileOf(input.guide);
-  writeFileSync(guidePath, JSON.stringify(payload));
+  if (input.guide === undefined) persistGuideFile(guidePath);
+  else if ('guide' in input.guide) {
+    persistGuideFile(guidePath, input.guide);
+  } else persistGuideFile(guidePath, { guide: input.guide });
   writeFileSync(observedPath, JSON.stringify(input.observed));
   return { guidePath, observedPath };
 }
@@ -261,7 +273,7 @@ describe('guide-bound MCP dry-run (E13 leftover)', () => {
       ok: false, code: 'PRESTATE_INDETERMINATE', retry: false, mutationAttempted: false,
     });
 
-    writeFileSync(join(root, 'unavailable-guide.json'), JSON.stringify(guideFileOf()));
+    persistGuideFile(join(root, 'unavailable-guide.json'));
     writeFileSync(join(root, 'unavailable-observed.json'), JSON.stringify({
       kind: 'UNAVAILABLE', reasonCode: 'READ_BACK_UNAVAILABLE',
     }));

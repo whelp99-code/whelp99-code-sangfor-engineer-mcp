@@ -12,6 +12,15 @@ export type {
   EngineerGuideApplyProposeResult,
   EngineerGuideApplyStepView,
 } from './engineer-guide-apply-bind.js';
+export {
+  mapEngineerGuideStepViewToStored,
+  toEngineerGuideApplyFile,
+  writeEngineerGuideApplyFile,
+} from './engineer-guide-apply-file.js';
+export type {
+  EngineerGuideApplyFile,
+  EngineerGuideStepViewSource,
+} from './engineer-guide-apply-file.js';
 export { groundIagApplyResult, type IagApplyResult } from './result.js';
 export { lookupIagRunStatus } from './status.js';
 export {
