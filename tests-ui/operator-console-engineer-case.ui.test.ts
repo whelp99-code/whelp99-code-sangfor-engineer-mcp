@@ -71,10 +71,24 @@ describe('operator console engineer case review — real browser', () => {
     expect(await page.evaluate(() => (window as unknown as { __untrustedExecuted?: boolean }).__untrustedExecuted)).toBe(false);
 
     await page.locator('#ec-btn-save').click();
-    await page.waitForFunction(() => (document.querySelector('#ec-status')?.textContent || '').includes('저장됨'));
+    await page.waitForFunction(() => (document.querySelector('#ec-status')?.textContent || '').includes('가이드 적용 파일 생략'));
     const saved = await page.locator('#ec-status').textContent();
+    expect(saved).toContain('사례 문서는 유지됨');
+    expect(saved).toContain('dry-run 봉투는 준비되지 않았습니다');
     expect(saved).toContain('승인·가이드 준비·실행 통과가 아닙니다');
+    expect(saved).not.toContain('저장됨');
     expect(saved).not.toContain('현장 인수');
+    expect(await page.locator('#ec-json').textContent()).toContain('applyFileOmitted');
+
+    await page.locator('#ec-btn-review').click();
+    await page.waitForFunction(() => {
+      const json = document.querySelector('#ec-json')?.textContent || '';
+      const status = document.querySelector('#ec-status')?.textContent || '';
+      return json.includes('schemaVersion') && !json.includes('applyFileOmitted') && status.includes('가이드 적용 파일 생략');
+    });
+    const afterReview = await page.locator('#ec-status').textContent();
+    expect(afterReview).toContain('dry-run 봉투는 준비되지 않았습니다');
+    expect(afterReview).not.toContain('저장됨');
 
     const downloadPromise = page.waitForEvent('download');
     await page.locator('#ec-btn-export').click();
@@ -108,16 +122,33 @@ describe('operator console engineer case review — real browser', () => {
     await page.locator('#ec-btn-review').click();
     await page.waitForFunction(() => (document.querySelector('#ec-status')?.textContent || '').includes('검토됨'));
     await page.locator('#ec-btn-save').click();
-    await page.waitForFunction(() => (document.querySelector('#ec-status')?.textContent || '').includes('저장됨'));
+    await page.waitForFunction(() => (document.querySelector('#ec-status')?.textContent || '').includes('가이드 적용 파일 생략'));
     const revision = await page.locator('#ec-revision').inputValue();
+    await page.locator('#ec-resume-id').fill('case-ui-resume-1');
+    await page.locator('#ec-btn-resume').click();
+    await page.waitForFunction(() => {
+      const json = document.querySelector('#ec-json')?.textContent || '';
+      const status = document.querySelector('#ec-status')?.textContent || '';
+      return json.includes('schemaVersion') && !json.includes('applyFileOmitted') && status.includes('가이드 적용 파일 생략');
+    });
+    const afterResume = await page.locator('#ec-status').textContent();
+    expect(afterResume).toContain('dry-run 봉투는 준비되지 않았습니다');
+    expect(afterResume).not.toContain('저장됨');
     await page.reload({ waitUntil: 'domcontentloaded' });
     await page.locator('#nav button[data-panel="engineer-case"]').click();
     await page.locator('#ec-resume-id').fill('case-ui-resume-1');
     await page.locator('#ec-btn-resume').click();
-    await page.waitForFunction(() => (document.querySelector('#ec-guide-meta')?.textContent || '').includes('저장된 현재 revision'));
+    await page.waitForFunction(() => {
+      const meta = document.querySelector('#ec-guide-meta')?.textContent || '';
+      const status = document.querySelector('#ec-status')?.textContent || '';
+      return meta.includes('저장된 현재 revision') && status.includes('가이드 적용 파일 생략');
+    });
     expect(await page.locator('#ec-revision').inputValue()).toBe(revision);
     expect(await page.locator('#ec-guide-meta').textContent()).toContain(revision);
-    expect(await page.locator('#ec-status').textContent()).toContain('완료가 아닙니다');
+    const afterReload = await page.locator('#ec-status').textContent();
+    expect(afterReload).toContain('가이드 적용 파일 생략');
+    expect(afterReload).toContain('dry-run 봉투는 준비되지 않았습니다');
+    expect(afterReload).not.toContain('저장됨');
     await page.close();
   });
 });

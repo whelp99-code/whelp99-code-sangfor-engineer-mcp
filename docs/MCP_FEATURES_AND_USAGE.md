@@ -1,7 +1,7 @@
 # Sangfor Engineer MCP 기능 및 사용 가이드
 
 기준: `feat/customer-ready-mcp-scorecard` (2026-07-31, 도구명 `sangfor_*` snake_case 전환 + 디스커버리 2종 추가)
-MCP 표면: **118 tools** · mcp-scorecard **96/100 (grade A)**
+MCP 표면: **119 tools** · mcp-scorecard **96/100 (grade A)**
 
 이 문서는 현재 실행 코드의 `listTools()` 결과를 기준으로 작성한 사용자용 가이드다. 도구 이름·입력 스키마·안전 분류의 정본은 [MCP server registry](../apps/mcp-server/src/index.ts)이며, HTTP 동작의 정본은 [HTTP bridge](../apps/http-bridge/src/server.ts)와 [tool guard](../packages/sangfor-operator/src/tool-authorization.ts)다.
 
@@ -87,7 +87,7 @@ HTTP bridge는 전용 제품 REST API가 아니라 MCP의 범용 프록시다. �
 | Method | Route | 설명 |
 |---|---|---|
 | `GET` | `/health` | MCP child 연결 상태. 인증 없음 |
-| `GET` | `/tools` | 118-tool schema/annotation 조회 |
+| `GET` | `/tools` | 119-tool schema/annotation 조회 |
 | `POST` | `/tools/call` | `{name, arguments, approval?}` 호출 |
 
 실행:
@@ -340,7 +340,7 @@ pnpm run dev:control-tower     # 기동 로그: 기본 플레이북 시드: N건
 **미확인(INDETERMINATE) 항목**을 별도로 싣는다 — 근거가 없어 판정하지 못한 항목을
 통과로 읽으면 안 된다.
 
-## 6. 전체 118개 도구
+## 6. 전체 119개 도구
 
 표의 필수 입력은 top-level JSON Schema의 `required`만 표시한다. optional field와 enum은 `tools/list` 결과를 확인한다.
 
@@ -355,7 +355,7 @@ pnpm run dev:control-tower     # 기동 로그: 기본 플레이북 시드: N건
 | `sangfor_hci_verify_volume` | 읽기 | `name`, `sizeGb` | volume 기대값과 독립 read-back 비교 |
 | `sangfor_hci_delete_volume` | 파괴적 | `volumeId`, `approval` | exact volume reverse operation |
 
-### 6.2 제품·프로젝트·변경 계획 — 17
+### 6.2 제품·프로젝트·변경 계획 — 18
 
 | Tool | 등급 | 필수 입력 | 기능 |
 |---|---|---|---|
@@ -368,6 +368,7 @@ pnpm run dev:control-tower     # 기동 로그: 기본 플레이북 시드: N건
 | `sangfor_map_requirements_to_products` | 읽기 | `rows` | Excel 요구사항을 제품 또는 수동 처리로 매핑 |
 | `sangfor_generate_excel_based_change_plan` | 쓰기 | - | Excel 기반 multi-product dry-run 계획 생성 |
 | `sangfor_dry_run_product_change` | 읽기 | `plan` | Save/Apply/Delete 직전까지 변경 preview |
+| `sangfor_engineer_guide_dry_run` | 읽기 | `actionPath`, `configPath`, `guidePath`, `observedPath` | 가이드 revision에 결합된 IAG dry-run. dispatch·verifiedSuccess·field_accepted 없음 |
 | `sangfor_apply_approved_product_change` | 파괴적 | `plan` | 승인된 제품 변경 실행 |
 | `sangfor_verify_product_change` | 읽기 | `plan` | 변경 후 read-only 재수집·증거 요구사항 검증 |
 | `sangfor_analyze_project` | 읽기 | `customerName` | 프로젝트 위험·누락 입력·지식 query 분석 |
@@ -550,7 +551,7 @@ pnpm run dev:control-tower     # 기동 로그: 기본 플레이북 시드: N건
 ## 8. 운영 점검
 
 ```bash
-pnpm run smoke:mcp          # 118 tools
+pnpm run smoke:mcp          # 119 tools
 pnpm run check:mcp-scorecard
 pnpm run lint
 pnpm run build

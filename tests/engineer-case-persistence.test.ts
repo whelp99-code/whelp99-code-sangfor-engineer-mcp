@@ -371,4 +371,29 @@ describe('engineer case persistence', () => {
     }
     expect(() => readFileSync(join(tmpdir(), 'engineer-case.json'), 'utf8')).toThrow();
   });
+
+  it('keeps the persisted case document a bare remapped guide without stepViews', async () => {
+    const db = new FakeEngineerCaseAuthorityDatabase();
+    const store = storeFor(db);
+    const incoming = fixtureCase();
+    const saved = await store.saveEngineerCase({
+      auth: AUTH,
+      document: incoming,
+      requestId: 'req-bare-guide',
+    });
+    expect(saved).toMatchObject({ ok: true, guideReadyGranted: false, executionPassGranted: false });
+    const prepared = prepareEngineerCaseForPersistence(incoming, AUTH);
+    expect(prepared.ok).toBe(true);
+    if (!prepared.ok) throw new Error('expected prepare');
+    const stored = prepared.value.value.guide;
+    const { digest, ...fields } = stored;
+    expect(stored.readiness).toBe('blocked');
+    expect(digest).toBe(computeEngineerGuideDigest(fields));
+    expect(stored).not.toHaveProperty('stepViews');
+    const loaded = await store.loadEngineerCase({ ...AUTH, caseId: 'case-existing-1' });
+    expect(loaded.ok).toBe(true);
+    if (!loaded.ok) throw new Error('expected load');
+    expect((loaded.document as EngineerCaseDocument).guide).not.toHaveProperty('stepViews');
+    expect(JSON.stringify(loaded.document)).not.toContain('stepViews');
+  });
 });

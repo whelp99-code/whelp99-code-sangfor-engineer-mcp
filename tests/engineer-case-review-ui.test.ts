@@ -262,6 +262,104 @@ function e08ReviewReadyCase(): EngineerCaseDocument {
   };
 }
 
+function renderEngineerCaseReviewStatus(
+  data: {
+    readonly ok?: boolean;
+    readonly status?: string;
+    readonly durable?: string;
+    readonly code?: string;
+    readonly error?: string;
+    readonly applyFileOmitted?: string;
+    readonly unresolved?: string;
+    readonly approved?: boolean;
+    readonly guideReadyGranted?: boolean;
+    readonly executionPassGranted?: boolean;
+    readonly saveComplete?: boolean;
+    readonly review?: {
+      readonly caseId?: string;
+      readonly failures?: string[];
+      readonly collectionSummary?: string;
+      readonly collectionConnected?: boolean;
+    };
+  },
+  session?: { readonly caseId?: string; readonly omit?: string; readonly unresolved?: string } | null,
+  formCaseId?: string,
+): { readonly kind: 'ok' | 'warn' | 'fail'; readonly message: string } {
+  const grants = '승인=' + String(!!data.approved) +
+    ' · 가이드준비부여=' + String(!!data.guideReadyGranted) +
+    ' · 실행통과부여=' + String(!!data.executionPassGranted) +
+    ' · 저장완료표시=' + String(!!data.saveComplete);
+  const caseId = data.review?.caseId || formCaseId || '';
+  const last = session && session.caseId === caseId ? session : null;
+  const omit = data.applyFileOmitted || (last && last.omit);
+  const unresolved = data.unresolved || (last && last.unresolved);
+  if (omit) {
+    return {
+      kind: 'warn',
+      message: '사례 문서는 유지됨. 가이드 적용 파일 생략: ' + omit + (unresolved ? ' · ' + unresolved : '') + '. dry-run 봉투는 준비되지 않았습니다. 승인·가이드 준비·실행 통과가 아닙니다. · ' + grants,
+    };
+  }
+  if (data.durable === 'saved' && last && !last.omit) {
+    return {
+      kind: 'ok',
+      message: '저장됨. 승인·가이드 준비·실행 통과가 아닙니다. · ' + grants,
+    };
+  }
+  if (data.durable === 'saved') {
+    return {
+      kind: 'warn',
+      message: '검토됨. dry-run 봉투는 준비되지 않았습니다. 생략 사유를 입증하지 못했습니다. 완료가 아닙니다. · ' + grants,
+    };
+  }
+  const failures = [...(data.review?.failures ?? [])];
+  if (data.review?.collectionConnected) failures.push('수집 연결 주장은 이 화면에서 인정하지 않습니다');
+  const kind = data.ok ? 'warn' : 'fail';
+  const headline = data.ok
+    ? (data.status === 'reviewed' ? '검토됨. 완료가 아닙니다.' : '응답을 완료로 보지 않습니다.')
+    : ('실패: ' + (data.code || data.error || '요청 실패'));
+  return {
+    kind,
+    message: headline + ' ' + (data.review?.collectionSummary ?? '') + ' ' + failures.join(' / ') + ' · ' + grants,
+  };
+}
+
+function renderEngineerCasePersistStatus(
+  data: {
+    readonly ok?: boolean;
+    readonly status?: string;
+    readonly code?: string;
+    readonly error?: string;
+    readonly applyFileOmitted?: string;
+    readonly unresolved?: string;
+    readonly approved?: boolean;
+    readonly guideReadyGranted?: boolean;
+    readonly executionPassGranted?: boolean;
+    readonly saveComplete?: boolean;
+  },
+  httpStatus?: number,
+): { readonly kind: 'ok' | 'warn' | 'fail'; readonly message: string } {
+  const grants = '승인=' + String(!!data.approved) +
+    ' · 가이드준비부여=' + String(!!data.guideReadyGranted) +
+    ' · 실행통과부여=' + String(!!data.executionPassGranted) +
+    ' · 저장완료표시=' + String(!!data.saveComplete);
+  if (!(data.ok === true && data.status === 'saved')) {
+    const code = data.code || data.error || String(httpStatus ?? '요청 실패');
+    const omitFail = data.applyFileOmitted ? ' 가이드 적용 파일 생략: ' + data.applyFileOmitted + '.' : '';
+    return {
+      kind: 'fail',
+      message: '저장되지 않음: ' + code + '.' + omitFail + ' 완료가 아닙니다. · ' + grants,
+    };
+  }
+  const omit = data.applyFileOmitted;
+  const omitLine = omit
+    ? '사례 문서는 유지됨. 가이드 적용 파일 생략: ' + omit + (data.unresolved ? ' · ' + data.unresolved : '') + '. dry-run 봉투는 준비되지 않았습니다. '
+    : '저장됨. ';
+  return {
+    kind: omit ? 'warn' : 'ok',
+    message: omitLine + '승인·가이드 준비·실행 통과가 아닙니다. · ' + grants,
+  };
+}
+
 const draft = {
   caseId: 'case-review-1',
   mode: 'existing' as const,
@@ -399,6 +497,96 @@ describe('engineer case review UI contract', () => {
     expect(ENGINEER_CASE_ACTION_SCRIPT).toContain('downloadComplete');
     expect(ENGINEER_CASE_ACTION_SCRIPT).toContain('exportedCaseRevision');
     expect(ENGINEER_CASE_ACTION_SCRIPT).not.toContain('progress === \'accepted\'');
+  });
+
+  it('does not render persist-ok omit as unqualified saved-ready', () => {
+    expect(ENGINEER_CASE_ACTION_SCRIPT).toContain('applyFileOmitted');
+    expect(ENGINEER_CASE_ACTION_SCRIPT).toContain('사례 문서는 유지됨');
+    expect(ENGINEER_CASE_ACTION_SCRIPT).toContain('가이드 적용 파일 생략');
+    expect(ENGINEER_CASE_ACTION_SCRIPT).toContain('dry-run 봉투는 준비되지 않았습니다');
+    expect(ENGINEER_CASE_ACTION_SCRIPT).toContain("omit ? 'warn' : 'ok'");
+    const omit = renderEngineerCasePersistStatus({
+      ok: true, status: 'saved', applyFileOmitted: 'missing_step_views',
+    });
+    expect(omit.kind).toBe('warn');
+    expect(omit.message).toContain('missing_step_views');
+    expect(omit.message).toContain('dry-run 봉투는 준비되지 않았습니다');
+    expect(omit.message).not.toContain('저장됨');
+    const unknown = renderEngineerCasePersistStatus({
+      ok: true, status: 'saved', applyFileOmitted: 'unknown_product',
+      unresolved: 'GUIDE_APPLY_PRODUCT_UNRESOLVED',
+    });
+    expect(unknown.message).toContain('unknown_product');
+    expect(unknown.message).toContain('GUIDE_APPLY_PRODUCT_UNRESOLVED');
+    expect(unknown.message).not.toContain('저장됨');
+  });
+
+  it('re-shows persist-ok omit after resume/review and fail-closes without evidence', () => {
+    expect(ENGINEER_CASE_ACTION_SCRIPT).toContain('ecLastSave');
+    expect(ENGINEER_CASE_ACTION_SCRIPT).toContain('sangfor_ec_last_save');
+    expect(ENGINEER_CASE_ACTION_SCRIPT).toContain('생략 사유를 입증하지 못했습니다');
+    const fromSession = renderEngineerCaseReviewStatus(
+      { ok: true, status: 'reviewed', durable: 'saved', review: { caseId: 'case-omit-1' } },
+      { caseId: 'case-omit-1', omit: 'missing_step_views' },
+    );
+    expect(fromSession.kind).toBe('warn');
+    expect(fromSession.message).toContain('missing_step_views');
+    expect(fromSession.message).toContain('dry-run 봉투는 준비되지 않았습니다');
+    expect(fromSession.message).not.toContain('저장됨');
+    const fromWire = renderEngineerCaseReviewStatus(
+      {
+        ok: true, status: 'reviewed', durable: 'unsaved', applyFileOmitted: 'unknown_product',
+        unresolved: 'GUIDE_APPLY_PRODUCT_UNRESOLVED', review: { caseId: 'case-omit-1' },
+      },
+      null,
+    );
+    expect(fromWire.message).toContain('unknown_product');
+    expect(fromWire.message).toContain('GUIDE_APPLY_PRODUCT_UNRESOLVED');
+    expect(fromWire.message).not.toContain('저장됨');
+    const sidecar = renderEngineerCaseReviewStatus(
+      { ok: true, status: 'reviewed', durable: 'saved', review: { caseId: 'case-sidecar-1' } },
+      { caseId: 'case-sidecar-1' },
+    );
+    expect(sidecar.kind).toBe('ok');
+    expect(sidecar.message.startsWith('저장됨.')).toBe(true);
+    expect(sidecar.message).not.toContain('가이드 적용 파일 생략');
+    const noEvidence = renderEngineerCaseReviewStatus(
+      { ok: true, status: 'reviewed', durable: 'saved', review: { caseId: 'case-omit-1' } },
+      null,
+    );
+    expect(noEvidence.kind).toBe('warn');
+    expect(noEvidence.message).toContain('생략 사유를 입증하지 못했습니다');
+    expect(noEvidence.message).toContain('dry-run 봉투는 준비되지 않았습니다');
+    expect(noEvidence.message).not.toContain('저장됨');
+    const draft = renderEngineerCaseReviewStatus(
+      { ok: true, status: 'reviewed', durable: 'unsaved', review: { caseId: 'case-draft-1', failures: ['계산 불가'] } },
+      null,
+    );
+    expect(draft.message).toContain('검토됨. 완료가 아닙니다');
+    expect(draft.message).not.toContain('저장됨');
+  });
+
+  it('still shows saved when persist-ok has a sidecar and keeps persist_failed fail-closed', () => {
+    const saved = renderEngineerCasePersistStatus({ ok: true, status: 'saved' });
+    expect(saved.kind).toBe('ok');
+    expect(saved.message.startsWith('저장됨.')).toBe(true);
+    expect(saved.message).not.toContain('가이드 적용 파일 생략');
+    expect(ENGINEER_CASE_ACTION_SCRIPT).toContain("'저장됨. '");
+    const persistFailed = renderEngineerCasePersistStatus({
+      ok: false, status: 'unsaved', code: 'STORE_UNAVAILABLE', applyFileOmitted: 'persist_failed',
+    }, 503);
+    expect(persistFailed.kind).toBe('fail');
+    expect(persistFailed.message).toContain('저장되지 않음');
+    expect(persistFailed.message).toContain('STORE_UNAVAILABLE');
+    expect(persistFailed.message).toContain('persist_failed');
+    expect(persistFailed.message).not.toContain('저장됨');
+    const conflict = renderEngineerCasePersistStatus({
+      ok: false, status: 'unsaved', code: 'REVISION_CONFLICT', applyFileOmitted: 'persist_failed',
+    }, 409);
+    expect(conflict.kind).toBe('fail');
+    expect(conflict.message).toContain('REVISION_CONFLICT');
+    expect(conflict.message).toContain('persist_failed');
+    expect(ENGINEER_CASE_ACTION_SCRIPT).toContain('저장되지 않음');
   });
 
   it('exports Word only after a saved case and blocks cross-case download', async () => {

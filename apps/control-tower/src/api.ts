@@ -13,6 +13,7 @@ import { createDeviceApi } from './tower-device-api.js';
 import { createHealthApi } from './tower-health-api.js';
 import { createPlaybookApi } from './tower-playbook-api.js';
 import { createAgentTaskApi } from './tower-agent-task-api.js';
+import { createBridgeGuideBoundDryRun, createGuideDryRunApi } from './tower-guide-dry-run-api.js';
 import type { TowerOptions } from './tower-contract.js';
 
 export { ApiError } from './tower-contract.js';
@@ -60,6 +61,9 @@ export function createApi(opts: TowerOptions = {}) {
     ...createHealthApi({ stores, client, mockConsoleUrl }),
     ...createPlaybookApi({ stores, engine }),
     ...createAgentTaskApi(stores.agentTasks),
+    ...createGuideDryRunApi({
+      dryRunBoundToGuide: opts.guideBoundDryRun ?? createBridgeGuideBoundDryRun(client),
+    }),
     toolGroups: bridge.toolGroups,
   };
 }

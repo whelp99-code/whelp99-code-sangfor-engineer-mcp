@@ -122,6 +122,7 @@ export function replayFixture(
   dispatchBehavior: 'settle' | 'throw' = 'settle',
   preflightPresent = false,
   readBackPresent = true,
+  repeatPreflight = false,
 ) {
   const preflights: BrowserExecutionRequest[] = [];
   const dispatches: BrowserExecutionRequest[] = [];
@@ -129,7 +130,9 @@ export function replayFixture(
   const executionPort: BrowserExecutionPort = {
     async execute(request) {
       if (request.operation.kind === 'observe_console') {
-        const action = actions[preflights.length];
+        const action = repeatPreflight
+          ? actions[Math.min(preflights.length, Math.max(actions.length - 1, 0))]
+          : actions[preflights.length];
         preflights.push(request);
         if (action === undefined) throw new TypeError('UNEXPECTED_PREFLIGHT');
         return executorResult(request, executorObservation(action, preflightPresent));

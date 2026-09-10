@@ -2,7 +2,7 @@ import http from 'node:http';
 import { URL } from 'node:url';
 import { ZodError } from 'zod';
 import { loadEnvFile } from '../../../packages/sangfor-collector/src/load-env.js';
-import { PRODUCTS, resolveBindHost, checkAuth, assertBindSafety } from '../../../packages/shared/src/index.js';
+import { PRODUCTS, resolveBindHost, checkAuth, assertBindSafety, resolveRepoData } from '../../../packages/shared/src/index.js';
 import {
   MAX_REQUEST_BODY_BYTES,
   RequestBodyTooLargeError,
@@ -71,6 +71,9 @@ export function createOperatorServer(options: OperatorServerOptions = {}): http.
   const apiToken = process.env.SANGFOR_API_TOKEN;
   const caseStore = options.engineerCase?.store ?? defaultEngineerCaseStore();
   const caseAuth = () => resolveEngineerCaseApiAuth(options.engineerCase?.env ?? process.env, options.engineerCase?.auth);
+  const guideApplyExportRoot = options.engineerCase?.guideApplyExportRoot
+    ?? options.engineerCase?.env?.SANGFOR_ENGINEER_GUIDE_APPLY_ROOT
+    ?? process.env.SANGFOR_ENGINEER_GUIDE_APPLY_ROOT;
 
   return http.createServer(async (req, res) => {
     const url = new URL(req.url ?? '/', 'http://localhost');
@@ -160,7 +163,7 @@ export function createOperatorServer(options: OperatorServerOptions = {}): http.
 
       if (method === 'POST' && url.pathname === '/api/engineer-cases') {
         const body = await readJsonBody(req, 'engineer-cases');
-        const result = await postSaveEngineerCase(body, caseStore, caseAuth());
+        const result = await postSaveEngineerCase(body, caseStore, caseAuth(), { guideApplyExportRoot });
         return json(res, result.body, result.status);
       }
 
@@ -249,7 +252,12 @@ if (process.env.MCP_NO_SERVE !== '1' && process.env.VITEST === undefined) {
   const bindHost = resolveBindHost();
   const apiToken = process.env.SANGFOR_API_TOKEN;
   assertBindSafety(bindHost, apiToken); // fail closed: no public bind without a token
-  createOperatorServer().listen(port, bindHost, () => {
+  createOperatorServer({
+    engineerCase: {
+      guideApplyExportRoot: process.env.SANGFOR_ENGINEER_GUIDE_APPLY_ROOT
+        ?? resolveRepoData('outputs/engineer-guide-apply'),
+    },
+  }).listen(port, bindHost, () => {
     console.log(`Sangfor Engineer Web listening on http://${bindHost}:${port}${apiToken ? ' (token-gated)' : ''}`);
     console.log('MCP stdio server: pnpm run dev:mcp (unchanged for Cursor)');
   });

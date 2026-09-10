@@ -1,10 +1,11 @@
-import { mkdtempSync, readdirSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { AddressInfo } from 'node:net';
 import http from 'node:http';
 import { MAPPER_VERSION } from '../packages/sangfor-config-state/src/provenance.js';
+import { evaluateEngineerFieldAcceptance } from '../packages/shared/src/engineer-field-acceptance.js';
 import { computeEngineerGuideDigest, ENGINEER_CASE_SCHEMA_VERSION, type EngineerCaseAuthContext, type EngineerCaseDocument } from '../packages/shared/src/engineer-case-contract.js';
 import { BlroAuthorityStore } from '../packages/sangfor-authority/src/authority-store.js';
 import {
@@ -13,10 +14,13 @@ import {
 } from '../packages/sangfor-authority/src/authority-store-contracts.js';
 import { createOperatorServer } from '../apps/operator-console/src/server.js';
 import {
+  attachEngineerGuideApplyOmitReason,
   defaultEngineerCaseStore,
   refuseEngineerCaseFileFallback,
   refuseEngineerCasePublicIndex,
 } from '../apps/operator-console/src/engineer-case-api.js';
+import { persistEngineerCaseAndGuideApplyFile } from '../packages/sangfor-product-adapters/src/operator/engineer-guide-apply-persist.js';
+import { buildEngineerGuide } from '../packages/sangfor-planner/src/engineer-guide.js';
 import { FakeEngineerCaseAuthorityDatabase } from './helpers/engineer-case-authority-db.js';
 import {
   decodeOperatorRequestBody,
@@ -97,13 +101,65 @@ function fixtureCase(overrides: Record<string, unknown> = {}): EngineerCaseDocum
   } as EngineerCaseDocument;
 }
 
+function iagUrlExceptionCase(overrides: Record<string, unknown> = {}): EngineerCaseDocument {
+  return fixtureCase({
+    caseId: 'case-iag-console-1',
+    product: 'IAG',
+    observations: [{
+      id: 'obs-url-exception',
+      sourceKind: 'provided',
+      collectionStatus: 'complete',
+      collectedAt: WHEN,
+      evidenceRef: 'ev-1',
+      value: { presence: 'known', data: { kind: 'string', text: 'qa.example.invalid' } },
+    }],
+    requirements: [{
+      id: 'req-url-exception',
+      sourceKind: 'provided',
+      sourceRef: 'excel-row-1',
+      target: 'URL exception',
+      constraint: 'allow qa.example.invalid',
+      priority: 'high',
+      confirmationState: 'confirmed',
+      acceptanceCriterion: 'URL exception is present',
+      revision: 'req-rev-1',
+    }],
+    calculations: [],
+    assessments: [{
+      id: 'assess-url-exception',
+      requirementRef: 'req-url-exception',
+      currentRef: 'obs-url-exception',
+      calculationRefs: [],
+      status: 'satisfied',
+      reasons: ['provided observation matches acceptance'],
+      nextAction: 'none',
+    }],
+    guide: {
+      revision: 'guide-rev-1',
+      digest: DIGEST,
+      requirementRefs: ['req-url-exception'],
+      steps: [],
+      prerequisites: [],
+      unresolved: [],
+      readiness: 'review_ready',
+    },
+    execution: { result: 'not_started' },
+    ...overrides,
+  });
+}
+
 function storeFor(db: FakeEngineerCaseAuthorityDatabase): BlroAuthorityStore {
   db.grant(AUTH, PERMS);
   db.grant(OTHER, PERMS);
   return new BlroAuthorityStore(db);
 }
 
-function portOf(store: BlroAuthorityStore, auth: EngineerCaseAuthContext = AUTH, token?: string): Promise<{ server: http.Server; base: string }> {
+function portOf(
+  store: BlroAuthorityStore,
+  auth: EngineerCaseAuthContext = AUTH,
+  token?: string,
+  extras?: { readonly guideApplyExportRoot?: string },
+): Promise<{ server: http.Server; base: string }> {
   const previous = process.env.SANGFOR_API_TOKEN;
   if (token) process.env.SANGFOR_API_TOKEN = token;
   else delete process.env.SANGFOR_API_TOKEN;
@@ -115,6 +171,7 @@ function portOf(store: BlroAuthorityStore, auth: EngineerCaseAuthContext = AUTH,
         loadArtifact: (input) => store.loadEngineerCaseArtifact(input),
       },
       auth,
+      guideApplyExportRoot: extras?.guideApplyExportRoot,
     },
   });
   if (previous === undefined) delete process.env.SANGFOR_API_TOKEN;
@@ -133,8 +190,13 @@ afterEach(async () => {
   await Promise.all(servers.splice(0).map((server) => new Promise<void>((resolve) => server.close(() => resolve()))));
 });
 
-async function listen(store: BlroAuthorityStore, auth: EngineerCaseAuthContext = AUTH, token?: string) {
-  const started = await portOf(store, auth, token);
+async function listen(
+  store: BlroAuthorityStore,
+  auth: EngineerCaseAuthContext = AUTH,
+  token?: string,
+  extras?: { readonly guideApplyExportRoot?: string },
+) {
+  const started = await portOf(store, auth, token, extras);
   servers.push(started.server);
   return started.base;
 }
@@ -286,6 +348,7 @@ describe('engineer case API', () => {
     expect([first, second].filter((item) => item.body.code === 'REVISION_CONFLICT')).toHaveLength(1);
     expect([first, second].find((item) => item.body.code === 'REVISION_CONFLICT')?.body).toMatchObject({
       ok: false, status: 'unsaved', approved: false, resumable: false,
+      applyFileOmitted: 'persist_failed',
     });
 
     const stale = await call(base, 'POST', '/api/engineer-cases/compare', {
@@ -318,7 +381,10 @@ describe('engineer case API', () => {
     const conflict = await call(base, 'POST', '/api/engineer-cases', {
       requestId: 'req-same', document: fixtureCase({ caseId: 'case-idemp', revision: 'rev-other' }),
     });
-    expect(conflict).toMatchObject({ status: 409, body: { ok: false, code: 'IDEMPOTENCY_CONFLICT', status: 'unsaved' } });
+    expect(conflict).toMatchObject({
+      status: 409,
+      body: { ok: false, code: 'IDEMPOTENCY_CONFLICT', status: 'unsaved', applyFileOmitted: 'persist_failed' },
+    });
   });
 
   it('refuses postgres-mode file fallback and does not treat storage as guide ready', async () => {
@@ -420,5 +486,204 @@ describe('engineer case API', () => {
       status: 401,
       body: { ok: false, status: 'unsaved', code: 'SCOPE_UNAUTHORIZED', approved: false, resumable: false },
     });
+  });
+
+  it('emits a derived guide-apply sidecar when E07 views exist and omits it without views', async () => {
+    const exportRoot = mkdtempSync(join(tmpdir(), 'e13-console-guide-apply-'));
+    const db = new FakeEngineerCaseAuthorityDatabase();
+    const store = storeFor(db);
+    const base = await listen(store, AUTH, undefined, { guideApplyExportRoot: exportRoot });
+
+    const iag = await call(base, 'POST', '/api/engineer-cases', {
+      requestId: 'req-console-iag',
+      document: iagUrlExceptionCase(),
+    });
+    expect(iag.status).toBe(200);
+    expect(iag.body).toMatchObject({
+      ok: true, approved: false, guideReadyGranted: false, executionPassGranted: false,
+    });
+    expect(iag.body).not.toHaveProperty('applyFileOmitted');
+    const sidecar = join(exportRoot, 'case-iag-console-1-g-rev-1.guide-apply.json');
+    expect(existsSync(sidecar)).toBe(true);
+    const parsed = JSON.parse(readFileSync(sidecar, 'utf8')) as {
+      readonly product: string;
+      readonly stepViews: readonly { readonly executable: boolean; readonly support: string }[];
+    };
+    expect(parsed.product).toBe('IAG');
+    expect(parsed.stepViews).toHaveLength(1);
+    expect(parsed.stepViews[0]).toEqual({
+      stepId: 's-req-url-exception',
+      executable: true,
+      support: 'executable',
+    });
+    expect(JSON.stringify(parsed)).not.toMatch(/field_accepted|fieldAccepted|sangfor_engineer_guide_apply/);
+    expect(evaluateEngineerFieldAcceptance({
+      environmentKind: 'fixture',
+      synthetic: true,
+      guideReadiness: 'review_ready',
+      claimedFieldAccepted: true,
+    })).toMatchObject({ fieldAccepted: false, grantPath: 'none' });
+
+    const noViewsRoot = mkdtempSync(join(tmpdir(), 'e13-console-no-views-'));
+    const noViewsBase = await listen(store, AUTH, undefined, { guideApplyExportRoot: noViewsRoot });
+    const omitted = await call(noViewsBase, 'POST', '/api/engineer-cases', {
+      requestId: 'req-console-no-views',
+      document: fixtureCase({
+        caseId: 'case-no-views-1',
+        product: 'IAG',
+        assessments: [],
+        execution: { result: 'not_started' },
+      }),
+    });
+    expect(omitted.status).toBe(200);
+    expect(omitted.body).toMatchObject({
+      ok: true, approved: false, applyFileOmitted: 'missing_step_views',
+    });
+    expect(omitted.body).not.toHaveProperty('unresolved');
+    expect(readdirSync(noViewsRoot)).toEqual([]);
+  });
+
+  it('returns why the dry-run sidecar was omitted for forged, missing, no-root, and unknown product', async () => {
+    const exportRoot = mkdtempSync(join(tmpdir(), 'e13-console-omit-reason-'));
+    const db = new FakeEngineerCaseAuthorityDatabase();
+    const store = storeFor(db);
+
+    const previousRoot = process.env.SANGFOR_ENGINEER_GUIDE_APPLY_ROOT;
+    delete process.env.SANGFOR_ENGINEER_GUIDE_APPLY_ROOT;
+    const noRootBase = await listen(store);
+    const noRoot = await call(noRootBase, 'POST', '/api/engineer-cases', {
+      requestId: 'req-console-no-root',
+      document: iagUrlExceptionCase({ caseId: 'case-no-root-1' }),
+    });
+    if (previousRoot === undefined) delete process.env.SANGFOR_ENGINEER_GUIDE_APPLY_ROOT;
+    else process.env.SANGFOR_ENGINEER_GUIDE_APPLY_ROOT = previousRoot;
+    expect(noRoot.status).toBe(200);
+    expect(noRoot.body).toMatchObject({
+      ok: true, approved: false, applyFileOmitted: 'path_not_provided',
+    });
+    expect(noRoot.body).not.toHaveProperty('unresolved');
+
+    const base = await listen(store, AUTH, undefined, { guideApplyExportRoot: exportRoot });
+    const missing = await call(base, 'POST', '/api/engineer-cases', {
+      requestId: 'req-console-missing-views',
+      document: iagUrlExceptionCase({
+        caseId: 'case-missing-views-1',
+        assessments: [],
+      }),
+    });
+    expect(missing.status).toBe(200);
+    expect(missing.body).toMatchObject({
+      ok: true, approved: false, applyFileOmitted: 'missing_step_views',
+    });
+    expect(existsSync(join(exportRoot, 'case-missing-views-1-g-rev-1.guide-apply.json'))).toBe(false);
+
+    const unknown = await call(base, 'POST', '/api/engineer-cases', {
+      requestId: 'req-console-unknown-product',
+      document: iagUrlExceptionCase({
+        caseId: 'case-unknown-product-1',
+        product: 'NGFW',
+      }),
+    });
+    expect(unknown.status).toBe(200);
+    expect(unknown.body).toMatchObject({
+      ok: true,
+      approved: false,
+      applyFileOmitted: 'unknown_product',
+      unresolved: 'GUIDE_APPLY_PRODUCT_UNRESOLVED',
+    });
+    expect(existsSync(join(exportRoot, 'case-unknown-product-1-g-rev-1.guide-apply.json'))).toBe(false);
+
+    const forgedDocument = iagUrlExceptionCase({
+      caseId: 'case-forged-views-1',
+      assessments: [{
+        id: 'assess-url-exception',
+        requirementRef: 'req-url-exception',
+        currentRef: 'obs-url-exception',
+        calculationRefs: [],
+        status: 'unresolved',
+        reasons: ['URL exception is not confirmed on device'],
+        nextAction: 'recollect',
+      }],
+    });
+    const built = buildEngineerGuide({
+      document: forgedDocument,
+      auth: AUTH,
+      caseRevision: forgedDocument.revision,
+    });
+    expect(built.ok).toBe(true);
+    if (!built.ok) throw new Error(built.message);
+    expect(built.stepViews[0]?.executable).toBe(false);
+    const forgedPath = join(exportRoot, 'forged-http-mapper.guide-apply.json');
+    const forgedSaved = await persistEngineerCaseAndGuideApplyFile({
+      persist: (request) => store.saveEngineerCase(request),
+      save: { auth: AUTH, document: forgedDocument, requestId: 'req-console-forged' },
+      outputPath: forgedPath,
+      stepViews: [{
+        step: { id: built.stepViews[0]?.step.id ?? 's-req-url-exception' },
+        executable: true,
+        support: 'executable',
+      }],
+      derive: ({ document, auth }) => {
+        const again = buildEngineerGuide({ document, auth, caseRevision: document.revision });
+        if (!again.ok) return undefined;
+        return { guide: again.guide, stepViews: again.stepViews };
+      },
+    });
+    const forgedBody = attachEngineerGuideApplyOmitReason(forgedSaved);
+    expect(forgedBody).toMatchObject({
+      ok: true, approved: false, applyFileOmitted: 'forged_step_views',
+    });
+    expect(forgedBody).not.toHaveProperty('unresolved');
+    expect(existsSync(forgedPath)).toBe(false);
+    expect(readdirSync(exportRoot)).toEqual([]);
+    expect(evaluateEngineerFieldAcceptance({
+      environmentKind: 'fixture',
+      synthetic: true,
+      guideReadiness: 'review_ready',
+      claimedFieldAccepted: true,
+    })).toMatchObject({ fieldAccepted: false, grantPath: 'none' });
+  });
+
+  it('returns persist_failed on HTTP when persist already returned ok: false', async () => {
+    const exportRoot = mkdtempSync(join(tmpdir(), 'e13-console-persist-failed-'));
+    const db = new FakeEngineerCaseAuthorityDatabase();
+    const store = storeFor(db);
+    const base = await listen(store, AUTH, undefined, { guideApplyExportRoot: exportRoot });
+
+    const created = await call(base, 'POST', '/api/engineer-cases', {
+      requestId: 'req-persist-ok',
+      document: iagUrlExceptionCase({ caseId: 'case-persist-failed-1' }),
+    });
+    expect(created.status).toBe(200);
+    expect(created.body).toMatchObject({ ok: true, approved: false });
+    expect(created.body).not.toHaveProperty('applyFileOmitted');
+    const written = readdirSync(exportRoot);
+    expect(written).toEqual(['case-persist-failed-1-g-rev-1.guide-apply.json']);
+
+    const conflict = await call(base, 'POST', '/api/engineer-cases', {
+      requestId: 'req-persist-conflict',
+      expectedRevision: 'rev-stale',
+      document: iagUrlExceptionCase({
+        caseId: 'case-persist-failed-1',
+        revision: 'rev-2',
+      }),
+    });
+    expect(conflict.status).toBe(409);
+    expect(conflict.body).toMatchObject({
+      ok: false,
+      status: 'unsaved',
+      code: 'REVISION_CONFLICT',
+      approved: false,
+      applyFileOmitted: 'persist_failed',
+    });
+    expect(conflict.body).not.toHaveProperty('unresolved');
+    expect(readdirSync(exportRoot)).toEqual(written);
+    expect(JSON.stringify(conflict.body)).not.toMatch(/field_accepted|fieldAccepted|sangfor_engineer_guide_apply/);
+    expect(evaluateEngineerFieldAcceptance({
+      environmentKind: 'fixture',
+      synthetic: true,
+      guideReadiness: 'review_ready',
+      claimedFieldAccepted: true,
+    })).toMatchObject({ fieldAccepted: false, grantPath: 'none' });
   });
 });

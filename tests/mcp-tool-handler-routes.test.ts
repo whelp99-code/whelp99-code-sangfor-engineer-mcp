@@ -25,9 +25,9 @@ const reviewSchema = z.object({
   schemaVersion: z.literal('mcp-tool-handler-route-review.v1'),
   baselineCommit: z.string().regex(/^[a-f0-9]{40}$/u),
   baselineRouteCount: z.literal(115),
-  finalRouteCount: z.literal(118),
+  finalRouteCount: z.literal(119),
   reviewedHandlerChanges: z.array(currentRouteSchema),
-  approvedAdditions: z.array(currentRouteSchema).length(3),
+  approvedAdditions: z.array(currentRouteSchema).length(4),
   sha256: z.string().regex(/^[a-f0-9]{64}$/u),
 });
 type Baseline = z.infer<typeof baselineSchema>;
@@ -71,7 +71,7 @@ const baseline = baselineSchema.parse(JSON.parse(readFileSync(BASELINE_PATH, 'ut
 const review = reviewSchema.parse(JSON.parse(readFileSync(REVIEW_PATH, 'utf8')));
 
 describe('MCP origin/main route baseline and reviewed route delta', () => {
-  it('preserves every baseline route and adds only the three reviewed IAG routes', () => {
+  it('preserves every baseline route and adds only the reviewed IAG and guide-bound dry-run routes', () => {
     const actual = readToolRoutes(ROOT).map(comparable);
     assertReviewedRoutes(actual, baseline, review);
   });

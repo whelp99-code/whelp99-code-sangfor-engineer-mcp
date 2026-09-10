@@ -91,6 +91,20 @@ describe('route-specific request boundaries', () => {
     expect(parse).toThrow(RuntimeSchemaError);
   });
 
+  it('rejects mutationAttempted on the engineer-guide dry-run route', () => {
+    const parse = () => decodeControlTowerRequestBody(
+      parseBoundaryControlTowerRequestBodyV1(JSON.stringify({
+        actionPath: 'action.json',
+        configPath: 'config.json',
+        guidePath: 'guide.json',
+        observedPath: 'observed.json',
+        mutationAttempted: true,
+      })),
+      'engineer-guide-dry-run',
+    );
+    expect(parse).toThrow(RuntimeSchemaError);
+  });
+
   it('rejects a tenant authority claim on the engineer-case review route', () => {
     const parse = () => decodeOperatorRequestBody(
       parseBoundaryOperatorRequestBodyV1(JSON.stringify({

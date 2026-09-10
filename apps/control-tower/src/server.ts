@@ -98,6 +98,10 @@ export function createTowerServer(opts: TowerServerOptions = {}): http.Server {
           deviceId: b.deviceId,
         }));
       }
+      if (method === 'POST' && path === '/api/engineer-guide/dry-run') {
+        const b = await readJsonBody(req, 'engineer-guide-dry-run');
+        return json(res, await api.dryRunEngineerGuide(b));
+      }
       if (method === 'GET' && path === '/api/runs') {
         const num = (v: string | null) => (v === null || v === '' ? undefined : Number(v));
         return json(res, {

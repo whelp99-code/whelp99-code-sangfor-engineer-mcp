@@ -1,17 +1,9 @@
 export const ENGINEER_CASE_ACTION_SCRIPT = `
-    var ecAssembled = null;
-    var ecExpectedRevision = '';
-    var ecSavedCaseId = '';
+    var ecAssembled = null, ecExpectedRevision = '', ecSavedCaseId = '', ecLastSave = null;
+    try { ecLastSave = JSON.parse(sessionStorage.getItem('sangfor_ec_last_save') || 'null'); } catch (e) {}
 
-    function ecText(value, fallback) {
-      var text = typeof value === 'string' ? value.trim() : '';
-      return text || fallback;
-    }
-
-    function ecClear(target) {
-      while (target.firstChild) target.removeChild(target.firstChild);
-    }
-
+    function ecText(value, fallback) { return ((typeof value === 'string' ? value.trim() : '') || fallback); }
+    function ecClear(target) { while (target.firstChild) target.removeChild(target.firstChild); }
     function ecAppend(parent, tag, value, className) {
       var el = document.createElement(tag);
       if (className) el.className = className;
@@ -19,27 +11,13 @@ export const ENGINEER_CASE_ACTION_SCRIPT = `
       parent.appendChild(el);
       return el;
     }
-
-    function ecStatus(kind, message) {
-      var box = $('ec-status');
-      box.className = 'ec-status ' + kind;
-      box.textContent = message;
-    }
-
+    function ecStatus(kind, message) { var box = $('ec-status'); box.className = 'ec-status ' + kind; box.textContent = message; }
     function ecGrantLine(data) {
-      return '승인=' + String(!!data.approved) +
-        ' · 가이드준비부여=' + String(!!data.guideReadyGranted) +
-        ' · 실행통과부여=' + String(!!data.executionPassGranted) +
-        ' · 저장완료표시=' + String(!!data.saveComplete);
+      return '승인=' + String(!!data.approved) + ' · 가이드준비부여=' + String(!!data.guideReadyGranted) + ' · 실행통과부여=' + String(!!data.executionPassGranted) + ' · 저장완료표시=' + String(!!data.saveComplete);
     }
 
-    function ecIsSaveSuccess(data) {
-      return !!(data && data.ok === true && data.status === 'saved');
-    }
-
-    function ecIsComplete(data) {
-      return false;
-    }
+    function ecIsSaveSuccess(data) { return !!(data && data.ok === true && data.status === 'saved'); }
+    function ecIsComplete(data) { return false; }
 
     function ecParseCollections(text) {
       return String(text || '').split('\\n').map(function (line) { return line.trim(); }).filter(Boolean).map(function (line, index) {
@@ -110,12 +88,24 @@ export const ENGINEER_CASE_ACTION_SCRIPT = `
     function ecShowReview(data) {
       var review = data.review || {};
       var failures = review.failures || [];
-      var kind = data.ok ? 'warn' : 'fail';
-      var headline = data.ok
-        ? (data.status === 'reviewed' ? '검토됨. 완료가 아닙니다.' : '응답을 완료로 보지 않습니다.')
-        : ('실패: ' + ecText(data.code || data.error, '요청 실패'));
-      if (review.collectionConnected) failures = failures.concat(['수집 연결 주장은 이 화면에서 인정하지 않습니다']);
-      ecStatus(kind, headline + ' ' + ecText(review.collectionSummary, '') + ' ' + failures.join(' / ') + ' · ' + ecGrantLine(data));
+      var caseId = review.caseId || $('ec-case-id').value.trim();
+      var last = (ecLastSave && ecLastSave.caseId === caseId) ? ecLastSave : null;
+      var omit = data.applyFileOmitted || (last && last.omit);
+      var unresolved = data.unresolved || (last && last.unresolved);
+      if (omit) {
+        ecStatus('warn', '사례 문서는 유지됨. 가이드 적용 파일 생략: ' + omit + (unresolved ? ' · ' + unresolved : '') + '. dry-run 봉투는 준비되지 않았습니다. 승인·가이드 준비·실행 통과가 아닙니다. · ' + ecGrantLine(data));
+      } else if (data.durable === 'saved' && last && !last.omit) {
+        ecStatus('ok', '저장됨. 승인·가이드 준비·실행 통과가 아닙니다. · ' + ecGrantLine(data));
+      } else if (data.durable === 'saved') {
+        ecStatus('warn', '검토됨. dry-run 봉투는 준비되지 않았습니다. 생략 사유를 입증하지 못했습니다. 완료가 아닙니다. · ' + ecGrantLine(data));
+      } else {
+        var kind = data.ok ? 'warn' : 'fail';
+        var headline = data.ok
+          ? (data.status === 'reviewed' ? '검토됨. 완료가 아닙니다.' : '응답을 완료로 보지 않습니다.')
+          : ('실패: ' + ecText(data.code || data.error, '요청 실패'));
+        if (review.collectionConnected) failures = failures.concat(['수집 연결 주장은 이 화면에서 인정하지 않습니다']);
+        ecStatus(kind, headline + ' ' + ecText(review.collectionSummary, '') + ' ' + failures.join(' / ') + ' · ' + ecGrantLine(data));
+      }
       ecRenderRows($('ec-requirements'), review.requirements, '요구사항 없음');
       ecRenderRows($('ec-observations'), review.observations, '수집 결과 없음');
       ecRenderRows($('ec-calculations'), review.calculations, '계산 불가');
@@ -196,15 +186,20 @@ export const ENGINEER_CASE_ACTION_SCRIPT = `
       var result = await ecCall('/api/engineer-cases', payload);
       if (!ecIsSaveSuccess(result.data)) {
         var code = result.data.code || result.data.error || String(result.httpStatus);
-        ecStatus('fail', '저장되지 않음: ' + code + '. 완료가 아닙니다. · ' + ecGrantLine(result.data));
+        var omitFail = result.data.applyFileOmitted ? ' 가이드 적용 파일 생략: ' + result.data.applyFileOmitted + '.' : '';
+        ecStatus('fail', '저장되지 않음: ' + code + '.' + omitFail + ' 완료가 아닙니다. · ' + ecGrantLine(result.data));
         $('ec-json').textContent = JSON.stringify(result.data, null, 2);
         return;
       }
       ecExpectedRevision = result.data.revision || '';
       ecSavedCaseId = result.data.caseId || $('ec-case-id').value.trim();
+      ecLastSave = { caseId: ecSavedCaseId, omit: result.data.applyFileOmitted, unresolved: result.data.unresolved };
+      try { sessionStorage.setItem('sangfor_ec_last_save', JSON.stringify(ecLastSave)); } catch (e) {}
       if (result.data.caseId) $('ec-case-id').value = result.data.caseId;
       if (result.data.revision) $('ec-revision').value = result.data.revision;
-      ecStatus('ok', '저장됨. 승인·가이드 준비·실행 통과가 아닙니다. · ' + ecGrantLine(result.data));
+      var omit = result.data.applyFileOmitted;
+      var omitLine = omit ? '사례 문서는 유지됨. 가이드 적용 파일 생략: ' + omit + (result.data.unresolved ? ' · ' + result.data.unresolved : '') + '. dry-run 봉투는 준비되지 않았습니다. ' : '저장됨. ';
+      ecStatus(omit ? 'warn' : 'ok', omitLine + '승인·가이드 준비·실행 통과가 아닙니다. · ' + ecGrantLine(result.data));
       $('ec-json').textContent = JSON.stringify(result.data, null, 2);
     };
 
