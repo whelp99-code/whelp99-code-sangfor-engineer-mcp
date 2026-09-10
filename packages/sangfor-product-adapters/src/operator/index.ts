@@ -21,6 +21,17 @@ export type {
   EngineerGuideApplyFile,
   EngineerGuideStepViewSource,
 } from './engineer-guide-apply-file.js';
+export {
+  exportPersistedEngineerGuideApplyFile,
+  persistEngineerCaseAndGuideApplyFile,
+  resolveEngineerGuideApplyProduct,
+} from './engineer-guide-apply-persist.js';
+export type {
+  EngineerGuideApplyExportOmitted,
+  EngineerGuideApplyPersistExport,
+  EngineerGuideApplyProduct,
+  PersistEngineerCaseGuideApplyResult,
+} from './engineer-guide-apply-persist.js';
 export { groundIagApplyResult, type IagApplyResult } from './result.js';
 export { lookupIagRunStatus } from './status.js';
 export {

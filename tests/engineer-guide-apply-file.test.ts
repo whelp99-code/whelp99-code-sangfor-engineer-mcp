@@ -1,18 +1,30 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { executeEngineerGuideBoundDryRun } from '../apps/mcp-server/src/engineer-guide-bound-dry-run.js';
-import type { EngineerGuideStepView } from '../packages/sangfor-planner/src/engineer-guide.js';
+import { buildEngineerGuide, type EngineerGuideStepView } from '../packages/sangfor-planner/src/engineer-guide.js';
 import { proposeEngineerGuideApply } from '../packages/sangfor-product-adapters/src/operator/engineer-guide-apply-bind.js';
 import {
   mapEngineerGuideStepViewToStored,
   toEngineerGuideApplyFile,
   writeEngineerGuideApplyFile,
 } from '../packages/sangfor-product-adapters/src/operator/engineer-guide-apply-file.js';
-import type { EngineerGuide } from '../packages/shared/src/engineer-case-contract.js';
+import { persistEngineerCaseAndGuideApplyFile } from '../packages/sangfor-product-adapters/src/operator/engineer-guide-apply-persist.js';
+import { BlroAuthorityStore } from '../packages/sangfor-authority/src/authority-store.js';
+import {
+  ENGINEER_CASE_READ_PERMISSION,
+  ENGINEER_CASE_WRITE_PERMISSION,
+} from '../packages/sangfor-authority/src/authority-store-contracts.js';
+import { prepareEngineerCaseForPersistence } from '../packages/sangfor-authority/src/engineer-case-persistence.js';
+import {
+  ENGINEER_CASE_SCHEMA_VERSION,
+  type EngineerCaseDocument,
+  type EngineerGuide,
+} from '../packages/shared/src/engineer-case-contract.js';
 import { evaluateEngineerFieldAcceptance } from '../packages/shared/src/engineer-field-acceptance.js';
 import { computeEngineerGuideDigest } from '../packages/shared/src/engineer-guide-digest.js';
+import { FakeEngineerCaseAuthorityDatabase } from './helpers/engineer-case-authority-db.js';
 import { cleanupTestIagMutationAuthorityEnvironment } from './helpers/iag-mutation-contract-fixture.js';
 import {
   configureIagOrchestratorTestEnvironment,
@@ -252,5 +264,296 @@ describe('engineer guide apply file persist (E13 leftover)', () => {
     expect(JSON.stringify(written)).not.toMatch(/field_accepted|fieldAccepted/);
     writeFileSync(join(root, 'bare-guide.json'), JSON.stringify(guideOf()));
     expect(readFileSync(join(root, 'bare-guide.json'), 'utf8')).not.toContain('stepViews');
+  });
+});
+
+const AUTH = { tenantId: 'tenant-a', projectId: 'proj-a', actorId: 'actor-a' } as const;
+const CASE_DIGEST = 'ab'.repeat(32);
+const WHEN = '2026-09-09T00:00:00.000Z';
+
+function iagCaseDocument(overrides: Record<string, unknown> = {}): EngineerCaseDocument {
+  const incomingGuide = {
+    revision: 'guide-rev-1',
+    digest: CASE_DIGEST,
+    requirementRefs: ['req-url-exception'],
+    steps: [],
+    prerequisites: [],
+    unresolved: [],
+    readiness: 'review_ready' as const,
+  };
+  return {
+    schemaVersion: ENGINEER_CASE_SCHEMA_VERSION,
+    caseId: 'case-iag-1',
+    mode: 'existing',
+    product: 'IAG',
+    revision: 'rev-1',
+    progress: 'assessment_ready',
+    environmentKind: 'fixture',
+    synthetic: true,
+    originalPresent: false,
+    observations: [{
+      id: 'obs-url-exception',
+      sourceKind: 'provided',
+      collectionStatus: 'complete',
+      collectedAt: WHEN,
+      evidenceRef: 'ev-1',
+      value: { presence: 'known', data: { kind: 'string', text: 'qa.example.invalid' } },
+    }],
+    requirements: [{
+      id: 'req-url-exception',
+      sourceKind: 'provided',
+      sourceRef: 'excel-row-1',
+      target: 'URL exception',
+      constraint: 'allow qa.example.invalid',
+      priority: 'high',
+      confirmationState: 'confirmed',
+      acceptanceCriterion: 'URL exception is present',
+      revision: 'req-rev-1',
+    }],
+    calculations: [],
+    assessments: [{
+      id: 'assess-url-exception',
+      requirementRef: 'req-url-exception',
+      currentRef: 'obs-url-exception',
+      calculationRefs: [],
+      status: 'satisfied',
+      reasons: ['provided observation matches acceptance'],
+      nextAction: 'none',
+    }],
+    guide: incomingGuide,
+    evidence: [{
+      id: 'ev-1',
+      digest: CASE_DIGEST,
+      mediaType: 'application/json',
+      sanitized: true,
+      retention: 'case-revision',
+    }],
+    execution: { result: 'not_started' },
+    ...overrides,
+  } as EngineerCaseDocument;
+}
+
+function persistStore(): BlroAuthorityStore {
+  const db = new FakeEngineerCaseAuthorityDatabase();
+  db.grant(AUTH, [ENGINEER_CASE_READ_PERMISSION, ENGINEER_CASE_WRITE_PERMISSION]);
+  return new BlroAuthorityStore(db);
+}
+
+describe('engineer case persist adjacent guide apply export', () => {
+  it('persists an E07-built IAG case and emits an envelope bind/MCP can read as stored executable', async () => {
+    const fixture = await iagOrchestratorFixture({ root, dryRun: true });
+    delete process.env.SANGFOR_ALLOW_REAL_EXECUTION;
+    delete process.env.SANGFOR_ALLOW_PRODUCTION_EXECUTION;
+    const built = buildEngineerGuide({
+      document: iagCaseDocument(),
+      auth: AUTH,
+      caseRevision: 'rev-1',
+    });
+    expect(built.ok).toBe(true);
+    if (!built.ok) throw new Error(built.message);
+    expect(built.stepViews).toHaveLength(1);
+    expect(built.stepViews[0]?.executable).toBe(true);
+    expect(built.guide.readiness).toBe('review_ready');
+    expect(built.guide.steps).toHaveLength(1);
+
+    const store = persistStore();
+    const outputPath = join(root, 'persisted-guide.json');
+    const saved = await persistEngineerCaseAndGuideApplyFile({
+      persist: (request) => store.saveEngineerCase(request),
+      save: { auth: AUTH, document: built.document, requestId: 'req-persist-e07' },
+      stepViews: built.stepViews,
+      guide: built.guide,
+      outputPath,
+    });
+    expect(saved.persist).toMatchObject({
+      ok: true, guideReadyGranted: false, executionPassGranted: false, approved: false,
+    });
+    expect(saved.applyFileOmitted).toBeUndefined();
+    expect(saved.applyFile).toEqual({
+      product: 'IAG',
+      guide: built.guide,
+      stepViews: [{
+        stepId: built.stepViews[0]?.step.id,
+        executable: true,
+        support: 'executable',
+      }],
+    });
+
+    const prepared = prepareEngineerCaseForPersistence(built.document, AUTH);
+    expect(prepared.ok).toBe(true);
+    if (!prepared.ok) throw new Error('expected remapped persistable guide');
+    const storedGuide = prepared.value.value.guide;
+    const { digest, ...fields } = storedGuide;
+    expect(storedGuide.readiness).toBe('draft');
+    expect(storedGuide.readiness).not.toBe('review_ready');
+    expect(digest).toBe(computeEngineerGuideDigest(fields));
+    expect(JSON.stringify(prepared.value.value.guide)).not.toContain('stepViews');
+
+    const loaded = await store.loadEngineerCase({ ...AUTH, caseId: 'case-iag-1' });
+    expect(loaded.ok).toBe(true);
+    if (!loaded.ok) throw new Error('expected load');
+    const loadedGuide = (loaded.document as EngineerCaseDocument).guide;
+    expect(loadedGuide).not.toHaveProperty('stepViews');
+    expect(loadedGuide.readiness).toBe('draft');
+    expect(loaded.guideReadyGranted).toBe(false);
+    expect(loaded.executionPassGranted).toBe(false);
+
+    const parsed = JSON.parse(readFileSync(outputPath, 'utf8')) as {
+      readonly product: string;
+      readonly stepViews: readonly { readonly executable: boolean }[];
+    };
+    expect(parsed.product).toBe('IAG');
+    expect(parsed.stepViews[0]?.executable).toBe(true);
+    expect(JSON.stringify(parsed)).not.toMatch(/field_accepted|fieldAccepted|sangfor_engineer_guide_apply/);
+
+    const proposed = proposeEngineerGuideApply({
+      guide: built.guide,
+      storedStepViews: saved.applyFile?.stepViews ?? [],
+      stepViews: [],
+      stepId: built.guide.steps[0]!.id,
+      product: 'IAG',
+      action: fixture.action,
+      currentObserved: fixture.action.preState.observed,
+    });
+    expect(proposed).toMatchObject({ ok: true });
+
+    const dryRun = await executeEngineerGuideBoundDryRun({
+      actionSource: fixture.source,
+      guideRaw: JSON.parse(readFileSync(outputPath, 'utf8')),
+      observedRaw: fixture.action.preState.observed,
+      executor: fixture.adapterFixture.executor,
+      authorityRequest: fixture.authorityRequest,
+    });
+    expect(dryRun).toMatchObject({
+      ok: true,
+      mutationAttempted: false,
+      verifiedSuccess: false,
+      httpSuccessIgnored: true,
+      retry: false,
+    });
+    expect(fixture.adapterFixture.dispatches).toHaveLength(0);
+    expect(evaluateEngineerFieldAcceptance({
+      environmentKind: 'fixture',
+      synthetic: true,
+      guideReadiness: 'review_ready',
+      claimedFieldAccepted: true,
+    })).toMatchObject({ fieldAccepted: false, grantPath: 'none' });
+  });
+
+  it('persists a case with no E07 step views without writing a grant envelope', async () => {
+    const fixture = await iagOrchestratorFixture({ root, dryRun: true });
+    const store = persistStore();
+    const outputPath = join(root, 'no-views-guide.json');
+    const document = iagCaseDocument();
+    const saved = await persistEngineerCaseAndGuideApplyFile({
+      persist: (request) => store.saveEngineerCase(request),
+      save: { auth: AUTH, document, requestId: 'req-no-views' },
+      stepViews: [],
+      outputPath,
+    });
+    expect(saved.persist.ok).toBe(true);
+    expect(saved.applyFile).toBeUndefined();
+    expect(saved.applyFileOmitted).toBe('missing_step_views');
+    expect(existsSync(outputPath)).toBe(false);
+
+    const dryRun = await executeEngineerGuideBoundDryRun({
+      actionSource: fixture.source,
+      guideRaw: guideOf(),
+      observedRaw: fixture.action.preState.observed,
+      executor: fixture.adapterFixture.executor,
+      authorityRequest: fixture.authorityRequest,
+    });
+    expect(dryRun).toMatchObject({
+      ok: false, code: 'STEP_NOT_EXECUTABLE', retry: false, mutationAttempted: false, verifiedSuccess: false,
+    });
+    expect(fixture.adapterFixture.dispatches).toHaveLength(0);
+  });
+
+  it('stores executable:false from E07 and refuses bind', async () => {
+    const fixture = await iagOrchestratorFixture({ root, dryRun: true });
+    const built = buildEngineerGuide({
+      document: iagCaseDocument({
+        assessments: [{
+          id: 'assess-url-exception',
+          requirementRef: 'req-url-exception',
+          currentRef: 'obs-url-exception',
+          calculationRefs: [],
+          status: 'unresolved',
+          reasons: ['URL exception is not confirmed on device'],
+          nextAction: 'recollect',
+        }],
+        guide: {
+          revision: 'guide-rev-1',
+          digest: CASE_DIGEST,
+          requirementRefs: ['req-url-exception'],
+          steps: [],
+          prerequisites: [],
+          unresolved: ['URL exception is not confirmed on device'],
+          readiness: 'review_ready',
+        },
+      }),
+      auth: AUTH,
+      caseRevision: 'rev-1',
+    });
+    expect(built.ok).toBe(true);
+    if (!built.ok) throw new Error(built.message);
+    expect(built.stepViews[0]?.executable).toBe(false);
+
+    const store = persistStore();
+    const outputPath = join(root, 'blocked-persist-guide.json');
+    const saved = await persistEngineerCaseAndGuideApplyFile({
+      persist: (request) => store.saveEngineerCase(request),
+      save: { auth: AUTH, document: built.document, requestId: 'req-blocked' },
+      stepViews: built.stepViews,
+      guide: built.guide,
+      outputPath,
+    });
+    expect(saved.persist.ok).toBe(true);
+    expect(saved.applyFile?.stepViews[0]).toEqual({
+      stepId: built.stepViews[0]?.step.id,
+      executable: false,
+      support: 'blocked',
+    });
+    const reviewReadyFields = {
+      revision: built.guide.revision,
+      requirementRefs: built.guide.requirementRefs,
+      steps: built.guide.steps,
+      prerequisites: built.guide.prerequisites,
+      unresolved: [] as const,
+      readiness: 'review_ready' as const,
+    };
+    expect(proposeEngineerGuideApply({
+      guide: { ...reviewReadyFields, digest: computeEngineerGuideDigest(reviewReadyFields) },
+      storedStepViews: saved.applyFile?.stepViews ?? [],
+      stepViews: [],
+      stepId: built.stepViews[0]?.step.id ?? 's-req-url-exception',
+      product: 'IAG',
+      action: fixture.action,
+      currentObserved: fixture.action.preState.observed,
+    })).toMatchObject({ ok: false, code: 'STEP_NOT_EXECUTABLE', retry: false });
+  });
+
+  it('omits an IAG-looking envelope when product is not evidenced IAG or HCI', async () => {
+    const store = persistStore();
+    const built = buildEngineerGuide({
+      document: iagCaseDocument({ product: 'NGFW' }),
+      auth: AUTH,
+      caseRevision: 'rev-1',
+    });
+    expect(built.ok).toBe(true);
+    if (!built.ok) throw new Error(built.message);
+    const outputPath = join(root, 'unknown-product-guide.json');
+    const saved = await persistEngineerCaseAndGuideApplyFile({
+      persist: (request) => store.saveEngineerCase(request),
+      save: { auth: AUTH, document: built.document, requestId: 'req-ngfw' },
+      stepViews: built.stepViews,
+      guide: built.guide,
+      outputPath,
+    });
+    expect(saved.persist.ok).toBe(true);
+    expect(saved.applyFile).toBeUndefined();
+    expect(saved.applyFileOmitted).toBe('unknown_product');
+    expect(saved.unresolved).toBe('GUIDE_APPLY_PRODUCT_UNRESOLVED');
+    expect(existsSync(outputPath)).toBe(false);
   });
 });

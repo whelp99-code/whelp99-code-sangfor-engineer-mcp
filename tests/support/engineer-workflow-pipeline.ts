@@ -1,3 +1,4 @@
+import { join } from 'node:path';
 import { collectInventory, resolveIdentityOrigin, type HciClient, type HciInventory, type HttpJsonResult, type InventoryClient } from '../../packages/sangfor-hci-client/src/index.js';
 import { summarizeHciHealth } from '../../packages/sangfor-hci-client/src/ops-monitor.js';
 import {
@@ -25,6 +26,7 @@ import {
   formatStoredEngineerValue,
   type EngineerGuideExportResult,
 } from '../../packages/sangfor-product-adapters/src/engineer-guide-export.js';
+import { exportPersistedEngineerGuideApplyFile } from '../../packages/sangfor-product-adapters/src/operator/engineer-guide-apply-persist.js';
 import type { ExcelRequirementRow } from '../../packages/sangfor-product-adapters/src/types.js';
 import {
   evaluateEngineerFormula,
@@ -720,6 +722,14 @@ export async function runEngineerWorkflow(input: EngineerWorkflowInput): Promise
     : step('persist', 'saveEngineerCase', persist.code === 'REVISION_CONFLICT' ? 'refused' : 'failed', persist.ok ? undefined : persist.code));
 
   const persistedDocument = prepared.value.value;
+  const guideApplyExport = persist.ok
+    ? exportPersistedEngineerGuideApplyFile({
+      outputPath: join(input.exportRoot, `${input.caseId}-${built.guide.revision}.guide-apply.json`),
+      product: persistedDocument.product,
+      guide: built.guide,
+      stepViews: built.stepViews,
+    })
+    : { written: undefined, omitted: 'missing_step_views' as const };
   const exported = persist.ok
     ? await exportEngineerGuide({
       document: persistedDocument,
@@ -748,6 +758,7 @@ export async function runEngineerWorkflow(input: EngineerWorkflowInput): Promise
     ...draftUnresolved,
     ...built.blockers,
     ...built.guide.unresolved,
+    ...(guideApplyExport.unresolved ? [guideApplyExport.unresolved] : []),
   ].filter((text, index, all) => all.indexOf(text) === index).slice(0, 64);
 
   const completedNormally = !collectFailed
