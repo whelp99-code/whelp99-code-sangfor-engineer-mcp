@@ -8,11 +8,14 @@
 
 Re-read from live GitHub issue/PR bodies and `git ls-remote origin` on this date. Do not trust session memory. Fixture / e2e PASS is not field acceptance. Local isolation store PASS is not production BLRO and not field acceptance. Runtime-host isolation `BLRO_STORE=PASS` is not a live-app-DB cutover and not field acceptance. No stacked PR is merged to `main`. Independent reviews are COMMENT (same GitHub actor cannot APPROVE).
 
+This increment is after `9f6ede7` (pre-E13). It records E13 PR #134 tip `9173043` and does **not** start E14, hunt CRM/Inkbox, grant `field_accepted`, or cut over live `blro`.
+
 | Pin | SHA (verified `ls-remote`) | Note |
 | --- | --- | --- |
 | `origin/main` | `cd8e44db41b8fcd7aad4d6c052c3dd008c1e27d4` | Plan PR #110 base. Do not merge the stack here. |
-| Plan PR [#110](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/110) | this branch; parent `62abaee` recorded coordinator isolation `BLRO_STORE=PASS`; this increment appends the independent isolation re-run | Refs #90 only on the map commit. Do not close #90/#91/#102/#108/#105 from a status update. |
-| Stack tip / persist-census-RLS leftover PR [#133](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/133) | `10ec2ef075e4b9687cb5fd97a28823c23c2ca850` | Independent **ACCEPT** (self-APPROVE blocked; [comment review](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/133#pullrequestreview-5160905394)). Stacked on #132 / `3cfdf69`, not on `main`. Local isolation store only. |
+| Plan PR [#110](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/110) | this branch; parent `9f6ede7` was the pre-E13 isolation map; this increment records E13 #134 | Refs #90 only on the map commit. Do not close #90/#91/#102/#108/#105/#106 from a status update. |
+| Stack tip / E13 guide-apply PR [#134](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/134) | `91730431f0b8597fd8f3b02353bbb29e7412457f` | Independent **ACCEPT WITH FOLLOW-UPS** through persist harden `94e1aa3` ([comment](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/134#pullrequestreview-5165754469)); this SHA only gitignores `outputs/engineer-guide-apply/`. Stacked on #133 / `10ec2ef`, not on `main`. `closingIssuesReferences` empty. **#106 stays OPEN.** |
+| Persist-census-RLS leftover PR [#133](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/133) | `10ec2ef075e4b9687cb5fd97a28823c23c2ca850` | Independent **ACCEPT** (self-APPROVE blocked; [comment review](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/133#pullrequestreview-5160905394)). Stacked on #132 / `3cfdf69`, not on `main`. Local isolation store only. |
 | Janus adapter PR [#132](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/132) | `3cfdf69335a6f9906bfddabbf754d296825416a2` | Independent **ACCEPT**. Production collect does not GET Janus. |
 | Janus extras catalog PR [#131](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/131) | `8ae2839e23ff3665125a469d1117fe3fdafac34c` | **ACCEPT WITH FOLLOW-UPS** (not merge-blocking). |
 | Collect-bind leftovers PR [#130](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/130) | `a0f7d721f260d88e615dbe8e5f27f8867f9a1ac8` | Independent leftover **ACCEPT**. Unofficial list keys cannot mint. |
@@ -41,12 +44,12 @@ Primary label is the current honest unit state. `code_verified` never means `fie
 | E10B | [#109](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/issues/109) OPEN | [#126](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/126) `ae3d190d1f7ba25fb817095fe43cddc93139ee22` | digest/rebase follow-ups **ACCEPT** | **code_verified** | Not `integration_verified`. |
 | E11 | [#104](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/issues/104) OPEN | [#127](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/127) `ffae9a6763a98830a79905365eaebeb2e0d43ddd` | compose then leftovers **ACCEPT WITH FOLLOW-UPS**; freshness leftover **ACCEPT** | **ACCEPT WITH FOLLOW-UPS** | **#104 is not done.** `integration_verified` no. Do not treat fixture e2e as field. |
 | E12 | [#105](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/issues/105) OPEN | [#128](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/128)–[#132](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/132); field tip `3cfdf69335a6f9906bfddabbf754d296825416a2` | prep/grant/bind/extras/adapter as above | **BLOCKED-ON-USER** | **#105 is not done.** `field_accepted` remains false. Live HCI/Janus GET **NOT_RUN**. #133 does not change this. |
-| E13 | [#106](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/issues/106) OPEN | none | none | **not started** | Do not start. Blocked on E11 integration + E12 field path. |
-| E14 | [#107](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/issues/107) OPEN | none | none | **not started** | Do not start. Needs E02 ops + E12 field + E13 + separate PM write approval. |
+| E13 | [#106](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/issues/106) OPEN | [#134](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/134) `91730431f0b8597fd8f3b02353bbb29e7412457f` | bind/MCP/tower/leftovers/persist/E09/harden all **ACCEPT WITH FOLLOW-UPS** (COMMENT). Harden review on `94e1aa3`: [5165754469](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/134#pullrequestreview-5165754469) | **ACCEPT WITH FOLLOW-UPS** | **#106 is not done.** No `Closes`. Not `field_accepted`. No `sangfor_engineer_guide_apply`. Named leftover (console emit + refuse forged views) is **closed**. Gitignore leftover closed on this tip. Remaining product work (E12 live / E14 / apply-path cases) is **BLOCKED-ON-USER**. Do not start E14. |
+| E14 | [#107](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/issues/107) OPEN | none | none | **not started** / **BLOCKED-ON-USER** | Do not start. Needs E02 ops + E12 field + separate PM write approval. E13 AWF does not unlock E14. |
 
 Program [#90](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/issues/90) OPEN. Plan [#91](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/issues/91) OPEN (PR #110 still `Closes #91` only when that plan PR merges; this map commit does not close it). #111 closed (admin). #112 is not one of the 18.
 
-**Unblocked unshipped unit in the 18:** none. The persist/census/RLS leftover is independently ACCEPTed. Do not invent unofficial mint, login stubs, live HTTP on `explicit_janus_hosts_capture`, or E13/E14. Do not start a feature PR for the non-blocking #133 reviewer note below.
+**Unblocked unshipped unit in the 18:** none. E13 gitignore sidecar default is already on #134 / `9173043`. Do not invent unofficial mint, login stubs, live HTTP on `explicit_janus_hosts_capture`, CRM/Inkbox hunts (Cowon / City Gas / TV Chosun skipped by user), or E14. Do not start a feature PR for the non-blocking #133 reviewer note below.
 
 ### Persist / census / RLS leftover (independent ACCEPT)
 
@@ -60,15 +63,30 @@ Verified facts only. Do not treat this as production BLRO, live HCI, or field ac
 - CI for this SHA: **NOT_RUN** (workflows only on PRs to `main`). NOT_RUN ≠ PASS.
 - Refs #102/#108 only; never Closes. **#102 / #108 / #105 remain OPEN / not done.**
 - This is **local isolation store evidence**, not production BLRO, not live HCI, not field acceptance.
-- Live = no. E13/E14 = no. No Janus login. No merge.
+- Live = no. This leftover predates E13. No Janus login. No merge. Do not cut over live `blro`.
+
+### E13 persist / dry-run bind (independent ACCEPT WITH FOLLOW-UPS)
+
+Verified facts only. Do not treat this as field acceptance, live mutation, or #106 done.
+
+- PR: https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/134
+- Tip after gitignore leftover: `91730431f0b8597fd8f3b02353bbb29e7412457f` (`ls-remote` + this developer push). Harden review SHA remains `94e1aa3668b21b1aebc9c64a8ec89c7e95a02e9c`.
+- Independent COMMENT reviews (self-APPROVE blocked), all **ACCEPT WITH FOLLOW-UPS**: bind `75586b9` / [5164556190](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/134#pullrequestreview-5164556190); leftover `a59334a` / [5164568103](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/134#pullrequestreview-5164568103); MCP `05d92fe` / [5164860968](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/134#pullrequestreview-5164860968); tower `a4ea8b7` / [5165090766](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/134#pullrequestreview-5165090766); leftovers `66da30c` / [5165219288](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/134#pullrequestreview-5165219288); persist `51e230d` / [5165335326](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/134#pullrequestreview-5165335326); E09 `9a2e7af` / [5165541327](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/134#pullrequestreview-5165541327); harden `94e1aa3` / [5165754469](https://github.com/whelp99-code/whelp99-code-sangfor-engineer-mcp/pull/134#pullrequestreview-5165754469).
+- Persist: E11 pipeline and console `POST /api/engineer-cases` emit the sidecar from `buildEngineerGuide`. Forged caller views are refused (`forged_step_views`, no file). L1 `saveEngineerCase` / `persistEngineerCase` emit no envelope. Case document alone still does not grant (`STEP_NOT_EXECUTABLE`; no `stepViews` on the stored guide).
+- Census: **119 MCP tools** still locked on `9173043` (`tests/mcp-module-dag.test.ts` **PASS** this session, 3 tests). `sangfor_engineer_guide_apply` does not exist. Catalog tool remains `sangfor_engineer_guide_dry_run`. This session did **not** re-run `pnpm run smoke:mcp` (label **NOT_RUN** ≠ PASS). Independent MCP leftover review at `05d92fe` recorded `MCP_INVENTORY_TRUTH_PASS: 119`.
+- Gitignore leftover: `.gitignore` now has `outputs/engineer-guide-apply/` (same style as `outputs/playbooks/`). `git check-ignore` + `tests/engineer-guide-apply-gitignore.test.ts` **PASS** this session. Production default path was **not** rewritten.
+- Store (unchanged from the `9f6ede7` map; this increment did **not** re-run Postgres or live `blro`): local mandatory+RLS **ACCEPT**; live app DB `blro` still uncutover **61/127**. Do not cut over.
+- E12 live / E14 / Janus login / `field_accepted`: **BLOCKED-ON-USER**. Do not hunt Cowon / City Gas / TV Chosun / Inkbox (user skipped).
+- Stacked Actions for #134: **NOT_RUN** ≠ PASS (stacked PRs do not run verify until they target `main`).
+- Refs #106 only; never Closes. **#106 / #105 / #107 / #90 stay OPEN / not done.**
 
 ### Leftover scan (docs/map only; no new feature PR)
 
-No leftover **code** unit is unblocked without a user-supplied read-only HCI target, E02 locator, or sanitized Janus login capture. Remaining E02/E03B/E12 work stays user-gated. E13/E14 stay not started. Stacked Actions CI stays **NOT_RUN** until a PR targets `main`.
+No leftover **code** unit is unblocked without a user-supplied read-only HCI target, E02 locator, or sanitized Janus login capture. Remaining E02/E03B/E12 work stays user-gated. E13 code is AWF with remaining #106 product work **BLOCKED-ON-USER**. E14 stays not started. Stacked Actions CI stays **NOT_RUN** until a PR targets `main`.
 
 Docs/map leftovers recorded here:
 
-- This HANDOFF append after `62abaee` (independent isolation re-run + live-path hunt). `plan-index.json` unit table was already accurate and was not rewritten.
+- This HANDOFF append after `9f6ede7` (E13 #134 tip + gitignore). `plan-index.json` E13 row / stack tip updated to match.
 - Reviewer note on #133 (not reject): the new migration is replay-safe but is not itself listed in `tests/mandatory-postgres/migration-replay-postgres.test.ts`. Todo24 replay is listed and independently passed with zero catalog drift. Do not start a feature PR for that.
 - Dual Prisma-named and `t24_tp_*` FKs remain; census 134 is honest, not a lowered bar.
 - Re-inspected fail-closed leftovers that do **not** fail a real future-read gate: unofficial `unofficial_list_key:<id>` extras still cannot mint (intentional); official Janus `GET /janus/20180725/hosts` already binds `host_cpu`/`host_ram` when a capture grant + injected client exists; remaining E03B (`storage_usable_capacity`, `network_topology`, `ha_status`) stay unsupported without an official read (do not invent endpoints); 2024 SCP Open-API PDF is in cache only and is **not** vendored. No stacked leftover PR from this hunt.
@@ -131,9 +149,10 @@ Do not paste secrets. Do not set `SANGFOR_ALLOW_REAL_EXECUTION`. Do not reuse Gi
 
 - No live Janus/HCI login or GET. No attach of live HTTP to `explicit_janus_hosts_capture`.
 - No `field_accepted` grant. Shared `evaluateEngineerFieldAcceptance` stays non-granting.
-- No merge of the stacked PRs to `main`, including #133.
-- No E13 / E14.
-- No program / #90 / #102 / #108 / #104 / #105 complete.
+- No merge of the stacked PRs to `main`, including #133 and #134.
+- No E14. No `SANGFOR_ALLOW_REAL_EXECUTION` for real mutation. No guide APPLY tool.
+- No CRM / Inkbox hunt (Cowon / City Gas / TV Chosun skipped by user).
+- No program / #90 / #102 / #108 / #104 / #105 / #106 complete.
 - No live-app-DB `blro` cutover. Runtime-host isolation `BLRO_STORE=PASS` ≠ live schema promotion and ≠ field acceptance.
 
 ## 1. 개발 에이전트에게 전달할 입력

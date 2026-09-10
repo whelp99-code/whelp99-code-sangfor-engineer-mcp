@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "status": "in_development",
   "baseCommit": "cd8e44db41b8fcd7aad4d6c052c3dd008c1e27d4",
-  "stackTip": "10ec2ef075e4b9687cb5fd97a28823c23c2ca850",
-  "stackTipPr": 133,
+  "stackTip": "91730431f0b8597fd8f3b02353bbb29e7412457f",
+  "stackTipPr": 134,
   "verifiedAt": "2026-09-10",
   "programIssue": 90,
   "planningIssue": 91,
@@ -231,7 +231,9 @@
         "E09B",
         "E11"
       ],
-      "status": "not started"
+      "pr": 134,
+      "head": "91730431f0b8597fd8f3b02353bbb29e7412457f",
+      "status": "ACCEPT WITH FOLLOW-UPS"
     },
     {
       "unit": "E14",
