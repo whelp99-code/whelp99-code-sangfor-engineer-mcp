@@ -15,7 +15,11 @@ import type {
   EngineerCaseSaveResult,
   EngineerCaseUnsaved,
 } from '../../../packages/sangfor-authority/src/authority-store-contracts.js';
-import { persistEngineerCaseAndGuideApplyFile } from '../../../packages/sangfor-product-adapters/src/operator/engineer-guide-apply-persist.js';
+import {
+  persistEngineerCaseAndGuideApplyFile,
+  type EngineerGuideApplyExportOmitted,
+  type PersistEngineerCaseGuideApplyResult,
+} from '../../../packages/sangfor-product-adapters/src/operator/engineer-guide-apply-persist.js';
 import { buildEngineerGuide } from '../../../packages/sangfor-planner/src/engineer-guide.js';
 import {
   ENGINEER_ID_RE,
@@ -48,6 +52,25 @@ export type EngineerCaseSaveBody = {
   readonly expectedRevision?: string;
   readonly artifacts?: EngineerCaseSaveRequest['artifacts'];
 };
+
+export type EngineerCaseHttpSaveBody = EngineerCaseSaveResult & {
+  readonly applyFileOmitted?: EngineerGuideApplyExportOmitted;
+  readonly unresolved?: string;
+};
+
+/** Persist success can still omit the dry-run sidecar. Surface the existing reason. */
+export function attachEngineerGuideApplyOmitReason(
+  saved: PersistEngineerCaseGuideApplyResult,
+): EngineerCaseHttpSaveBody {
+  if (!saved.persist.ok) return saved.persist;
+  return {
+    ...saved.persist,
+    ...(saved.applyFileOmitted !== undefined
+      ? { applyFileOmitted: saved.applyFileOmitted }
+      : {}),
+    ...(saved.unresolved !== undefined ? { unresolved: saved.unresolved } : {}),
+  };
+}
 
 export type EngineerCaseIdBody = { readonly caseId: string };
 export type EngineerCaseCompareBody = { readonly caseId: string; readonly revision: string };
@@ -169,7 +192,7 @@ export function postSaveEngineerCase(
       outputRoot: options?.guideApplyExportRoot,
       derive: ({ document, auth: deriveAuth }) => deriveEngineerGuideApplyViews(document, deriveAuth),
     });
-    return saved.persist;
+    return attachEngineerGuideApplyOmitReason(saved);
   });
 }
 
