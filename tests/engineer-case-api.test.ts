@@ -348,6 +348,7 @@ describe('engineer case API', () => {
     expect([first, second].filter((item) => item.body.code === 'REVISION_CONFLICT')).toHaveLength(1);
     expect([first, second].find((item) => item.body.code === 'REVISION_CONFLICT')?.body).toMatchObject({
       ok: false, status: 'unsaved', approved: false, resumable: false,
+      applyFileOmitted: 'persist_failed',
     });
 
     const stale = await call(base, 'POST', '/api/engineer-cases/compare', {
@@ -380,7 +381,10 @@ describe('engineer case API', () => {
     const conflict = await call(base, 'POST', '/api/engineer-cases', {
       requestId: 'req-same', document: fixtureCase({ caseId: 'case-idemp', revision: 'rev-other' }),
     });
-    expect(conflict).toMatchObject({ status: 409, body: { ok: false, code: 'IDEMPOTENCY_CONFLICT', status: 'unsaved' } });
+    expect(conflict).toMatchObject({
+      status: 409,
+      body: { ok: false, code: 'IDEMPOTENCY_CONFLICT', status: 'unsaved', applyFileOmitted: 'persist_failed' },
+    });
   });
 
   it('refuses postgres-mode file fallback and does not treat storage as guide ready', async () => {
@@ -632,6 +636,49 @@ describe('engineer case API', () => {
     expect(forgedBody).not.toHaveProperty('unresolved');
     expect(existsSync(forgedPath)).toBe(false);
     expect(readdirSync(exportRoot)).toEqual([]);
+    expect(evaluateEngineerFieldAcceptance({
+      environmentKind: 'fixture',
+      synthetic: true,
+      guideReadiness: 'review_ready',
+      claimedFieldAccepted: true,
+    })).toMatchObject({ fieldAccepted: false, grantPath: 'none' });
+  });
+
+  it('returns persist_failed on HTTP when persist already returned ok: false', async () => {
+    const exportRoot = mkdtempSync(join(tmpdir(), 'e13-console-persist-failed-'));
+    const db = new FakeEngineerCaseAuthorityDatabase();
+    const store = storeFor(db);
+    const base = await listen(store, AUTH, undefined, { guideApplyExportRoot: exportRoot });
+
+    const created = await call(base, 'POST', '/api/engineer-cases', {
+      requestId: 'req-persist-ok',
+      document: iagUrlExceptionCase({ caseId: 'case-persist-failed-1' }),
+    });
+    expect(created.status).toBe(200);
+    expect(created.body).toMatchObject({ ok: true, approved: false });
+    expect(created.body).not.toHaveProperty('applyFileOmitted');
+    const written = readdirSync(exportRoot);
+    expect(written).toEqual(['case-persist-failed-1-g-rev-1.guide-apply.json']);
+
+    const conflict = await call(base, 'POST', '/api/engineer-cases', {
+      requestId: 'req-persist-conflict',
+      expectedRevision: 'rev-stale',
+      document: iagUrlExceptionCase({
+        caseId: 'case-persist-failed-1',
+        revision: 'rev-2',
+      }),
+    });
+    expect(conflict.status).toBe(409);
+    expect(conflict.body).toMatchObject({
+      ok: false,
+      status: 'unsaved',
+      code: 'REVISION_CONFLICT',
+      approved: false,
+      applyFileOmitted: 'persist_failed',
+    });
+    expect(conflict.body).not.toHaveProperty('unresolved');
+    expect(readdirSync(exportRoot)).toEqual(written);
+    expect(JSON.stringify(conflict.body)).not.toMatch(/field_accepted|fieldAccepted|sangfor_engineer_guide_apply/);
     expect(evaluateEngineerFieldAcceptance({
       environmentKind: 'fixture',
       synthetic: true,

@@ -58,11 +58,10 @@ export type EngineerCaseHttpSaveBody = EngineerCaseSaveResult & {
   readonly unresolved?: string;
 };
 
-/** Persist success can still omit the dry-run sidecar. Surface the existing reason. */
+/** Persist success or failure can omit the dry-run sidecar. Surface the existing reason. */
 export function attachEngineerGuideApplyOmitReason(
   saved: PersistEngineerCaseGuideApplyResult,
 ): EngineerCaseHttpSaveBody {
-  if (!saved.persist.ok) return saved.persist;
   return {
     ...saved.persist,
     ...(saved.applyFileOmitted !== undefined
