@@ -361,9 +361,12 @@ describe('engineer case persist adjacent guide apply export', () => {
     const saved = await persistEngineerCaseAndGuideApplyFile({
       persist: (request) => store.saveEngineerCase(request),
       save: { auth: AUTH, document: built.document, requestId: 'req-persist-e07' },
-      stepViews: built.stepViews,
-      guide: built.guide,
       outputPath,
+      derive: ({ document, auth }) => {
+        const again = buildEngineerGuide({ document, auth, caseRevision: document.revision });
+        if (!again.ok) return undefined;
+        return { guide: again.guide, stepViews: again.stepViews };
+      },
     });
     expect(saved.persist).toMatchObject({
       ok: true, guideReadyGranted: false, executionPassGranted: false, approved: false,
@@ -444,12 +447,16 @@ describe('engineer case persist adjacent guide apply export', () => {
     const fixture = await iagOrchestratorFixture({ root, dryRun: true });
     const store = persistStore();
     const outputPath = join(root, 'no-views-guide.json');
-    const document = iagCaseDocument();
+    const document = iagCaseDocument({ assessments: [] });
     const saved = await persistEngineerCaseAndGuideApplyFile({
       persist: (request) => store.saveEngineerCase(request),
       save: { auth: AUTH, document, requestId: 'req-no-views' },
-      stepViews: [],
       outputPath,
+      derive: ({ document: parsed, auth }) => {
+        const built = buildEngineerGuide({ document: parsed, auth, caseRevision: parsed.revision });
+        if (!built.ok || built.stepViews.length === 0) return undefined;
+        return { guide: built.guide, stepViews: built.stepViews };
+      },
     });
     expect(saved.persist.ok).toBe(true);
     expect(saved.applyFile).toBeUndefined();
@@ -504,9 +511,12 @@ describe('engineer case persist adjacent guide apply export', () => {
     const saved = await persistEngineerCaseAndGuideApplyFile({
       persist: (request) => store.saveEngineerCase(request),
       save: { auth: AUTH, document: built.document, requestId: 'req-blocked' },
-      stepViews: built.stepViews,
-      guide: built.guide,
       outputPath,
+      derive: ({ document, auth }) => {
+        const again = buildEngineerGuide({ document, auth, caseRevision: document.revision });
+        if (!again.ok) return undefined;
+        return { guide: again.guide, stepViews: again.stepViews };
+      },
     });
     expect(saved.persist.ok).toBe(true);
     expect(saved.applyFile?.stepViews[0]).toEqual({
@@ -546,14 +556,72 @@ describe('engineer case persist adjacent guide apply export', () => {
     const saved = await persistEngineerCaseAndGuideApplyFile({
       persist: (request) => store.saveEngineerCase(request),
       save: { auth: AUTH, document: built.document, requestId: 'req-ngfw' },
-      stepViews: built.stepViews,
-      guide: built.guide,
       outputPath,
+      derive: ({ document, auth }) => {
+        const again = buildEngineerGuide({ document, auth, caseRevision: document.revision });
+        if (!again.ok) return undefined;
+        return { guide: again.guide, stepViews: again.stepViews };
+      },
     });
     expect(saved.persist.ok).toBe(true);
     expect(saved.applyFile).toBeUndefined();
     expect(saved.applyFileOmitted).toBe('unknown_product');
     expect(saved.unresolved).toBe('GUIDE_APPLY_PRODUCT_UNRESOLVED');
+    expect(existsSync(outputPath)).toBe(false);
+  });
+
+  it('refuses forged caller stepViews and does not write a grant envelope', async () => {
+    const store = persistStore();
+    const outputPath = join(root, 'forged-guide.json');
+    const document = iagCaseDocument({
+      assessments: [{
+        id: 'assess-url-exception',
+        requirementRef: 'req-url-exception',
+        currentRef: 'obs-url-exception',
+        calculationRefs: [],
+        status: 'unresolved',
+        reasons: ['URL exception is not confirmed on device'],
+        nextAction: 'recollect',
+      }],
+    });
+    const built = buildEngineerGuide({ document, auth: AUTH, caseRevision: 'rev-1' });
+    expect(built.ok).toBe(true);
+    if (!built.ok) throw new Error(built.message);
+    expect(built.stepViews[0]?.executable).toBe(false);
+
+    const saved = await persistEngineerCaseAndGuideApplyFile({
+      persist: (request) => store.saveEngineerCase(request),
+      save: { auth: AUTH, document, requestId: 'req-forged-views' },
+      outputPath,
+      stepViews: [{
+        step: { id: built.stepViews[0]?.step.id ?? 's-req-url-exception' },
+        executable: true,
+        support: 'executable',
+      }],
+      derive: ({ document: parsed, auth }) => {
+        const again = buildEngineerGuide({ document: parsed, auth, caseRevision: parsed.revision });
+        if (!again.ok) return undefined;
+        return { guide: again.guide, stepViews: again.stepViews };
+      },
+    });
+    expect(saved.persist.ok).toBe(true);
+    expect(saved.applyFile).toBeUndefined();
+    expect(saved.applyFileOmitted).toBe('forged_step_views');
+    expect(existsSync(outputPath)).toBe(false);
+  });
+
+  it('omits caller-only stepViews when E07 views cannot be derived', async () => {
+    const store = persistStore();
+    const outputPath = join(root, 'caller-only-guide.json');
+    const saved = await persistEngineerCaseAndGuideApplyFile({
+      persist: (request) => store.saveEngineerCase(request),
+      save: { auth: AUTH, document: iagCaseDocument(), requestId: 'req-caller-only' },
+      outputPath,
+      stepViews: [e07StepView({ executable: true, support: 'executable' })],
+    });
+    expect(saved.persist.ok).toBe(true);
+    expect(saved.applyFile).toBeUndefined();
+    expect(saved.applyFileOmitted).toBe('missing_step_views');
     expect(existsSync(outputPath)).toBe(false);
   });
 });

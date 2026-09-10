@@ -27,6 +27,8 @@ export {
   resolveEngineerGuideApplyProduct,
 } from './engineer-guide-apply-persist.js';
 export type {
+  EngineerGuideApplyDerive,
+  EngineerGuideApplyDerivedViews,
   EngineerGuideApplyExportOmitted,
   EngineerGuideApplyPersistExport,
   EngineerGuideApplyProduct,

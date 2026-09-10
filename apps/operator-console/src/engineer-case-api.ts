@@ -15,7 +15,13 @@ import type {
   EngineerCaseSaveResult,
   EngineerCaseUnsaved,
 } from '../../../packages/sangfor-authority/src/authority-store-contracts.js';
-import { ENGINEER_ID_RE, type EngineerCaseAuthContext } from '../../../packages/shared/src/engineer-case-contract.js';
+import { persistEngineerCaseAndGuideApplyFile } from '../../../packages/sangfor-product-adapters/src/operator/engineer-guide-apply-persist.js';
+import { buildEngineerGuide } from '../../../packages/sangfor-planner/src/engineer-guide.js';
+import {
+  ENGINEER_ID_RE,
+  type EngineerCaseAuthContext,
+  type EngineerCaseDocument,
+} from '../../../packages/shared/src/engineer-case-contract.js';
 
 export type EngineerCaseApiPort = {
   save(input: EngineerCaseSaveRequest): Promise<EngineerCaseSaveResult>;
@@ -28,7 +34,12 @@ export type OperatorServerOptions = {
     readonly store?: EngineerCaseApiPort;
     readonly auth?: EngineerCaseAuthContext;
     readonly env?: Readonly<Record<string, string | undefined>>;
+    readonly guideApplyExportRoot?: string;
   };
+};
+
+export type EngineerCaseSaveOptions = {
+  readonly guideApplyExportRoot?: string;
 };
 
 export type EngineerCaseSaveBody = {
@@ -122,18 +133,44 @@ export function stripClaimedEngineerCaseGrants(document: Record<string, unknown>
   };
 }
 
+function deriveEngineerGuideApplyViews(
+  document: EngineerCaseDocument,
+  auth: EngineerCaseAuthContext,
+) {
+  try {
+    const built = buildEngineerGuide({
+      document,
+      auth,
+      caseRevision: document.revision,
+    });
+    if (!built.ok || built.stepViews.length === 0) return undefined;
+    return { guide: built.guide, stepViews: built.stepViews };
+  } catch {
+    return undefined;
+  }
+}
+
 export function postSaveEngineerCase(
   body: EngineerCaseSaveBody,
   store: EngineerCaseApiPort,
   auth: EngineerCaseAuthContext | undefined,
+  options?: EngineerCaseSaveOptions,
 ) {
-  return withAuth(auth, (scope) => store.save({
-    auth: scope,
-    document: stripClaimedEngineerCaseGrants(body.document),
-    requestId: body.requestId,
-    expectedRevision: body.expectedRevision,
-    artifacts: body.artifacts,
-  }));
+  return withAuth(auth, async (scope) => {
+    const saved = await persistEngineerCaseAndGuideApplyFile({
+      persist: (request) => store.save(request),
+      save: {
+        auth: scope,
+        document: stripClaimedEngineerCaseGrants(body.document),
+        requestId: body.requestId,
+        expectedRevision: body.expectedRevision,
+        artifacts: body.artifacts,
+      },
+      outputRoot: options?.guideApplyExportRoot,
+      derive: ({ document, auth: deriveAuth }) => deriveEngineerGuideApplyViews(document, deriveAuth),
+    });
+    return saved.persist;
+  });
 }
 
 export function postResumeEngineerCase(

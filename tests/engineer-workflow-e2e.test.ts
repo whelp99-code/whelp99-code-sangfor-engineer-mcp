@@ -267,6 +267,15 @@ describe('engineer workflow E11 integration harness', () => {
     expect(reviewJson.caseRevision).toBe(result.document?.revision);
     expect(reviewJson.guideRevision).toBe(result.document?.guide.revision);
     expect(reviewJson.readiness).toBe('blocked');
+    const applySidecar = readdirSync(exportRoot).find((name) => name.endsWith('.guide-apply.json'));
+    expect(applySidecar).toBeDefined();
+    const applyFile = JSON.parse(readFileSync(join(exportRoot, applySidecar!), 'utf8')) as {
+      readonly product: string;
+      readonly stepViews: readonly unknown[];
+    };
+    expect(applyFile.product).toBe('HCI');
+    expect(applyFile.stepViews.length).toBeGreaterThan(0);
+    expect(JSON.stringify(applyFile)).not.toMatch(/field_accepted|fieldAccepted|sangfor_engineer_guide_apply/);
     expect(result.preview?.guideRevision).toBe(result.document?.guide.revision);
     expect(result.preview?.digest).toBe(result.document?.guide.digest);
     expect(result.preview?.steps.map((item) => item.id)).toEqual(result.document?.guide.steps.map((item) => item.id));
