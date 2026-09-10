@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "status": "in_development",
   "baseCommit": "cd8e44db41b8fcd7aad4d6c052c3dd008c1e27d4",
-  "stackTip": "91730431f0b8597fd8f3b02353bbb29e7412457f",
+  "stackTip": "c88cf563b1c0b39015ca809da52d4ac9812cd99e",
   "stackTipPr": 134,
   "verifiedAt": "2026-09-10",
   "programIssue": 90,
@@ -232,7 +232,7 @@
         "E11"
       ],
       "pr": 134,
-      "head": "91730431f0b8597fd8f3b02353bbb29e7412457f",
+      "head": "c88cf563b1c0b39015ca809da52d4ac9812cd99e",
       "status": "ACCEPT WITH FOLLOW-UPS"
     },
     {
