@@ -12,6 +12,7 @@ export const GENERATED_REFS = [
   "persist:packages/sangfor-product-adapters/src/docx-builder.ts#buildOperationsGuideDocx",
   "persist:packages/sangfor-product-adapters/src/docx-builder.ts#buildSettingGuideDocx",
   "persist:packages/sangfor-product-adapters/src/engineer-guide-export.ts#exportEngineerGuide",
+  "persist:packages/sangfor-product-adapters/src/operator/engineer-guide-apply-file.ts#writeEngineerGuideApplyFile",
   "persist:packages/sangfor-scorecard/src/shadow.ts#recordHumanAction",
   "persist:packages/sangfor-scorecard/src/shadow.ts#recordShadowRun",
   "persist:packages/sangfor-scorecard/src/time-saved.ts#recordTimeSaved",
