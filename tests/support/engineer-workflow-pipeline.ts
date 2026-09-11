@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import { collectInventory, resolveIdentityOrigin, type HciClient, type HciInventory, type HttpJsonResult, type InventoryClient } from '../../packages/sangfor-hci-client/src/index.js';
+import { collectInventory, resolveIdentityOrigin, startEngineerLiveCollect, type HciClient, type HciInventory, type HttpJsonResult, type InventoryClient } from '../../packages/sangfor-hci-client/src/index.js';
 import { summarizeHciHealth } from '../../packages/sangfor-hci-client/src/ops-monitor.js';
 import {
   collectRequiredObservations,
@@ -50,6 +50,12 @@ import {
 } from '../../packages/shared/src/engineer-case-contract.js';
 import { evaluateEngineerFieldAcceptanceGrant } from '../../packages/sangfor-approval/src/engineer-field-acceptance-grant.js';
 import type { EngineerBoundObservationInput, EngineerFieldAcceptanceDecision } from '../../packages/shared/src/engineer-field-acceptance.js';
+import {
+  evaluateEngineerLiveCollectStart,
+  type EngineerLiveCollectIntake,
+  type EngineerLiveCollectIntakeResult,
+  type EngineerLiveCollectStartRefusal,
+} from '../../packages/shared/src/engineer-live-collect-intake.js';
 import type { ProductCode } from '../../packages/shared/src/index.js';
 
 const WHEN = '2026-09-09T00:00:00.000Z';
@@ -88,6 +94,8 @@ export type EngineerWorkflowInput = {
   readonly expectedRevision?: string;
   readonly inventoryClient?: InventoryClient;
   readonly authorizedCollect?: { readonly target: string };
+  readonly liveCollectStart?: boolean;
+  readonly liveCollectIntake?: EngineerLiveCollectIntake;
   readonly skipCollect?: boolean;
   readonly requirementRows?: readonly ExcelRequirementRow[];
   readonly requirementTexts?: readonly string[];
@@ -127,6 +135,8 @@ export type EngineerWorkflowResult = {
     readonly authorizedDeviceRead: boolean;
     readonly reason?: string;
   };
+  readonly liveCollectIntake: EngineerLiveCollectIntakeResult;
+  readonly liveCollectStart?: EngineerLiveCollectStartRefusal;
   readonly coverage?: EngineerCaseCoverage;
   readonly tracking: {
     readonly requiredFields: readonly FieldTrack[];
@@ -325,6 +335,8 @@ async function baseResult(partial: {
   unresolved?: readonly string[];
   boundObservations?: readonly EngineerBoundObservationInput[];
   authorizedCollectBind?: EngineerWorkflowResult['authorizedCollectBind'];
+  liveCollectIntake?: EngineerLiveCollectIntakeResult;
+  liveCollectStart?: EngineerLiveCollectStartRefusal;
 }): Promise<EngineerWorkflowResult> {
   const document = partial.document;
   const authorized = partial.boundObservations
@@ -352,6 +364,8 @@ async function baseResult(partial: {
       liveRead: authorized?.ok === true ? authorized.liveRead : undefined,
     }),
     authorizedCollectBind: partial.authorizedCollectBind,
+    liveCollectIntake: partial.liveCollectIntake ?? evaluateEngineerLiveCollectStart(),
+    liveCollectStart: partial.liveCollectStart,
     completedNormally: false,
     collectFailed: partial.collectFailed,
     skippedCountedAsPass: false,
@@ -384,6 +398,23 @@ export async function runEngineerWorkflow(input: EngineerWorkflowInput): Promise
   let collectFailed = false;
   let healthScope: string | undefined;
   let healthVerdict: string | undefined;
+
+  const liveCollectIntake = evaluateEngineerLiveCollectStart(input.liveCollectIntake);
+  if (input.liveCollectStart === true) {
+    const liveCollectStart = await startEngineerLiveCollect({
+      intake: input.liveCollectIntake,
+      collect: async () => {
+        throw new Error('LIVE_COLLECT_START_MUST_NOT_COLLECT');
+      },
+    });
+    steps.push(step('collect', 'startEngineerLiveCollect', 'refused', liveCollectStart.reasonCode));
+    return await baseResult({
+      steps,
+      collectFailed: false,
+      liveCollectIntake,
+      liveCollectStart,
+    });
+  }
 
   if (input.skipCollect || !input.inventoryClient) {
     steps.push(step('collect', 'collectInventory', 'unavailable', input.skipCollect
@@ -454,6 +485,7 @@ export async function runEngineerWorkflow(input: EngineerWorkflowInput): Promise
     return await baseResult({
       steps,
       collectFailed,
+      liveCollectIntake,
       inventory,
       healthScope,
       healthVerdict,
@@ -575,6 +607,7 @@ export async function runEngineerWorkflow(input: EngineerWorkflowInput): Promise
     return await baseResult({
       steps,
       collectFailed,
+      liveCollectIntake,
       inventory,
       healthScope,
       healthVerdict,
@@ -587,6 +620,7 @@ export async function runEngineerWorkflow(input: EngineerWorkflowInput): Promise
     return await baseResult({
       steps,
       collectFailed,
+      liveCollectIntake,
       inventory,
       healthScope,
       healthVerdict,
@@ -620,6 +654,7 @@ export async function runEngineerWorkflow(input: EngineerWorkflowInput): Promise
     return await baseResult({
       steps,
       collectFailed,
+      liveCollectIntake,
       inventory,
       healthScope,
       healthVerdict,
@@ -633,6 +668,7 @@ export async function runEngineerWorkflow(input: EngineerWorkflowInput): Promise
     return await baseResult({
       steps,
       collectFailed,
+      liveCollectIntake,
       inventory,
       healthScope,
       healthVerdict,
@@ -670,6 +706,7 @@ export async function runEngineerWorkflow(input: EngineerWorkflowInput): Promise
     return await baseResult({
       steps,
       collectFailed,
+      liveCollectIntake,
       inventory,
       healthScope,
       healthVerdict,
@@ -686,6 +723,7 @@ export async function runEngineerWorkflow(input: EngineerWorkflowInput): Promise
     return await baseResult({
       steps,
       collectFailed,
+      liveCollectIntake,
       inventory,
       healthScope,
       healthVerdict,
@@ -701,6 +739,7 @@ export async function runEngineerWorkflow(input: EngineerWorkflowInput): Promise
     return await baseResult({
       steps,
       collectFailed,
+      liveCollectIntake,
       inventory,
       healthScope,
       healthVerdict,
@@ -806,6 +845,7 @@ export async function runEngineerWorkflow(input: EngineerWorkflowInput): Promise
     liveProof: false,
     fieldAcceptance,
     authorizedCollectBind,
+    liveCollectIntake,
     completedNormally,
     collectFailed,
     skippedCountedAsPass: false,
