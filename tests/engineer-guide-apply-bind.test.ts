@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { computeEngineerGuideDigest } from '../packages/shared/src/engineer-guide-digest.js';
 import type { EngineerGuide } from '../packages/shared/src/engineer-case-contract.js';
+import { structuralIagObservedStateSchema } from '../packages/sangfor-product-adapters/src/apply/iag-mutation-action.js';
 import {
   assertEngineerGuideApplyBinding,
   dryRunEngineerGuideApply,
@@ -252,11 +253,11 @@ describe('engineer guide apply bind (E13)', () => {
     const drifted = assertEngineerGuideApplyBinding({
       proposal: proposed.proposal,
       currentGuide: guide,
-      currentObserved: {
+      currentObserved: structuralIagObservedStateSchema.parse({
         kind: 'URL_DOMAIN_EXCEPTION_PRESENT',
         value: 'qa.example.invalid',
         effect: 'ALLOW',
-      },
+      }),
     });
     expect(drifted).toMatchObject({ ok: false, code: 'DRIFT_REQUIRES_REPLAN', retry: false });
   });
