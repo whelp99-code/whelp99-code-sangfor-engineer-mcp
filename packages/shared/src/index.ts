@@ -70,6 +70,8 @@ export {
   type RiskLevel,
 } from './contracts.js';
 
+export type { EngineerGuide } from './engineer-case-contract.js';
+
 export { containsSensitiveLearningTopic } from './learning-mask.js';
 export { nowId } from './identifiers.js';
 
