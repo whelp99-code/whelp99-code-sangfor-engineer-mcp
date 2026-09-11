@@ -13,6 +13,7 @@ Indexed architectural decisions for sangfor-engineer-mcp. Status: `verified` = o
 | [blro-separation-and-operations](blro-separation-and-operations.md) | draft | Phased work plan to separate BLRO from JM and operate it: endpoint installability, job envelope, authoritative stores, enrollment/transport, shadow-then-migrate, operations. |
 | [realtime-product-monitoring-first-response](realtime-product-monitoring-first-response.md) | draft | Product-specific telemetry, incident, first-response, safety, UX, and readiness-gated rollout research. |
 | [product-engineer-card](product-engineer-card.md) | draft | New product = thin registry-pointing card + two session roles (collector/operator); evaluate and report stay deterministic. Frozen pending #28. |
+| [engineer-workflow-delegation-plan](engineer-workflow-delegation-plan.md) | draft | 실제 장비 확인·계산·요구사항·구축 가이드와 후속 승인 실행을 18개 Issue/PR로 분리한 위임 개발·독립 인수 계획. |
 
 To add a decision: copy the shape of an existing doc (Context → Decision → Rationale → Consequences), set a Status, and add a row here.
 
