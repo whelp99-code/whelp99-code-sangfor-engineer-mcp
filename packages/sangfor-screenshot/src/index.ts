@@ -25,13 +25,23 @@ export interface ScreenshotResult {
 }
 
 interface ProductConfig {
-  defaultUrl: string;
   menus: Array<{ menu: string; submenu?: string }>;
 }
 
+const DEFAULT_SCREENSHOT_URL = {
+  EPP: 'https://192.0.2.10',
+  IAG: 'https://192.0.2.11',
+  CC: 'https://192.0.2.12',
+} as const;
+
+const SCREENSHOT_URL_ENV = {
+  EPP: 'SANGFOR_EPP_URL',
+  IAG: 'SANGFOR_IAG_URL',
+  CC: 'SANGFOR_CC_URL',
+} as const;
+
 const PRODUCT_CONFIGS: Record<ScreenshotOptions['product'], ProductConfig> = {
   EPP: {
-    defaultUrl: process.env.SANGFOR_EPP_URL ?? 'https://192.0.2.10',
     menus: [
       { menu: 'Dashboard' },
       { menu: 'Assets', submenu: 'Endpoint/Agent List' },
@@ -45,7 +55,6 @@ const PRODUCT_CONFIGS: Record<ScreenshotOptions['product'], ProductConfig> = {
     ],
   },
   IAG: {
-    defaultUrl: process.env.SANGFOR_IAG_URL ?? 'https://192.0.2.11',
     menus: [
       { menu: 'Dashboard' },
       { menu: 'System', submenu: 'Interfaces' },
@@ -59,7 +68,6 @@ const PRODUCT_CONFIGS: Record<ScreenshotOptions['product'], ProductConfig> = {
     ],
   },
   CC: {
-    defaultUrl: process.env.SANGFOR_CC_URL ?? 'https://192.0.2.12',
     menus: [
       { menu: 'Dashboard', submenu: 'Security Operations' },
       { menu: 'Assets', submenu: 'Sensors/Connectors' },
@@ -76,7 +84,7 @@ export function resolveProductScreenshotTargetUrl(
   product: ScreenshotOptions['product'],
   targetUrl?: string,
 ): string {
-  return targetUrl ?? PRODUCT_CONFIGS[product].defaultUrl;
+  return targetUrl ?? process.env[SCREENSHOT_URL_ENV[product]] ?? DEFAULT_SCREENSHOT_URL[product];
 }
 
 function screenshotFileStem(menu: { menu: string; submenu?: string }): string {
