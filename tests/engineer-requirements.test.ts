@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
@@ -20,7 +21,7 @@ import {
 const AUTH = { tenantId: 'tenant-a', projectId: 'proj-a', actorId: 'actor-a' } as const;
 const DIGEST = 'ab'.repeat(32);
 const WHEN = '2026-09-09T00:00:00.000Z';
-const TMP_ROOT = '/home/jm/.cache/sfr-e04-tmp';
+const TMP_ROOT = join(tmpdir(), 'sfr-e04-tmp');
 const MANIFEST = JSON.parse(readFileSync(new URL('./fixtures/engineer-workflow/requirements-synthetic-manifest.json', import.meta.url), 'utf8')) as {
   itemCount: number;
   claimedOriginal26: boolean;
