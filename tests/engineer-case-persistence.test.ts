@@ -335,6 +335,39 @@ describe('engineer case persistence', () => {
     expect(artifact.payload).not.toContain('plain');
   });
 
+  it('keeps artifacts omitted from a later revision', async () => {
+    const db = new FakeEngineerCaseAuthorityDatabase();
+    const store = storeFor(db);
+    const created = await store.saveEngineerCase({
+      auth: AUTH,
+      document: fixtureCase(),
+      requestId: 'req-art-1',
+      artifacts: [{
+        id: 'art-1', digest: DIGEST, mediaType: 'application/json',
+        payload: '{"usable":40}', sanitized: true, retention: 'case-revision',
+      }],
+    });
+    expect(created.ok).toBe(true);
+    const updated = await store.saveEngineerCase({
+      auth: AUTH,
+      document: fixtureCase({ revision: 'rev-2' }),
+      requestId: 'req-art-2',
+      expectedRevision: 'rev-1',
+      artifacts: [{
+        id: 'art-2', digest: 'cd'.repeat(32), mediaType: 'application/json',
+        payload: '{"kept":true}', sanitized: true, retention: 'case-revision',
+      }],
+    });
+    expect(updated.ok).toBe(true);
+    const kept = await store.loadEngineerCaseArtifact({ ...AUTH, caseId: 'case-existing-1', artifactId: 'art-1' });
+    const added = await store.loadEngineerCaseArtifact({ ...AUTH, caseId: 'case-existing-1', artifactId: 'art-2' });
+    expect(kept.ok).toBe(true);
+    expect(added.ok).toBe(true);
+    if (!kept.ok || !added.ok) throw new Error('expected both artifacts');
+    expect(kept.payload).toContain('40');
+    expect(added.payload).toContain('kept');
+  });
+
   it('keeps an unauthorized actor from reading another project artifact', async () => {
     const db = new FakeEngineerCaseAuthorityDatabase();
     const store = storeFor(db);

@@ -118,6 +118,12 @@ export async function postExportEngineerGuide(
 
   const exportedCaseRevision = snapshot.revision;
   const exportedGuideRevision = snapshot.guide.revision;
+  if (body.expectedRevision !== undefined && body.expectedRevision !== exportedCaseRevision) {
+    return {
+      status: engineerCaseHttpStatus({ ok: false, code: 'REVISION_CONFLICT' }),
+      body: exportUnsaved('REVISION_CONFLICT', { currentCaseRevision: exportedCaseRevision }),
+    };
+  }
   const outputRoot = mkdtempSync(join(tmpdir(), 'e10b-guide-'));
   const fileName = safeFileName(snapshot.caseId, exportedGuideRevision);
   try {
@@ -145,7 +151,7 @@ export async function postExportEngineerGuide(
     const persist = await store.save({
       auth,
       requestId: `reqx${Date.now().toString(16)}`,
-      expectedRevision: exportedCaseRevision,
+      expectedRevision: body.expectedRevision ?? exportedCaseRevision,
       document: { ...(snapshot as unknown as Record<string, unknown>), revision: nextRevision },
       artifacts: [{
         id: artifactId,

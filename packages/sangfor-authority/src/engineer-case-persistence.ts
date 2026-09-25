@@ -390,7 +390,20 @@ export async function replaceEngineerCaseArtifacts(
   tx: SqlExecutor,
   projectId: string,
   caseId: string,
+  artifactIds?: readonly string[],
 ): Promise<number> {
+  if (artifactIds) {
+    let removed = 0;
+    for (const artifactId of artifactIds) {
+      removed += await tx.$executeRawUnsafe(
+        `DELETE FROM "BlroEngineerCaseArtifact" WHERE "projectId"=$1 AND "caseId"=$2 AND "id"=$3`,
+        projectId,
+        caseId,
+        artifactId,
+      );
+    }
+    return removed;
+  }
   return tx.$executeRawUnsafe(
     `DELETE FROM "BlroEngineerCaseArtifact" WHERE "projectId"=$1 AND "caseId"=$2`,
     projectId,
@@ -471,7 +484,12 @@ export async function persistEngineerCaseInTransaction(
     }
     const updated = await persistEngineerCaseRow(tx, { ...input, mode: 'update' });
     if (updated !== 1) throw new EngineerCasePersistenceError('REVISION_CONFLICT');
-    await replaceEngineerCaseArtifacts(tx, input.auth.projectId, input.prepared.value.caseId);
+    await replaceEngineerCaseArtifacts(
+      tx,
+      input.auth.projectId,
+      input.prepared.value.caseId,
+      (input.artifacts ?? []).map((artifact) => artifact.id),
+    );
   }
 
   for (const artifact of input.artifacts ?? []) {

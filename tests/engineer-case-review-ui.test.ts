@@ -589,6 +589,63 @@ describe('engineer case review UI contract', () => {
     expect(ENGINEER_CASE_ACTION_SCRIPT).toContain('저장되지 않음');
   });
 
+  it('refuses a stale export revision and keeps evidence artifacts beside the guide file', async () => {
+    const base = await listen(storeFor(new FakeEngineerCaseAuthorityDatabase()));
+    const reviewed = await call(base, '/api/engineer-cases/review', { draft: { ...draft, caseId: 'case-export-race-1' } });
+    const saved = await call(base, '/api/engineer-cases', {
+      requestId: 'req-export-race-1',
+      document: reviewed.body.document,
+      artifacts: [{
+        id: 'art-evidence-1',
+        digest: DIGEST,
+        mediaType: 'application/json',
+        payload: '{"usable":40}',
+        sanitized: true,
+        retention: 'case-revision',
+      }],
+    });
+    expect(saved.body).toMatchObject({ ok: true, status: 'saved' });
+
+    const stale = await call(base, '/api/engineer-cases/guide-export', {
+      caseId: 'case-export-race-1',
+      expectedRevision: 'rev-not-reviewed',
+    });
+    expect(stale.status).toBe(409);
+    expect(stale.body).toMatchObject({
+      ok: false,
+      status: 'unsaved',
+      code: 'REVISION_CONFLICT',
+      downloadComplete: false,
+      currentCaseRevision: saved.body.revision,
+    });
+    expect(stale.body).not.toHaveProperty('artifactId');
+
+    const exported = await call(base, '/api/engineer-cases/guide-export', {
+      caseId: 'case-export-race-1',
+      expectedRevision: saved.body.revision,
+    });
+    expect(exported.status).toBe(200);
+    expect(exported.body).toMatchObject({
+      ok: true,
+      downloadComplete: true,
+      artifactId: 'gdocx-1',
+      revisionChangedDuringExport: false,
+    });
+
+    const evidence = await call(base, '/api/engineer-cases/artifact', {
+      caseId: 'case-export-race-1',
+      artifactId: 'art-evidence-1',
+    });
+    expect(evidence.status).toBe(200);
+    expect(evidence.body).toMatchObject({ ok: true, id: 'art-evidence-1' });
+    const guide = await call(base, '/api/engineer-cases/artifact', {
+      caseId: 'case-export-race-1',
+      artifactId: 'gdocx-1',
+    });
+    expect(guide.status).toBe(200);
+    expect(guide.body.ok).toBe(true);
+  });
+
   it('exports Word only after a saved case and blocks cross-case download', async () => {
     const db = new FakeEngineerCaseAuthorityDatabase();
     const store = storeFor(db);

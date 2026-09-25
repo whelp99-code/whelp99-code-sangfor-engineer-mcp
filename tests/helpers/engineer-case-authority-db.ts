@@ -146,9 +146,11 @@ export class FakeEngineerCaseAuthorityDatabase implements AuthorityDatabase {
       this.maybeFail('BlroEngineerCaseArtifact', 'DELETE');
       const projectId = String(values[0]);
       const caseId = String(values[1]);
+      const artifactId = query.includes('"id"=$3') ? String(values[2]) : undefined;
       let count = 0;
       for (const [key, row] of [...this.artifacts.entries()]) {
-        if (row.projectId === projectId && row.caseId === caseId && this.visible(row)) {
+        if (row.projectId === projectId && row.caseId === caseId && this.visible(row)
+          && (artifactId === undefined || String(row.id) === artifactId)) {
           this.artifacts.delete(key);
           count += 1;
         }
