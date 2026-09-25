@@ -1,0 +1,50 @@
+{
+  "path": "existing SSH start-mcp.sh operational entrypoint",
+  "results": [
+    {
+      "queryId": "v5-holdout3-01",
+      "actualIds": [
+        "structured_de84519bd4bca327d9d67a64832db5caea1a0baeb19504a3b7ef15d7fe5b01bf",
+        "structured_d0f52e8f4f1c69e3302ecb8d9ca970c9f7ae142b7fb76ef9043887b453f933f0",
+        "structured_86300c6bd5d1cd087f37cabcee12d2bff0622efb1e8694447450e6663c8c3cbb"
+      ],
+      "expectedIds": [
+        "structured_de84519bd4bca327d9d67a64832db5caea1a0baeb19504a3b7ef15d7fe5b01bf",
+        "structured_d0f52e8f4f1c69e3302ecb8d9ca970c9f7ae142b7fb76ef9043887b453f933f0",
+        "structured_86300c6bd5d1cd087f37cabcee12d2bff0622efb1e8694447450e6663c8c3cbb"
+      ],
+      "pass": true
+    },
+    {
+      "queryId": "v5-holdout3-04",
+      "actualIds": [
+        "structured_096f976939e3231bdc10aa9b6b0c08a05e6552de9a2739c1cac5967328591720",
+        "structured_47c3a9db3f6c8ce076f127ce083e3fd7cd7cea356887f689a6e4cb57ac770e23",
+        "structured_e0e3cdf9f1c63e828415599769c360dbf490d19e79a9bc8953b11e0f29691335",
+        "structured_5c3bb43c6d6452551f725eb9dcaf68a1d3c491c18ce59ee3ad9f6d52b44a147f",
+        "structured_30583be338aaf70745ba1cf9da8f45a10df272aa861b0cac896416965b1e28f0"
+      ],
+      "expectedIds": [
+        "structured_096f976939e3231bdc10aa9b6b0c08a05e6552de9a2739c1cac5967328591720",
+        "structured_47c3a9db3f6c8ce076f127ce083e3fd7cd7cea356887f689a6e4cb57ac770e23",
+        "structured_e0e3cdf9f1c63e828415599769c360dbf490d19e79a9bc8953b11e0f29691335",
+        "structured_5c3bb43c6d6452551f725eb9dcaf68a1d3c491c18ce59ee3ad9f6d52b44a147f",
+        "structured_30583be338aaf70745ba1cf9da8f45a10df272aa861b0cac896416965b1e28f0"
+      ],
+      "pass": true
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-01",
+      "actualIds": [],
+      "expectedIds": [],
+      "pass": true
+    },
+    {
+      "queryId": "v5-holdout3-noanswer-07",
+      "actualIds": [],
+      "expectedIds": [],
+      "pass": true
+    }
+  ],
+  "pass": true
+}

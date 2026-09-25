@@ -1,0 +1,67 @@
+{
+  "8114": {
+    "status": 200,
+    "body": {
+      "ok": true,
+      "model": "intfloat/multilingual-e5-small",
+      "dimensions": 384,
+      "revision": "614241f622f53c4eeff9890bdc4f31cfecc418b3"
+    }
+  },
+  "8119": {
+    "status": 200,
+    "body": {
+      "ok": true,
+      "model": "Qwen/Qwen3-Reranker-0.6B",
+      "revision": "e61197ed45024b0ed8a2d74b80b4d909f1255473",
+      "configurationSha256": "05bb2aff6414a543bf32068503f7c953fb9f552a133ce113260241589a85202c",
+      "busy": false
+    }
+  },
+  "3700": {
+    "status": 200,
+    "body": {
+      "ok": true,
+      "schemaVersion": "20260826220000_blro_remote_job_authority",
+      "checks": {
+        "config": {
+          "ok": true
+        },
+        "database": {
+          "ok": true
+        },
+        "schema": {
+          "ok": true
+        },
+        "signing": {
+          "ok": true
+        },
+        "trust": {
+          "ok": true
+        },
+        "scope": {
+          "ok": true
+        },
+        "domainApis": {
+          "ok": true
+        },
+        "drain": {
+          "ok": true
+        }
+      }
+    }
+  },
+  "3502": {
+    "status": 200,
+    "body": "operator-console HTML"
+  },
+  "3600": {
+    "status": 200,
+    "body": {
+      "status": "ok",
+      "bridge": "whelp99-mcp-http-bridge",
+      "mcp": "connected",
+      "port": 3600
+    }
+  }
+}
