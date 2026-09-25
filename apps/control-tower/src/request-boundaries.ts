@@ -85,6 +85,17 @@ export const controlTowerRequestSchemas = {
     args: runtimeJsonObjectSchema.optional(),
     deviceId: idSchema.optional(),
   }).strict(),
+  'engineer-guide-dry-run': z.object({
+    actionPath: idSchema.min(1),
+    configPath: idSchema.min(1),
+    guidePath: idSchema.min(1),
+    observedPath: idSchema.min(1),
+    proposalPath: idSchema.min(1).optional(),
+    approvalEnvelopePath: idSchema.optional(),
+    apply: z.boolean().optional(),
+    dryRun: z.boolean().optional(),
+    approval: runtimeJsonObjectSchema.optional(),
+  }).strict(),
   'playbook-seed': z.object({ authoredBy: idSchema.optional() }).strict(),
   'playbook-create': z.object({
     name: textSchema.optional(),

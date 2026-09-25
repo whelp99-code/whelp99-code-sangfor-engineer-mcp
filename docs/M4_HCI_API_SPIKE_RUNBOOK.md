@@ -5,15 +5,16 @@
 > 원칙: 전 과정 [[Global Constraints]] 준수 — read-back oracle 전용, fail-closed, 시크릿 미커밋, 승격은 evidence 링크와 함께만.
 
 ## STATUS 2026-07-02 (VPN 연결 후 실행됨)
-- **접속 확정:** OpenAPI 호스트 = **SCP 10.80.1.104:4430** (HCI .105 아님). admin / Itac123!@#.
+- **접속 확정:** OpenAPI 호스트는 승인된 비공개 저장소의 `SANGFOR_HCI_IDENTITY_URL`이다. HCI 콘솔 호스트와 다를 수 있다. 사용자와 비밀번호는 `SANGFOR_HCI_USER`와 `SANGFOR_HCI_PASSWORD`만 사용한다(환경 변수, 미커밋). 이 파일에 있던 평문 호스트·계정·비밀번호는 자리표시자로 바꿨다. 과거 값은 재사용하지 않는다.
 - **Step 1-3 완료:** 인증 계약 **VERIFIED**(Keystone v2 passwordCredentials, provider 계약 일치) → read-only smoke 통과(compute 28 VM, image 0). 코드 수정 반영(volumev2 타입 해석, inventory 관대). 증적: `outputs/diagnosis/HCI_SCP_real_device_smoke_2026-07-02.md`, 재현: `scripts/hci-real-smoke.ts`.
 - **Step 4-5 차단:** volume 서비스 **503(cinder 미배포)** → create-volume 실장비 write 불가. + write 가능한 compute는 실 프로덕션 VM 대상이라 **write 미수행**. `volume_create`=tested_mock 유지(field_verified 아님). **volume 서비스가 배포된 SCP 확보 시 Step 4-5 재개.**
+- **비밀 정리 (E02):** 현재 트리의 이 문서와 스모크 증적만 정리한다. Git history 노출과 자격 증명 폐기·교체는 별개다. 현재 파일 수정만으로 유출 대응 완료가 아니다. 영수증: `docs/references/engineer-workflow/e02-secret-cleanup-receipt.md`.
 
 ## 시작 전 사용자에게 필요한 것 (블로커)
 
-1. **FortiClient VPN 연결** — 사용자가 직접 Connect(비번 입력). 연결 후 AI가 `utun` 인터페이스 + HCI IP 도달성으로 검증.
-2. **HCI 콘솔 IP** (예: `10.80.1.x`) — EPP/CC/IAG(.106–.108)와 별개. 미확인.
-3. **HCI WebUI 자격증명** — 사용자 보유. AI에 전달(또는 aside-browser 로그인 시 입력). EPP/CC/IAG용 `Itac123!@#` 계열과 다를 수 있음.
+1. **FortiClient VPN 연결** — 사용자가 직접 Connect(비밀번호는 사람에게만). 연결 후 AI가 `utun` 인터페이스 + 승인된 HCI 호스트 도달성으로 검증.
+2. **HCI 콘솔 호스트** — EPP/CC/IAG와 별개. 승인된 비공개 저장소 또는 PM이 제공한다. 문서·Issue·채팅에 쓰지 않는다.
+3. **HCI WebUI 자격증명** — 승인된 비공개 저장소 또는 환경 변수만. 채팅·Issue·문서에 붙이지 않는다. 다른 제품 계정과 같다고 가정하지 않는다.
 
 ## Step 1 — WebUI 접속 + OpenAPI 활성 확인 (read-only, aside-browser)
 
@@ -33,7 +34,7 @@
 
 ## Step 3 — read-only smoke (실장비)
 
-- `SANGFOR_HCI_IDENTITY_URL=https://{hci_ip}/openstack/identity/v2.0`, `SANGFOR_HCI_TENANT/USER/PASSWORD`(env, 미커밋) 설정.
+- `SANGFOR_HCI_IDENTITY_URL`을 승인된 identity URL로 두고, `SANGFOR_HCI_TENANT` / `SANGFOR_HCI_USER` / `SANGFOR_HCI_PASSWORD`는 승인된 저장소에서만 주입한다(미커밋).
 - `sangfor_hci_inventory` 실행 → serviceCatalog 해석 + `GET /volumes/detail` 안정 동작(토큰 자동갱신 포함) 확인.
 - `sangfor_hci_health_report` 실행 → 실 인벤토리 기반 한국어 리포트 산출.
 

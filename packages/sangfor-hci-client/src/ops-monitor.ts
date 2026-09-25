@@ -89,6 +89,28 @@ export function summarizeHciHealth(
   };
 }
 
+/**
+ * Inventory server/volume counts are not usable capacity, HA topology, or an
+ * official N+1 formula. Volume-status PASS must not be reused as capacity PASS.
+ */
+export function assessHciCapacityOrHaFromInventory(
+  inventory: { servers: unknown[]; volumes: HciVolume[]; images?: unknown[] },
+): {
+  readonly verdict: 'INDETERMINATE';
+  readonly scope: 'capacity-or-ha';
+  readonly reason: string;
+  readonly guideReadyGranted: false;
+  readonly inputCounts: { readonly servers: number; readonly volumes: number };
+} {
+  return {
+    verdict: 'INDETERMINATE',
+    scope: 'capacity-or-ha',
+    reason: 'VM_COUNT_NOT_CAPACITY_OR_HA: inventory server/volume counts are not usable capacity, HA topology, or an official N+1 formula',
+    guideReadyGranted: false,
+    inputCounts: { servers: inventory.servers.length, volumes: inventory.volumes.length },
+  };
+}
+
 export function renderHciHealthReport(
   summary: HciHealthSummary,
   meta: { host?: string; collectedAt?: string } = {},

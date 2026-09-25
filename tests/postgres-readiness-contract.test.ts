@@ -100,7 +100,7 @@ describe('Todo 24 database lane partition gate', () => {
     // Given
     const onDisk = globSync('tests/**/*.test.ts').sort();
     const external = externalDatabaseOnlyTestFiles();
-    expect(external.length).toBe(7);
+    expect(external.length).toBe(8);
 
     // When
     const defaultSelection = defaultSuiteSelection();
@@ -145,7 +145,7 @@ describe('Todo 24 mandatory PostgreSQL profile refusal', () => {
 
     // Then
     expect(result.status).not.toBe(0);
-    expect(result.stdout).toContain('MANDATORY_POSTGRES_SELECTION: 29 exact files');
+    expect(result.stdout).toContain('MANDATORY_POSTGRES_SELECTION: 30 exact files');
     expect(`${result.stdout}${result.stderr}`).toContain('MANDATORY_POSTGRES_DATABASE_REQUIRED');
   });
 

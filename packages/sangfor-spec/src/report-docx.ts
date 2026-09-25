@@ -1,11 +1,75 @@
 /** Word .docx rendering of the advisory report (markdown → Word paragraphs, zipped). */
 
-import { mkdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve, sep } from 'node:path';
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { renderAdvisoryReport } from './report-markdown.js';
 import type { EvaluationResult, IntendedSpec } from './types.js';
+
+export const DOCX_OUTPUT_ESCAPE_PREFIX = 'docx outputPath escapes the output root: ';
+export const DOCX_OUTPUT_EXT_ERROR = 'docx outputPath must end with .docx';
+export const DOCX_OUTPUT_EXISTS_PREFIX = 'docx outputPath already exists: ';
+
+export type ConfinedDocxArchiveInput = {
+  readonly outputPath: string;
+  readonly files: Readonly<Record<string, string>>;
+  readonly scratchPrefix?: string;
+  readonly overwrite?: boolean;
+  readonly outputRoot?: string;
+};
+
+export type ConfinedDocxArchiveResult = {
+  readonly docxPath: string;
+  readonly absPath: string;
+  readonly size: number;
+};
+
+export function resolveDocxOutputRoot(explicitRoot?: string): string {
+  return resolve(explicitRoot ?? process.env.SANGFOR_OUTPUT_ROOT ?? process.cwd());
+}
+
+/**
+ * Resolve a .docx path inside the output root. Refusals happen before any
+ * scratch directory is created and before any existing file is removed.
+ */
+export function resolveConfinedDocxOutputPath(outputPath: string, outputRoot?: string): string {
+  const root = resolveDocxOutputRoot(outputRoot);
+  const absOut = resolve(root, outputPath);
+  if (absOut !== root && !absOut.startsWith(root + sep)) {
+    throw new Error(`${DOCX_OUTPUT_ESCAPE_PREFIX}${outputPath}`);
+  }
+  if (!absOut.toLowerCase().endsWith('.docx')) throw new Error(DOCX_OUTPUT_EXT_ERROR);
+  return absOut;
+}
+
+export function writeConfinedDocxArchive(input: ConfinedDocxArchiveInput): ConfinedDocxArchiveResult {
+  const absOut = resolveConfinedDocxOutputPath(input.outputPath, input.outputRoot);
+  if (input.overwrite !== true && existsSync(absOut)) {
+    throw new Error(`${DOCX_OUTPUT_EXISTS_PREFIX}${input.outputPath}`);
+  }
+
+  const prefix = input.scratchPrefix ?? 'advdocx-';
+  const work = join(tmpdir(), `${prefix}${Date.now()}-${Math.random().toString(16).slice(2)}`);
+  try {
+    for (const [relative, content] of Object.entries(input.files)) {
+      if (relative.includes('\0') || relative.split(/[/\\]/u).some((part) => part === '..')) {
+        throw new Error(`${DOCX_OUTPUT_ESCAPE_PREFIX}${relative}`);
+      }
+      const target = join(work, relative);
+      mkdirSync(dirname(target), { recursive: true });
+      writeFileSync(target, content);
+    }
+    mkdirSync(dirname(absOut), { recursive: true });
+    if (input.overwrite === true) {
+      try { rmSync(absOut, { force: true }); } catch { /* occupied dest fails at zip */ }
+    }
+    execFileSync('zip', ['-qr', absOut, '.'], { cwd: work });
+    return { docxPath: input.outputPath, absPath: absOut, size: statSync(absOut).size };
+  } finally {
+    rmSync(work, { recursive: true, force: true });
+  }
+}
 
 /** Render the advisory report as a Word .docx (markdown → Word paragraphs, zipped). */
 export function renderAdvisoryReportDocx(spec: IntendedSpec, result: EvaluationResult, outputPath: string): { docxPath: string; size: number } {
@@ -36,30 +100,15 @@ export function renderAdvisoryReportDocx(spec: IntendedSpec, result: EvaluationR
   const rels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>`;
 
-  // zip runs from the temp workdir → need an absolute target. Confine to an output
-  // root and reject path traversal BEFORE any destructive rmSync (no arbitrary overwrite)
-  // and before any scratch directory exists, so a refusal leaves nothing behind.
-  const outputRoot = resolve(process.env.SANGFOR_OUTPUT_ROOT ?? process.cwd());
-  const absOut = resolve(outputRoot, outputPath);
-  if (absOut !== outputRoot && !absOut.startsWith(outputRoot + sep)) {
-    throw new Error(`docx outputPath escapes the output root: ${outputPath}`);
-  }
-  if (!absOut.toLowerCase().endsWith('.docx')) throw new Error('docx outputPath must end with .docx');
-
-  const work = join(tmpdir(), `advdocx-${Date.now()}-${Math.random().toString(16).slice(2)}`);
-  try {
-    mkdirSync(join(work, 'word'), { recursive: true });
-    mkdirSync(join(work, '_rels'), { recursive: true });
-    writeFileSync(join(work, '[Content_Types].xml'), contentTypes);
-    writeFileSync(join(work, '_rels', '.rels'), rels);
-    writeFileSync(join(work, 'word', 'document.xml'), documentXml);
-    mkdirSync(dirname(absOut), { recursive: true });
-    try { rmSync(absOut, { force: true }); } catch {}
-    execFileSync('zip', ['-qr', absOut, '.'], { cwd: work });
-    return { docxPath: outputPath, size: statSync(absOut).size };
-  } finally {
-    // Success, a failed part write, a bad destination, and a failed zip all drop the
-    // scratch root; the two refusals above return before it is ever created.
-    rmSync(work, { recursive: true, force: true });
-  }
+  const written = writeConfinedDocxArchive({
+    outputPath,
+    scratchPrefix: 'advdocx-',
+    overwrite: true,
+    files: {
+      '[Content_Types].xml': contentTypes,
+      '_rels/.rels': rels,
+      'word/document.xml': documentXml,
+    },
+  });
+  return { docxPath: written.docxPath, size: written.size };
 }

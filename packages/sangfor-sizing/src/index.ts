@@ -1,10 +1,14 @@
 /**
- * @sangfor/sizing — ADVISORY sizing tiering. Deliberately does NOT invent an exact
- * appliance model or node count (that would be fabrication). It maps the primary
- * scale driver to a tier (small/medium/large/xlarge) using EXTERNALIZED, sourced
- * thresholds and always defers the exact BOM to the official Sizing Guide + SE
- * validation. A product with no sourced threshold table returns tier 'unsourced'
- * (판정불가) rather than a fabricated tier from hardcoded numbers.
+ * @sangfor/sizing — ADVISORY sizing tiering plus E05 official arithmetic.
+ * Deliberately does NOT invent an exact appliance model or node count (that
+ * would be fabrication). `recommendSizing` maps the primary scale driver to a
+ * tier using EXTERNALIZED, sourced thresholds and always defers the exact BOM
+ * to the official Sizing Guide + SE validation. A product with no sourced
+ * threshold table returns tier 'unsourced' (판정불가).
+ *
+ * Official remaining/utilization/headroom arithmetic is separate
+ * (`evaluateEngineerFormula`). An advisory tier is never a capacity/HA PASS
+ * and never grants guide review_ready.
  */
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -121,3 +125,22 @@ export function recommendSizing(product: string, input: SizingInput, root: strin
       : ['헤드룸 20~30% 권장', 'HA/DR 구성 시 이중화 반영 필요', '로그 보존 요구가 스토리지 사이징에 별도 영향', '임계값은 잠정 현장 휴리스틱 — 공식 Sizing Guide로 확정 필요'],
   };
 }
+
+export {
+  ENGINEER_FORMULA_CATALOG,
+  ENGINEER_FORMULA_IDS,
+  convertEngineerUnit,
+  evaluateEngineerFormula,
+  evaluateUnsupportedHaCapacity,
+  isEngineerFormulaId,
+  operandFromCalculation,
+  operandFromObservation,
+  roundHalfAway,
+  sizingTierIsNotOfficialFormula,
+} from './engineer-calculations.js';
+export type {
+  EngineerFormulaId,
+  EngineerFormulaOperand,
+  EngineerFormulaRequest,
+  EngineerFormulaRole,
+} from './engineer-calculations.js';

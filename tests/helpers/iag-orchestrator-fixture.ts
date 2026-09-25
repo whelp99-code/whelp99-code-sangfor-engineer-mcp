@@ -35,6 +35,7 @@ export async function iagOrchestratorFixture(input: {
   readonly readBackPresent?: boolean;
   readonly faults?: IagStoreFaults;
   readonly authorityKind?: 'bootstrap_candidate' | 'ordinary_active';
+  readonly repeatPreflight?: boolean;
 }) {
   const observed = input.observed ?? 'ABSENT';
   const ordinary = input.authorityKind === 'ordinary_active';
@@ -70,6 +71,7 @@ export async function iagOrchestratorFixture(input: {
   if (ordinary) process.env.SANGFOR_OPERATOR_APPROVAL_SECRET = IAG_ORDINARY_APPROVAL_SECRET;
   const adapterFixture = replayFixture(
     [parsed.value], input.dispatchBehavior ?? 'settle', observed === 'EXACT_MATCH', input.readBackPresent ?? true,
+    input.repeatPreflight ?? false,
   );
   const store = FileIagOrchestratorStore.initialize({
     ledgerPath: join(input.root, 'orchestrator.jsonl'), ledgerSecret: IAG_ORCHESTRATOR_LEDGER_SECRET,

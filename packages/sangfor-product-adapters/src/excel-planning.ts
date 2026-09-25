@@ -12,6 +12,11 @@ import type {
   RequirementProductCode,
 } from './types.js';
 
+export {
+  ingestExcelRequirementsForCase,
+  ingestEngineerRequirements,
+} from './engineer-requirement-ingest.js';
+
 export function mapRequirementsToProducts(input: { rows: ExcelRequirementRow[] }): RequirementMappingResult {
   const rows = input.rows.map(row => mapExcelRequirement(row));
   const summary = rows.reduce<Record<RequirementProductCode, number>>((acc, row) => {

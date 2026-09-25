@@ -30,6 +30,7 @@ export const TOOL_REGISTRATION_ORDER = [
   "sangfor_iag_exception_dry_run",
   "sangfor_iag_exception_apply",
   "sangfor_iag_exception_status",
+  "sangfor_engineer_guide_dry_run",
   "sangfor_search_manuals",
   "sangfor_get_manual_section",
   "sangfor_search_wiki",

@@ -66,7 +66,7 @@ pnpm install --frozen-lockfile
 pnpm run lint
 pnpm run build
 pnpm test
-pnpm run smoke:mcp              # expect: smoke-mcp-tools: ok (118 tools)
+pnpm run smoke:mcp              # expect: smoke-mcp-tools: ok (119 tools)
 pnpm run check:browser-boundary # expect: BLRO_READY_BROWSER_BOUNDARY_PASS
 pnpm run check:mcp-scorecard
 ```

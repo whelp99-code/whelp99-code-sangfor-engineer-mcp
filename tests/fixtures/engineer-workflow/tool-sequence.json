@@ -1,0 +1,32 @@
+{
+  "environmentKind": "fixture",
+  "sequences": [
+    {
+      "id": "historical-hci-readonly",
+      "caseId": "existing-hci-health",
+      "steps": [
+        { "id": "vpn-or-path", "kind": "manual", "actor": "human" },
+        { "id": "keystone-auth", "kind": "code", "symbol": "KeystoneV2TokenProvider" },
+        { "id": "collect-inventory", "kind": "code", "symbol": "collectInventory", "tool": "sangfor_hci_inventory" },
+        { "id": "health-report", "kind": "code", "symbol": "summarizeHciHealth", "tool": "sangfor_hci_health_report" },
+        { "id": "llm-interpret-inventory", "kind": "manual_llm", "actor": "operator" },
+        { "id": "join-requirements", "kind": "unimplemented" },
+        { "id": "hci-guide-from-observations", "kind": "unimplemented" }
+      ]
+    },
+    {
+      "id": "historical-excel-26",
+      "caseId": "historical-excel-26",
+      "steps": [
+        { "id": "import-excel", "kind": "code", "symbol": "importExcelRequirementList" },
+        { "id": "map-products", "kind": "code", "symbol": "mapRequirementsToProducts" },
+        { "id": "excel-plan", "kind": "code", "symbol": "generateExcelBasedChangePlan" },
+        { "id": "setting-guide-docx", "kind": "code", "symbol": "buildSettingGuideDocx", "tool": "sangfor_generate_setting_guide_docx" },
+        { "id": "officecli-validate", "kind": "code_optional", "note": "valid is null when officecli is absent; that is not a document PASS" },
+        { "id": "llm-choose-tools", "kind": "manual_llm", "actor": "operator" },
+        { "id": "customer-value-review", "kind": "manual", "actor": "pm" },
+        { "id": "join-to-live-console", "kind": "unimplemented" }
+      ]
+    }
+  ]
+}

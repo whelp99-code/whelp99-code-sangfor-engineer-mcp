@@ -2,7 +2,7 @@ import http from 'node:http';
 import { URL } from 'node:url';
 import { ZodError } from 'zod';
 import { loadEnvFile } from '../../../packages/sangfor-collector/src/load-env.js';
-import { PRODUCTS, resolveBindHost, checkAuth, assertBindSafety } from '../../../packages/shared/src/index.js';
+import { PRODUCTS, resolveBindHost, checkAuth, assertBindSafety, resolveRepoData } from '../../../packages/shared/src/index.js';
 import {
   MAX_REQUEST_BODY_BYTES,
   RequestBodyTooLargeError,
@@ -26,6 +26,19 @@ import {
   getDiagnoses
 } from './api.js';
 import { postCaseResolution } from './case-resolution.js';
+import {
+  defaultEngineerCaseStore,
+  getEngineerCaseArtifact,
+  getResumeEngineerCase,
+  postCompareEngineerCase,
+  postEngineerCaseArtifact,
+  postResumeEngineerCase,
+  postSaveEngineerCase,
+  resolveEngineerCaseApiAuth,
+  type OperatorServerOptions,
+} from './engineer-case-api.js';
+import { postReviewEngineerCase } from './engineer-case-review.js';
+import { getDownloadEngineerGuide, postExportEngineerGuide, sendEngineerGuideDownload } from './engineer-case-guide.js';
 import { dashboardHtml } from './ui.js';
 import {
   decodeOperatorRequestBody,
@@ -54,8 +67,13 @@ async function readJsonBody<TRoute extends OperatorRequestRoute>(
   return decodeOperatorRequestBody(body, route);
 }
 
-export function createOperatorServer(): http.Server {
+export function createOperatorServer(options: OperatorServerOptions = {}): http.Server {
   const apiToken = process.env.SANGFOR_API_TOKEN;
+  const caseStore = options.engineerCase?.store ?? defaultEngineerCaseStore();
+  const caseAuth = () => resolveEngineerCaseApiAuth(options.engineerCase?.env ?? process.env, options.engineerCase?.auth);
+  const guideApplyExportRoot = options.engineerCase?.guideApplyExportRoot
+    ?? options.engineerCase?.env?.SANGFOR_ENGINEER_GUIDE_APPLY_ROOT
+    ?? process.env.SANGFOR_ENGINEER_GUIDE_APPLY_ROOT;
 
   return http.createServer(async (req, res) => {
     const url = new URL(req.url ?? '/', 'http://localhost');
@@ -143,6 +161,70 @@ export function createOperatorServer(): http.Server {
         return json(res, await postFeedback(body));
       }
 
+      if (method === 'POST' && url.pathname === '/api/engineer-cases') {
+        const body = await readJsonBody(req, 'engineer-cases');
+        const result = await postSaveEngineerCase(body, caseStore, caseAuth(), { guideApplyExportRoot });
+        return json(res, result.body, result.status);
+      }
+
+      if (method === 'GET' && url.pathname === '/api/engineer-cases') {
+        const result = await getResumeEngineerCase(
+          url.searchParams.get('caseId'),
+          caseStore,
+          caseAuth(),
+        );
+        return json(res, result.body, result.status);
+      }
+
+      if (method === 'POST' && url.pathname === '/api/engineer-cases/resume') {
+        const body = await readJsonBody(req, 'engineer-cases-resume');
+        const result = await postResumeEngineerCase(body, caseStore, caseAuth());
+        return json(res, result.body, result.status);
+      }
+
+      if (method === 'POST' && url.pathname === '/api/engineer-cases/compare') {
+        const body = await readJsonBody(req, 'engineer-cases-compare');
+        const result = await postCompareEngineerCase(body, caseStore, caseAuth());
+        return json(res, result.body, result.status);
+      }
+
+      if (method === 'POST' && url.pathname === '/api/engineer-cases/review') {
+        const body = await readJsonBody(req, 'engineer-cases-review');
+        const result = await postReviewEngineerCase(body, caseStore, caseAuth());
+        return json(res, result.body, result.status);
+      }
+
+      if (method === 'POST' && url.pathname === '/api/engineer-cases/artifact') {
+        const body = await readJsonBody(req, 'engineer-cases-artifact');
+        const result = await postEngineerCaseArtifact(body, caseStore, caseAuth());
+        return json(res, result.body, result.status);
+      }
+
+      if (method === 'GET' && url.pathname === '/api/engineer-cases/artifact') {
+        const result = await getEngineerCaseArtifact(
+          url.searchParams.get('caseId'),
+          url.searchParams.get('artifactId'),
+          caseStore,
+          caseAuth(),
+        );
+        return json(res, result.body, result.status);
+      }
+
+      if (method === 'POST' && url.pathname === '/api/engineer-cases/guide-export') {
+        const body = await readJsonBody(req, 'engineer-cases-guide-export');
+        const result = await postExportEngineerGuide(body, caseStore, caseAuth());
+        return json(res, result.body, result.status);
+      }
+
+      if (method === 'GET' && url.pathname === '/api/engineer-cases/guide-download') {
+        return sendEngineerGuideDownload(res, await getDownloadEngineerGuide(
+          url.searchParams.get('caseId'),
+          url.searchParams.get('artifactId'),
+          caseStore,
+          caseAuth(),
+        ), json);
+      }
+
       if (method === 'GET' && (url.pathname === '/' || url.pathname === '/index.html')) {
         res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
         res.end(dashboardHtml());
@@ -170,7 +252,12 @@ if (process.env.MCP_NO_SERVE !== '1' && process.env.VITEST === undefined) {
   const bindHost = resolveBindHost();
   const apiToken = process.env.SANGFOR_API_TOKEN;
   assertBindSafety(bindHost, apiToken); // fail closed: no public bind without a token
-  createOperatorServer().listen(port, bindHost, () => {
+  createOperatorServer({
+    engineerCase: {
+      guideApplyExportRoot: process.env.SANGFOR_ENGINEER_GUIDE_APPLY_ROOT
+        ?? resolveRepoData('outputs/engineer-guide-apply'),
+    },
+  }).listen(port, bindHost, () => {
     console.log(`Sangfor Engineer Web listening on http://${bindHost}:${port}${apiToken ? ' (token-gated)' : ''}`);
     console.log('MCP stdio server: pnpm run dev:mcp (unchanged for Cursor)');
   });

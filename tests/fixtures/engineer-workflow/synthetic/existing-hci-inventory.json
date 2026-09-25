@@ -1,0 +1,12 @@
+{
+  "environmentKind": "fixture",
+  "sourceKind": "provided",
+  "collectedAt": "2026-09-09T00:00:00.000Z",
+  "volumes": [
+    { "id": "vol-fixture-1", "name": "data", "status": "available", "size": 100, "description": null }
+  ],
+  "servers": [
+    { "id": "srv-fixture-1", "name": "vm-a" }
+  ],
+  "images": []
+}

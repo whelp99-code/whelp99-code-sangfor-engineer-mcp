@@ -2,6 +2,7 @@ import { DASHBOARD_STYLE_BLOCK } from './ui-styles.js';
 import { DASHBOARD_BODY } from './ui-layout.js';
 import { CLIENT_CORE_SCRIPT } from './ui-client-core.js';
 import { CLIENT_ACTION_SCRIPT } from './ui-client-actions.js';
+import { ENGINEER_CASE_ACTION_SCRIPT } from './ui-engineer-case-actions.js';
 
 export { API_TOKEN_STORAGE_KEY, buildApiHeaders } from './ui-auth.js';
 
@@ -20,6 +21,8 @@ ${DASHBOARD_BODY}
 ${CLIENT_CORE_SCRIPT}
 
 ${CLIENT_ACTION_SCRIPT}
+
+${ENGINEER_CASE_ACTION_SCRIPT}
 
     initTokenInput();
     loadDashboard();

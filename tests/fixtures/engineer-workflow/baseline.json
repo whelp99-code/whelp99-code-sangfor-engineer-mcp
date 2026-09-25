@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "unit": "E00",
+  "issue": 92,
+  "status": "in_development",
+  "baseCommit": "cd8e44db41b8fcd7aad4d6c052c3dd008c1e27d4",
+  "environmentKind": "fixture",
+  "capturedAt": "2026-09-09",
+  "representativeProduct": "HCI_SCP",
+  "notes": [
+    "Historical 26-item Excel success is a multi-product ITAC checklist with 0 HCI_SCP rows.",
+    "Phase A representative cases are HCI existing-health and HCI new-build. They stay separate from the Excel replay.",
+    "No current_live device read or write was performed for this baseline."
+  ],
+  "scale": {
+    "historicalHciServers": 28,
+    "historicalHciImages": 0,
+    "historicalHciVolumes": 0,
+    "historicalExcelRowsPrioritized": 26,
+    "historicalExcelConsoleItems": 12,
+    "historicalExcelManualItems": 14,
+    "historicalDocxBytesRecorded": 8407,
+    "fixtureReplayBudgetMs": 30000
+  },
+  "collectionCensus": {
+    "collectedSurfaces": 3,
+    "collectedVolumeFields": ["id", "name", "status", "size", "description"],
+    "requiredExistingCaseFields": 12,
+    "missingRequiredFields": 6,
+    "missingCollectionFields": 5,
+    "notProductWideCoverage": true
+  }
+}

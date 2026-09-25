@@ -4,10 +4,21 @@
  * Safety principle (fixes the verifier false-pass class of bug):
  *   INDETERMINATE is NEVER counted as PASS, and overall `ok` requires positive
  *   evidence (at least one PASS, zero FAIL, zero INDETERMINATE).
+ *
+ * Derived engineer-case arithmetic lives in `@sangfor/sizing`
+ * (`evaluateEngineerFormula`). A calculation result alone is never a spec PASS;
+ * fitness still needs a sourced baseline (`evaluateDerivedFitness`) and never
+ * grants guide review_ready.
+ *
+ * Engineer-case requirement compare (E06) reuses `compareValue` through
+ * `evaluateEngineerRequirementCompare`. INDETERMINATE remains unresolved.
  */
 
 import { compareValue } from './compare.js';
 import { aggregateActionableReasons, aggregateNextActions, nextActionsFor } from './assessment-actions.js';
+
+export { evaluateEngineerRequirementCompare, parseEngineerConstraint } from './engineer-compare.js';
+export type { EngineerRequirementCompareResult, EngineerParsedConstraint } from './engineer-compare.js';
 import type {
   AssessmentReasonCode,
   Category,

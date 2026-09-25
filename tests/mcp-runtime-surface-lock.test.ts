@@ -9,6 +9,7 @@ const ROOT = resolve(import.meta.dirname, '..');
 const BASELINE_PATH = join(ROOT, 'tests/fixtures/mcp-runtime-baseline-v1.json');
 const DELTA_PATH = join(ROOT, 'tests/fixtures/mcp-iag-surface-delta-v1.json');
 const IAG_ADDITIONS = [
+  'sangfor_engineer_guide_dry_run',
   'sangfor_iag_exception_apply',
   'sangfor_iag_exception_dry_run',
   'sangfor_iag_exception_status',
@@ -38,8 +39,8 @@ const deltaSchema = z.object({
   schemaVersion: z.literal('mcp-iag-surface-delta.v1'),
   baselineCommit: z.string().regex(/^[a-f0-9]{40}$/u),
   baselineToolCount: z.literal(115),
-  finalToolCount: z.literal(118),
-  approvedAdditions: z.array(toolSchema).length(3),
+  finalToolCount: z.literal(119),
+  approvedAdditions: z.array(toolSchema).length(4),
   reviewedChanges: z.array(toolSchema).length(1),
   sha256: z.string().regex(/^[a-f0-9]{64}$/u),
 });
@@ -103,7 +104,7 @@ beforeAll(async () => {
 }, 60_000);
 
 describe('MCP runtime baseline and reviewed IAG delta', () => {
-  it('preserves all 115 baseline schemas and adds only the three approved IAG tools', () => {
+  it('preserves all 115 baseline schemas and adds only the approved IAG and guide-bound dry-run tools', () => {
     const actual = z.object({
       initialize: z.unknown(),
       tools: z.array(z.unknown()),

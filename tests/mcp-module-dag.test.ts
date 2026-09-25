@@ -75,9 +75,9 @@ describe('MCP module DAG and cohesion', () => {
 
     // Then array equality is primary and any future preimage normalization change fails explicitly.
     expect(names).toEqual(giantBaselineNames);
-    expect(names).toHaveLength(118);
-    expect(baselineDigest).toBe('a3448ac4a4e1206485a67db782ba6f2ea15007c4b3401c9d36900ba0c6154b2b');
-    expect(secondaryNewlineDigest).toBe('6ff0994780be9bf4fd3feb1621418b5a11dfa3b0ca6c083c7d9694fcea2633d6');
+    expect(names).toHaveLength(119);
+    expect(baselineDigest).toBe('b9f3c8ad79fd0b7f4e7b65d60dc4865056879bce6f94bef15025eecac3259629');
+    expect(secondaryNewlineDigest).toBe('79fec3ef7bed0fea349b78bfde93771dec52e8cd7672623d4a8bf292ea4fd6f0');
   });
 
   it('replaces mixed buckets with cohesive domain owners', () => {

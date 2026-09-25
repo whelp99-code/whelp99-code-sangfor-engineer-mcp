@@ -60,6 +60,15 @@ export const CONFIG_REFS = [
   "prisma:model:SangforConfigPlan",
 ] as const;
 
+export const ENGINEER_CASE_REFS = [
+  "persist:packages/sangfor-authority/src/engineer-case-persistence.ts#persistEngineerCaseArtifactRow",
+  "persist:packages/sangfor-authority/src/engineer-case-persistence.ts#persistEngineerCaseInTransaction",
+  "persist:packages/sangfor-authority/src/engineer-case-persistence.ts#persistEngineerCaseRow",
+  "persist:packages/sangfor-authority/src/engineer-case-persistence.ts#replaceEngineerCaseArtifacts",
+  "prisma:model:BlroEngineerCase",
+  "prisma:model:BlroEngineerCaseArtifact",
+] as const;
+
 export const CAPABILITY_REFS = [
   "persist:packages/sangfor-competency/src/promotion-checkpoint.ts#initializePromotionStore",
   "persist:packages/sangfor-competency/src/promotion-checkpoint.ts#writePromotionCheckpoint",

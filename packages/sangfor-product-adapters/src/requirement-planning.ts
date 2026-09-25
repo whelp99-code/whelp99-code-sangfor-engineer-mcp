@@ -10,6 +10,8 @@ import type {
   RequirementTask,
 } from './types.js';
 
+export { ingestTextRequirementsForCase } from './engineer-requirement-ingest.js';
+
 export function analyzeCustomerRequirements(input: RequirementAnalysisInput) {
   const adapter = getProductAdapter(input.product);
   const tasks = input.requirements.map((requirement, index) => taskFromRequirement(adapter, requirement, index));
@@ -126,4 +128,56 @@ function directCapability(adapter: ProductAdapter, value: string): ProductCapabi
 function maxRisk(a: RiskLevel, b: RiskLevel): RiskLevel {
   const order: RiskLevel[] = ['low', 'medium', 'high', 'critical'];
   return order[Math.max(order.indexOf(a), order.indexOf(b))];
+}
+
+export type CatalogGuidePathClaim = {
+  readonly capabilityId: string;
+  readonly menuPath: readonly string[];
+  readonly apiEndpointCandidates: readonly string[];
+  readonly catalogClaim: true;
+  readonly verifiedForFirmware: false;
+  readonly executable: false;
+  readonly firmwareSupport: 'unknown';
+  readonly reason: string;
+};
+
+/**
+ * Catalog menu/API rows are planning claims only. They never become
+ * firmware-verified execute paths and never grant guide review_ready.
+ */
+export function catalogGuidePathClaim(
+  product: string,
+  requirementText: string,
+  firmware?: string,
+): CatalogGuidePathClaim {
+  const adapter = getProductAdapter(product);
+  const capability = bestCapability(adapter, requirementText.toLowerCase());
+  return {
+    capabilityId: capability.id,
+    menuPath: capability.menuPath,
+    apiEndpointCandidates: capability.apiEndpointCandidates,
+    catalogClaim: true,
+    verifiedForFirmware: false,
+    executable: false,
+    firmwareSupport: 'unknown',
+    reason: firmware
+      ? `CATALOG_CLAIM_NOT_VERIFIED:${adapter.product}:${capability.id}:firmware=${firmware}`
+      : `CATALOG_CLAIM_NOT_VERIFIED:${adapter.product}:${capability.id}`,
+  };
+}
+
+export function annotateGuideStepsWithCatalogClaims(input: {
+  readonly product: string;
+  readonly firmware?: string;
+  readonly stepTexts: readonly string[];
+}): {
+  readonly claims: readonly CatalogGuidePathClaim[];
+  readonly executableUpgraded: false;
+  readonly guideReadyGranted: false;
+} {
+  return {
+    claims: input.stepTexts.map((text) => catalogGuidePathClaim(input.product, text, input.firmware)),
+    executableUpgraded: false,
+    guideReadyGranted: false,
+  };
 }

@@ -29,7 +29,7 @@ describe('canonical authority manifest lock', () => {
       aggregateIds: [...AUTHORITY_MANIFEST.entries.map((entry) => entry.id)].sort(),
       // Todo 34 adds persisted PostgreSQL-native index promotion authority;
       // the legacy JSON embedding index remains separately classified derived.
-      classCounts: { authoritative: 19, derived: 8, credential_local: 1, curated_seed: 1 },
+      classCounts: { authoritative: 20, derived: 8, credential_local: 1, curated_seed: 1 },
       repositoryCensusDigest: repositoryCensus.digest,
       sourceOnlyRefs: ['m026-spec-registry:data/specs#curated-seed:v1'],
     });

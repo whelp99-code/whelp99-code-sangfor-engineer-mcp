@@ -38,6 +38,7 @@ const RATIONALES: Readonly<Record<string, string>> = {
   config_chronicle_state: 'Local content-addressed chronicle chains are authoritative.',
   capability_evidence_promotion: 'Promotion ledger and checkpoint chains are authoritative.',
   browser_job_authority: 'Outstanding remote-job capabilities must become indeterminate, never copied.',
+  engineer_cases: 'Engineer-case revisions are PostgreSQL-native; there is no legacy case file source or RAG fallback.',
 };
 
 function localRefs(refs: readonly string[]): readonly string[] {

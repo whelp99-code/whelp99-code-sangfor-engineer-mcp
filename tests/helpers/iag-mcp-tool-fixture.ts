@@ -14,6 +14,7 @@ export async function configureIagMcpFixture(input: {
   readonly root: string;
   readonly dryRun: boolean;
   readonly authorityKind?: 'bootstrap_candidate' | 'ordinary_active';
+  readonly repeatPreflight?: boolean;
 }) {
   const fixture = await iagOrchestratorFixture(input);
   const actionPath = join(input.root, 'action.json');
@@ -32,10 +33,11 @@ export async function configureIagMcpFixture(input: {
     },
     orchestrator: { ledgerPath: fixture.ledgerPath },
   }));
-  configureIagOrchestratorToolService(new IagOrchestratorToolService({
+  const service = new IagOrchestratorToolService({
     executionPort: createBrowserExecutionAuthorityPort(fixture.adapterFixture.executionPort),
     readBackPort: createBrowserExecutionAuthorityPort(fixture.adapterFixture.readBackPort),
     now: () => IAG_ORCHESTRATOR_NOW,
-  }));
-  return { fixture, actionPath, configPath, approvalEnvelopePath };
+  });
+  configureIagOrchestratorToolService(service);
+  return { fixture, actionPath, configPath, approvalEnvelopePath, service };
 }

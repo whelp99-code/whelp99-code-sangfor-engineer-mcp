@@ -2,8 +2,40 @@
   "schemaVersion": "mcp-iag-surface-delta.v1",
   "baselineCommit": "eb60873ad96e69ebecfa995ac96c61c888ee6cbd",
   "baselineToolCount": 115,
-  "finalToolCount": 118,
+  "finalToolCount": 119,
   "approvedAdditions": [
+    {
+      "name": "sangfor_engineer_guide_dry_run",
+      "category": "report",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "actionPath": {
+            "type": "string"
+          },
+          "configPath": {
+            "type": "string"
+          },
+          "guidePath": {
+            "type": "string"
+          },
+          "observedPath": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "actionPath",
+          "configPath",
+          "guidePath",
+          "observedPath"
+        ],
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false
+      }
+    },
     {
       "name": "sangfor_iag_exception_apply",
       "category": "admin",
@@ -127,5 +159,5 @@
       }
     }
   ],
-  "sha256": "d21630fadf9ed4d5ff02f8ff973e1e810659e805790a2da940c31092bb6f8871"
+  "sha256": "9f724500b8b5c1cfefd85196bd629c970b3746a94a593fbc12d239020ee53d56"
 }

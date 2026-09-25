@@ -1,0 +1,36 @@
+{
+  "environmentKind": "fixture",
+  "sourceKind": "provided",
+  "rows": [
+    {
+      "rowNumber": 1,
+      "rowId": "existing-hci-req-1",
+      "no": "1",
+      "category": "HCI",
+      "solution": "HCI/SCP",
+      "item": "Capacity headroom",
+      "specificDetails": "Usable HCI storage after current virtual machine demand must remain above twenty percent",
+      "inspectionResult": {},
+      "requirement": "HCI/SCP usable storage headroom after current VM demand must stay above 20 percent",
+      "evidenceNeed": ["inventory collection", "usable capacity"],
+      "targetControl": "usable storage headroom >= 20 GiB",
+      "currentGap": "usable capacity is not collected by the current inventory surfaces",
+      "priority": "high"
+    },
+    {
+      "rowNumber": 2,
+      "rowId": "existing-hci-req-2",
+      "no": "2",
+      "category": "HCI",
+      "solution": "HCI/SCP",
+      "item": "HA status",
+      "specificDetails": "HA/DRS availability must be confirmed for the existing resource pool",
+      "inspectionResult": {},
+      "requirement": "HCI/SCP HA/DRS status for the existing resource pool must be known",
+      "evidenceNeed": ["HA/DRS collection"],
+      "targetControl": "HA status observed or marked unknown",
+      "currentGap": "HA status is not collected by the current inventory surfaces",
+      "priority": "high"
+    }
+  ]
+}

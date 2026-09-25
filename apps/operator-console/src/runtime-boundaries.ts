@@ -4,6 +4,17 @@ import { parseRuntimeJson } from '../../../packages/shared/src/runtime-schema.js
 
 const textSchema = z.string().max(1_000_000);
 const shortTextSchema = z.string().max(4_096);
+const engineerIdSchema = z.string().regex(/^[A-Za-z0-9._-]{1,64}$/u).refine(
+  (value) => value !== '.' && value !== '..' && !value.includes('..'),
+);
+const engineerArtifactSchema = z.object({
+  id: engineerIdSchema,
+  digest: z.string().regex(/^[a-f0-9]{64}$/u),
+  mediaType: shortTextSchema,
+  payload: textSchema,
+  sanitized: z.boolean(),
+  retention: engineerIdSchema,
+}).strict();
 const projectSchema = z.object({
   customerName: textSchema,
   product: shortTextSchema.optional(),
@@ -58,6 +69,45 @@ const requestSchemas = {
     feedbackText: textSchema,
     sourceRole: z.enum(['user', 'engineer', 'codex', 'verifier', 'customer']),
   }).strict(),
+  'engineer-cases': z.object({
+    requestId: engineerIdSchema,
+    document: runtimeJsonObjectSchema,
+    expectedRevision: engineerIdSchema.optional(),
+    artifacts: z.array(engineerArtifactSchema).max(64).optional(),
+  }).strict(),
+  'engineer-cases-resume': z.object({
+    caseId: engineerIdSchema,
+  }).strict(),
+  'engineer-cases-compare': z.object({
+    caseId: engineerIdSchema,
+    revision: engineerIdSchema,
+  }).strict(),
+  'engineer-cases-artifact': z.object({
+    caseId: engineerIdSchema,
+    artifactId: engineerIdSchema,
+  }).strict(),
+  'engineer-cases-guide-export': z.object({
+    caseId: engineerIdSchema,
+    expectedRevision: engineerIdSchema.optional(),
+  }).strict(),
+  'engineer-cases-review': z.object({
+    caseId: engineerIdSchema.optional(),
+    draft: z.object({
+      caseId: engineerIdSchema.optional(),
+      mode: z.enum(['existing', 'new']),
+      product: shortTextSchema,
+      firmware: shortTextSchema.optional(),
+      revision: engineerIdSchema.optional(),
+      requirementLines: z.array(textSchema).max(256),
+      collections: z.array(z.object({
+        id: engineerIdSchema.optional(),
+        label: shortTextSchema,
+        valueText: shortTextSchema.optional(),
+        unit: shortTextSchema.optional(),
+        collectionStatus: z.enum(['complete', 'partial', 'missing', 'failed', 'unsupported']).optional(),
+      }).strict()).max(64),
+    }).strict().optional(),
+  }).strict(),
 } as const;
 
 export type OperatorRequestRoute = keyof typeof requestSchemas;
@@ -74,6 +124,12 @@ const operatorRequestSchema: z.ZodType<AnyOperatorRequestBody> = z.union([
   requestSchemas['analyze-requirements'],
   requestSchemas['import-excel'],
   requestSchemas.feedback,
+  requestSchemas['engineer-cases'],
+  requestSchemas['engineer-cases-resume'],
+  requestSchemas['engineer-cases-compare'],
+  requestSchemas['engineer-cases-artifact'],
+  requestSchemas['engineer-cases-guide-export'],
+  requestSchemas['engineer-cases-review'],
 ]);
 
 export function decodeOperatorRequestBody<TRoute extends OperatorRequestRoute>(
@@ -87,6 +143,21 @@ export function parseBoundaryOperatorRequestBodyV1(source: string): AnyOperatorR
   return parseRuntimeJson(source, {
     schema: operatorRequestSchema,
     schemaName: 'operator-console.request-body.v1',
+    policy: 'deny',
+  });
+}
+
+const storedGuideDocxSchema = z.object({
+  encoding: z.literal('base64'),
+  bytes: z.string().min(1),
+  fileName: z.string().regex(/^[A-Za-z0-9._-]+\.docx$/u),
+}).strict();
+
+/** Stored Word artifact payload. Not a parseBoundary*V1 lock entry; parseRuntimeJson owns the JSON. */
+export function parseStoredGuideDocxPayload(source: string): z.output<typeof storedGuideDocxSchema> {
+  return parseRuntimeJson(source, {
+    schema: storedGuideDocxSchema,
+    schemaName: 'operator-console.guide-docx.v1',
     policy: 'deny',
   });
 }

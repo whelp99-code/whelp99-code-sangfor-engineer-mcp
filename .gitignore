@@ -55,6 +55,9 @@ scripts/test-fortios.ts
 # Playbook report outputs (runtime — 로컬 산출물)
 outputs/playbooks/
 
+# Engineer guide-apply sidecars (runtime — dry-run envelopes, never commit)
+outputs/engineer-guide-apply/
+
 # deepinit harness: plan artifacts are local working notes (not committed).
 # Permanent, reviewed decisions live in docs/design-docs/ (committed).
 docs/plans/
