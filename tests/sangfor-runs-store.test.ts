@@ -116,11 +116,8 @@ describe('RunStore — 라이프사이클/영속/필터 (T-RUN-1)', () => {
   });
 
   it('requestedAt 내림차순 정렬 + limit + 필터(status/toolId/deviceId/sweepId)', async () => {
-    const instants = [
-      new Date('2026-08-31T00:00:00.001Z'),
-      new Date('2026-08-31T00:00:00.002Z'),
-      new Date('2026-08-31T00:00:00.003Z'),
-    ];
+    const base = Date.now();
+    const instants = [1, 2, 3].map((offset) => new Date(base + offset));
     const clock: RunStoreClock = {
       now: () => {
         const instant = instants.shift();
