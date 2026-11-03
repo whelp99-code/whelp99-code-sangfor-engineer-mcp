@@ -10,7 +10,8 @@ jobs:
   # BLRO 런타임 레인. 업그레이드 순서가 BLRO 우선이므로 이 잡이 먼저 통과해야
   # JM(Node 24) 레인이 시작된다. 권한 있는 계약 버전은 BLRO가 정한다.
   verify:
-    runs-on: ubuntu-latest
+    # Match the supported platform of the pinned Playwright browser installer.
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 

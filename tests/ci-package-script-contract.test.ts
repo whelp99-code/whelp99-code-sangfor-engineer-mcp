@@ -43,7 +43,12 @@ describe('CI package script contract', () => {
     expect(config).toContain("include: ['tests/**/*.test.ts']");
   });
 
-  it('pins the mandatory PostgreSQL 16 environment and provisions clients before querying it', () => {
+  it('pins browser and PostgreSQL 16 environments and provisions clients before querying them', () => {
+    const browserJob = ciWorkflow.split('\n  verify:\n')[1]
+      ?.split('\n  postgres-authority:\n')[0];
+    expect(browserJob).toContain('runs-on: ubuntu-24.04');
+    expect(browserJob).toContain('run: pnpm exec playwright install --with-deps chromium');
+    expect(browserJob).toContain('run: pnpm run test:ui');
     const postgresJob = ciWorkflow.split('\n  postgres-authority:\n')[1]
       ?.split('\n  verify-jm-endpoint:\n')[0];
     expect(postgresJob).toBeDefined();
