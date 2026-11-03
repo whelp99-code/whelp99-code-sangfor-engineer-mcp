@@ -200,6 +200,7 @@ describe('verified IAG MCP and HTTP catalog surface', () => {
     };
     const mcpRequest: McpRequestFn = async (method, params) => {
       const response = await mcp.handle({ jsonrpc: '2.0', id: 1, method, params });
+      if (response === undefined) throw new TypeError('MCP_REQUEST_RESPONSE_MISSING');
       if ('error' in response && response.error !== undefined) return { jsonrpc: '2.0', id: 1, error: response.error };
       return { jsonrpc: '2.0', id: 1, result: response.result };
     };
@@ -257,6 +258,7 @@ describe('verified IAG MCP and HTTP catalog surface', () => {
       params: { name: 'sangfor_apply_approved_product_change', arguments: { plan } },
     });
 
+    if (response === undefined) throw new TypeError('MCP_REQUEST_RESPONSE_MISSING');
     const result = response.result;
     if (typeof result !== 'object' || result === null || !('structuredContent' in result)) {
       throw new TypeError('LEGACY_APPLY_MCP_RESULT_INVALID');
