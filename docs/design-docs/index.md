@@ -15,6 +15,7 @@ Indexed architectural decisions for sangfor-engineer-mcp. Status: `verified` = o
 | [product-engineer-card](product-engineer-card.md) | draft | New product = thin registry-pointing card + two session roles (collector/operator); evaluate and report stay deterministic. Frozen pending #28. |
 | [engineer-case-authority-store](engineer-case-authority-store.md) | draft | E09A: case aggregate needs its own RLS tables; run/evidence/RAG stores are the wrong boundary. |
 | [engineer-workflow-delegation-plan](engineer-workflow-delegation-plan.md) | draft | 실제 장비 확인·계산·요구사항·구축 가이드와 후속 승인 실행을 18개 Issue/PR로 분리한 위임 개발·독립 인수 계획. |
+| [engineer-restart-goal-pr-plan](engineer-restart-goal-pr-plan.md) | draft | main 2c5679ad 이후 기존 구현을 재사용하는 PRD와 목표별 PR-G1~G5 개발·인수 계약. |
 
 To add a decision: copy the shape of an existing doc (Context → Decision → Rationale → Consequences), set a Status, and add a row here.
 
