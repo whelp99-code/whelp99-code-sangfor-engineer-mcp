@@ -47,6 +47,7 @@ beforeEach(async () => {
   mcp = await import('../apps/mcp-server/src/index.js');
   const mcpRequest: McpRequestFn = async (method, params) => {
     const response = await mcp.handle({ jsonrpc: '2.0', id: 1, method, params });
+    if (response === undefined) throw new TypeError('MCP_REQUEST_RESPONSE_MISSING');
     if ('error' in response && response.error !== undefined) return { jsonrpc: '2.0', id: 1, error: response.error };
     return { jsonrpc: '2.0', id: 1, result: response.result };
   };
