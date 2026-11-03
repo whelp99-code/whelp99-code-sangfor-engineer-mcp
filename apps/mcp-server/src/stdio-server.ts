@@ -59,9 +59,11 @@ export function startStdioServer() {
     }
     try {
       const res = await handle(req);
-      process.stdout.write(`${JSON.stringify(res)}\n`);
+      if (res !== undefined) process.stdout.write(`${JSON.stringify(res)}\n`);
     } catch (err) {
-      process.stdout.write(`${JSON.stringify({ jsonrpc: '2.0', id: req?.id ?? null, error: { code: -32603, message: String(err instanceof Error ? err.message : err) } })}\n`);
+      if (req.id !== undefined) {
+        process.stdout.write(`${JSON.stringify({ jsonrpc: '2.0', id: req.id, error: { code: -32603, message: String(err instanceof Error ? err.message : err) } })}\n`);
+      }
     }
   });
 

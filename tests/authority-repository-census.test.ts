@@ -99,6 +99,30 @@ describe('authority repository AST census', () => {
     expect(after.digest).not.toBe(before.digest);
   });
 
+  it('ignores unrelated source and documentation changes without changing authority identity', () => {
+    const root = fixtureRoot();
+    const path = 'packages/example/src/read-only.ts';
+    writeSource(root, path, 'export function answer() { return 1; }');
+    const before = loadRepositoryCensus(root);
+    writeSource(root, path, 'export function answer() { return 2; }');
+    writeSource(root, 'docs/restart-plan.md', '# No new authority');
+    const after = loadRepositoryCensus(root);
+    expect(after.references).toEqual(before.references);
+    expect(after.digest).toBe(before.digest);
+  });
+
+  it('changes the digest for scoped artifact deletion even when writer ownership is unchanged', () => {
+    const root = fixtureRoot();
+    const path = 'packages/example/src/artifacts.ts';
+    writeSource(root, path, `export function replaceArtifacts(tx) { return tx.$executeRawUnsafe('DELETE FROM Artifact WHERE caseId=$1'); }`);
+    const before = loadRepositoryCensus(root);
+    writeSource(root, path, `export function replaceArtifacts(tx) { return tx.$executeRawUnsafe('DELETE FROM Artifact WHERE caseId=$1 AND id=$2'); }`);
+    const after = loadRepositoryCensus(root);
+    expect(after.references).toEqual(before.references);
+    expect(after.counts).toEqual(before.counts);
+    expect(after.digest).not.toBe(before.digest);
+  });
+
   it('detects semantic credential env and path boundaries without timeout/count false positives', () => {
     const root = fixtureRoot();
     writeSource(root, 'packages/example/src/credentials.ts', [
