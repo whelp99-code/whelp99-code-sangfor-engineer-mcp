@@ -78,7 +78,9 @@ jobs:
         run: pnpm run check:tracker-truth
 
   postgres-authority:
-    runs-on: ubuntu-latest
+    # Noble supplies the PostgreSQL 16 client package matching the service.
+    # Do not let ubuntu-latest drift to a release without that package.
+    runs-on: ubuntu-24.04
     services:
       postgres:
         # PostgreSQL 16 with the pinned pgvector 0.8.1 extension files provisioned.
@@ -115,6 +117,12 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Provision the PostgreSQL client binaries the runner requires
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-16
+          test -x "$PG_BINDIR/psql" && test -x "$PG_BINDIR/pg_dump" && test -x "$PG_BINDIR/pg_restore"
+          echo "$PG_BINDIR" >> "$GITHUB_PATH"
       - name: Assert PostgreSQL 16 pgvector 0.8.1 is provisioned
         run: |
           test "$(psql -h 127.0.0.1 -U postgres -d postgres -Atc "SELECT default_version FROM pg_available_extensions WHERE name='vector'")" = "0.8.1"
@@ -142,11 +150,6 @@ jobs:
           ALTER DEFAULT PRIVILEGES FOR ROLE blro_owner IN SCHEMA public
             GRANT SELECT ON TABLES TO blro_backup;
           SQL
-      - name: Provision the PostgreSQL client binaries the runner requires
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y postgresql-client-16
-          test -x "$PG_BINDIR/psql" && test -x "$PG_BINDIR/pg_dump" && test -x "$PG_BINDIR/pg_restore"
       - name: Prove the backup reader cannot write and the runtime role has no BYPASSRLS
         run: |
           psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 -Atc \
