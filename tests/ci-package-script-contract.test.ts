@@ -36,6 +36,13 @@ describe('CI package script contract', () => {
     expect(workflowScripts).toEqual(expect.arrayContaining(Object.keys(REQUIRED_CI_SCRIPTS)));
   });
 
+  it('bounds default test worker contention without extending timeouts or changing selection', () => {
+    const config = readFileSync(join(ROOT, 'vitest.config.ts'), 'utf8');
+    expect(config).toMatch(/maxWorkers:\s*2\b/u);
+    expect(config).not.toMatch(/(?:testTimeout|hookTimeout)\s*:/u);
+    expect(config).toContain("include: ['tests/**/*.test.ts']");
+  });
+
   it('pins the mandatory PostgreSQL 16 environment and provisions clients before querying it', () => {
     const postgresJob = ciWorkflow.split('\n  postgres-authority:\n')[1]
       ?.split('\n  verify-jm-endpoint:\n')[0];
