@@ -92,6 +92,8 @@ export type EngineerAssessmentRequest = {
   readonly expectedFirmware?: string;
   readonly companionRevisions?: readonly string[];
   readonly bindings?: readonly EngineerAssessmentBinding[];
+  /** Opt-in product path: never infer field, formula or references from labels. */
+  readonly explicitBindingsOnly?: boolean;
   readonly requiredObservations?: Pick<
     HciRequiredObservationResult,
     'fields' | 'capabilities' | 'acquisition' | 'guideReadyGranted' | 'fieldAcceptanceBlockersResolved'
@@ -350,7 +352,7 @@ export function assessEngineerCase(request: EngineerAssessmentRequest): Engineer
 
   for (const requirement of document.requirements) {
     const binding = bindingFor(requirement, request.bindings);
-    const fieldId = inferFieldId(requirement, binding);
+    const fieldId = request.explicitBindingsOnly ? binding.fieldId : inferFieldId(requirement, binding);
     const reasons: string[] = [];
     const calculationRefs = [...binding.calculationRefs ?? []];
     const searchCited = Boolean(request.searchCitations?.some((item) => item.requirementId === requirement.id));
@@ -377,7 +379,7 @@ export function assessEngineerCase(request: EngineerAssessmentRequest): Engineer
       }
     }
 
-    const currentIds = candidateCurrentIds(document, binding, fieldId);
+    const currentIds = candidateCurrentIds(document, binding, request.explicitBindingsOnly ? undefined : fieldId);
     const discoveredCurrent = currentIds.length > 0;
     if (currentIds.some((id) => snapshotObservationIsNotCapabilityRow(id, fieldId))) {
       assessments.push({
@@ -412,7 +414,7 @@ export function assessEngineerCase(request: EngineerAssessmentRequest): Engineer
 
     const current = currentObs[0];
     const stale = current ? freshnessIssue(current, request.now) : undefined;
-    const formulaId = inferFormulaId(requirement, binding);
+    const formulaId = request.explicitBindingsOnly ? binding.formulaId : inferFormulaId(requirement, binding);
     const desired = desiredFrom(requirement, document, binding);
     const capacityOrHa = Boolean(fieldId && CAPACITY_HA_FIELDS.has(fieldId))
       || formulaId !== undefined
@@ -541,7 +543,9 @@ export function assessEngineerCase(request: EngineerAssessmentRequest): Engineer
 
     let compareCurrent = current?.value;
     let compareCurrentRef = current?.id;
-    const storedCalc = storedCalculationForCompare(calculations, requirement, binding);
+    const storedCalc = request.explicitBindingsOnly
+      ? calculations.find(item => binding.calculationRefs?.includes(item.id))
+      : storedCalculationForCompare(calculations, requirement, binding);
     if (storedCalc?.result && (!compareCurrent || compareCurrent.presence !== 'known')) {
       compareCurrent = storedCalc.result;
       compareCurrentRef = storedCalc.id;
