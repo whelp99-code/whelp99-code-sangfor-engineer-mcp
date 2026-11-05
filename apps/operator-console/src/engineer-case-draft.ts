@@ -1,3 +1,4 @@
+import { analyzeEngineerProvidedCase, type EngineerProvidedAnalysis } from '../../../packages/sangfor-planner/src/engineer-provided-analysis.js';
 import { assembleEngineerCase, type EngineerCaseAssembly } from '../../../packages/sangfor-planner/src/engineer-case.js';
 import {
   computeEngineerGuideDigest,
@@ -30,6 +31,7 @@ export type EngineerCaseDraft = {
   readonly revision?: string;
   readonly requirementLines: readonly string[];
   readonly collections: readonly EngineerCaseCollectionDraft[];
+  readonly analysis?: EngineerProvidedAnalysis;
 };
 
 function isId(value: string | undefined): value is string {
@@ -144,8 +146,8 @@ export function assembleEngineerCaseDraft(
     unresolved: document.guide.unresolved,
     readiness: document.guide.readiness,
   };
-  return assembleEngineerCase({
-    ...document,
-    guide: { ...guideFields, digest: computeEngineerGuideDigest(guideFields) },
-  }, auth);
+  const prepared = { ...document, guide: { ...guideFields, digest: computeEngineerGuideDigest(guideFields) } };
+  return draft.analysis === undefined
+    ? assembleEngineerCase(prepared, auth)
+    : analyzeEngineerProvidedCase(prepared, draft.analysis, auth);
 }

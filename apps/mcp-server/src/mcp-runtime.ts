@@ -63,6 +63,9 @@ export async function dispatchToolCall(name: string, args: unknown, runtime: Too
 }
 
 export async function handle(req: JsonRpcRequest) {
+  // MCP notifications have no response. Request-only methods must not dispatch
+  // tools when an ID is absent; 0 and the empty string remain valid IDs.
+  if (req.id === undefined) return undefined;
   try {
     const params = isRecord(req.params) ? req.params : {};
     if (req.method === 'initialize') {

@@ -35,6 +35,10 @@ export const ENGINEER_CASE_PANEL = `      <div id="engineer-case" class="panel">
         <textarea id="ec-reqs" placeholder="가용 용량 여유 20% 이상 유지\\n관리 네트워크와 스토리지 네트워크 분리"></textarea>
         <label>수집/입력 (한 줄: 이름 | 값 | 단위). 값을 비우면 미확인입니다. 장비 관측값으로 승격하지 않습니다.</label>
         <textarea id="ec-collections" placeholder="usable-capacity | 40 | TiB\\nhost-cpu | | cores"></textarea>
+        <label for="ec-analysis">계산·요구사항 연결 (선택 JSON)</label>
+        <textarea id="ec-analysis" aria-describedby="ec-analysis-help" placeholder="비우면 기존 제공값 검토만 합니다"></textarea>
+        <p class="meta" id="ec-analysis-help">먼저 검토한 JSON의 관측·요구사항 ID와 현재 revision을 명시합니다. 관측 ID는 입력의 네 번째 칸(이름 | 값 | 단위 | ID)에도 지정할 수 있습니다. 수식: confirmed-remaining-capacity, confirmed-utilization-ratio(total/used), demand-headroom(total/used/demand). 연결하지 않은 요구사항은 거절합니다. 불러온 문서는 원본 그대로만 저장합니다. 편집하려면 새 사례 ID를 쓰세요. Word 생성 뒤에는 다시 불러오세요.</p>
+        <details><summary>연결 JSON 형식</summary><pre>{"caseRevision":"rev-1","calculations":[{"id":"calc-free","formulaId":"confirmed-remaining-capacity","roles":{"total":"disk-limit","used":"disk-consumed"},"outputUnit":"GiB"}],"bindings":[{"requirementId":"검토결과의-ID","fieldId":"storage_usable_capacity","calculationRef":"calc-free"}]}</pre><p class="meta">bindings의 calculationRef 대신 currentRef로 관측 ID를 연결할 수 있습니다. fieldId는 선택이며 host_cpu, host_ram, storage_usable_capacity, network_topology, ha_status, volume_status를 사용합니다. 이름으로 연결을 추정하지 않습니다.</p></details>
         <div class="row2">
           <div><label>증거 artifact ID</label><input id="ec-artifact-id" placeholder="다른 사례 값은 거절됩니다" /></div>
           <div class="meta" style="align-self:end">범위는 서버 인증 문맥입니다. tenant/project를 입력해 권한으로 쓰지 않습니다.</div>
