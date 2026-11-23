@@ -10,7 +10,7 @@ jobs:
   # BLRO 런타임 레인. 업그레이드 순서가 BLRO 우선이므로 이 잡이 먼저 통과해야
   # JM(Node 24) 레인이 시작된다. 권한 있는 계약 버전은 BLRO가 정한다.
   verify:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 
@@ -78,7 +78,7 @@ jobs:
         run: pnpm run check:tracker-truth
 
   postgres-authority:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     services:
       postgres:
         # PostgreSQL 16 with the pinned pgvector 0.8.1 extension files provisioned.
@@ -159,7 +159,7 @@ jobs:
   # 강제한다. JM이 앞서 통과하는 배치는 존재할 수 없다.
   verify-jm-endpoint:
     needs: verify
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 
