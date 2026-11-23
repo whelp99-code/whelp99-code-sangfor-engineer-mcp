@@ -163,7 +163,7 @@ jobs:
   # 강제한다. JM이 앞서 통과하는 배치는 존재할 수 없다.
   verify-jm-endpoint:
     needs: verify
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 

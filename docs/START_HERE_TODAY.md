@@ -52,7 +52,7 @@ tool: sangfor_generate_setting_guide_docx
 args: { "filePath": "<your ITAC .xlsx>", "outputPath": "<output .docx>" }
 ```
 
-Observed result on a real 26-item checklist:
+Observed result on a real 26-item checklist **(historical record, not a current_live PASS)**:
 
 ```json
 {
@@ -63,6 +63,8 @@ Observed result on a real 26-item checklist:
   "totalItems": 26, "consoleItems": 12, "manualItems": 14
 }
 ```
+
+That 26-item run is a multi-product ITAC checklist (Endpoint Secure / IAG / NDR). It is **not** the HCI representative case. E00 locked the record, the in-repo workbook hash, and fixture replay in `tests/fixtures/engineer-workflow/`. A later device read or guide review is still required before calling this current live.
 
 The file on disk was confirmed to be a real `Microsoft Word 2007+` document.
 
@@ -112,6 +114,8 @@ Endpoint setup and readiness: [JM Endpoint Install](JM_ENDPOINT_INSTALL.md)
 ## 5. What is deliberately NOT finished
 
 Being explicit so you do not rely on something that is not there.
+
+HCI compute/image read-only smoke from 2026-07-02 is a **historical_live** record only. E00 did not repeat that device read. Current inventory still covers volumes/servers/images; host CPU/RAM, usable capacity, network, and HA are not collected.
 
 | Item | Status |
 |---|---|
