@@ -102,6 +102,18 @@ export function dashboardHtml(): string {
             <pre class="result" id="tf-result" style="display:none"></pre>
           </div>
         </div>
+        <div class="card" style="margin-top:14px">
+          <h3>가이드 결합 dry-run (읽기 전용)</h3>
+          <p class="meta">검증 성공과 변이를 열지 않습니다. Apply 버튼 없음.</p>
+          <div class="row2">
+            <div><label>actionPath</label><input id="gd-action" /></div>
+            <div><label>configPath</label><input id="gd-config" /></div>
+            <div><label>guidePath</label><input id="gd-guide" /></div>
+            <div><label>observedPath</label><input id="gd-observed" /></div>
+          </div>
+          <button class="primary" type="button" onclick="runGuideDryRun()">가이드 dry-run</button>
+          <pre class="result" id="gd-result" style="display:none"></pre>
+        </div>
       </div>
 
       <div id="runs" class="panel">
@@ -337,6 +349,18 @@ export function dashboardHtml(): string {
         $('tf-result').textContent = JSON.stringify(run, null, 2);
       }
     }).catch(function (e) { $('tf-result').textContent = '오류: ' + e.message; });
+  };
+  window.runGuideDryRun = function () {
+    $('gd-result').style.display = 'block';
+    $('gd-result').textContent = '실행 중…';
+    req('POST', '/api/engineer-guide/dry-run', {
+      actionPath: $('gd-action').value.trim(),
+      configPath: $('gd-config').value.trim(),
+      guidePath: $('gd-guide').value.trim(),
+      observedPath: $('gd-observed').value.trim(),
+    }).then(function (result) {
+      $('gd-result').textContent = JSON.stringify(result, null, 2);
+    }).catch(function (e) { $('gd-result').textContent = '오류: ' + e.message; });
   };
   window.mintToken = function () {
     var actionType = prompt('actionType (예: hci.create-volume)');

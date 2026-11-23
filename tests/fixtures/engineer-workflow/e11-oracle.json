@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "kind": "independent-oracle",
+  "notDeveloperGolden": true,
+  "liveProof": false,
+  "environmentKind": "fixture",
+  "computedBy": "hand arithmetic published by E05; recopied here without taking a pipeline output as truth",
+  "formulas": {
+    "confirmed-remaining-capacity": {
+      "total": 100,
+      "used": 40,
+      "unit": "GiB",
+      "result": 60
+    },
+    "confirmed-utilization-ratio": {
+      "total": 100,
+      "used": 40,
+      "resultPercent": 40
+    },
+    "demand-headroom": {
+      "total": 100,
+      "used": 40,
+      "demand": 20,
+      "unit": "GiB",
+      "result": 40
+    }
+  },
+  "unknownIsNotZero": true,
+  "volumeStatusPassIsNotCapacityOrHa": true,
+  "reviewReadyIsNotFieldAccepted": true,
+  "expectedUnresolvedFieldIds": [
+    "host_cpu",
+    "host_ram",
+    "storage_usable_capacity",
+    "network_topology",
+    "ha_status"
+  ],
+  "historicalReplayIsNotSynthetic": true
+}

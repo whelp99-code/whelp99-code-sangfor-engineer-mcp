@@ -13,6 +13,15 @@ export {
   type AuthorityManifestLock,
 } from './authority-manifest-lock.js';
 export { AuthorityStorePersistenceError, BlroAuthorityStore } from './authority-store.js';
+export {
+  assemblePersistedReadiness,
+  isBlroAuthorityPostgres,
+  maskEngineerCaseSecrets,
+  prepareEngineerCaseForPersistence,
+  refuseEngineerCaseLocalFallback,
+  refuseEngineerCasePublicIndex,
+  unsavedEngineerCase,
+} from './engineer-case-persistence.js';
 export { PostgresAuthorityEpochPort, AuthorityEpochError, type AuthorityEpochPort } from './authority-epoch.js';
 export {
   createBlroRemoteDispatcher,
@@ -59,7 +68,16 @@ export { CLIENT_AUTH_EKU } from '@sangfor/browser-contracts';
 export type {
   AuthorityActorScope,
   AuthorityDatabase,
+  EngineerCaseArtifactResult,
+  EngineerCaseArtifactWrite,
+  EngineerCaseLoadResult,
+  EngineerCaseSaveRequest,
+  EngineerCaseSaveResult,
   SqlExecutor,
+} from './authority-store-contracts.js';
+export {
+  ENGINEER_CASE_READ_PERMISSION,
+  ENGINEER_CASE_WRITE_PERMISSION,
 } from './authority-store-contracts.js';
 export {
   AUTHORITY_MANIFEST,

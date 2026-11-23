@@ -38,5 +38,9 @@ export const DASHBOARD_STYLE_BLOCK = `  <style>
     iframe { width:100%; height:360px; border:1px solid #334155; border-radius:12px; background:#fff; }
     .snippet { font-size:.88rem; line-height:1.4; max-height:4.2em; overflow:hidden; }
     .row2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .ec-status { margin-top:12px; padding:10px 12px; border-radius:8px; border:1px solid #334155; color:var(--muted); }
+    .ec-status.ok { border-color:var(--ok); color:var(--ok); }
+    .ec-status.warn { border-color:var(--warn); color:var(--warn); }
+    .ec-status.fail { border-color:var(--err); color:var(--err); }
     @media (max-width:768px) { main { grid-template-columns:1fr; } nav { display:flex; flex-wrap:wrap; gap:6px; border-right:none; border-bottom:1px solid #334155; } nav button { width:auto; } .row2 { grid-template-columns:1fr; } }
   </style>`;

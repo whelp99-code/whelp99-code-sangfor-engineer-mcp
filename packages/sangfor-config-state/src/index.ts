@@ -13,10 +13,58 @@ export {
   MAPPER_VERSION,
   MissingProvenanceError,
   assertFactProvenance,
+  bindObservedFactToCase,
   isFactProvenance,
+  type BoundCaseFact,
+  type CaseFactBinding,
   type FactProvenance,
   type FactTransport,
 } from './provenance.js';
+
+export {
+  buildHciCollectionSnapshot,
+  importProvidedObservation,
+  type HciCollectionSnapshot,
+  type HciCollectionSnapshotBinding,
+  type HciCollectionSnapshotInventory,
+  type HciCollectOriginalPresentSurface,
+} from './hci-collection-snapshot.js';
+
+export {
+  bindRequiredObservationsToCase,
+  HCI_E03B_FIELD_IDS,
+  type HciRequiredObservationBinding,
+  type HciRequiredObservationInput,
+} from './required-observations.js';
+
+export {
+  assertEngineerAssessmentScope,
+  assertLiveObservedBinding,
+  isHciRequiredFieldId,
+  isHciSnapshotSurfaceObservation,
+  snapshotObservationIsNotCapabilityRow,
+  HCI_SNAPSHOT_SURFACE_OBSERVATION_IDS,
+} from './engineer-assessment-scope.js';
+
+export {
+  bindEngineerAuthorizedDeviceReadEvidence,
+  digestEngineerBoundObservations,
+  rebindEngineerFieldAcceptanceObservations,
+  requiredSurfacesMissingBoundFacts,
+  surfacesFromBoundObservations,
+  type EngineerAuthorizedDeviceReadBindResult,
+  type ReboundFieldAcceptanceObservation,
+} from './engineer-field-acceptance-bind.js';
+
+export {
+  authorizedCollectTargetsMatch,
+  bindHciCollectAuthorizedDeviceReadEvidence,
+  bindHciCollectToFieldAcceptanceObservations,
+  isMockConsoleOrigin,
+  type AuthorizedDeviceCollectSession,
+  type BindHciCollectObservationsResult,
+  type CollectBindSessionInput,
+} from './engineer-collect-bind.js';
 
 /** An observed fact: the value plus the provenance envelope describing how it was
  *  obtained. The wrapper stays `{ value, source }` so @sangfor/spec keeps unwrapping it;

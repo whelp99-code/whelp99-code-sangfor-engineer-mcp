@@ -178,6 +178,7 @@ const controlTowerRequestSchema: RuntimeCodec<AnyControlTowerRequestBody> = z.un
   controlTowerRequestSchemas.sweep,
   controlTowerRequestSchemas['approval-mint'],
   controlTowerRequestSchemas['run-create'],
+  controlTowerRequestSchemas['engineer-guide-dry-run'],
   controlTowerRequestSchemas['playbook-seed'],
   controlTowerRequestSchemas['playbook-create'],
   controlTowerRequestSchemas['revision-review'],

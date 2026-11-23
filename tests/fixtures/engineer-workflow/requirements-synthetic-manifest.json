@@ -1,0 +1,13 @@
+{
+  "id": "engineer-e04-synthetic-requirements",
+  "environmentKind": "fixture",
+  "synthetic": true,
+  "originalPresent": false,
+  "claimedOriginal26": false,
+  "itemCount": 8,
+  "label": "fixture 8/8; original 26-item source not present",
+  "notes": [
+    "This is a synthetic checklist for E04 ingest tests.",
+    "It is not a reproduction of a historical 26-item customer original."
+  ]
+}

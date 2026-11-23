@@ -120,6 +120,9 @@ describe('collectInventory — every collected surface is attributable', () => {
     expect(inv.provenance.volumes.endpoint).toBe('GET /volumes/detail');
     expect(inv.provenance.servers.endpoint).toBe('GET /servers');
     expect(inv.provenance.images.endpoint).toBe('GET /v2/images');
+    expect(inv.fields.find((field) => field.id === 'volumes')?.availability).toBe('collected');
+    expect(inv.mutationDispatchCount).toBe(0);
+    expect(inv.guideReadyGranted).toBe(false);
   });
 
   it('keeps a single collection timestamp per run (one collectedAt across surfaces)', async () => {

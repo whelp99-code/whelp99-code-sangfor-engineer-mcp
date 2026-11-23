@@ -24,8 +24,8 @@ describe('MCP strict pre-dispatch validation', () => {
   it('compiles one fail-closed validator for every shipped tool', () => {
     // Given the composed production registry.
     // When startup compilation has completed.
-    // Then all 118 schemas have validators.
-    expect(toolValidatorCount()).toBe(118);
+    // Then all 119 schemas have validators.
+    expect(toolValidatorCount()).toBe(119);
   });
 
   it('does not invoke a handler when required arguments are missing', async () => {

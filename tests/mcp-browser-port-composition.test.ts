@@ -112,31 +112,37 @@ describe('MCP JM browser runtime composition', () => {
       },
     });
     const capture = getToolHandler('sangfor_capture_screenshots');
+    const previousEppUrl = process.env.SANGFOR_EPP_URL;
+    delete process.env.SANGFOR_EPP_URL;
+    try {
+      const output = await capture?.({
+        product: 'EPP',
+        username: 'qa-admin',
+        password: 'qa-secret',
+        headless: false,
+        menus: [{ menu: 'Dashboard' }],
+      }) as { captured: string[]; failed: unknown[] };
 
-    const output = await capture?.({
-      product: 'EPP',
-      username: 'qa-admin',
-      password: 'qa-secret',
-      headless: false,
-      menus: [{ menu: 'Dashboard' }],
-    }) as { captured: string[]; failed: unknown[] };
-
-    expect(output.failed).toEqual([]);
-    expect(output.captured).toEqual([
-      expect.stringMatching(/01_Dashboard\.png$/),
-    ]);
-    expect(materialized).toEqual([{
-      artifactRef: 'artifact://mock/capture.png',
-      destinationPath: expect.stringMatching(/01_Dashboard\.png$/),
-    }]);
-    expect(sessionOptions).toEqual([{
-      credentials: { username: 'qa-admin', password: 'qa-secret' },
-      headless: false,
-      targetUrl: 'https://192.0.2.10',
-    }]);
-    expect(port.execute).toHaveBeenCalledWith(expect.objectContaining({
-      operation: { kind: 'close_session' },
-    }));
+      expect(output.failed).toEqual([]);
+      expect(output.captured).toEqual([
+        expect.stringMatching(/01_Dashboard\.png$/),
+      ]);
+      expect(materialized).toEqual([{
+        artifactRef: 'artifact://mock/capture.png',
+        destinationPath: expect.stringMatching(/01_Dashboard\.png$/),
+      }]);
+      expect(sessionOptions).toEqual([{
+        credentials: { username: 'qa-admin', password: 'qa-secret' },
+        headless: false,
+        targetUrl: 'https://192.0.2.10',
+      }]);
+      expect(port.execute).toHaveBeenCalledWith(expect.objectContaining({
+        operation: { kind: 'close_session' },
+      }));
+    } finally {
+      if (previousEppUrl === undefined) delete process.env.SANGFOR_EPP_URL;
+      else process.env.SANGFOR_EPP_URL = previousEppUrl;
+    }
   });
 
   it('defaults console evidence capture to attach-only CDP port 9222', async () => {

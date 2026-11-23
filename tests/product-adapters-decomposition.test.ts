@@ -14,6 +14,9 @@ const PRODUCT_ADAPTER_MODULES = [
   '../packages/sangfor-product-adapters/src/xlsx-reader.ts',
   '../packages/sangfor-product-adapters/src/excel-import.ts',
   '../packages/sangfor-product-adapters/src/excel-planning.ts',
+  '../packages/sangfor-product-adapters/src/engineer-requirement-guard.ts',
+  '../packages/sangfor-product-adapters/src/engineer-requirement-map.ts',
+  '../packages/sangfor-product-adapters/src/engineer-requirement-ingest.ts',
   '../packages/sangfor-product-adapters/src/apply-verify.ts',
 ] as const;
 

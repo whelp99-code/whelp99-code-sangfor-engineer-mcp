@@ -67,4 +67,57 @@ describe('route-specific request boundaries', () => {
     // Then
     expect(parse).toThrow(RuntimeSchemaError);
   });
+
+  it('rejects a localFallback flag on the engineer-case save route', () => {
+    const parse = () => decodeOperatorRequestBody(
+      parseBoundaryOperatorRequestBodyV1(JSON.stringify({
+        requestId: 'req-1',
+        document: { caseId: 'case-1' },
+        localFallback: true,
+      })),
+      'engineer-cases',
+    );
+    expect(parse).toThrow(RuntimeSchemaError);
+  });
+
+  it('rejects a tenant authority claim on the engineer-case guide-export route', () => {
+    const parse = () => decodeOperatorRequestBody(
+      parseBoundaryOperatorRequestBodyV1(JSON.stringify({
+        caseId: 'case-1',
+        tenantId: 'forged',
+      })),
+      'engineer-cases-guide-export',
+    );
+    expect(parse).toThrow(RuntimeSchemaError);
+  });
+
+  it('rejects mutationAttempted on the engineer-guide dry-run route', () => {
+    const parse = () => decodeControlTowerRequestBody(
+      parseBoundaryControlTowerRequestBodyV1(JSON.stringify({
+        actionPath: 'action.json',
+        configPath: 'config.json',
+        guidePath: 'guide.json',
+        observedPath: 'observed.json',
+        mutationAttempted: true,
+      })),
+      'engineer-guide-dry-run',
+    );
+    expect(parse).toThrow(RuntimeSchemaError);
+  });
+
+  it('rejects a tenant authority claim on the engineer-case review route', () => {
+    const parse = () => decodeOperatorRequestBody(
+      parseBoundaryOperatorRequestBodyV1(JSON.stringify({
+        draft: {
+          mode: 'existing',
+          product: 'HCI_SCP',
+          requirementLines: ['여유 용량'],
+          collections: [],
+          tenantId: 'forged',
+        },
+      })),
+      'engineer-cases-review',
+    );
+    expect(parse).toThrow(RuntimeSchemaError);
+  });
 });

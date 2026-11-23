@@ -1,0 +1,263 @@
+{
+  "schemaVersion": 1,
+  "status": "in_development",
+  "baseCommit": "cd8e44db41b8fcd7aad4d6c052c3dd008c1e27d4",
+  "stackTip": "c88cf563b1c0b39015ca809da52d4ac9812cd99e",
+  "stackTipPr": 134,
+  "verifiedAt": "2026-09-10",
+  "programIssue": 90,
+  "planningIssue": 91,
+  "programComplete": false,
+  "fieldAccepted": false,
+  "handoff": "docs/references/engineer-workflow/AGENT_HANDOFF.md",
+  "units": [
+    {
+      "unit": "E00",
+      "issue": 92,
+      "title": "과거 고객 업무 재현과 현재 기능 기준선 고정",
+      "phase": "A0",
+      "dependsOn": [],
+      "pr": 113,
+      "head": "20ab175ce663c6511c793b2778aed8f431ec6261",
+      "status": "code_verified"
+    },
+    {
+      "unit": "E01",
+      "issue": 93,
+      "title": "사례·관측값·요구사항·계산·가이드 공통 계약",
+      "phase": "A0",
+      "dependsOn": [
+        "E00"
+      ],
+      "pr": 114,
+      "head": "da9ed1cc27bd190616b882c91772b16a1ca1ad5c",
+      "status": "code_verified"
+    },
+    {
+      "unit": "E02",
+      "issue": 94,
+      "title": "과거 문서 비밀정보 정리와 현장 접근 자격 증명 확인",
+      "phase": "A0",
+      "dependsOn": [],
+      "pr": 118,
+      "head": "e49c77a0024596b926b6e5df16e24515d29aab0e",
+      "status": "BLOCKED-ON-USER"
+    },
+    {
+      "unit": "E03A",
+      "issue": 95,
+      "title": "HCI 기존 읽기 수집의 완전성·정규화 연결",
+      "phase": "A1",
+      "dependsOn": [
+        "E01"
+      ],
+      "pr": 115,
+      "head": "8537868b7890da5e4148f3e7272a1e7f88108be7",
+      "status": "code_verified"
+    },
+    {
+      "unit": "E03B",
+      "issue": 96,
+      "title": "대표 구축 사례에 필요한 HCI 추가 수집면 구현",
+      "phase": "A1",
+      "dependsOn": [
+        "E03A"
+      ],
+      "pr": 120,
+      "head": "2db1b25f02710c3a65abad69b415d6dba206d317",
+      "laterPr": 132,
+      "status": "ACCEPT WITH FOLLOW-UPS"
+    },
+    {
+      "unit": "E04",
+      "issue": 97,
+      "title": "고객 요구사항 입력·Excel 매핑·미확인 질문 추적",
+      "phase": "A1",
+      "dependsOn": [
+        "E01"
+      ],
+      "pr": 116,
+      "head": "f6e5b1b7d5512490d00fba0de41489aead624564",
+      "status": "code_verified"
+    },
+    {
+      "unit": "E05",
+      "issue": 98,
+      "title": "단위·근거·누락을 보존하는 결정적 계산과 점검",
+      "phase": "A1",
+      "dependsOn": [
+        "E01"
+      ],
+      "pr": 117,
+      "head": "221a8e19aeb765512e37e3bdc7ab65f7013f8f27",
+      "status": "ACCEPT WITH FOLLOW-UPS"
+    },
+    {
+      "unit": "E06",
+      "issue": 99,
+      "title": "현재 상태·요구사항·계산을 연결하는 차이 분석",
+      "phase": "A2",
+      "dependsOn": [
+        "E03A",
+        "E04",
+        "E05",
+        "E03B"
+      ],
+      "pr": 121,
+      "head": "59c22692e03480daca47d1ccf0c72b9a922011c2",
+      "status": "ACCEPT WITH FOLLOW-UPS"
+    },
+    {
+      "unit": "E07",
+      "issue": 100,
+      "title": "실측 근거를 가진 구축 가이드 모델과 준비도 판정",
+      "phase": "A2",
+      "dependsOn": [
+        "E06"
+      ],
+      "pr": 122,
+      "head": "4ef1f42498ba51402966bece8b7457f9bde2e30a",
+      "status": "code_verified"
+    },
+    {
+      "unit": "E08",
+      "issue": 101,
+      "title": "동일 가이드에서 Word·검토용 결과 출력",
+      "phase": "A3",
+      "dependsOn": [
+        "E07"
+      ],
+      "pr": 123,
+      "head": "493ba66c91b28639d5742ea690abf8035f75326f",
+      "status": "code_verified"
+    },
+    {
+      "unit": "E09A",
+      "issue": 102,
+      "title": "권한 저장소의 사례 aggregate·원자성·scope·동시성",
+      "phase": "A1",
+      "dependsOn": [
+        "E01"
+      ],
+      "pr": 119,
+      "head": "5384535be0fd4061fd0674a8acff1a19ac7d2813",
+      "laterPr": 133,
+      "status": "code_verified"
+    },
+    {
+      "unit": "E09B",
+      "issue": 108,
+      "title": "사례 API의 저장·재개·revision 충돌 연결",
+      "phase": "A1",
+      "dependsOn": [
+        "E09A",
+        "E04",
+        "E07"
+      ],
+      "pr": 124,
+      "head": "800514f4d0e96db3f12870e34300694ef020a919",
+      "laterPr": 133,
+      "status": "code_verified"
+    },
+    {
+      "unit": "E10A",
+      "issue": 103,
+      "title": "사례 입력·수집·미확인·계산 검토 화면",
+      "phase": "A3",
+      "dependsOn": [
+        "E04",
+        "E06",
+        "E09B"
+      ],
+      "pr": 125,
+      "head": "33082c33e3004b55b6f4b6c74a2a3823ce07e4c6",
+      "status": "code_verified"
+    },
+    {
+      "unit": "E10B",
+      "issue": 109,
+      "title": "가이드 검토·다운로드·진행 재개·첫 사용 안내",
+      "phase": "A3",
+      "dependsOn": [
+        "E10A",
+        "E08",
+        "E09B"
+      ],
+      "pr": 126,
+      "head": "ae3d190d1f7ba25fb817095fe43cddc93139ee22",
+      "status": "code_verified"
+    },
+    {
+      "unit": "E11",
+      "issue": 104,
+      "title": "독립 기대값으로 전체 업무 인수 하네스와 통합 회귀",
+      "phase": "A4",
+      "dependsOn": [
+        "E03A",
+        "E04",
+        "E05",
+        "E06",
+        "E07",
+        "E08",
+        "E09B",
+        "E10B",
+        "E03B"
+      ],
+      "pr": 127,
+      "head": "ffae9a6763a98830a79905365eaebeb2e0d43ddd",
+      "status": "ACCEPT WITH FOLLOW-UPS"
+    },
+    {
+      "unit": "E12",
+      "issue": 105,
+      "title": "허가된 장비 읽기와 구축 가이드 현장 인수",
+      "phase": "A5",
+      "dependsOn": [
+        "E00",
+        "E02",
+        "E11"
+      ],
+      "pr": 132,
+      "head": "3cfdf69335a6f9906bfddabbf754d296825416a2",
+      "status": "BLOCKED-ON-USER"
+    },
+    {
+      "unit": "E13",
+      "issue": 106,
+      "title": "가이드 revision에 결합된 승인 실행의 dry-run 연결",
+      "phase": "B1",
+      "dependsOn": [
+        "E07",
+        "E09B",
+        "E11"
+      ],
+      "pr": 134,
+      "head": "c88cf563b1c0b39015ca809da52d4ac9812cd99e",
+      "status": "ACCEPT WITH FOLLOW-UPS"
+    },
+    {
+      "unit": "E14",
+      "issue": 107,
+      "title": "PM 별도 승인 하에 단일 가역 작업 실행·독립 재조회 인수",
+      "phase": "B2",
+      "dependsOn": [
+        "E02",
+        "E12",
+        "E13"
+      ],
+      "status": "not started"
+    }
+  ],
+  "verification": {
+    "dependencyDag": "PASS",
+    "localDocumentLinks": "PASS",
+    "packageScriptNames": "PASS",
+    "remoteIssueLinks": "PASS",
+    "implementationTests": "FIXTURE_REVIEWED_NOT_INTEGRATION",
+    "localIsolationStore": "ACCEPT",
+    "ciForStackTip": "NOT_RUN",
+    "blroStore": "ISOLATION_PASS",
+    "liveDeviceAccess": "NOT_RUN",
+    "fieldAccepted": "NOT_RUN"
+  }
+}

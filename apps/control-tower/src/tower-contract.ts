@@ -34,6 +34,9 @@ export interface TowerOptions {
   playbookOutputDir?: string;
   authorityMode?: 'local' | 'postgres';
   localAuthorities?: Partial<Record<TowerWriteAggregate, LocalWriteAuthority>>;   // 리포트 산출물 경로 (테스트 주입용, 기본 resolveRepoData('outputs/playbooks'))
+  // 가이드 결합 dry-run. 테스트는 IagOrchestratorToolService.dryRunBoundToGuide를 주입한다.
+  // 미주입 시 브리지의 sangfor_engineer_guide_dry_run을 호출한다(stdio spawn 없음).
+  guideBoundDryRun?: (input: unknown) => Promise<unknown>;
 }
 
 export interface HealthEntry { ok: boolean; detail: string }

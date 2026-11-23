@@ -22,6 +22,8 @@
 | `BlroRagIndexPromotion` | composite scope/cohort/epoch, canonical report/digest, state/reason/audit timestamps | One promoted HNSW report per active project scope; FORCE RLS and cohort FK enforce authority boundaries. |
 | `SangforFineTuneDataset` | `productCode`, `taskType`, `path`, `status` (default `draft`), `exampleCount` | JSONL dataset manifest (`data/finetune/*.jsonl`). |
 | `SangforFineTuneJob` | `provider`, `baseModel`, `datasetPath`, `productCode`, `taskType`, `status` (default `ready_for_review`) | Fine-tune job spec; default status enforces human review. |
+| `BlroEngineerCase` | scoped id, revision, request digest, guide/observation/requirement digests, document | E09A case aggregate under FORCE RLS. Not a run or RAG document. |
+| `BlroEngineerCaseArtifact` | scoped case owner, digest, sanitized payload | Confidential case artifacts; same transaction as the case row. |
 
 ## Relations
 - `SangforRagDocument 1—* SangforRagChunk` (via `SangforRagChunk.documentId`).

@@ -13,7 +13,7 @@
       "inspectionResult": {},
       "requirement": "HCI/SCP usable storage headroom after current VM demand must stay above 20 percent",
       "evidenceNeed": ["inventory collection", "usable capacity"],
-      "targetControl": "usable storage headroom >= 20%",
+      "targetControl": "usable storage headroom >= 20 GiB",
       "currentGap": "usable capacity is not collected by the current inventory surfaces",
       "priority": "high"
     },

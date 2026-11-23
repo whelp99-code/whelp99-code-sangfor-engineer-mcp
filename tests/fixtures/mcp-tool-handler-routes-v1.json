@@ -1,7 +1,7 @@
 {
   "schemaVersion": "mcp-tool-handler-routes.v1",
   "baselineSource": "git:HEAD:apps/mcp-server/src/index.ts",
-  "knownRouteCount": 118,
+  "knownRouteCount": 119,
   "routes": [
     {
       "toolName": "sangfor_advisor_cisco_iosxe",
@@ -200,6 +200,12 @@
       "catalogSource": "apps/mcp-server/src/observability-tool-catalog.ts",
       "handlerIdentifier": "const handler = () => {\n    const engagementId = activeEngagementId();\n    const repoRoot = resolveRepoData('.');\n    const toRel = (abs) => relative(repoRoot, abs) || '.';\n    const runsRoot = resolveEngagementScopedData('data/runs', 'SANGFOR_RUNS_ROOT');\n    const reportsRoot = join(resolveEngagementScopedData('data/evidence', 'SANGFOR_EVIDENCE_ROOT'), 'reports');\n    return {\n        active: engagementId !== undefined,\n        engagementId,\n        scopedRoots: [\n            { name: 'runs', path: toRel(runsRoot) },\n            { name: 'search-gaps-feedback', path: toRel(feedbackRoot()) },\n            { name: 'session-reports', path: toRel(reportsRoot) },\n        ],\n    };\n};",
       "handlerAstSha256": "57372c12c1646e1b2f36b6c1bb89063e6277c4a920a198adc96922eabbae7d85"
+    },
+    {
+      "toolName": "sangfor_engineer_guide_dry_run",
+      "catalogSource": "apps/mcp-server/src/iag-orchestrator-tools.ts",
+      "handlerIdentifier": "const handler = (input) => service().dryRunBoundToGuide(input);",
+      "handlerAstSha256": "4bfe387eb53e0ba0de3dd81394c0bae41915015cbacf0f2f10364902809eeb1a"
     },
     {
       "toolName": "sangfor_evaluate_config",
