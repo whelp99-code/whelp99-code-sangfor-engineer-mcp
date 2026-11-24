@@ -46,16 +46,20 @@ export function computeLiveVerificationOk(checks: VerificationCheck[]): boolean 
 export function verificationCheckFromBrowserResult(
   step: Pick<ConfigStep, 'id' | 'title'>,
   result: BrowserExecutionResult,
+  expectedRequestId: string,
 ): VerificationCheck {
-  const passed = result.status === 'PASS' && result.readBack?.status === 'PASS';
-  const failed = result.status === 'FAIL' || result.readBack?.status === 'FAIL';
+  const boundReadBack = result.requestId === expectedRequestId && result.mutationAttempted === false;
+  const passed = boundReadBack && result.status === 'PASS' && result.readBack?.status === 'PASS';
+  const failed = boundReadBack && (result.status === 'FAIL' || result.readBack?.status === 'FAIL');
   return {
     id: step.id,
     title: step.title,
     status: passed ? 'passed' : failed ? 'failed' : 'manual_required',
-    message: passed
-      ? 'Fresh browser read-back passed.'
-      : result.error?.message ?? `Browser read-back result: ${result.status}.`,
+    message: !boundReadBack
+      ? 'Browser response is not a fresh read-only verification result.'
+      : passed
+        ? 'Fresh browser read-back passed.'
+        : result.error?.message ?? `Browser read-back result: ${result.status}.`,
     screenshotPath: result.evidence[0]?.artifactRef,
     pageSnapshot: result.observations ? JSON.stringify(result.observations) : undefined,
     error: failed ? result.error?.message ?? 'Browser read-back failed.' : undefined,
@@ -106,7 +110,9 @@ export async function verifyResultLive(
   const targetUrl = input.targetUrl
     ?? `http://${process.env.SANGFOR_EQUIPMENT_HOST ?? '10.80.1.106'}:${process.env.SANGFOR_EQUIPMENT_PORT ?? '443'}/hci`;
   const checks: VerificationCheck[] = [];
-  for (const step of input.plan.validationPlan ?? []) {
+  // A passing observation cannot repair an invalid plan.
+  const validationSteps = planValidation.ok ? input.plan.validationPlan : [];
+  for (const step of validationSteps) {
     if (!step.references?.length) {
       checks.push({
         id: step.id,
@@ -116,9 +122,10 @@ export async function verifyResultLive(
       });
       continue;
     }
+    const requestId = nowId('browser-verify');
     const result = await input.executionPort.execute({
       schemaVersion: 'browser-execution-request.v1',
-      requestId: nowId('browser-verify'),
+      requestId,
       sessionId: input.sessionId,
       origin: new URL(targetUrl).origin,
       operation: {
@@ -130,11 +137,11 @@ export async function verifyResultLive(
         }],
       },
     });
-    checks.push(verificationCheckFromBrowserResult(step, result));
+    checks.push(verificationCheckFromBrowserResult(step, result, requestId));
   }
   return {
     planId: input.plan.id,
-    ok: computeLiveVerificationOk(checks),
+    ok: planValidation.ok && computeLiveVerificationOk(checks),
     planErrors: planValidation.errors,
     checks,
     mode,

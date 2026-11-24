@@ -36,6 +36,33 @@ describe('CI package script contract', () => {
     expect(workflowScripts).toEqual(expect.arrayContaining(Object.keys(REQUIRED_CI_SCRIPTS)));
   });
 
+  it('bounds default test worker contention without extending timeouts or changing selection', () => {
+    const config = readFileSync(join(ROOT, 'vitest.config.ts'), 'utf8');
+    expect(config).toMatch(/maxWorkers:\s*2\b/u);
+    expect(config).not.toMatch(/(?:testTimeout|hookTimeout)\s*:/u);
+    expect(config).toContain("include: ['tests/**/*.test.ts']");
+  });
+
+  it('pins browser and PostgreSQL 16 environments and provisions clients before querying them', () => {
+    const browserJob = ciWorkflow.split('\n  verify:\n')[1]
+      ?.split('\n  postgres-authority:\n')[0];
+    expect(browserJob).toContain('runs-on: ubuntu-24.04');
+    expect(browserJob).toContain('run: pnpm exec playwright install --with-deps chromium');
+    expect(browserJob).toContain('run: pnpm run test:ui');
+    const postgresJob = ciWorkflow.split('\n  postgres-authority:\n')[1]
+      ?.split('\n  verify-jm-endpoint:\n')[0];
+    expect(postgresJob).toBeDefined();
+    expect(postgresJob).toContain('runs-on: ubuntu-24.04');
+    expect(postgresJob).toContain('image: pgvector/pgvector:0.8.1-pg16');
+    expect(postgresJob).toContain('PG_BINDIR: /usr/lib/postgresql/16/bin');
+    expect(postgresJob).toContain('sudo apt-get install -y postgresql-client-16');
+    const provision = postgresJob!.indexOf('- name: Provision the PostgreSQL client binaries the runner requires');
+    const firstQuery = postgresJob!.indexOf('- name: Assert PostgreSQL 16 pgvector 0.8.1 is provisioned');
+    expect(provision).toBeGreaterThanOrEqual(0);
+    expect(firstQuery).toBeGreaterThan(provision);
+    expect(postgresJob).toContain('run: pnpm run test:postgres:mandatory');
+  });
+
   it.each(Object.entries(REQUIRED_CI_SCRIPTS))(
     'fails the contract when %s is removed or renamed',
     (name, command) => {

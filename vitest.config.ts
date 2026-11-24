@@ -35,6 +35,8 @@ export default defineConfig({
     }
   },
   test: {
+    // Bound concurrent compiler/CLI processes on CI runners; keep the default timeouts.
+    maxWorkers: 2,
     env: { SANGFOR_BLRO_AUTHORITY_STORE: 'local' },
     include: ['tests/**/*.test.ts'],
     // Suites that require a reachable external PostgreSQL are owned by
