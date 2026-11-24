@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { buildHciCollectionSnapshot } from '../packages/sangfor-config-state/src/index.js';
 import {
   collectInventory,
   collectOfficialJanusHostExtras,
@@ -53,6 +54,76 @@ function captureGrant(payload: unknown, counter: { get: number }, status = 200):
 }
 
 describe('Janus hosts child adapter', () => {
+  it.each(['WRONG_TARGET', 'TARGET_UNVERIFIED'] as const)('does not GET either REST or Janus after %s', async (reason) => {
+    const paths: string[] = [];
+    const counter = { get: 0 };
+    const base = keystoneClient(paths);
+    const client = reason === 'WRONG_TARGET'
+      ? { ...base, endpointFor: async () => 'https://other.invalid/identity' }
+      : base;
+    const inventory = await collectInventory(client, {
+      collectedAt: WHEN, request: { target: 'https://approved.invalid' },
+      janusHostsCapture: captureGrant(SINGLE_HOSTS, counter),
+    });
+    expect(paths).toEqual([]);
+    expect(counter.get).toBe(0);
+    expect(inventory.readRequests).toEqual([]);
+    expect(Object.values(inventory.collection).every((surface) => surface.status === 'failed' && surface.reason === reason)).toBe(true);
+    expect(inventory.janusHostsCollect).toEqual(janusHostsCollectRefusal());
+    expect(inventory.originalPresentSurfaces).toBeUndefined();
+    expect(inventory.fields.find((field) => field.id === 'host_cpu')?.sourceKind).toBe('unknown');
+    expect(inventory.fields.find((field) => field.id === 'host_ram')?.sourceKind).toBe('unknown');
+    expect(inventory.mutationDispatchCount).toBe(0);
+    expect(inventory.guideReadyGranted).toBe(false);
+  });
+
+  it('retains REST inventory and unknown Janus fields on one failed capture without exposing its exception', async () => {
+    const paths: string[] = [];
+    let attempts = 0;
+    const inventory = await collectInventory(keystoneClient(paths), {
+      collectedAt: WHEN,
+      janusHostsCapture: {
+        kind: 'explicit_janus_hosts_capture',
+        client: { async getOfficialHosts() {
+          attempts += 1;
+          throw new Error('fixture-private-error-do-not-return');
+        } },
+      },
+    });
+    expect(attempts).toBe(1);
+    expect(paths).toHaveLength(3);
+    expect(inventory.volumes).toEqual([volume]);
+    expect(inventory.servers).toEqual([{ id: 's1' }]);
+    expect(Object.values(inventory.collection).every((surface) => surface.status === 'complete')).toBe(true);
+    expect(inventory.janusHostsCollect).toEqual({
+      status: 'capture_failed', getCount: 1, reason: 'JANUS_CAPTURE_FAILED',
+      endpoint: OFFICIAL_SCP_JANUS_HOSTS_ENDPOINT,
+    });
+    expect(inventory.originalPresentSurfaces).toBeUndefined();
+    expect(inventory.fields.find((field) => field.id === 'host_cpu')?.sourceKind).toBe('unknown');
+    expect(inventory.fields.find((field) => field.id === 'host_ram')?.sourceKind).toBe('unknown');
+    expect(JSON.stringify(inventory)).not.toContain('fixture-private-error-do-not-return');
+    expect(inventory.mutationDispatchCount).toBe(0);
+    expect(inventory.guideReadyGranted).toBe(false);
+    const snapshot = buildHciCollectionSnapshot(inventory, {
+      caseId: 'fixture-partial-janus', projectId: 'fixture-project',
+      environmentKind: 'fixture', originalPresent: false,
+    });
+    expect(snapshot.observations.every((observation) => observation.sourceKind !== 'observed')).toBe(true);
+    expect(snapshot.guideReadyGranted).toBe(false);
+    expect(snapshot.mutationDispatchCount).toBe(0);
+  });
+
+  it.each([401, 403, 500])('does not turn captured HTTP %i into observed extras', async (status) => {
+    const counter = { get: 0 };
+    const result = await collectOfficialJanusHostExtras({
+      grant: captureGrant(SINGLE_HOSTS, counter, status), collectedAt: WHEN,
+    });
+    expect(counter.get).toBe(1);
+    expect(result.report).toEqual({ status: 'captured', getCount: 1, endpoint: OFFICIAL_SCP_JANUS_HOSTS_ENDPOINT });
+    expect(result.extras).toEqual([]);
+  });
+
   it('refuses an invalid grant and does not GET', async () => {
     const counter = { get: 0 };
     expect(isJanusHostsCaptureGrant(undefined)).toBe(false);

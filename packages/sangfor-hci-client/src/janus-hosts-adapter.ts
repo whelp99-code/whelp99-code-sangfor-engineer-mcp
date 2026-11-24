@@ -48,6 +48,13 @@ export type JanusHostsCollectReport =
       readonly status: 'captured';
       readonly getCount: number;
       readonly endpoint: typeof OFFICIAL_SCP_JANUS_HOSTS_ENDPOINT;
+    }
+  | {
+      readonly status: 'capture_failed';
+      /** Injected GET port attempt count, not proof of network dispatch. */
+      readonly getCount: 1;
+      readonly reason: 'JANUS_CAPTURE_FAILED';
+      readonly endpoint: typeof OFFICIAL_SCP_JANUS_HOSTS_ENDPOINT;
     };
 
 const CAPTURE_REQUEST: JanusHostsCaptureRequest = {
@@ -83,22 +90,36 @@ export async function collectOfficialJanusHostExtras(input: {
     return { extras: [], report: janusHostsCollectRefusal() };
   }
 
-  const result = await input.grant.client.getOfficialHosts(CAPTURE_REQUEST);
-  const extras = result.status === 200
-    ? extractOfficialJanusHostExtrasFromPages([{
-        endpoint: OFFICIAL_SCP_JANUS_HOSTS_ENDPOINT,
-        payload: result.json,
-        latencyMs: typeof result.latencyMs === 'number' && result.latencyMs > 0 ? result.latencyMs : 0,
-        collectedAt: input.collectedAt,
-      }])
-    : [];
+  try {
+    const result = await input.grant.client.getOfficialHosts(CAPTURE_REQUEST);
+    const extras = result.status === 200
+      ? extractOfficialJanusHostExtrasFromPages([{
+          endpoint: OFFICIAL_SCP_JANUS_HOSTS_ENDPOINT,
+          payload: result.json,
+          latencyMs: typeof result.latencyMs === 'number' && result.latencyMs > 0 ? result.latencyMs : 0,
+          collectedAt: input.collectedAt,
+        }])
+      : [];
 
-  return {
-    extras,
-    report: {
-      status: 'captured',
-      getCount: 1,
-      endpoint: OFFICIAL_SCP_JANUS_HOSTS_ENDPOINT,
-    },
-  };
+    return {
+      extras,
+      report: {
+        status: 'captured',
+        getCount: 1,
+        endpoint: OFFICIAL_SCP_JANUS_HOSTS_ENDPOINT,
+      },
+    };
+  } catch {
+    // Preserve successful sibling REST reads; never expose raw transport errors
+    // (which may contain credentials), infer extras, or automatically retry.
+    return {
+      extras: [],
+      report: {
+        status: 'capture_failed',
+        getCount: 1,
+        reason: 'JANUS_CAPTURE_FAILED',
+        endpoint: OFFICIAL_SCP_JANUS_HOSTS_ENDPOINT,
+      },
+    };
+  }
 }

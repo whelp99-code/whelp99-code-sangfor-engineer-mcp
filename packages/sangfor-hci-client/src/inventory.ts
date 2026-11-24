@@ -271,7 +271,8 @@ export async function collectInventory(
     ...imageRead.extraPages,
   ]);
   const janusHosts = await collectOfficialJanusHostExtras({
-    grant: opts.janusHostsCapture,
+    // A target refusal covers every child read, including the separate Janus port.
+    grant: targetCheck.ok ? opts.janusHostsCapture : undefined,
     collectedAt,
   });
   const originalPresentSurfaces = mergeCollectExtraSurfaces(janusHosts.extras, unofficialExtras);
