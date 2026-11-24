@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { engineerProvidedAnalysisSchema } from '../../../packages/sangfor-planner/src/engineer-provided-analysis.js';
 import { runtimeJsonObjectSchema } from '../../../packages/shared/src/runtime-json-codecs.js';
 import { parseRuntimeJson } from '../../../packages/shared/src/runtime-schema.js';
 
@@ -99,6 +100,7 @@ const requestSchemas = {
       firmware: shortTextSchema.optional(),
       revision: engineerIdSchema.optional(),
       requirementLines: z.array(textSchema).max(256),
+      analysis: engineerProvidedAnalysisSchema.optional(),
       collections: z.array(z.object({
         id: engineerIdSchema.optional(),
         label: shortTextSchema,

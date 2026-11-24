@@ -317,3 +317,5 @@ export async function generateConfigPlanAsync(input: ProjectInput): Promise<Conf
   const plan = attachReferences(base, refs);
   return { ...plan, grounding: assessPlanGrounding(plan) };
 }
+
+export { analyzeEngineerProvidedCase, engineerProvidedAnalysisSchema, type EngineerProvidedAnalysis } from './engineer-provided-analysis.js';
